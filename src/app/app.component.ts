@@ -13,12 +13,19 @@ import { ShowComponent } from './components/show/show.component';
 
 @Component({
   selector: 'app-root',
-  imports: [RouterOutlet, NotificationComponent, ConfirmationComponent, LoaderComponent, AsyncPipe, ShowComponent],
+  standalone: true,
+  imports: [
+    RouterOutlet,
+    NotificationComponent,
+    ConfirmationComponent,
+    LoaderComponent,
+    AsyncPipe,
+    ShowComponent,
+  ],
   templateUrl: './app.component.html',
-  styleUrl: './app.component.scss'
+  styleUrl: './app.component.scss',
 })
 export class AppComponent {
-
   isConfirmationVisible = inject(ConfirmationService);
 
   title = 'Gastos';
@@ -30,8 +37,8 @@ export class AppComponent {
   constructor(
     private loaderService: LoaderService,
     private notificationService: NotificationService,
-    private showService: ShowService,
-  ) { }
+    private showService: ShowService
+  ) {}
 
   ngOnInit() {
     this.getNotificationState();
@@ -44,7 +51,7 @@ export class AppComponent {
   }
 
   getLoaderState() {
-    this.isLoading = this.loaderService.loading$
+    this.isLoading = this.loaderService.loading$;
   }
 
   getShowState() {

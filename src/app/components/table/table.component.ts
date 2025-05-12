@@ -3,20 +3,17 @@ import { IHeaderList } from '../../interfaces/header-list.interface';
 
 @Component({
   selector: 'app-table',
-  imports: [
-
-  ],
+  standalone: true,
+  imports: [],
   templateUrl: './table.component.html',
-  styleUrl: './table.component.scss'
+  styleUrl: './table.component.scss',
 })
 export class TableComponent {
-
   @Input() headers: IHeaderList[] = [];
   @Input() data: any[] = [];
-  @Output() optionsEvent = new EventEmitter<{ option: string, _id: string }>();
+  @Output() optionsEvent = new EventEmitter<{ option: string; _id: string }>();
 
   options(option: string, _id: string) {
     this.optionsEvent.emit({ option, _id });
   }
-
 }

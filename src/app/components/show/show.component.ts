@@ -3,12 +3,12 @@ import { ShowService } from '../../services/show.service';
 import { IMessageResponse } from '../../interfaces/message.interface';
 @Component({
   selector: 'app-show',
+  standalone: true,
   imports: [],
   templateUrl: './show.component.html',
-  styleUrl: './show.component.scss'
+  styleUrl: './show.component.scss',
 })
 export class ShowComponent {
-
   message: IMessageResponse = {} as IMessageResponse;
 
   constructor(private showService: ShowService) {
@@ -20,6 +20,4 @@ export class ShowComponent {
   close() {
     this.showService.hide();
   }
-
-
 }
