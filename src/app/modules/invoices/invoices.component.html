@@ -1,0 +1,25 @@
+<div class="p-5 flex justify-between items-center">
+  <h1 class="text-2xl font-bold">Facturas</h1>
+  <button
+    class="bg-color1 text-white px-4 py-2 rounded-md"
+    (click)="gotToAddInvoice()"
+  >
+    Nueva Factura
+  </button>
+</div>
+
+<div class="px-5 lg:block hidden">
+  <app-table
+    [headers]="headers"
+    [data]="invoices"
+    (optionsEvent)="clickOptions($event.option, $event._id)"
+  ></app-table>
+</div>
+
+<div class="px-5 block lg:hidden">
+  <app-list-table
+    [headers]="headers"
+    [data]="invoices"
+    (clickOptionsEvent)="clickOptions($event.option, $event._id)"
+  ></app-list-table>
+</div>

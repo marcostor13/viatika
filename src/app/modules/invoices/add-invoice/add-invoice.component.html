@@ -1,0 +1,130 @@
+<div class="flex items-center justify-between w-full gap-2 p-5">
+  <button
+    class="bg-color1 text-white px-4 py-1 flex items-center gap-2 rounded-full"
+    (click)="back()"
+  >
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      fill="none"
+      viewBox="0 0 24 24"
+      stroke-width="1.5"
+      stroke="currentColor"
+      class="w-7"
+    >
+      <path
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        d="M6.75 15.75 3 12m0 0 3.75-3.75M3 12h18"
+      />
+    </svg>
+
+    Volver
+  </button>
+  <h1 class="text-xl font-bold">
+    @if (id) { Editar factura } @else { Agregar factura }
+  </h1>
+</div>
+
+<form [formGroup]="form" class="flex flex-col gap-4 p-5">
+  <div class="flex flex-col gap-2">
+    <label for="proyect">Proyecto <span class="text-color1">*</span></label>
+    <select
+      id="proyect"
+      formControlName="proyect"
+      class="w-full p-2 border border-gray-300"
+    >
+      @for(proyect of proyects; track proyect){
+      <option value="{{ proyect.id }}">{{ proyect.name }}</option>
+      }
+    </select>
+    @if (proyect?.invalid && proyect?.touched) {
+    <span class="text-red-500">El proyecto es requerido</span>
+    }
+  </div>
+  <div class="flex flex-col gap-2">
+    <label for="category">Categoría <span class="text-color1">*</span></label>
+    <select
+      id="category"
+      formControlName="category"
+      class="w-full p-2 border border-gray-300"
+    >
+      @for(category of categories; track category){
+      <option value="{{ category.key }}">{{ category.name }}</option>
+      }
+    </select>
+    @if (category?.invalid && category?.touched) {
+    <span class="text-red-500">La categoría es requerida</span>
+    }
+  </div>
+
+  @if(!id) {
+  <div class="flex flex-col gap-2">
+    <label for="file">Archivo <span class="text-color1">*</span></label>
+    <div class="relative">
+      <input
+        type="file"
+        id="file"
+        accept="image/*"
+        capture="environment"
+        (change)="onFileSelected($event)"
+        class="hidden"
+        #fileInput
+      />
+      <div
+        class="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center cursor-pointer hover:border-color1 transition-colors"
+        (click)="fileInput.click()"
+      >
+        @if (previewImage) {
+        <img
+          [src]="previewImage"
+          alt="Vista previa"
+          class="max-h-48 mx-auto mb-2 rounded-lg"
+        />
+        } @else {
+        <div class="flex flex-col items-center gap-2">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke-width="1.5"
+            stroke="currentColor"
+            class="w-12 h-12 text-gray-400"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              d="M6.827 6.175A2.31 2.31 0 0 1 5.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 0 0 2.25 2.25h15A2.25 2.25 0 0 0 21.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 0 0-1.134-.175 2.31 2.31 0 0 1-1.64-1.055l-.822-1.316a2.192 2.192 0 0 0-1.736-1.039 48.774 48.774 0 0 0-5.232 0 2.192 2.192 0 0 0-1.736 1.039l-.821 1.316Z"
+            />
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              d="M16.5 12.75a4.5 4.5 0 1 1-9 0 4.5 4.5 0 0 1 9 0ZM18.75 10.5h.008v.008h-.008V10.5Z"
+            />
+          </svg>
+          <span class="text-gray-600">Haz clic para tomar una foto</span>
+        </div>
+        }
+      </div>
+      @if (file?.invalid && file?.touched) {
+      <span class="text-red-500">El archivo es requerido</span>
+      }
+    </div>
+  </div>
+  } @else {
+  <a>
+    <button
+      (click)="openInvoice()"
+      class="bg-color1 text-white px-4 py-2 rounded-full w-full lg:w-1/4 mt-3"
+    >
+      Ver factura
+    </button>
+  </a>
+  }
+  <button
+    (click)="saveOrUpdate()"
+    type="submit"
+    class="bg-color1 text-white px-4 py-2 rounded-full w-full lg:w-1/4 mt-3"
+  >
+    Guardar
+  </button>
+</form>

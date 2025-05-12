@@ -1,0 +1,21 @@
+<div
+  class="fixed top-0 left-0 w-full h-full bg-black bg-opacity-50 flex justify-center items-center"
+>
+  <div class="bg-white p-4 rounded-xl">
+    <p>{{ confirmationService.message() }}</p>
+    <div class="flex gap-2 justify-end mt-4">
+      <button
+        class="bg-red-500 text-white px-4 py-1 rounded-full"
+        (click)="confirmationService.confirm()"
+      >
+        Si
+      </button>
+      <button
+        class="bg-black text-white px-4 py-1 rounded-full"
+        (click)="confirmationService.cancel()"
+      >
+        No
+      </button>
+    </div>
+  </div>
+</div>
