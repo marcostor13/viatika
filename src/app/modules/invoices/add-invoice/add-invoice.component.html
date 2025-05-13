@@ -105,7 +105,7 @@
         </div>
         }
       </div>
-      @if (file?.invalid && file?.touched) {
+      @if (imageUrl?.invalid && imageUrl?.touched) {
       <span class="text-red-500">El archivo es requerido</span>
       }
     </div>
@@ -128,3 +128,14 @@
     Guardar
   </button>
 </form>
+
+@if(isLoading()) {
+<div class="loader-image">
+  <div class="loader-image-content">
+    <div class="loader-image-content-spinner"></div>
+    <div class="loader-image-content-text">
+      <span>Subiendo Imagen...</span>
+    </div>
+  </div>
+</div>
+}

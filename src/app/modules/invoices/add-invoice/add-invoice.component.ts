@@ -1,4 +1,4 @@
-import { Component, inject } from '@angular/core';
+import { Component, inject, signal } from '@angular/core';
 import { Router, ActivatedRoute } from '@angular/router';
 import {
   FormBuilder,
@@ -12,6 +12,8 @@ import { CATEGORIES } from '../constants/categories';
 import { InvoicesService } from '../services/invoices.service';
 import { PROYECTS } from '../constants/proyects';
 import { DomSanitizer, SafeUrl } from '@angular/platform-browser';
+import { UploadService } from '../../../services/upload.service';
+import { environment } from '../../../../environments/environment';
 
 @Component({
   selector: 'app-add-invoice',
@@ -27,6 +29,7 @@ export default class AddInvoiceComponent {
   private notificationService = inject(NotificationService);
   private route = inject(ActivatedRoute);
   private sanitizer = inject(DomSanitizer);
+  private uploadService = inject(UploadService);
 
   form: FormGroup = this.fb.group({
     proyect: ['', Validators.required],
@@ -39,6 +42,8 @@ export default class AddInvoiceComponent {
   proyects = PROYECTS;
   previewImage: SafeUrl | null = null;
   selectedFile!: File;
+
+  isLoading = signal(false);
 
   constructor() {
     this.initForm();
@@ -56,7 +61,7 @@ export default class AddInvoiceComponent {
       this.form.patchValue({
         proyect: res.proyect,
         category: res.category,
-        file: res.file,
+        imageUrl: res.file,
       });
     });
   }
@@ -65,7 +70,7 @@ export default class AddInvoiceComponent {
     this.form = this.fb.group({
       proyect: ['1', Validators.required],
       category: ['food', Validators.required],
-      file: [null, Validators.required],
+      imageUrl: ['', Validators.required],
     });
   }
 
@@ -73,13 +78,7 @@ export default class AddInvoiceComponent {
     if (this.id) {
       this.update();
     } else {
-      this.save();
-    }
-  }
-
-  save() {
-    if (this.form.valid) {
-      this.uploadInvoice();
+      this.uploadFile();
     }
   }
 
@@ -100,19 +99,31 @@ export default class AddInvoiceComponent {
     }
   }
 
-  uploadInvoice() {
-    const formData = new FormData();
-    formData.append('invoice', this.selectedFile, this.selectedFile.name);
-    formData.append('proyect', this.proyect?.value || '');
-    formData.append('category', this.category?.value || '');
-    this.invoiceService.uploadInvoice(formData).subscribe((res) => {
-      this.notificationService.show('Factura subida correctamente', 'success');
-      this.router.navigate(['/invoices']);
+  uploadFile() {
+    this.isLoading.set(true);
+    const { uploadProgress$, downloadUrl$ } = this.uploadService.uploadFile(this.selectedFile, environment.storagePath);
+    uploadProgress$.subscribe((progress) => {
+      this.isLoading.set(false);
+      console.log('Subida:', progress);
+    });
+    downloadUrl$.subscribe((url) => {
+      console.log('URL:', url);
+      this.form.patchValue({ imageUrl: url });
+      this.save()
     });
   }
 
+  save() {
+    if (this.form.valid) {
+      this.invoiceService.analyzeInvoice(this.form.value).subscribe((res) => {
+        console.log(res);
+        this.notificationService.show('Factura subida correctamente', 'success');
+        this.router.navigate(['/invoices']);
+      });
+    }
+  }
+
   openInvoice() {
-    //open image in new tab if previewImage is not null
     if (this.previewImage) {
       window.open(this.previewImage as string, '_blank');
     }
@@ -130,7 +141,7 @@ export default class AddInvoiceComponent {
     return this.form.get('proyect');
   }
 
-  get file() {
-    return this.form.get('file');
+  get imageUrl() {
+    return this.form.get('imageUrl');
   }
 }

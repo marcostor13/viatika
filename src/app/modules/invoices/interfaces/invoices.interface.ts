@@ -16,3 +16,11 @@ export interface IInvoiceResponse {
     createdAt: string;
     updatedAt: string;
 }
+
+
+export interface InvoicePayload {
+    proyect: string;
+    category: string;
+    file: string;
+}
+
