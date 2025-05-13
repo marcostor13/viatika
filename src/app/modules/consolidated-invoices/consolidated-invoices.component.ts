@@ -170,4 +170,15 @@ export class ConsolidatedInvoicesComponent {
       );
     });
   }
+
+  // Dashboard: Agrupar y contar facturas por proyecto
+  get invoicesByProject() {
+    const counts: { [proyect: string]: number } = {};
+    for (const inv of this.filteredInvoices) {
+      if (inv.proyect) {
+        counts[inv.proyect] = (counts[inv.proyect] || 0) + 1;
+      }
+    }
+    return counts;
+  }
 }

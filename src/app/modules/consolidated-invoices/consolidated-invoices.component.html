@@ -1,5 +1,24 @@
 <div class="p-5 flex flex-col gap-4">
   <h1 class="text-2xl font-bold">Consolidado de Facturas</h1>
+
+  <!-- Dashboard de facturas por proyecto -->
+  <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+    <h2 class="text-lg font-semibold mb-2">Dashboard: Facturas por Proyecto</h2>
+    <div class="flex flex-wrap gap-4">
+      @for (project of invoicesByProject | keyvalue; track project.key) {
+      <div
+        class="bg-white border border-blue-100 rounded-lg px-4 py-2 shadow text-center min-w-[120px]"
+      >
+        <div class="font-bold text-blue-700">{{ project.key }}</div>
+        <div class="text-2xl font-bold">{{ project.value }}</div>
+        <div class="text-xs text-gray-500">facturas</div>
+      </div>
+      } @if ((invoicesByProject | keyvalue).length === 0) {
+      <div class="text-gray-500">No hay facturas para mostrar.</div>
+      }
+    </div>
+  </div>
+
   <form class="grid grid-cols-1 gap-2 md:grid-cols-6 w-full">
     <input
       type="text"
