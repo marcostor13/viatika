@@ -1,0 +1,95 @@
+<div
+  class="min-h-screen flex items-center justify-center bg-gradient-to-br from-white to-blue-50 p-4"
+>
+  <div
+    class="w-full max-w-xs bg-white rounded-2xl p-8 border border-blue-100 shadow-sm"
+  >
+    <h1
+      class="text-2xl font-bold text-center text-blue-700 mb-8 tracking-tight"
+    >
+      Iniciar sesión
+    </h1>
+    <form (ngSubmit)="login()" autocomplete="off" class="space-y-6">
+      <div>
+        <input
+          type="email"
+          [ngModel]="email()"
+          (ngModelChange)="email.set($event)"
+          name="email"
+          class="w-full px-4 py-2 bg-blue-50 border border-transparent rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-200 text-sm placeholder:text-gray-400 transition"
+          placeholder="Correo electrónico"
+          required
+        />
+      </div>
+      <div class="relative">
+        <input
+          [type]="showPassword() ? 'text' : 'password'"
+          [ngModel]="password()"
+          (ngModelChange)="password.set($event)"
+          name="password"
+          class="w-full px-4 py-2 bg-blue-50 border border-transparent rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-200 text-sm placeholder:text-gray-400 pr-10 transition"
+          placeholder="Contraseña"
+          required
+        />
+        <button
+          type="button"
+          (click)="showPassword.set(!showPassword())"
+          class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-blue-600 focus:outline-none"
+        >
+          <svg
+            *ngIf="!showPassword()"
+            xmlns="http://www.w3.org/2000/svg"
+            class="h-5 w-5"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+            />
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
+            />
+          </svg>
+          <svg
+            *ngIf="showPassword()"
+            xmlns="http://www.w3.org/2000/svg"
+            class="h-5 w-5"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.542-7a9.956 9.956 0 012.293-3.95m3.25-2.568A9.956 9.956 0 0112 5c4.478 0 8.268 2.943 9.542 7a9.973 9.973 0 01-4.293 5.03M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+            />
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M3 3l18 18"
+            />
+          </svg>
+        </button>
+      </div>
+      <button
+        type="submit"
+        [disabled]="loading()"
+        class="w-full bg-blue-600 text-white py-2 rounded-lg font-semibold hover:bg-blue-700 transition disabled:opacity-50"
+      >
+        @if (!loading()) { Entrar } @if (loading()) { Entrando... }
+      </button>
+      @if (error()) {
+      <div class="text-red-500 text-xs text-center mt-2">{{ error() }}</div>
+      }
+    </form>
+  </div>
+</div>

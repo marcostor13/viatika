@@ -5,7 +5,6 @@ import { USER_LOCALSTORAGE_KEY } from '../constants/user-localstorage.constant';
   providedIn: 'root',
 })
 export class UserStateService {
-
   private _user = signal<IUserResponse | null>(null);
 
   constructor() {
@@ -31,5 +30,32 @@ export class UserStateService {
   logout() {
     this.clearUser();
     localStorage.removeItem(USER_LOCALSTORAGE_KEY);
+  }
+
+  loginAsColaborador(email: string, password: string) {
+    // Simulación: solo permite el rol COLABORADOR
+    const user = {
+      _id: '1',
+      email,
+      name: 'Colaborador',
+      access_token: 'fake-token',
+      clientId: {},
+      roleId: {
+        _id: 'colab',
+        name: 'COLABORADOR',
+        active: true,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
+    };
+    this.setUser(user as any);
+  }
+
+  isAuthenticated() {
+    return !!this._user();
+  }
+
+  isColaborador() {
+    return this._user()?.role === 'COLABORADOR';
   }
 }
