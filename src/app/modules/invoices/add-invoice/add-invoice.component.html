@@ -86,12 +86,13 @@
         Haga clic para seleccionar una factura
       </p>
       <input
-        #fileInput
         type="file"
         id="file"
+        accept="image/*"
+        capture="environment"
         (change)="onFileSelected($event)"
         class="hidden"
-        accept="image/*"
+        #fileInput
       />
     </div>
     @if (imageUrl?.invalid && imageUrl?.touched) {
