@@ -17,19 +17,31 @@ export class UserStateService {
   setUser(user: IUserResponse) {
     this._user.set(user);
     localStorage.setItem(USER_LOCALSTORAGE_KEY, JSON.stringify(user));
+    if (user.access_token) {
+      localStorage.setItem('token', user.access_token);
+    }
   }
 
   getUser() {
     return this._user();
   }
 
+  getToken(): string | null {
+    const user = this._user();
+    if (user && user.access_token) {
+      return user.access_token;
+    }
+    return localStorage.getItem('token');
+  }
+
   clearUser() {
     this._user.set(null);
+    localStorage.removeItem(USER_LOCALSTORAGE_KEY);
+    localStorage.removeItem('token');
   }
 
   logout() {
     this.clearUser();
-    localStorage.removeItem(USER_LOCALSTORAGE_KEY);
   }
 
   loginAsColaborador(email: string, password: string = '') {

@@ -6,7 +6,6 @@ import { AuthAdmin2Guard } from './guards/auth-admin2.guard';
 import { MainComponent } from './layouts/main/main.component';
 
 export const routes: Routes = [
-
   {
     path: '',
     component: MainComponent,
@@ -34,7 +33,39 @@ export const routes: Routes = [
           ).then((m) => m.ConsolidatedInvoicesComponent),
         canActivate: [AuthAdmin2Guard],
       },
-    ]
+      {
+        path: 'consolidated-invoices/add-category',
+        loadComponent: () =>
+          import(
+            './modules/consolidated-invoices/add-category/add-category.component'
+          ).then((m) => m.AddCategoryComponent),
+        canActivate: [AuthAdmin2Guard],
+      },
+      {
+        path: 'consolidated-invoices/edit-category/:id',
+        loadComponent: () =>
+          import(
+            './modules/consolidated-invoices/add-category/add-category.component'
+          ).then((m) => m.AddCategoryComponent),
+        canActivate: [AuthAdmin2Guard],
+      },
+      {
+        path: 'consolidated-invoices/add-project',
+        loadComponent: () =>
+          import(
+            './modules/consolidated-invoices/add-project/add-project.component'
+          ).then((m) => m.AddProjectComponent),
+        canActivate: [AuthAdmin2Guard],
+      },
+      {
+        path: 'consolidated-invoices/edit-project/:id',
+        loadComponent: () =>
+          import(
+            './modules/consolidated-invoices/add-project/add-project.component'
+          ).then((m) => m.AddProjectComponent),
+        canActivate: [AuthAdmin2Guard],
+      },
+    ],
   },
   {
     path: 'login',
@@ -45,5 +76,4 @@ export const routes: Routes = [
     path: '**',
     redirectTo: 'login',
   },
-
 ];

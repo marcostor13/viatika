@@ -1,4 +1,4 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, inject, signal, OnInit } from '@angular/core';
 import { Router, ActivatedRoute } from '@angular/router';
 import {
   FormBuilder,
@@ -8,13 +8,21 @@ import {
   FormsModule,
 } from '@angular/forms';
 import { NotificationService } from '../../../services/notification.service';
-import { CATEGORIES } from '../constants/categories';
 import { InvoicesService } from '../services/invoices.service';
-import { PROYECTS } from '../constants/proyects';
 import { DomSanitizer, SafeUrl } from '@angular/platform-browser';
 import { UploadService } from '../../../services/upload.service';
 import { environment } from '../../../../environments/environment';
 import { CommonModule } from '@angular/common';
+import { IProject } from '../interfaces/project.interface';
+import { ICategory } from '../interfaces/category.interface';
+
+// Asegurarse de que todos los proyectos tengan _id
+interface Proyecto {
+  _id: string;
+  name: string;
+  description: string;
+}
+
 @Component({
   selector: 'app-add-invoice',
   standalone: true,
@@ -22,7 +30,7 @@ import { CommonModule } from '@angular/common';
   templateUrl: './add-invoice.component.html',
   styleUrl: './add-invoice.component.scss',
 })
-export default class AddInvoiceComponent {
+export default class AddInvoiceComponent implements OnInit {
   private invoiceService = inject(InvoicesService);
   private router = inject(Router);
   private fb = inject(FormBuilder);
@@ -34,12 +42,12 @@ export default class AddInvoiceComponent {
   form: FormGroup = this.fb.group({
     proyect: ['', Validators.required],
     category: ['', Validators.required],
-    file: [null, Validators.required],
+    file: ['', Validators.required],
   });
 
   id: string = this.route.snapshot.params['id'];
-  categories = CATEGORIES;
-  proyects = PROYECTS;
+  categories: ICategory[] = [];
+  proyects: IProject[] = [];
   previewImage: SafeUrl | null = null;
   selectedFile!: File;
 
@@ -50,9 +58,43 @@ export default class AddInvoiceComponent {
   }
 
   ngOnInit() {
+    // Cargar categorías y proyectos desde el servicio
+    this.loadCategories();
+    this.loadProjects();
+
     if (this.id) {
       this.getInvoice();
     }
+  }
+
+  loadCategories() {
+    this.invoiceService.getCategories().subscribe({
+      next: (categories) => {
+        this.categories = categories;
+        console.log('Categorías cargadas:', categories);
+      },
+      error: (error) => {
+        this.notificationService.show(
+          'Error al cargar las categorías: ' + error.message,
+          'error'
+        );
+      },
+    });
+  }
+
+  loadProjects() {
+    this.invoiceService.getProjects().subscribe({
+      next: (projects) => {
+        this.proyects = projects;
+        console.log('Proyectos cargados:', projects);
+      },
+      error: (error) => {
+        this.notificationService.show(
+          'Error al cargar los proyectos: ' + error.message,
+          'error'
+        );
+      },
+    });
   }
 
   getInvoice() {
@@ -61,16 +103,16 @@ export default class AddInvoiceComponent {
       this.form.patchValue({
         proyect: res.proyect,
         category: res.category,
-        imageUrl: res.file,
+        file: res.file,
       });
     });
   }
 
   initForm() {
     this.form = this.fb.group({
-      proyect: ['1', Validators.required],
-      category: ['food', Validators.required],
-      imageUrl: ['', Validators.required],
+      proyect: ['', Validators.required],
+      category: ['', Validators.required],
+      file: ['', Validators.required],
     });
   }
 
@@ -78,6 +120,13 @@ export default class AddInvoiceComponent {
     if (this.id) {
       this.update();
     } else {
+      if (!this.selectedFile) {
+        this.notificationService.show(
+          'Debes seleccionar un archivo de factura',
+          'error'
+        );
+        return;
+      }
       this.uploadFile();
     }
   }
@@ -101,28 +150,59 @@ export default class AddInvoiceComponent {
 
   uploadFile() {
     this.percentage.set(10);
-    const { uploadProgress$, downloadUrl$ } = this.uploadService.uploadFile(this.selectedFile, environment.storagePath);
+    const { uploadProgress$, downloadUrl$ } = this.uploadService.uploadFile(
+      this.selectedFile,
+      environment.storagePath
+    );
     uploadProgress$.subscribe((progress) => {
       if (progress === 0) {
-        progress = 10
+        progress = 10;
       }
       this.percentage.set(progress);
       console.log('Subida:', progress);
     });
     downloadUrl$.subscribe((url) => {
       console.log('URL:', url);
-      this.form.patchValue({ imageUrl: url });
-      this.save()
+      this.form.patchValue({ file: url });
+      this.save();
     });
   }
 
   save() {
     if (this.form.valid) {
-      this.invoiceService.analyzeInvoice(this.form.value).subscribe((res) => {
-        console.log(res);
-        this.notificationService.show('Factura subida correctamente', 'success');
-        this.router.navigate(['/invoices']);
+      // Crear un nuevo objeto para enviar al servidor
+      const payload = {
+        proyect: this.form.get('proyect')?.value,
+        category: this.form.get('category')?.value,
+        imageUrl: this.form.get('file')?.value, // Mapear 'file' a 'imageUrl' como espera el backend
+      };
+
+      console.log('Enviando formulario:', payload);
+
+      this.invoiceService.analyzeInvoice(payload).subscribe({
+        next: (res) => {
+          console.log('Respuesta del servidor:', res);
+          this.notificationService.show(
+            'Factura subida correctamente',
+            'success'
+          );
+          this.router.navigate(['/invoices']);
+        },
+        error: (error) => {
+          console.error('Error al subir factura:', error);
+          this.notificationService.show(
+            'Error al subir la factura: ' +
+              (error.message || 'Intente nuevamente'),
+            'error'
+          );
+        },
       });
+    } else {
+      this.notificationService.show(
+        'Por favor complete todos los campos requeridos',
+        'error'
+      );
+      console.warn('Formulario inválido:', this.form.value, this.form.errors);
     }
   }
 
@@ -145,6 +225,6 @@ export default class AddInvoiceComponent {
   }
 
   get imageUrl() {
-    return this.form.get('imageUrl');
+    return this.form.get('file');
   }
 }

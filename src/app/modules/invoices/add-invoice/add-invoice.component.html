@@ -33,8 +33,9 @@
       formControlName="proyect"
       class="w-full p-2 border border-gray-300"
     >
-      @for(proyect of proyects; track proyect){
-      <option value="{{ proyect.id }}">{{ proyect.name }}</option>
+      <option [value]="">Seleccione un proyecto</option>
+      @for(proyect of proyects; track proyect._id){
+      <option [value]="proyect._id">{{ proyect.name }}</option>
       }
     </select>
     @if (proyect?.invalid && proyect?.touched) {
@@ -59,80 +60,83 @@
 
   @if(!id) {
   <div class="flex flex-col gap-2">
-    <label for="file">Archivo <span class="text-color1">*</span></label>
-    <div class="relative">
+    <label for="file"
+      >Adjuntar factura <span class="text-color1">*</span></label
+    >
+
+    <div
+      class="bg-blue-50 border border-blue-300 rounded-lg p-6 text-center shadow-sm w-full cursor-pointer hover:bg-blue-100 transition"
+      (click)="fileInput.click()"
+    >
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        class="h-12 w-12 mx-auto text-blue-400"
+        fill="none"
+        viewBox="0 0 24 24"
+        stroke="currentColor"
+      >
+        <path
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          stroke-width="2"
+          d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
+        />
+      </svg>
+      <p class="mt-2 text-sm text-gray-600">
+        Haga clic para seleccionar una factura
+      </p>
       <input
+        #fileInput
         type="file"
         id="file"
-        accept="image/*"
-        capture="environment"
         (change)="onFileSelected($event)"
         class="hidden"
-        #fileInput
+        accept="image/*"
       />
-      <div class="loader-image-percentage">
-        <div
-          class="bg-color1 h-2 rounded-full transition-all duration-300"
-          [ngStyle]="{ width: percentage() + '%' }"
-        ></div>
-      </div>
-      <div
-        class="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center cursor-pointer hover:border-color1 transition-colors"
-        (click)="fileInput.click()"
+    </div>
+    @if (imageUrl?.invalid && imageUrl?.touched) {
+    <span class="text-red-500">La factura es requerida</span>
+    }
+  </div>
+  } @if (previewImage) {
+  <div class="flex flex-col gap-2">
+    <div class="flex justify-between items-center">
+      <label for="preview">Vista previa</label>
+      <button
+        class="text-blue-600 hover:underline"
+        (click)="openInvoice()"
+        type="button"
       >
-        @if (previewImage) {
-        <img
-          [src]="previewImage"
-          alt="Vista previa"
-          class="max-h-48 mx-auto mb-2 rounded-lg"
-        />
-        } @else {
-        <div class="flex flex-col items-center gap-2">
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke-width="1.5"
-            stroke="currentColor"
-            class="w-12 h-12 text-gray-400"
-          >
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              d="M6.827 6.175A2.31 2.31 0 0 1 5.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 0 0 2.25 2.25h15A2.25 2.25 0 0 0 21.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 0 0-1.134-.175 2.31 2.31 0 0 1-1.64-1.055l-.822-1.316a2.192 2.192 0 0 0-1.736-1.039 48.774 48.774 0 0 0-5.232 0 2.192 2.192 0 0 0-1.736 1.039l-.821 1.316Z"
-            />
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              d="M16.5 12.75a4.5 4.5 0 1 1-9 0 4.5 4.5 0 0 1 9 0ZM18.75 10.5h.008v.008h-.008V10.5Z"
-            />
-          </svg>
-          <span class="text-gray-600">Haz clic para tomar una foto</span>
-        </div>
-        }
-      </div>
-      @if (imageUrl?.invalid && imageUrl?.touched) {
-      <span class="text-red-500">El archivo es requerido</span>
-      }
+        Ver en pantalla completa
+      </button>
+    </div>
+    <div class="relative h-80 border rounded-lg overflow-hidden">
+      <img
+        [src]="previewImage"
+        class="absolute inset-0 w-full h-full object-contain"
+      />
     </div>
   </div>
-  } @else {
-  <a>
-    <button
-      (click)="openInvoice()"
-      class="bg-color1 text-white px-4 py-2 rounded-full w-full lg:w-1/4 mt-3"
-    >
-      Ver factura
-    </button>
-  </a>
+  } @if (percentage() > 0 && percentage() < 100) {
+  <div class="flex flex-col gap-2">
+    <label>Progreso</label>
+    <div class="w-full bg-gray-200 rounded-full h-2.5">
+      <div
+        class="bg-color1 h-2.5 rounded-full"
+        [style.width.%]="percentage()"
+      ></div>
+    </div>
+    <p class="text-xs text-right">{{ percentage() }}%</p>
+  </div>
   }
+
   <button
+    [disabled]="form.invalid"
+    type="button"
     (click)="saveOrUpdate()"
-    type="submit"
-    class="bg-color1 text-white px-4 py-2 rounded-full w-full lg:w-1/4 mt-3"
-    [disabled]="percentage() >= 10"
+    class="bg-color1 text-white px-4 py-2 rounded-md mt-4 disabled:opacity-50"
   >
-    Guardar
+    @if (id) { Actualizar factura } @else { Subir factura }
   </button>
 </form>
 

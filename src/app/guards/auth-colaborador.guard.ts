@@ -4,12 +4,15 @@ import { UserStateService } from '../services/user-state.service';
 
 @Injectable({ providedIn: 'root' })
 export class AuthColaboradorGuard implements CanActivate {
-
   private userState = inject(UserStateService);
   private router = inject(Router);
 
   canActivate(): boolean {
-    console.log('canActivate', this.userState.isAuthenticated(), this.userState.isColaborador());
+    console.log(
+      'canActivate',
+      this.userState.isAuthenticated(),
+      this.userState.isColaborador()
+    );
     if (!this.userState.isAuthenticated() || !this.userState.isColaborador()) {
       this.router.navigate(['/login']);
       return false;

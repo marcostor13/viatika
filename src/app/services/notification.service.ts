@@ -2,10 +2,9 @@ import { Injectable } from '@angular/core';
 import { BehaviorSubject } from 'rxjs';
 
 @Injectable({
-  providedIn: 'root'
+  providedIn: 'root',
 })
 export class NotificationService {
-
   message = new BehaviorSubject('');
   type = new BehaviorSubject<'success' | 'error'>('success');
   visible = new BehaviorSubject(false);

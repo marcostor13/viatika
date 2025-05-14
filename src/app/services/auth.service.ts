@@ -6,7 +6,6 @@ import { environment } from '../../environments/environment';
 
 @Injectable({ providedIn: 'root' })
 export class AuthService {
-
   private router = inject(Router);
   private http = inject(HttpClient);
 
@@ -21,5 +20,9 @@ export class AuthService {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
     this.router.navigate(['/login']);
+  }
+
+  getToken(): string | null {
+    return localStorage.getItem('token');
   }
 }

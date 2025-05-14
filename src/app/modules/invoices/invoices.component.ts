@@ -68,7 +68,7 @@ export default class InvoicesComponent {
 
   getInvoices() {
     this.agentService.getInvoices().subscribe((res) => {
-      console.log(res);
+      console.log('Respuesta completa del API:', res);
       this.invoices = this.formatResponse(res);
     });
   }
@@ -83,27 +83,61 @@ export default class InvoicesComponent {
   }
 
   formatResponse(res: IInvoiceResponse[]): IInvoiceResponse[] {
+    // Obtener categorías para mapear claves a nombres
     const categories = CATEGORIES;
+
     return res.map((invoice) => {
-      const data = invoice.data ? JSON.parse(invoice.data) : {};
-      console.log(data);
+      // Verificar la estructura de los datos
+      let invoiceData: any = {};
+
+      try {
+        if (invoice.data) {
+          // Si los datos vienen como string JSON, los parseamos
+          if (typeof invoice.data === 'string') {
+            try {
+              invoiceData = JSON.parse(invoice.data);
+              console.log('Datos parseados del JSON:', invoiceData);
+            } catch (parseError) {
+              console.error('Error al parsear JSON:', parseError);
+            }
+          }
+          // Si los datos ya vienen como objeto, los usamos directamente
+          else if (typeof invoice.data === 'object') {
+            invoiceData = invoice.data;
+            console.log('Datos obtenidos como objeto:', invoiceData);
+          }
+        }
+      } catch (error) {
+        console.error('Error general al procesar datos:', error);
+      }
+
+      // Buscar la categoría por su clave
+      const categoryObj = categories.find((c) => c.key === invoice.category);
+      const categoryName = categoryObj ? categoryObj.name : 'No disponible';
+
+      // Acceder a datos con el formato original
+      const razonSocial = invoiceData.razonSocial || 'No disponible';
+      const direccionEmisor = invoiceData.direccionEmisor || 'No disponible';
+      const rucEmisor = invoiceData.rucEmisor || 'No disponible';
+      const tipoComprobante = invoiceData.tipoComprobante || 'No disponible';
+      const fechaEmision = invoiceData.fechaEmision || 'No disponible';
+      const moneda = invoiceData.moneda || '';
+      const montoTotal = invoiceData.montoTotal || invoice.total || 0;
+
       return {
         ...invoice,
-        category:
-          categories.find((c) => c.key === invoice.category)?.name ||
-          'No disponible',
-        ruc: data.rucEmisor || 'No disponible',
-        tipo: data.tipoComprobante || 'No disponible',
-        createdAt:
-          new Date(invoice.createdAt).toLocaleDateString('es-ES', {
-            day: '2-digit',
-            month: '2-digit',
-            year: 'numeric',
-          }) || 'No disponible',
-        total: `${data.moneda} ${invoice.total}` || 'No disponible',
-        address: data.direccionEmisor || 'No disponible',
-        provider: data.razonSocial || 'No disponible',
-        date: data.fechaEmision || 'No disponible',
+        category: categoryName,
+        ruc: rucEmisor,
+        tipo: tipoComprobante,
+        createdAt: new Date(invoice.createdAt).toLocaleDateString('es-ES', {
+          day: '2-digit',
+          month: '2-digit',
+          year: 'numeric',
+        }),
+        total: moneda ? `${moneda} ${montoTotal}` : montoTotal.toString(),
+        address: direccionEmisor,
+        provider: razonSocial,
+        date: fechaEmision,
       };
     });
   }

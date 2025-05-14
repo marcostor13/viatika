@@ -24,17 +24,20 @@ export class LoginComponent {
   private notificationService = inject(NotificationService);
   private authService = inject(AuthService);
 
-  constructor(private router: Router) { }
+  constructor(private router: Router) {}
 
   login() {
     this.loading.set(true);
     this.error.set('');
     this.authService.login(this.email(), this.password()).subscribe({
       next: (res) => {
+        localStorage.setItem('token', res.data.token);
+
         this.userStateService.setUser({
           ...res.data.user,
           access_token: res.data.token,
         });
+
         if (res.data.user.role === 'ADMIN2') {
           this.router.navigate(['/consolidated-invoices']);
         } else {

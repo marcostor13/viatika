@@ -7,17 +7,24 @@ export const httpInterceptor: HttpInterceptorFn = (req, next) => {
   const userStateService = inject(UserStateService);
   const loaderService = inject(LoaderService);
   loaderService.show();
-  const user = userStateService.getUser();
+
+  const token = userStateService.getToken();
   const currentHeaders = req.headers;
-  const objectHeaders = Object.fromEntries(currentHeaders.keys().map(key => [key, currentHeaders.get(key)]));
-  // if (user) {
-  //   req = req.clone({
-  //     setHeaders: {
-  //       ...objectHeaders,
-  //       Authorization: `Bearer ${user.access_token}`
-  //     }
-  //   });
-  // }
+  const objectHeaders = Object.fromEntries(
+    currentHeaders.keys().map((key) => [key, currentHeaders.get(key)])
+  );
+
+  if (token) {
+    req = req.clone({
+      setHeaders: {
+        ...objectHeaders,
+        Authorization: `Bearer ${token}`,
+      },
+    });
+  }
+
+  // Descomentamos solo la parte de autorización y dejamos el resto comentado
+  // ya que podrían ser personalizaciones específicas que no necesitamos ahora
   // const methods = ['GET', 'PATCH', 'DELETE'];
   // if (methods.includes(req.method) && user?.clientId?._id) {
   //   req = req.clone({ url: `${req.url}/${user.clientId._id}` });
@@ -37,7 +44,5 @@ export const httpInterceptor: HttpInterceptorFn = (req, next) => {
   //   }
 
   // }
-  return next(req).pipe(
-    finalize(() => loaderService.hide())
-  );
+  return next(req).pipe(finalize(() => loaderService.hide()));
 };
