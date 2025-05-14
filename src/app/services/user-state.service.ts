@@ -32,7 +32,7 @@ export class UserStateService {
     localStorage.removeItem(USER_LOCALSTORAGE_KEY);
   }
 
-  loginAsColaborador(email: string, password: string) {
+  loginAsColaborador(email: string, password: string = '') {
     // Simulación: solo permite el rol COLABORADOR
     const user = {
       _id: '1',
@@ -56,6 +56,6 @@ export class UserStateService {
   }
 
   isColaborador() {
-    return this._user()?.role === 'COLABORADOR';
+    return this._user()?.role === 'COLABORADOR' || 'PROVIDER';
   }
 }

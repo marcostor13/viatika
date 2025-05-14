@@ -5,7 +5,7 @@ import { InvoicesService } from './services/invoices.service';
 import { Router } from '@angular/router';
 import { NotificationService } from '../../services/notification.service';
 import { ConfirmationService } from '../../services/confirmation.service';
-import { IInvoice, IInvoiceResponse } from './interfaces/invoices.interface';
+import { IInvoiceResponse } from './interfaces/invoices.interface';
 import { IHeaderList } from '../../interfaces/header-list.interface';
 import { CATEGORIES } from './constants/categories';
 @Component({
@@ -21,7 +21,7 @@ export default class InvoicesComponent {
   private notificationService = inject(NotificationService);
   private confirmationService = inject(ConfirmationService);
 
-  invoices: IInvoice[] = [];
+  invoices: IInvoiceResponse[] = [];
   headers: IHeaderList[] = [
     {
       header: 'Proyecto',
@@ -32,8 +32,16 @@ export default class InvoicesComponent {
       value: 'category',
     },
     {
+      header: 'Razón Social',
+      value: 'provider',
+    },
+    {
       header: 'RUC',
       value: 'ruc',
+    },
+    {
+      header: 'Dirección',
+      value: 'address',
     },
     {
       header: 'Tipo',
@@ -45,12 +53,12 @@ export default class InvoicesComponent {
     },
     {
       header: 'Fecha',
-      value: 'createdAt',
+      value: 'date',
     },
     {
       header: 'Acciones',
       value: 'actions',
-      options: ['edit', 'delete'],
+      options: ['download', 'edit', 'delete'],
     },
   ];
 
@@ -65,7 +73,16 @@ export default class InvoicesComponent {
     });
   }
 
-  formatResponse(res: IInvoiceResponse[]) {
+  downloadInvoice(_id: string) {
+    const url = this.invoices.find((invoice) => invoice._id === _id)?.file;
+    if (url) {
+      window.open(url, '_blank');
+    } else {
+      this.notificationService.show('No se pudo descargar la factura', 'error');
+    }
+  }
+
+  formatResponse(res: IInvoiceResponse[]): IInvoiceResponse[] {
     const categories = CATEGORIES;
     return res.map((invoice) => {
       const data = invoice.data ? JSON.parse(invoice.data) : {};
@@ -84,6 +101,9 @@ export default class InvoicesComponent {
             year: 'numeric',
           }) || 'No disponible',
         total: `${data.moneda} ${invoice.total}` || 'No disponible',
+        address: data.direccionEmisor || 'No disponible',
+        provider: data.razonSocial || 'No disponible',
+        date: data.fechaEmision || 'No disponible',
       };
     });
   }
@@ -102,6 +122,9 @@ export default class InvoicesComponent {
     }
     if (option === 'edit') {
       this.editInvoice(_id);
+    }
+    if (option === 'download') {
+      this.downloadInvoice(_id);
     }
   }
 

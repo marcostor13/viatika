@@ -24,3 +24,8 @@
 .loader-image-content-spinner {
   border: 4px solid #f3f3f3;
 }
+
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}

@@ -24,7 +24,7 @@ export class LoginComponent {
   private notificationService = inject(NotificationService);
   private authService = inject(AuthService);
 
-  constructor(private router: Router) {}
+  constructor(private router: Router) { }
 
   login() {
     this.loading.set(true);
@@ -38,6 +38,7 @@ export class LoginComponent {
         if (res.data.user.role === 'ADMIN2') {
           this.router.navigate(['/consolidated-invoices']);
         } else {
+          console.log('redirigiendo a invoices');
           this.router.navigate(['/invoices']);
         }
         this.loading.set(false);

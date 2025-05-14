@@ -14,11 +14,11 @@ import { PROYECTS } from '../constants/proyects';
 import { DomSanitizer, SafeUrl } from '@angular/platform-browser';
 import { UploadService } from '../../../services/upload.service';
 import { environment } from '../../../../environments/environment';
-
+import { CommonModule } from '@angular/common';
 @Component({
   selector: 'app-add-invoice',
   standalone: true,
-  imports: [ReactiveFormsModule, FormsModule],
+  imports: [ReactiveFormsModule, FormsModule, CommonModule],
   templateUrl: './add-invoice.component.html',
   styleUrl: './add-invoice.component.scss',
 })
@@ -43,7 +43,7 @@ export default class AddInvoiceComponent {
   previewImage: SafeUrl | null = null;
   selectedFile!: File;
 
-  isLoading = signal(false);
+  percentage = signal(0);
 
   constructor() {
     this.initForm();
@@ -100,10 +100,13 @@ export default class AddInvoiceComponent {
   }
 
   uploadFile() {
-    this.isLoading.set(true);
+    this.percentage.set(10);
     const { uploadProgress$, downloadUrl$ } = this.uploadService.uploadFile(this.selectedFile, environment.storagePath);
     uploadProgress$.subscribe((progress) => {
-      this.isLoading.set(false);
+      if (progress === 0) {
+        progress = 10
+      }
+      this.percentage.set(progress);
       console.log('Subida:', progress);
     });
     downloadUrl$.subscribe((url) => {

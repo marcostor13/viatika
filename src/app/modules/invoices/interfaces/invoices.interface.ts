@@ -13,7 +13,8 @@ export interface IInvoiceResponse {
   category: string;
   file: string;
   data: any;
-  total: number;
+  total: string;
+  date: string;
   createdAt: string;
   updatedAt: string;
 }

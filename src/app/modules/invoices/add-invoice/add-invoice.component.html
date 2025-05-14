@@ -70,6 +70,12 @@
         class="hidden"
         #fileInput
       />
+      <div class="loader-image-percentage">
+        <div
+          class="bg-color1 h-2 rounded-full transition-all duration-300"
+          [ngStyle]="{ width: percentage() + '%' }"
+        ></div>
+      </div>
       <div
         class="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center cursor-pointer hover:border-color1 transition-colors"
         (click)="fileInput.click()"
@@ -124,12 +130,13 @@
     (click)="saveOrUpdate()"
     type="submit"
     class="bg-color1 text-white px-4 py-2 rounded-full w-full lg:w-1/4 mt-3"
+    [disabled]="percentage() >= 10"
   >
     Guardar
   </button>
 </form>
 
-@if(isLoading()) {
+<!-- @if(isLoading()) {
 <div class="loader-image">
   <div class="loader-image-content">
     <div class="loader-image-content-spinner"></div>
@@ -138,4 +145,4 @@
     </div>
   </div>
 </div>
-}
+} -->
