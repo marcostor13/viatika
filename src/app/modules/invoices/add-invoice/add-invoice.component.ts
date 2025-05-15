@@ -15,13 +15,7 @@ import { environment } from '../../../../environments/environment';
 import { CommonModule } from '@angular/common';
 import { IProject } from '../interfaces/project.interface';
 import { ICategory } from '../interfaces/category.interface';
-
-// Asegurarse de que todos los proyectos tengan _id
-interface Proyecto {
-  _id: string;
-  name: string;
-  description: string;
-}
+import { InvoiceStatus } from '../interfaces/invoices.interface';
 
 @Component({
   selector: 'app-add-invoice',
@@ -59,7 +53,6 @@ export default class AddInvoiceComponent implements OnInit {
   }
 
   ngOnInit() {
-    // Cargar categorías y proyectos desde el servicio
     this.loadCategories();
     this.loadProjects();
 
@@ -72,14 +65,8 @@ export default class AddInvoiceComponent implements OnInit {
     this.invoiceService.getCategories().subscribe({
       next: (categories) => {
         this.categories = categories;
-        console.log('Categorías cargadas:', categories);
       },
-      error: (error) => {
-        this.notificationService.show(
-          'Error al cargar las categorías: ' + error.message,
-          'error'
-        );
-      },
+      error: (error) => {},
     });
   }
 
@@ -87,20 +74,13 @@ export default class AddInvoiceComponent implements OnInit {
     this.invoiceService.getProjects().subscribe({
       next: (projects) => {
         this.proyects = projects;
-        console.log('Proyectos cargados:', projects);
       },
-      error: (error) => {
-        this.notificationService.show(
-          'Error al cargar los proyectos: ' + error.message,
-          'error'
-        );
-      },
+      error: (error) => {},
     });
   }
 
   getInvoice() {
     this.invoiceService.getInvoiceById(this.id).subscribe((res) => {
-      console.log(res);
       this.form.patchValue({
         proyect: res.proyect,
         category: res.category,
@@ -135,7 +115,6 @@ export default class AddInvoiceComponent implements OnInit {
 
   update() {
     if (this.form.valid) {
-      console.log('update');
     }
   }
 
@@ -161,11 +140,9 @@ export default class AddInvoiceComponent implements OnInit {
         progress = 10;
       }
       this.percentage.set(Math.round(progress));
-      console.log('Subida:', progress);
     });
     downloadUrl$.subscribe({
       next: (url) => {
-        console.log('URL:', url);
         this.form.patchValue({ file: url });
         this.save();
       },
@@ -181,26 +158,21 @@ export default class AddInvoiceComponent implements OnInit {
 
   save() {
     if (this.form.valid) {
-      // Obtener el ID del proyecto seleccionado
       const projectId = this.form.get('proyect')?.value;
 
-      // Obtener el objeto del proyecto completo para acceder a su nombre
       const selectedProject = this.proyects.find((p) => p._id === projectId);
       const projectName = selectedProject?.name || '';
 
-      // Crear un nuevo objeto para enviar al servidor
       const payload = {
         proyect: projectId,
-        projectName: projectName, // Añadir el nombre del proyecto
+        projectName: projectName,
         category: this.form.get('category')?.value,
-        imageUrl: this.form.get('file')?.value, // Mapear 'file' a 'imageUrl' como espera el backend
+        imageUrl: this.form.get('file')?.value,
+        status: 'pending' as InvoiceStatus,
       };
-
-      console.log('Enviando formulario:', payload);
 
       this.invoiceService.analyzeInvoice(payload).subscribe({
         next: (res) => {
-          console.log('Respuesta del servidor:', res);
           this.isLoading.set(false);
           this.notificationService.show(
             'Factura subida correctamente',
@@ -209,7 +181,6 @@ export default class AddInvoiceComponent implements OnInit {
           this.router.navigate(['/invoices']);
         },
         error: (error) => {
-          console.error('Error al subir factura:', error);
           this.isLoading.set(false);
           this.notificationService.show(
             'Error al subir la factura: ' +
@@ -224,7 +195,6 @@ export default class AddInvoiceComponent implements OnInit {
         'Por favor complete todos los campos requeridos',
         'error'
       );
-      console.warn('Formulario inválido:', this.form.value, this.form.errors);
     }
   }
 

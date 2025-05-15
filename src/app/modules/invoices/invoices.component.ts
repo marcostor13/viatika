@@ -5,7 +5,10 @@ import { InvoicesService } from './services/invoices.service';
 import { Router } from '@angular/router';
 import { NotificationService } from '../../services/notification.service';
 import { ConfirmationService } from '../../services/confirmation.service';
-import { IInvoiceResponse } from './interfaces/invoices.interface';
+import {
+  IInvoiceResponse,
+  InvoiceStatus,
+} from './interfaces/invoices.interface';
 import { IHeaderList } from '../../interfaces/header-list.interface';
 import { CATEGORIES } from './constants/categories';
 import { IProject } from './interfaces/project.interface';
@@ -60,6 +63,10 @@ export default class InvoicesComponent implements OnInit {
       value: 'date',
     },
     {
+      header: 'Estado',
+      value: 'status',
+    },
+    {
       header: 'Acciones',
       value: 'actions',
       options: ['download', 'edit', 'delete'],
@@ -67,7 +74,6 @@ export default class InvoicesComponent implements OnInit {
   ];
 
   ngOnInit() {
-    // Cargar proyectos primero para que estén disponibles
     this.loadProjects();
   }
 
@@ -75,13 +81,9 @@ export default class InvoicesComponent implements OnInit {
     this.agentService.getProjects().subscribe({
       next: (projects) => {
         this.projects = projects;
-        console.log('Proyectos cargados:', projects);
-        // Una vez cargados los proyectos, cargar las facturas
         this.getInvoices();
       },
       error: (error) => {
-        console.error('Error al cargar proyectos:', error);
-        // Si hay error, cargar las facturas de todas formas
         this.getInvoices();
       },
     });
@@ -89,7 +91,6 @@ export default class InvoicesComponent implements OnInit {
 
   getInvoices() {
     this.agentService.getInvoices().subscribe((res) => {
-      console.log('Respuesta completa del API:', res);
       this.invoices = this.formatResponse(res);
     });
   }
@@ -104,49 +105,34 @@ export default class InvoicesComponent implements OnInit {
   }
 
   formatResponse(res: IInvoiceResponse[]): IInvoiceResponse[] {
-    // Obtener categorías para mapear claves a nombres
     const categories = CATEGORIES;
     const projectList = this.projects;
 
     return res.map((invoice) => {
-      // Verificar la estructura de los datos
       let invoiceData: any = {};
 
       try {
         if (invoice.data) {
-          // Si los datos vienen como string JSON, los parseamos
           if (typeof invoice.data === 'string') {
             try {
               invoiceData = JSON.parse(invoice.data);
-              console.log('Datos parseados del JSON:', invoiceData);
-            } catch (parseError) {
-              console.error('Error al parsear JSON:', parseError);
-            }
-          }
-          // Si los datos ya vienen como objeto, los usamos directamente
-          else if (typeof invoice.data === 'object') {
+            } catch (parseError) {}
+          } else if (typeof invoice.data === 'object') {
             invoiceData = invoice.data;
-            console.log('Datos obtenidos como objeto:', invoiceData);
           }
         }
-      } catch (error) {
-        console.error('Error general al procesar datos:', error);
-      }
+      } catch (error) {}
 
-      // Buscar la categoría por su clave
       const categoryObj = categories.find((c) => c.key === invoice.category);
-      // Si encontramos la categoría en la lista, usar su nombre, sino capitalizar la clave de la categoría
       const categoryName = categoryObj
         ? categoryObj.name
         : this.capitalizeFirstLetter(invoice.category) || 'No disponible';
 
-      // Buscar el proyecto por su ID
       const projectObj = projectList.find((p) => p._id === invoice.proyect);
       const projectName = projectObj
         ? projectObj.name
         : invoice.proyect || 'No disponible';
 
-      // Acceder a datos con el formato original
       const razonSocial = invoiceData.razonSocial || 'No disponible';
       const direccionEmisor = invoiceData.direccionEmisor || 'No disponible';
       const rucEmisor = invoiceData.rucEmisor || 'No disponible';
@@ -157,8 +143,8 @@ export default class InvoicesComponent implements OnInit {
 
       return {
         ...invoice,
-        proyect: projectName, // Usamos el nombre del proyecto en lugar del ID
-        proyectId: invoice.proyect, // Conservamos el ID en otra propiedad
+        proyect: projectName,
+        proyectId: invoice.proyect,
         category: categoryName,
         ruc: rucEmisor,
         tipo: tipoComprobante,
@@ -171,11 +157,11 @@ export default class InvoicesComponent implements OnInit {
         address: direccionEmisor,
         provider: razonSocial,
         date: fechaEmision,
+        status: invoice.status || 'pending',
       };
     });
   }
 
-  // Método para capitalizar la primera letra de un string
   capitalizeFirstLetter(text: string): string {
     if (!text) return '';
     return text.charAt(0).toUpperCase() + text.slice(1).toLowerCase();
@@ -189,16 +175,63 @@ export default class InvoicesComponent implements OnInit {
     this.router.navigate(['/invoices/add']);
   }
 
-  clickOptions(option: string, _id: string) {
-    if (option === 'delete') {
-      this.deleteInvoice(_id);
+  clickOptions(option: string, id: string) {
+    switch (option) {
+      case 'edit':
+        this.router.navigate(['/invoices/edit', id]);
+        break;
+      case 'delete':
+        this.confirmationService.show('¿Desea eliminar esta factura?', () => {
+          this.deleteInvoice(id);
+        });
+        break;
+      case 'download':
+        this.downloadInvoice(id);
+        break;
     }
-    if (option === 'edit') {
-      this.editInvoice(_id);
-    }
-    if (option === 'download') {
-      this.downloadInvoice(_id);
-    }
+  }
+
+  approveInvoice(id: string) {
+    const userId = localStorage.getItem('userId') || '';
+    const payload = {
+      status: 'approved' as InvoiceStatus,
+      userId: userId,
+    };
+
+    this.agentService.approveInvoice(id, payload).subscribe({
+      next: () => {
+        this.notificationService.show(
+          'Factura aprobada correctamente',
+          'success'
+        );
+        this.getInvoices();
+      },
+      error: () => {
+        this.notificationService.show('Error al aprobar la factura', 'error');
+      },
+    });
+  }
+
+  rejectInvoice(id: string, reason: string) {
+    const userId = localStorage.getItem('userId') || '';
+    const payload = {
+      status: 'rejected' as InvoiceStatus,
+      userId: userId,
+      reason: reason,
+    };
+
+    this.agentService.approveInvoice(id, payload).subscribe({
+      next: () => {
+        this.notificationService.show(
+          'Factura rechazada correctamente',
+          'success'
+        );
+        this.getInvoices();
+      },
+      error: () => {
+        this.notificationService.show('Error al rechazar la factura', 'error');
+      },
+    });
   }
 
   deleteInvoice(id: string) {

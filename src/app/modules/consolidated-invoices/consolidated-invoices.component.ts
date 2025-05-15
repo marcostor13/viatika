@@ -6,7 +6,11 @@ import { NotificationService } from '../../services/notification.service';
 import { ConfirmationService } from '../../services/confirmation.service';
 import { IHeaderList } from '../../interfaces/header-list.interface';
 import { InvoicesService } from '../invoices/services/invoices.service';
-import { IInvoiceResponse } from '../invoices/interfaces/invoices.interface';
+import {
+  IInvoiceResponse,
+  ApprovalPayload,
+  InvoiceStatus,
+} from '../invoices/interfaces/invoices.interface';
 import { ICategory } from '../invoices/interfaces/category.interface';
 import { IProject } from '../invoices/interfaces/project.interface';
 import { CommonModule } from '@angular/common';
@@ -23,15 +27,14 @@ interface IInvoice {
   createdAt: string;
   updatedAt: string;
   total: string | number;
+  userId?: string;
 
-  // Propiedades adicionales formateadas
   ruc?: string;
   tipo?: string;
   address?: string;
   provider?: string;
   date?: string;
 
-  // Propiedades originales del JSON
   rucEmisor?: string;
   tipoComprobante?: string;
   serie?: string;
@@ -41,6 +44,12 @@ interface IInvoice {
   montoTotal?: number;
   razonSocial?: string;
   direccionEmisor?: string;
+
+  status?: InvoiceStatus;
+  statusDate?: string;
+  approvedBy?: string;
+  rejectedBy?: string;
+  rejectionReason?: string;
 }
 
 @Component({
@@ -56,14 +65,18 @@ export class ConsolidatedInvoicesComponent implements OnInit {
   private notificationService = inject(NotificationService);
   private confirmationService = inject(ConfirmationService);
 
-  // Propiedades para las secciones desplegables
+  private currentUserId = '1';
+
+  rejectionReason = signal('');
+  selectedInvoiceId = signal('');
+  showRejectionModal = signal(false);
   showCategories = signal(true);
   showProjects = signal(true);
-
-  // Datos para las tablas
   categories: ICategory[] = [];
   projects: IProject[] = [];
   invoices: IInvoice[] = [];
+  userInvoices: IInvoice[] = [];
+  loading = false;
 
   projectsWithInvoiceCount: { id: string; name: string; count: number }[] = [];
 
@@ -109,9 +122,13 @@ export class ConsolidatedInvoicesComponent implements OnInit {
       value: 'date',
     },
     {
+      header: 'Estado',
+      value: 'status',
+    },
+    {
       header: 'Acciones',
       value: 'actions',
-      options: ['download'],
+      options: ['download', 'approve', 'reject'],
     },
   ];
 
@@ -121,26 +138,20 @@ export class ConsolidatedInvoicesComponent implements OnInit {
   filterCategory = signal('');
   filterAmountMin = signal('');
   filterAmountMax = signal('');
+  filterStatus = signal('');
 
   ngOnInit() {
-    // Cargar proyectos independientemente
     this.getProjects();
-
-    // Cargar categorías primero y luego facturas para asegurar que tenemos
-    // la información de categorías disponible al procesar las facturas
     this.getCategories().subscribe({
       next: () => {
         this.getInvoices();
       },
       error: (error) => {
-        console.error('Error al cargar categorías:', error);
-        // Cargar facturas incluso si hay error en categorías
         this.getInvoices();
       },
     });
   }
 
-  // Métodos para toggle de secciones
   toggleCategoriesSection() {
     this.showCategories.update((value) => !value);
   }
@@ -149,32 +160,29 @@ export class ConsolidatedInvoicesComponent implements OnInit {
     this.showProjects.update((value) => !value);
   }
 
-  // Navegación a páginas de creación
   goToAddCategory(event: Event) {
-    event.stopPropagation(); // Evitar que el click llegue al contenedor y cierre la sección
+    event.stopPropagation();
     this.router.navigate(['/consolidated-invoices/add-category']);
   }
 
   goToAddProject(event: Event) {
-    event.stopPropagation(); // Evitar que el click llegue al contenedor y cierre la sección
+    event.stopPropagation();
     this.router.navigate(['/consolidated-invoices/add-project']);
   }
 
-  // Métodos para edición de categorías
   editCategory(id: string, event: Event) {
-    event.stopPropagation(); // Evitar que el click llegue al contenedor y cierre la sección
+    event.stopPropagation();
     this.router.navigate(['/consolidated-invoices/edit-category', id]);
   }
 
   deleteCategory(id: string, event: Event) {
-    event.stopPropagation(); // Evitar que el click llegue al contenedor y cierre la sección
+    event.stopPropagation();
     this.confirmationService.confirm({
       title: 'Confirmar eliminación',
       message: '¿Está seguro que desea eliminar esta categoría?',
       accept: () => {
         this.agentService.deleteCategory(id).subscribe({
           next: () => {
-            // Eliminar la categoría directamente del array local para actualización inmediata
             this.categories = this.categories.filter(
               (category) => category._id !== id
             );
@@ -184,7 +192,6 @@ export class ConsolidatedInvoicesComponent implements OnInit {
               'success'
             );
 
-            // Recargar la lista desde el servidor para mantener sincronización
             this.getCategories().subscribe();
           },
           error: (error) => {
@@ -198,14 +205,13 @@ export class ConsolidatedInvoicesComponent implements OnInit {
     });
   }
 
-  // Métodos para edición de proyectos
   editProject(id: string, event: Event) {
-    event.stopPropagation(); // Evitar que el click llegue al contenedor y cierre la sección
+    event.stopPropagation();
     this.router.navigate(['/consolidated-invoices/edit-project', id]);
   }
 
   deleteProject(id: string, event: Event) {
-    event.stopPropagation(); // Evitar que el click llegue al contenedor y cierre la sección
+    event.stopPropagation();
     this.confirmationService.confirm({
       title: 'Confirmar eliminación',
       message: '¿Está seguro que desea eliminar este proyecto?',
@@ -216,7 +222,7 @@ export class ConsolidatedInvoicesComponent implements OnInit {
               'Proyecto eliminado correctamente',
               'success'
             );
-            this.getProjects(); // Recargar la lista
+            this.getProjects();
           },
           error: (error) => {
             this.notificationService.show(
@@ -230,34 +236,17 @@ export class ConsolidatedInvoicesComponent implements OnInit {
   }
 
   getInvoices() {
-    console.log('------------ INICIANDO OBTENCIÓN DE FACTURAS ------------');
+    this.loading = true;
     this.agentService.getInvoices().subscribe({
       next: (res) => {
-        console.log(
-          'API: Datos completos de FACTURAS recibidos (consolidated-invoices):',
-          res
-        );
-
-        // Verificar si lo que recibimos son realmente facturas
         if (res && res.length > 0) {
           const firstItem = res[0];
-          console.log(
-            'API: Primera FACTURA recibida (consolidated-invoices):',
-            firstItem
-          );
-
-          // Verificar por propiedades características de facturas
           if ('category' in firstItem && 'data' in firstItem) {
-            console.log('API: Confirmado que son datos de FACTURAS');
             this.invoices = this.formatResponse(res);
             this.calculateProjectsWithInvoiceCount();
           } else {
-            // Verificar si parece categoría (no podemos usar propiedades directamente por el tipado)
             const anyItem = firstItem as any;
             if (anyItem.key && anyItem.name) {
-              console.error(
-                'ERROR: Los datos recibidos parecen ser categorías, no facturas'
-              );
               this.notificationService.show(
                 'Error: Los datos recibidos no son facturas',
                 'error'
@@ -265,13 +254,20 @@ export class ConsolidatedInvoicesComponent implements OnInit {
             }
           }
         } else {
-          console.log('API: No se recibieron facturas');
           this.invoices = [];
           this.calculateProjectsWithInvoiceCount();
         }
+        this.loading = false;
+
+        if (this.currentUserId) {
+          this.userInvoices = this.invoices.filter(
+            (invoice) => invoice.userId === this.currentUserId
+          );
+        }
       },
       error: (error) => {
-        console.error('Error al cargar facturas:', error);
+        this.invoices = [];
+        this.loading = false;
         this.notificationService.show(
           'Error al cargar las facturas: ' + error.message,
           'error'
@@ -284,52 +280,29 @@ export class ConsolidatedInvoicesComponent implements OnInit {
     const categories = this.categories;
     const projectList = this.projects;
     return res.map((invoice) => {
-      // Verificar la estructura de los datos
       let invoiceData: any = {};
 
       try {
         if (invoice.data) {
-          // Si los datos vienen como string JSON, los parseamos
           if (typeof invoice.data === 'string') {
             try {
               invoiceData = JSON.parse(invoice.data);
-              console.log(
-                '%c [CONSOLIDATED-INVOICES] Datos parseados del JSON:',
-                'background: #ff9800; color: white; padding: 2px 5px; border-radius: 3px;',
-                invoiceData
-              );
-            } catch (parseError) {
-              console.error('Error al parsear JSON:', parseError);
-            }
-          }
-          // Si los datos ya vienen como objeto, los usamos directamente
-          else if (typeof invoice.data === 'object') {
+            } catch (parseError) {}
+          } else if (typeof invoice.data === 'object') {
             invoiceData = invoice.data;
-            console.log(
-              '%c [CONSOLIDATED-INVOICES] Datos obtenidos como objeto:',
-              'background: #4caf50; color: white; padding: 2px 5px; border-radius: 3px;',
-              invoiceData
-            );
           }
         }
-      } catch (error) {
-        console.error('Error general al procesar datos:', error);
-      }
+      } catch (error) {}
 
-      // Buscar la categoría por su clave
       const categoryObj = categories.find((c) => c.key === invoice.category);
-      // Si encontramos la categoría en la lista, usar su nombre, sino capitalizar la clave de la categoría
       const categoryName = categoryObj
         ? categoryObj.name
         : this.capitalizeFirstLetter(invoice.category) || 'No disponible';
 
-      // Buscar el proyecto por su ID
       const projectObj = projectList.find((p) => p._id === invoice.proyect);
       const projectName = projectObj
         ? projectObj.name
         : invoice.proyect || 'No disponible';
-
-      // Acceder a datos con el formato original
       const razonSocial = invoiceData.razonSocial || 'No disponible';
       const direccionEmisor = invoiceData.direccionEmisor || 'No disponible';
       const rucEmisor = invoiceData.rucEmisor || 'No disponible';
@@ -340,18 +313,16 @@ export class ConsolidatedInvoicesComponent implements OnInit {
       const serie = invoiceData.serie || 'No disponible';
       const correlativo = invoiceData.correlativo || 'No disponible';
 
-      // Formatear el total para mostrar
       const formattedTotal = moneda
         ? `${moneda} ${montoTotal}`
         : montoTotal.toString();
 
-      // Objeto factura procesado con todas las propiedades necesarias
       const processedInvoice = {
         _id: invoice._id,
-        proyect: projectName, // Usamos el nombre del proyecto en lugar del ID
-        proyectId: invoice.proyect, // Conservamos el ID en otra propiedad por si es necesario
+        proyect: projectName,
+        proyectId: invoice.proyect,
         category: categoryName,
-        categoryKey: invoice.category, // Guardamos la clave original de la categoría
+        categoryKey: invoice.category,
         file: invoice.file,
         data: invoice.data,
         createdAt: new Date(invoice.createdAt).toLocaleDateString('es-ES', {
@@ -362,7 +333,12 @@ export class ConsolidatedInvoicesComponent implements OnInit {
         updatedAt: invoice.updatedAt,
         total: formattedTotal,
 
-        // Propiedades para la visualización en la tabla y originales combinadas
+        status: invoice.status || 'pending',
+        statusDate: invoice.statusDate,
+        approvedBy: invoice.approvedBy,
+        rejectedBy: invoice.rejectedBy,
+        rejectionReason: invoice.rejectionReason,
+
         ruc: rucEmisor,
         rucEmisor: rucEmisor,
         tipo: tipoComprobante,
@@ -379,18 +355,10 @@ export class ConsolidatedInvoicesComponent implements OnInit {
         correlativo: correlativo,
       };
 
-      // Log para debugging
-      console.log(
-        '%c [CONSOLIDATED-INVOICES] Factura procesada:',
-        'background: #2196f3; color: white; padding: 2px 5px; border-radius: 3px;',
-        processedInvoice
-      );
-
       return processedInvoice;
     });
   }
 
-  // Método para capitalizar la primera letra de un string
   capitalizeFirstLetter(text: string): string {
     if (!text) return '';
     return text.charAt(0).toUpperCase() + text.slice(1).toLowerCase();
@@ -405,8 +373,16 @@ export class ConsolidatedInvoicesComponent implements OnInit {
   }
 
   clickOptions(option: string, _id: string) {
-    if (option === 'download') {
-      this.downloadInvoice(_id);
+    switch (option) {
+      case 'download':
+        this.downloadInvoice(_id);
+        break;
+      case 'approve':
+        this.confirmApproveInvoice(_id);
+        break;
+      case 'reject':
+        this.openRejectionModal(_id);
+        break;
     }
   }
 
@@ -434,15 +410,93 @@ export class ConsolidatedInvoicesComponent implements OnInit {
     }
   }
 
+  confirmApproveInvoice(id: string) {
+    this.confirmationService.confirm({
+      title: 'Confirmar aprobación',
+      message: '¿Está seguro que desea aprobar esta factura?',
+      accept: () => {
+        this.approveInvoice(id);
+      },
+    });
+  }
+
+  approveInvoice(id: string) {
+    const payload: ApprovalPayload = {
+      status: 'approved',
+      userId: this.currentUserId,
+    };
+
+    this.agentService.approveInvoice(id, payload).subscribe({
+      next: () => {
+        this.notificationService.show(
+          'Factura aprobada correctamente',
+          'success'
+        );
+        this.getInvoices();
+      },
+      error: (error) => {
+        this.notificationService.show(
+          'Error al aprobar la factura: ' + error.message,
+          'error'
+        );
+      },
+    });
+  }
+
+  openRejectionModal(id: string) {
+    this.selectedInvoiceId.set(id);
+    this.rejectionReason.set('');
+    this.showRejectionModal.set(true);
+  }
+
+  closeRejectionModal() {
+    this.showRejectionModal.set(false);
+  }
+
+  submitRejection() {
+    if (!this.rejectionReason()) {
+      this.notificationService.show(
+        'Debe ingresar un motivo de rechazo',
+        'error'
+      );
+      return;
+    }
+
+    const id = this.selectedInvoiceId();
+    const payload: ApprovalPayload = {
+      status: 'rejected',
+      userId: this.currentUserId,
+      reason: this.rejectionReason(),
+    };
+
+    this.agentService.rejectInvoice(id, payload).subscribe({
+      next: () => {
+        this.notificationService.show(
+          'Factura rechazada correctamente',
+          'success'
+        );
+        this.closeRejectionModal();
+        this.getInvoices();
+      },
+      error: (error) => {
+        this.notificationService.show(
+          'Error al rechazar la factura: ' + error.message,
+          'error'
+        );
+      },
+    });
+  }
+
   get filteredInvoices() {
     return this.invoices.filter((inv) => {
       const matchesProject = this.filterProject()
-        ? inv.proyect
-            ?.toLowerCase()
-            .includes(this.filterProject().toLowerCase())
+        ? inv.proyect === this.filterProject()
         : true;
       const matchesCategory = this.filterCategory()
         ? inv.category === this.filterCategory()
+        : true;
+      const matchesStatus = this.filterStatus()
+        ? inv.status === this.filterStatus()
         : true;
       const date = new Date(inv.createdAt.split('/').reverse().join('-'));
       const from = this.filterDateFrom()
@@ -464,6 +518,7 @@ export class ConsolidatedInvoicesComponent implements OnInit {
       return (
         matchesProject &&
         matchesCategory &&
+        matchesStatus &&
         matchesFrom &&
         matchesTo &&
         matchesMin &&
@@ -472,20 +527,13 @@ export class ConsolidatedInvoicesComponent implements OnInit {
     });
   }
 
-  // Métodos para obtener datos
   getCategories() {
     return this.agentService.getCategories().pipe(
       tap({
         next: (categories) => {
           this.categories = categories;
-          console.log('Categorías cargadas:', categories);
         },
-        error: (error) => {
-          this.notificationService.show(
-            'Error al cargar las categorías: ' + error.message,
-            'error'
-          );
-        },
+        error: (error) => {},
       })
     );
   }
@@ -506,13 +554,11 @@ export class ConsolidatedInvoicesComponent implements OnInit {
   }
 
   calculateProjectsWithInvoiceCount() {
-    // Crear un mapa para contar facturas por proyecto
     const projectCountMap = new Map<
       string,
       { id: string; name: string; count: number }
     >();
 
-    // Inicializar contadores para todos los proyectos conocidos
     this.projects.forEach((project) => {
       if (project._id) {
         projectCountMap.set(project._id, {
@@ -523,19 +569,16 @@ export class ConsolidatedInvoicesComponent implements OnInit {
       }
     });
 
-    // Contar facturas por proyecto y crear entradas para proyectos que ya no existen
     this.invoices.forEach((invoice) => {
       const projectId = invoice.proyectId as string;
       const projectName = invoice.proyect;
 
       if (projectId) {
         if (projectCountMap.has(projectId)) {
-          // Incrementar contador para proyectos existentes
           const projectData = projectCountMap.get(projectId)!;
           projectData.count += 1;
           projectCountMap.set(projectId, projectData);
         } else {
-          // Crear entrada para proyectos que ya no existen en la BD
           projectCountMap.set(projectId, {
             id: projectId,
             name: projectName,
@@ -545,12 +588,21 @@ export class ConsolidatedInvoicesComponent implements OnInit {
       }
     });
 
-    // Convertir el mapa a un array para el dashboard
     this.projectsWithInvoiceCount = Array.from(projectCountMap.values());
+  }
 
-    console.log(
-      'Proyectos con conteo de facturas:',
-      this.projectsWithInvoiceCount
-    );
+  getStatusName(status?: InvoiceStatus): string {
+    if (!status) return 'Pendiente';
+
+    switch (status) {
+      case 'pending':
+        return 'Pendiente';
+      case 'approved':
+        return 'Aprobada';
+      case 'rejected':
+        return 'Rechazada';
+      default:
+        return 'Desconocido';
+    }
   }
 }

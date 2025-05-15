@@ -8,11 +8,6 @@ export class AuthColaboradorGuard implements CanActivate {
   private router = inject(Router);
 
   canActivate(): boolean {
-    console.log(
-      'canActivate',
-      this.userState.isAuthenticated(),
-      this.userState.isColaborador()
-    );
     if (!this.userState.isAuthenticated() || !this.userState.isColaborador()) {
       this.router.navigate(['/login']);
       return false;

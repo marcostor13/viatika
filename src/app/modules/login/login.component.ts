@@ -41,8 +41,7 @@ export class LoginComponent {
         if (res.data.user.role === 'ADMIN2') {
           this.router.navigate(['/consolidated-invoices']);
         } else {
-          console.log('redirigiendo a invoices');
-          this.router.navigate(['/invoices']);
+          this.router.navigate(['/invoices']).then(() => {});
         }
         this.loading.set(false);
       },

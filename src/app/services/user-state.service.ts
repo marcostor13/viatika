@@ -44,8 +44,7 @@ export class UserStateService {
     this.clearUser();
   }
 
-  loginAsColaborador(email: string, password: string = '') {
-    // Simulación: solo permite el rol COLABORADOR
+  loginAsColaborador(email: string) {
     const user = {
       _id: '1',
       email,

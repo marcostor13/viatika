@@ -27,7 +27,6 @@ export class AddProjectComponent implements OnInit {
   isEditing = false;
 
   ngOnInit() {
-    // Verificar si estamos en modo edición
     this.projectId = this.route.snapshot.paramMap.get('id');
     if (this.projectId) {
       this.isEditing = true;
@@ -64,7 +63,6 @@ export class AddProjectComponent implements OnInit {
     }
 
     if (!this.isEditing) {
-      // Crear nuevo proyecto
       const createData: IProject = {
         name: this.project.name,
       };
@@ -85,7 +83,6 @@ export class AddProjectComponent implements OnInit {
         },
       });
     } else {
-      // Estamos en modo edición
       const updateData: Partial<IProject> = {
         name: this.project.name,
       };

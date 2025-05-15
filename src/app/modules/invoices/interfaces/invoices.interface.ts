@@ -7,6 +7,8 @@ export interface IInvoice {
   total: string | number;
 }
 
+export type InvoiceStatus = 'pending' | 'approved' | 'rejected';
+
 export interface IInvoiceResponse {
   _id: string;
   proyect: string;
@@ -19,7 +21,12 @@ export interface IInvoiceResponse {
   createdAt: string;
   updatedAt: string;
 
-  // Campos adicionales para visualización
+  status?: InvoiceStatus;
+  statusDate?: string;
+  approvedBy?: string;
+  rejectedBy?: string;
+  rejectionReason?: string;
+
   provider?: string;
   ruc?: string;
   address?: string;
@@ -35,6 +42,13 @@ export interface InvoicePayload {
   projectName?: string;
   category: string;
   imageUrl: string;
+  status?: InvoiceStatus;
+}
+
+export interface ApprovalPayload {
+  status: InvoiceStatus;
+  userId: string;
+  reason?: string;
 }
 
 export interface InvoiceData {

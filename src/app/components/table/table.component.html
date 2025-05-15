@@ -15,6 +15,30 @@
         @for (header of headers; track header) { @if (header.value !==
         'actions') { @if(header.value === 'appSecret') {
         <td class="px-6 py-3">{{ "********" }}</td>
+        } @else if(header.value === 'status') {
+        <td class="px-6 py-3">
+          @if(item.status === 'pending') {
+          <span
+            class="px-2 py-1 rounded-full bg-yellow-100 text-yellow-800 text-xs font-medium"
+            >Pendiente</span
+          >
+          } @else if(item.status === 'approved') {
+          <span
+            class="px-2 py-1 rounded-full bg-green-100 text-green-800 text-xs font-medium"
+            >Aprobada</span
+          >
+          } @else if(item.status === 'rejected') {
+          <span
+            class="px-2 py-1 rounded-full bg-red-100 text-red-800 text-xs font-medium"
+            >Rechazada</span
+          >
+          } @else {
+          <span
+            class="px-2 py-1 rounded-full bg-gray-100 text-gray-800 text-xs font-medium"
+            >{{ item[header.value] || "Pendiente" }}</span
+          >
+          }
+        </td>
         } @else {
         <td class="px-6 py-3">{{ item[header.value] }}</td>
         } } @else {
@@ -40,8 +64,7 @@
               />
             </svg>
           </button>
-
-          } @if (option === 'delete') {
+          } @else if (option === 'delete') {
           <button
             class="text-red-600 hover:underline w-7"
             (click)="options(option, item._id)"
@@ -61,7 +84,7 @@
               />
             </svg>
           </button>
-          } @if (option === 'add-contact-list') {
+          } @else if (option === 'add-contact-list') {
           <button
             class="text-color2 hover:underline w-7"
             title="Agregar contactos"
@@ -82,7 +105,7 @@
               />
             </svg>
           </button>
-          } @if (option === 'download') {
+          } @else if (option === 'download') {
           <button
             class="text-color2 hover:underline w-7"
             title="Descargar"
@@ -100,6 +123,48 @@
                 stroke-linecap="round"
                 stroke-linejoin="round"
                 d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3"
+              />
+            </svg>
+          </button>
+          } @else if (option === 'approve' && item.status === 'pending') {
+          <button
+            class="text-green-600 hover:underline w-7"
+            title="Aprobar factura"
+            (click)="options(option, item._id)"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke-width="1.5"
+              stroke="currentColor"
+              class="size-6"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"
+              />
+            </svg>
+          </button>
+          } @else if (option === 'reject' && item.status === 'pending') {
+          <button
+            class="text-red-600 hover:underline w-7"
+            title="Rechazar factura"
+            (click)="options(option, item._id)"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke-width="1.5"
+              stroke="currentColor"
+              class="size-6"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                d="m9.75 9.75 4.5 4.5m0-4.5-4.5 4.5M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"
               />
             </svg>
           </button>

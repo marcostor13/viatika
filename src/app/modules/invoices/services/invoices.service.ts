@@ -3,6 +3,7 @@ import { inject, Injectable } from '@angular/core';
 import {
   IInvoiceResponse,
   InvoicePayload,
+  ApprovalPayload,
 } from '../interfaces/invoices.interface';
 import { Observable } from 'rxjs';
 import { environment } from '../../../../environments/environment';
@@ -42,7 +43,26 @@ export class InvoicesService {
     return this.http.delete(`${this.url}/${id}`);
   }
 
-  // Métodos para categorías
+  approveInvoice(
+    id: string,
+    payload: ApprovalPayload
+  ): Observable<IInvoiceResponse> {
+    return this.http.patch<IInvoiceResponse>(
+      `${this.url}/${id}/approve`,
+      payload
+    );
+  }
+
+  rejectInvoice(
+    id: string,
+    payload: ApprovalPayload
+  ): Observable<IInvoiceResponse> {
+    return this.http.patch<IInvoiceResponse>(
+      `${this.url}/${id}/reject`,
+      payload
+    );
+  }
+
   getCategories(): Observable<ICategory[]> {
     return this.http.get<ICategory[]>(`${this.categoryUrl}`);
   }
@@ -66,7 +86,6 @@ export class InvoicesService {
     return this.http.delete(`${this.categoryUrl}/${id}`);
   }
 
-  // Métodos para proyectos
   getProjects(): Observable<IProject[]> {
     return this.http.get<IProject[]>(`${this.projectUrl}`);
   }

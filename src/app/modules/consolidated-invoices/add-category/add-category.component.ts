@@ -27,7 +27,6 @@ export class AddCategoryComponent implements OnInit {
   isEditing = false;
 
   ngOnInit() {
-    // Verificar si estamos en modo edición
     this.categoryId = this.route.snapshot.paramMap.get('id');
     if (this.categoryId) {
       this.isEditing = true;
@@ -64,7 +63,6 @@ export class AddCategoryComponent implements OnInit {
     }
 
     if (!this.isEditing) {
-      // Crear nueva categoría
       this.invoicesService.createCategory(this.category).subscribe({
         next: () => {
           this.notificationService.show(
@@ -81,8 +79,6 @@ export class AddCategoryComponent implements OnInit {
         },
       });
     } else {
-      // Estamos en modo edición
-      // Creamos un objeto con solo las propiedades permitidas para la actualización
       const updateData: Partial<ICategory> = {
         name: this.category.name,
       };
