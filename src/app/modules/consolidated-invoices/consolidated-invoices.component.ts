@@ -269,6 +269,7 @@ export class ConsolidatedInvoicesComponent implements OnInit {
 
   formatResponse(res: IInvoiceResponse[]) {
     const categories = this.categories;
+    const projectList = this.projects;
     return res.map((invoice) => {
       // Verificar la estructura de los datos
       let invoiceData: any = {};
@@ -308,6 +309,12 @@ export class ConsolidatedInvoicesComponent implements OnInit {
         ? categoryObj.name
         : invoice.category || 'No disponible';
 
+      // Buscar el proyecto por su ID
+      const projectObj = projectList.find((p) => p._id === invoice.proyect);
+      const projectName = projectObj
+        ? projectObj.name
+        : invoice.proyect || 'No disponible';
+
       // Acceder a datos con el formato original
       const razonSocial = invoiceData.razonSocial || 'No disponible';
       const direccionEmisor = invoiceData.direccionEmisor || 'No disponible';
@@ -327,7 +334,8 @@ export class ConsolidatedInvoicesComponent implements OnInit {
       // Objeto factura procesado con todas las propiedades necesarias
       const processedInvoice = {
         _id: invoice._id,
-        proyect: invoice.proyect,
+        proyect: projectName, // Usamos el nombre del proyecto en lugar del ID
+        proyectId: invoice.proyect, // Conservamos el ID en otra propiedad por si es necesario
         category: categoryName,
         file: invoice.file,
         data: invoice.data,

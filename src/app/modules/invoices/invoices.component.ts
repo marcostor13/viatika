@@ -1,4 +1,4 @@
-import { Component, inject } from '@angular/core';
+import { Component, inject, OnInit } from '@angular/core';
 import { ListTableComponent } from '../../components/list-table/list-table.component';
 import { TableComponent } from '../../components/table/table.component';
 import { InvoicesService } from './services/invoices.service';
@@ -8,6 +8,8 @@ import { ConfirmationService } from '../../services/confirmation.service';
 import { IInvoiceResponse } from './interfaces/invoices.interface';
 import { IHeaderList } from '../../interfaces/header-list.interface';
 import { CATEGORIES } from './constants/categories';
+import { IProject } from './interfaces/project.interface';
+
 @Component({
   selector: 'app-invoices',
   standalone: true,
@@ -15,13 +17,15 @@ import { CATEGORIES } from './constants/categories';
   templateUrl: './invoices.component.html',
   styleUrl: './invoices.component.scss',
 })
-export default class InvoicesComponent {
+export default class InvoicesComponent implements OnInit {
   private agentService = inject(InvoicesService);
   private router = inject(Router);
   private notificationService = inject(NotificationService);
   private confirmationService = inject(ConfirmationService);
 
   invoices: IInvoiceResponse[] = [];
+  projects: IProject[] = [];
+
   headers: IHeaderList[] = [
     {
       header: 'Proyecto',
@@ -63,7 +67,24 @@ export default class InvoicesComponent {
   ];
 
   ngOnInit() {
-    this.getInvoices();
+    // Cargar proyectos primero para que estén disponibles
+    this.loadProjects();
+  }
+
+  loadProjects() {
+    this.agentService.getProjects().subscribe({
+      next: (projects) => {
+        this.projects = projects;
+        console.log('Proyectos cargados:', projects);
+        // Una vez cargados los proyectos, cargar las facturas
+        this.getInvoices();
+      },
+      error: (error) => {
+        console.error('Error al cargar proyectos:', error);
+        // Si hay error, cargar las facturas de todas formas
+        this.getInvoices();
+      },
+    });
   }
 
   getInvoices() {
@@ -85,6 +106,7 @@ export default class InvoicesComponent {
   formatResponse(res: IInvoiceResponse[]): IInvoiceResponse[] {
     // Obtener categorías para mapear claves a nombres
     const categories = CATEGORIES;
+    const projectList = this.projects;
 
     return res.map((invoice) => {
       // Verificar la estructura de los datos
@@ -115,6 +137,12 @@ export default class InvoicesComponent {
       const categoryObj = categories.find((c) => c.key === invoice.category);
       const categoryName = categoryObj ? categoryObj.name : 'No disponible';
 
+      // Buscar el proyecto por su ID
+      const projectObj = projectList.find((p) => p._id === invoice.proyect);
+      const projectName = projectObj
+        ? projectObj.name
+        : invoice.proyect || 'No disponible';
+
       // Acceder a datos con el formato original
       const razonSocial = invoiceData.razonSocial || 'No disponible';
       const direccionEmisor = invoiceData.direccionEmisor || 'No disponible';
@@ -126,6 +154,8 @@ export default class InvoicesComponent {
 
       return {
         ...invoice,
+        proyect: projectName, // Usamos el nombre del proyecto en lugar del ID
+        proyectId: invoice.proyect, // Conservamos el ID en otra propiedad
         category: categoryName,
         ruc: rucEmisor,
         tipo: tipoComprobante,
