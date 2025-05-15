@@ -31,16 +31,17 @@ export class LoginComponent {
     this.error.set('');
     this.authService.login(this.email(), this.password()).subscribe({
       next: (res) => {
+        localStorage.setItem('token', res.data.token);
+
         this.userStateService.setUser({
           ...res.data.user,
           access_token: res.data.token,
         });
-        console.log(res.data.user.role);
+
         if (res.data.user.role === 'ADMIN2') {
           this.router.navigate(['/consolidated-invoices']);
         } else {
-          console.log('redirigiendo a invoices');
-          this.router.navigate(['/invoices']);
+          this.router.navigate(['/invoices']).then(() => { });
         }
         this.loading.set(false);
       },

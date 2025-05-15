@@ -4,13 +4,9 @@ import { HeaderComponent } from '../../components/header/header.component';
 
 @Component({
   selector: 'app-main',
-  imports: [
-    RouterOutlet,
-    HeaderComponent
-  ],
+  standalone: true,
+  imports: [RouterOutlet, HeaderComponent],
   templateUrl: './main.component.html',
-  styleUrl: './main.component.scss'
+  styleUrl: './main.component.scss',
 })
-export class MainComponent {
-
-}
+export class MainComponent {}

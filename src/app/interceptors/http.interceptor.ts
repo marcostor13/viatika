@@ -7,9 +7,11 @@ export const httpInterceptor: HttpInterceptorFn = (req, next) => {
   const userStateService = inject(UserStateService);
   const loaderService = inject(LoaderService);
   loaderService.show();
-  const user = userStateService.getUser();
+
+  const token = userStateService.getToken();
   const currentHeaders = req.headers;
   const objectHeaders = Object.fromEntries(currentHeaders.keys().map(key => [key, currentHeaders.get(key)]));
+  const user = userStateService.getUser();
   if (user) {
     req = req.clone({
       setHeaders: {
