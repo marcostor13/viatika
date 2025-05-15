@@ -35,6 +35,7 @@ export class LoginComponent {
           ...res.data.user,
           access_token: res.data.token,
         });
+        console.log(res.data.user.role);
         if (res.data.user.role === 'ADMIN2') {
           this.router.navigate(['/consolidated-invoices']);
         } else {
