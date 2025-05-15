@@ -10,6 +10,7 @@ export interface IInvoice {
 export interface IInvoiceResponse {
   _id: string;
   proyect: string;
+  projectName?: string;
   category: string;
   file: string;
   data: any;
@@ -31,6 +32,7 @@ export interface IInvoiceResponse {
 
 export interface InvoicePayload {
   proyect: string;
+  projectName?: string;
   category: string;
   imageUrl: string;
 }

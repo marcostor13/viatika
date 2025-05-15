@@ -52,6 +52,7 @@ export default class AddInvoiceComponent implements OnInit {
   selectedFile!: File;
 
   percentage = signal(0);
+  isLoading = signal(false);
 
   constructor() {
     this.initForm();
@@ -127,6 +128,7 @@ export default class AddInvoiceComponent implements OnInit {
         );
         return;
       }
+      this.isLoading.set(true);
       this.uploadFile();
     }
   }
@@ -158,21 +160,38 @@ export default class AddInvoiceComponent implements OnInit {
       if (progress === 0) {
         progress = 10;
       }
-      this.percentage.set(progress);
+      this.percentage.set(Math.round(progress));
       console.log('Subida:', progress);
     });
-    downloadUrl$.subscribe((url) => {
-      console.log('URL:', url);
-      this.form.patchValue({ file: url });
-      this.save();
+    downloadUrl$.subscribe({
+      next: (url) => {
+        console.log('URL:', url);
+        this.form.patchValue({ file: url });
+        this.save();
+      },
+      error: (error) => {
+        this.isLoading.set(false);
+        this.notificationService.show(
+          'Error al subir el archivo: ' + error.message,
+          'error'
+        );
+      },
     });
   }
 
   save() {
     if (this.form.valid) {
+      // Obtener el ID del proyecto seleccionado
+      const projectId = this.form.get('proyect')?.value;
+
+      // Obtener el objeto del proyecto completo para acceder a su nombre
+      const selectedProject = this.proyects.find((p) => p._id === projectId);
+      const projectName = selectedProject?.name || '';
+
       // Crear un nuevo objeto para enviar al servidor
       const payload = {
-        proyect: this.form.get('proyect')?.value,
+        proyect: projectId,
+        projectName: projectName, // Añadir el nombre del proyecto
         category: this.form.get('category')?.value,
         imageUrl: this.form.get('file')?.value, // Mapear 'file' a 'imageUrl' como espera el backend
       };
@@ -182,6 +201,7 @@ export default class AddInvoiceComponent implements OnInit {
       this.invoiceService.analyzeInvoice(payload).subscribe({
         next: (res) => {
           console.log('Respuesta del servidor:', res);
+          this.isLoading.set(false);
           this.notificationService.show(
             'Factura subida correctamente',
             'success'
@@ -190,6 +210,7 @@ export default class AddInvoiceComponent implements OnInit {
         },
         error: (error) => {
           console.error('Error al subir factura:', error);
+          this.isLoading.set(false);
           this.notificationService.show(
             'Error al subir la factura: ' +
               (error.message || 'Intente nuevamente'),
@@ -198,6 +219,7 @@ export default class AddInvoiceComponent implements OnInit {
         },
       });
     } else {
+      this.isLoading.set(false);
       this.notificationService.show(
         'Por favor complete todos los campos requeridos',
         'error'

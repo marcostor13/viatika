@@ -1,4 +1,4 @@
-import { Component, inject, signal, OnInit } from '@angular/core';
+import { Component, inject, signal, OnInit, computed } from '@angular/core';
 import { ListTableComponent } from '../../components/list-table/list-table.component';
 import { TableComponent } from '../../components/table/table.component';
 import { Router } from '@angular/router';
@@ -16,7 +16,9 @@ import { tap } from 'rxjs/operators';
 interface IInvoice {
   _id?: string;
   proyect: string;
+  proyectId?: string;
   category: string;
+  categoryKey?: string;
   file: string;
   createdAt: string;
   updatedAt: string;
@@ -61,8 +63,10 @@ export class ConsolidatedInvoicesComponent implements OnInit {
   // Datos para las tablas
   categories: ICategory[] = [];
   projects: IProject[] = [];
-
   invoices: IInvoice[] = [];
+
+  projectsWithInvoiceCount: { id: string; name: string; count: number }[] = [];
+
   headers: IHeaderList[] = [
     {
       header: 'Proyecto',
@@ -170,11 +174,18 @@ export class ConsolidatedInvoicesComponent implements OnInit {
       accept: () => {
         this.agentService.deleteCategory(id).subscribe({
           next: () => {
+            // Eliminar la categoría directamente del array local para actualización inmediata
+            this.categories = this.categories.filter(
+              (category) => category._id !== id
+            );
+
             this.notificationService.show(
               'Categoría eliminada correctamente',
               'success'
             );
-            this.getCategories(); // Recargar la lista
+
+            // Recargar la lista desde el servidor para mantener sincronización
+            this.getCategories().subscribe();
           },
           error: (error) => {
             this.notificationService.show(
@@ -239,6 +250,7 @@ export class ConsolidatedInvoicesComponent implements OnInit {
           if ('category' in firstItem && 'data' in firstItem) {
             console.log('API: Confirmado que son datos de FACTURAS');
             this.invoices = this.formatResponse(res);
+            this.calculateProjectsWithInvoiceCount();
           } else {
             // Verificar si parece categoría (no podemos usar propiedades directamente por el tipado)
             const anyItem = firstItem as any;
@@ -255,6 +267,7 @@ export class ConsolidatedInvoicesComponent implements OnInit {
         } else {
           console.log('API: No se recibieron facturas');
           this.invoices = [];
+          this.calculateProjectsWithInvoiceCount();
         }
       },
       error: (error) => {
@@ -338,6 +351,7 @@ export class ConsolidatedInvoicesComponent implements OnInit {
         proyect: projectName, // Usamos el nombre del proyecto en lugar del ID
         proyectId: invoice.proyect, // Conservamos el ID en otra propiedad por si es necesario
         category: categoryName,
+        categoryKey: invoice.category, // Guardamos la clave original de la categoría
         file: invoice.file,
         data: invoice.data,
         createdAt: new Date(invoice.createdAt).toLocaleDateString('es-ES', {
@@ -480,6 +494,7 @@ export class ConsolidatedInvoicesComponent implements OnInit {
     this.agentService.getProjects().subscribe({
       next: (projects) => {
         this.projects = projects;
+        this.calculateProjectsWithInvoiceCount();
       },
       error: (error) => {
         this.notificationService.show(
@@ -488,5 +503,54 @@ export class ConsolidatedInvoicesComponent implements OnInit {
         );
       },
     });
+  }
+
+  calculateProjectsWithInvoiceCount() {
+    // Crear un mapa para contar facturas por proyecto
+    const projectCountMap = new Map<
+      string,
+      { id: string; name: string; count: number }
+    >();
+
+    // Inicializar contadores para todos los proyectos conocidos
+    this.projects.forEach((project) => {
+      if (project._id) {
+        projectCountMap.set(project._id, {
+          id: project._id,
+          name: project.name,
+          count: 0,
+        });
+      }
+    });
+
+    // Contar facturas por proyecto y crear entradas para proyectos que ya no existen
+    this.invoices.forEach((invoice) => {
+      const projectId = invoice.proyectId as string;
+      const projectName = invoice.proyect;
+
+      if (projectId) {
+        if (projectCountMap.has(projectId)) {
+          // Incrementar contador para proyectos existentes
+          const projectData = projectCountMap.get(projectId)!;
+          projectData.count += 1;
+          projectCountMap.set(projectId, projectData);
+        } else {
+          // Crear entrada para proyectos que ya no existen en la BD
+          projectCountMap.set(projectId, {
+            id: projectId,
+            name: projectName,
+            count: 1,
+          });
+        }
+      }
+    });
+
+    // Convertir el mapa a un array para el dashboard
+    this.projectsWithInvoiceCount = Array.from(projectCountMap.values());
+
+    console.log(
+      'Proyectos con conteo de facturas:',
+      this.projectsWithInvoiceCount
+    );
   }
 }

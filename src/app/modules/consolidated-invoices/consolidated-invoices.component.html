@@ -7,11 +7,19 @@
       Dashboard: Facturas por Proyecto
     </h2>
     <div class="flex overflow-x-auto gap-4 mt-4">
+      @for (project of projectsWithInvoiceCount; track project.id) {
       <div class="bg-white p-4 rounded-lg shadow-md min-w-[200px] text-center">
-        <div class="text-gray-500 mb-1">1</div>
-        <div class="text-3xl font-bold">4</div>
+        <div class="text-gray-500 mb-1">{{ project.name }}</div>
+        <div class="text-3xl font-bold">{{ project.count }}</div>
         <div class="text-sm text-gray-500">facturas</div>
       </div>
+      } @if (projectsWithInvoiceCount.length === 0) {
+      <div class="bg-white p-4 rounded-lg shadow-md min-w-[200px] text-center">
+        <div class="text-gray-500 mb-1">Sin datos</div>
+        <div class="text-3xl font-bold">0</div>
+        <div class="text-sm text-gray-500">facturas</div>
+      </div>
+      }
     </div>
   </div>
 
