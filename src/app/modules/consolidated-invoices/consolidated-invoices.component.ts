@@ -305,9 +305,10 @@ export class ConsolidatedInvoicesComponent implements OnInit {
 
       // Buscar la categoría por su clave
       const categoryObj = categories.find((c) => c.key === invoice.category);
+      // Si encontramos la categoría en la lista, usar su nombre, sino capitalizar la clave de la categoría
       const categoryName = categoryObj
         ? categoryObj.name
-        : invoice.category || 'No disponible';
+        : this.capitalizeFirstLetter(invoice.category) || 'No disponible';
 
       // Buscar el proyecto por su ID
       const projectObj = projectList.find((p) => p._id === invoice.proyect);
@@ -373,6 +374,12 @@ export class ConsolidatedInvoicesComponent implements OnInit {
 
       return processedInvoice;
     });
+  }
+
+  // Método para capitalizar la primera letra de un string
+  capitalizeFirstLetter(text: string): string {
+    if (!text) return '';
+    return text.charAt(0).toUpperCase() + text.slice(1).toLowerCase();
   }
 
   editInvoice(id: string) {

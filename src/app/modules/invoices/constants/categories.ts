@@ -15,4 +15,12 @@ export const CATEGORIES = [
     key: 'other',
     name: 'Otros',
   },
+  {
+    key: 'cochera',
+    name: 'Cochera',
+  },
+  {
+    key: 'taxi',
+    name: 'Taxi',
+  },
 ];
