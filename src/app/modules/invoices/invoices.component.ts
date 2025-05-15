@@ -1,6 +1,7 @@
 import { Component, inject, OnInit } from '@angular/core';
 import { ListTableComponent } from '../../components/list-table/list-table.component';
 import { TableComponent } from '../../components/table/table.component';
+import { FileDownloadComponent } from '../../components/file-download/file-download.component';
 import { InvoicesService } from './services/invoices.service';
 import { Router } from '@angular/router';
 import { NotificationService } from '../../services/notification.service';
@@ -16,7 +17,7 @@ import { IProject } from './interfaces/project.interface';
 @Component({
   selector: 'app-invoices',
   standalone: true,
-  imports: [ListTableComponent, TableComponent],
+  imports: [ListTableComponent, TableComponent, FileDownloadComponent],
   templateUrl: './invoices.component.html',
   styleUrl: './invoices.component.scss',
 })
@@ -71,6 +72,19 @@ export default class InvoicesComponent implements OnInit {
       value: 'actions',
       options: ['download', 'edit', 'delete'],
     },
+  ];
+
+  exportFileType: 'excel' | 'pdf' = 'excel';
+  exportColumns = [
+    { header: 'Proyecto', field: 'proyect' },
+    { header: 'Categoría', field: 'category' },
+    { header: 'Razón Social', field: 'provider' },
+    { header: 'RUC', field: 'ruc' },
+    { header: 'Dirección', field: 'address' },
+    { header: 'Tipo', field: 'tipo' },
+    { header: 'Total', field: 'total' },
+    { header: 'Fecha', field: 'date' },
+    { header: 'Estado', field: 'status' },
   ];
 
   ngOnInit() {
@@ -247,5 +261,22 @@ export default class InvoicesComponent implements OnInit {
         this.notificationService.show('Error al eliminar la factura', 'error');
       },
     });
+  }
+
+  exportInvoices(fileType: 'excel' | 'pdf'): void {
+    this.exportFileType = fileType;
+    setTimeout(() => {
+      const exportComponent = document.getElementById('export-invoices');
+      if (
+        exportComponent &&
+        typeof (exportComponent as any).downloadFile === 'function'
+      ) {
+        (exportComponent as any).downloadFile();
+      } else {
+        console.error(
+          'Componente de descarga no encontrado o método no disponible'
+        );
+      }
+    }, 100);
   }
 }

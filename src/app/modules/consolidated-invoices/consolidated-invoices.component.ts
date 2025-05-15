@@ -1,6 +1,7 @@
 import { Component, inject, signal, OnInit, computed } from '@angular/core';
 import { ListTableComponent } from '../../components/list-table/list-table.component';
 import { TableComponent } from '../../components/table/table.component';
+import { FileDownloadComponent } from '../../components/file-download/file-download.component';
 import { Router } from '@angular/router';
 import { NotificationService } from '../../services/notification.service';
 import { ConfirmationService } from '../../services/confirmation.service';
@@ -55,7 +56,13 @@ interface IInvoice {
 @Component({
   selector: 'app-consolidated-invoices',
   standalone: true,
-  imports: [CommonModule, FormsModule, TableComponent, ListTableComponent],
+  imports: [
+    CommonModule,
+    FormsModule,
+    TableComponent,
+    ListTableComponent,
+    FileDownloadComponent,
+  ],
   templateUrl: './consolidated-invoices.component.html',
   styleUrl: './consolidated-invoices.component.scss',
 })
@@ -139,6 +146,21 @@ export class ConsolidatedInvoicesComponent implements OnInit {
   filterAmountMin = signal('');
   filterAmountMax = signal('');
   filterStatus = signal('');
+
+  exportFileType: 'excel' | 'pdf' = 'excel';
+  exportColumns = [
+    { header: 'Proyecto', field: 'proyect' },
+    { header: 'Categoría', field: 'category' },
+    { header: 'Razón Social', field: 'provider' },
+    { header: 'RUC', field: 'ruc' },
+    { header: 'Dirección', field: 'address' },
+    { header: 'Tipo', field: 'tipo' },
+    { header: 'Serie', field: 'serie' },
+    { header: 'Correlativo', field: 'correlativo' },
+    { header: 'Total', field: 'total' },
+    { header: 'Fecha', field: 'date' },
+    { header: 'Estado', field: 'status' },
+  ];
 
   ngOnInit() {
     this.getProjects();
@@ -604,5 +626,24 @@ export class ConsolidatedInvoicesComponent implements OnInit {
       default:
         return 'Desconocido';
     }
+  }
+
+  exportInvoices(fileType: 'excel' | 'pdf'): void {
+    this.exportFileType = fileType;
+    setTimeout(() => {
+      const exportComponent = document.getElementById(
+        'export-consolidated-invoices'
+      );
+      if (
+        exportComponent &&
+        typeof (exportComponent as any).downloadFile === 'function'
+      ) {
+        (exportComponent as any).downloadFile();
+      } else {
+        console.error(
+          'Componente de descarga no encontrado o método no disponible'
+        );
+      }
+    }, 100);
   }
 }
