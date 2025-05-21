@@ -1,0 +1,206 @@
+<div class="admin-users">
+  <ng-container *ngIf="panelMode === 'none'; else panel">
+    <div
+      class="p-5 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3"
+    >
+      <h1 class="text-2xl font-bold">Administración de Usuarios</h1>
+
+      <button
+        (click)="showCreatePanel()"
+        class="w-full sm:w-auto bg-color1 text-white px-4 py-3 sm:py-2 rounded-md flex items-center justify-center gap-2 text-sm sm:text-base shadow-sm"
+      >
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke-width="1.5"
+          stroke="currentColor"
+          class="size-5 sm:size-6"
+        >
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            d="M12 4.5v15m7.5-7.5h-15"
+          />
+        </svg>
+        Crear Usuario
+      </button>
+    </div>
+
+    <div *ngIf="isLoading()" class="flex justify-center my-8">
+      <div
+        class="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-color1"
+      ></div>
+    </div>
+
+    <ng-container *ngIf="!isLoading()">
+      <div class="px-5 lg:block hidden">
+        <app-table
+          [headers]="headers"
+          [data]="data"
+          (optionsEvent)="optionsEvent($event)"
+        ></app-table>
+      </div>
+
+      <div class="px-5 block lg:hidden">
+        <app-list-table
+          [headers]="headers"
+          [data]="data"
+          (clickOptionsEvent)="clickOptionsEvent($event)"
+        ></app-list-table>
+      </div>
+
+      <div
+        *ngIf="data.length === 0 && !isLoading()"
+        class="mx-5 mt-4 text-center p-6 bg-gray-50 rounded-lg shadow-sm"
+      >
+        <p class="text-gray-500">No hay usuarios para mostrar.</p>
+      </div>
+    </ng-container>
+  </ng-container>
+
+  <ng-template #panel>
+    <div class="p-5">
+      <div class="bg-white rounded-lg shadow-md p-6">
+        <div class="flex items-center justify-between mb-6">
+          <button
+            (click)="closePanel()"
+            class="bg-color1 hover:bg-opacity-90 text-white px-4 py-2 flex items-center gap-2 rounded-md shadow-sm"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke-width="1.5"
+              stroke="currentColor"
+              class="w-5 h-5"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                d="M6.75 15.75 3 12m0 0 3.75-3.75M3 12h18"
+              />
+            </svg>
+            Volver
+          </button>
+          <h2 class="text-xl font-bold">
+            {{ panelMode === "edit" ? "Editar Usuario" : "Crear Usuario" }}
+          </h2>
+        </div>
+
+        <form class="flex flex-col gap-5" (ngSubmit)="saveUser()">
+          <div class="flex flex-col md:flex-row gap-3">
+            <div class="flex flex-col gap-2 flex-1">
+              <label class="font-medium text-gray-700"
+                >Nombre <span class="text-color1">*</span></label
+              >
+              <input
+                type="text"
+                [(ngModel)]="tempUser.firstName"
+                name="firstName"
+                class="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-color1"
+                required
+              />
+            </div>
+
+            <div class="flex flex-col gap-2 flex-1">
+              <label class="font-medium text-gray-700">Apellido</label>
+              <input
+                type="text"
+                [(ngModel)]="tempUser.lastName"
+                name="lastName"
+                class="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-color1"
+              />
+            </div>
+          </div>
+
+          <div class="flex flex-col gap-2">
+            <label class="font-medium text-gray-700"
+              >Email <span class="text-color1">*</span></label
+            >
+            <input
+              type="email"
+              [(ngModel)]="tempUser.email"
+              name="email"
+              class="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-color1"
+              required
+            />
+          </div>
+
+          <div class="flex flex-col gap-2">
+            <label class="font-medium text-gray-700"
+              >Rol <span class="text-color1">*</span></label
+            >
+            <select
+              [(ngModel)]="tempUser.role"
+              name="role"
+              class="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-color1"
+              required
+            >
+              <option value="ADMIN">Administrador Principal</option>
+              <option value="ADMIN2">Administrador</option>
+              <option value="COLABORADOR">Colaborador</option>
+              <option value="PROVIDER">Proveedor</option>
+              <option value="COMPANY">Empresa</option>
+              <option value="ACCOUNTING">Contabilidad</option>
+              <option value="TREASURY">Tesorería</option>
+              <option value="USER">Usuario</option>
+            </select>
+          </div>
+
+          <div class="flex flex-col gap-2" *ngIf="panelMode === 'edit'">
+            <label class="font-medium text-gray-700">Estado</label>
+            <div class="flex items-center">
+              <input
+                type="checkbox"
+                [(ngModel)]="tempUser.isActive"
+                name="isActive"
+                class="w-5 h-5 text-color1 border-gray-300 rounded"
+              />
+              <span class="ml-2">{{
+                tempUser.isActive ? "Activo" : "Inactivo"
+              }}</span>
+            </div>
+          </div>
+
+          <div class="flex justify-end mt-6">
+            <button
+              type="submit"
+              class="bg-color1 hover:bg-opacity-90 text-white px-6 py-3 rounded-md shadow-md flex items-center justify-center gap-2 min-w-32"
+              [disabled]="isLoading()"
+            >
+              <svg
+                *ngIf="isLoading()"
+                class="animate-spin h-5 w-5 text-white"
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+              >
+                <circle
+                  class="opacity-25"
+                  cx="12"
+                  cy="12"
+                  r="10"
+                  stroke="currentColor"
+                  stroke-width="4"
+                ></circle>
+                <path
+                  class="opacity-75"
+                  fill="currentColor"
+                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                ></path>
+              </svg>
+              {{
+                isLoading()
+                  ? "Procesando..."
+                  : panelMode === "edit"
+                  ? "Actualizar"
+                  : "Guardar"
+              }}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </ng-template>
+</div>

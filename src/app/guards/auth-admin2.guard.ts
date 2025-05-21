@@ -7,10 +7,19 @@ export class AuthAdmin2Guard implements CanActivate {
   constructor(private userState: UserStateService, private router: Router) {}
 
   canActivate(): boolean {
-    if (
-      !this.userState.isAuthenticated() ||
-      this.userState.getUser()?.role !== 'ADMIN2'
-    ) {
+    const user = this.userState.getUser();
+
+    if (!this.userState.isAuthenticated()) {
+      this.router.navigate(['/login']);
+      return false;
+    }
+
+    const role = user?.role || user?.roleId?.name;
+
+    const allowedRoles = ['ADMIN2', 'admin2', 'Admin2', 'admin 2', 'ADMIN'];
+    const hasValidRole = role ? allowedRoles.includes(role) : false;
+
+    if (!hasValidRole) {
       this.router.navigate(['/login']);
       return false;
     }

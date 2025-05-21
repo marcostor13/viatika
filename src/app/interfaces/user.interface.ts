@@ -1,6 +1,16 @@
 export interface IUser {
+  _id?: string;
+  firstName: string;
+  lastName: string;
   email: string;
-  name: string;
+  role: string;
+  isActive?: boolean;
+  userId?: string;
+  companyId?: string;
+  status?: string;
+  phone?: string;
+  createdAt?: Date;
+  updatedAt?: Date;
 }
 
 export interface IClient {
@@ -27,7 +37,25 @@ export interface IRole {
 export interface IUserResponse extends IUser {
   _id: string;
   access_token: string;
-  clientId: IClient;
-  roleId: IRole;
+  clientId?: IClient;
+  roleId?: IRole;
+  name?: string; // Campo para compatibilidad
+}
+
+export interface IUserCreate {
+  firstName: string;
+  lastName: string;
+  email: string;
+  password: string;
   role: string;
+  companyId?: string;
+}
+
+export interface IUserUpdate {
+  firstName?: string;
+  lastName?: string;
+  email?: string;
+  role?: string;
+  isActive?: boolean;
+  companyId?: string;
 }

@@ -4,6 +4,7 @@ import AddInvoiceComponent from './modules/invoices/add-invoice/add-invoice.comp
 import { AuthColaboradorGuard } from './guards/auth-colaborador.guard';
 import { AuthAdmin2Guard } from './guards/auth-admin2.guard';
 import { MainComponent } from './layouts/main/main.component';
+import AdminUsersComponent from './modules/admin-users/admin-users.component';
 
 export const routes: Routes = [
   {
@@ -64,6 +65,11 @@ export const routes: Routes = [
             './modules/consolidated-invoices/add-project/add-project.component'
           ).then((m) => m.AddProjectComponent),
         canActivate: [AuthAdmin2Guard],
+      },
+      {
+        path: 'admin-users',
+        component: AdminUsersComponent,
+        // canActivate: [AuthAdmin2Guard],
       },
     ],
   },

@@ -1,0 +1,53 @@
+.chart-container {
+  position: relative;
+  min-height: 250px;
+  height: 50vh;
+  max-height: 400px;
+  width: 100%;
+  margin: 0 auto;
+}
+
+canvas {
+  max-width: 100%;
+  height: auto !important;
+}
+
+/* Estilos para dispositivos móviles */
+@media (max-width: 576px) {
+  .chart-container {
+    min-height: 200px;
+    height: 40vh;
+  }
+}
+
+/* Estilos para tablets */
+@media (min-width: 577px) and (max-width: 991px) {
+  .chart-container {
+    min-height: 220px;
+    height: 45vh;
+  }
+}
+
+/* Arreglo para la leyenda en móviles */
+:host ::ng-deep .chart-js-legend {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  margin-top: 10px;
+
+  li {
+    display: flex;
+    align-items: center;
+    margin-right: 10px;
+    margin-bottom: 5px;
+    font-size: 12px;
+
+    span {
+      display: inline-block;
+      width: 12px;
+      height: 12px;
+      margin-right: 5px;
+      border-radius: 2px;
+    }
+  }
+}
