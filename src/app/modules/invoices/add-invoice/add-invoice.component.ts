@@ -66,7 +66,7 @@ export default class AddInvoiceComponent implements OnInit {
       next: (categories) => {
         this.categories = categories;
       },
-      error: (error) => {},
+      error: (error) => { },
     });
   }
 
@@ -75,24 +75,20 @@ export default class AddInvoiceComponent implements OnInit {
       next: (projects) => {
         this.proyects = projects;
       },
-      error: (error) => {},
+      error: (error) => { },
     });
   }
 
   getInvoice() {
     this.invoiceService.getInvoiceById(this.id).subscribe((res) => {
-      this.form.patchValue({
-        proyect: res.proyect,
-        category: res.category,
-        file: res.file,
-      });
+      this.form.patchValue(res);
     });
   }
 
   initForm() {
     this.form = this.fb.group({
-      proyect: ['', Validators.required],
-      category: ['', Validators.required],
+      proyectId: ['', Validators.required],
+      categoryId: ['', Validators.required],
       file: ['', Validators.required],
     });
   }
@@ -184,7 +180,7 @@ export default class AddInvoiceComponent implements OnInit {
           this.isLoading.set(false);
           this.notificationService.show(
             'Error al subir la factura: ' +
-              (error.message || 'Intente nuevamente'),
+            (error.message || 'Intente nuevamente'),
             'error'
           );
         },
@@ -208,12 +204,12 @@ export default class AddInvoiceComponent implements OnInit {
     this.router.navigate(['/invoices']);
   }
 
-  get category() {
-    return this.form.get('category');
+  get categoryId() {
+    return this.form.get('categoryId');
   }
 
-  get proyect() {
-    return this.form.get('proyect');
+  get proyectId() {
+    return this.form.get('proyectId');
   }
 
   get imageUrl() {
