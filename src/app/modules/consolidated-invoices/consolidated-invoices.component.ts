@@ -2,6 +2,7 @@ import { Component, inject, signal, OnInit, computed } from '@angular/core';
 import { ListTableComponent } from '../../components/list-table/list-table.component';
 import { TableComponent } from '../../components/table/table.component';
 import { FileDownloadComponent } from '../../components/file-download/file-download.component';
+import { ChartsComponent } from './charts/charts.component';
 import { Router } from '@angular/router';
 import { NotificationService } from '../../services/notification.service';
 import { ConfirmationService } from '../../services/confirmation.service';
@@ -62,6 +63,7 @@ interface IInvoice {
     TableComponent,
     ListTableComponent,
     FileDownloadComponent,
+    ChartsComponent,
   ],
   templateUrl: './consolidated-invoices.component.html',
   styleUrl: './consolidated-invoices.component.scss',
@@ -169,7 +171,10 @@ export class ConsolidatedInvoicesComponent implements OnInit {
         this.getInvoices();
       },
       error: (error) => {
-        this.getInvoices();
+        this.notificationService.show(
+          'Error al cargar las categorías: ' + error.message,
+          'error'
+        );
       },
     });
   }
@@ -555,7 +560,12 @@ export class ConsolidatedInvoicesComponent implements OnInit {
         next: (categories) => {
           this.categories = categories;
         },
-        error: (error) => {},
+        error: (error) => {
+          this.notificationService.show(
+            'Error al cargar las categorías: ' + error.message,
+            'error'
+          );
+        },
       })
     );
   }

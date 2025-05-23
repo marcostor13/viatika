@@ -1,0 +1,14 @@
+.create-user {
+  h2 {
+    margin-bottom: 1rem;
+  }
+  form {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    max-width: 400px;
+  }
+  .btn {
+    align-self: flex-start;
+  }
+}
