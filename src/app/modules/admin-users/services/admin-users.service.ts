@@ -54,7 +54,7 @@ export class AdminUsersService {
 
     const userData = {
       ...user,
-      companyId: currentUser?.clientId?._id,
+      companyId: currentUser?.companyId,
     };
 
     return this.http
