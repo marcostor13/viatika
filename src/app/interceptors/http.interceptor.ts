@@ -37,27 +37,27 @@ export const httpInterceptor: HttpInterceptorFn = (req, next) => {
   const methods = ['GET', 'PATCH', 'DELETE'];
   if (
     methods.includes(req.method) &&
-    user?.clientId?._id &&
+    user?.companyId &&
     !isExcludedEndpoint
   ) {
-    if (!url.endsWith(user.clientId._id)) {
+    if (!url.endsWith(user.companyId)) {
       if (!url.endsWith('/')) {
         url = `${url}/`;
       }
-      url = `${url}${user.clientId._id}`;
+      url = `${url}${user.companyId}`;
       req = req.clone({ url });
     }
   }
 
-  if (req.method === 'POST' && user?.clientId?._id && !isExcludedEndpoint) {
+  if (req.method === 'POST' && user?.companyId && !isExcludedEndpoint) {
     if (req.body instanceof FormData) {
-      req.body.append('clientId', user.clientId._id);
+      req.body.append('companyId', user.companyId);
     } else {
       const body = req.body || {};
       req = req.clone({
         body: {
           ...body,
-          clientId: user.clientId._id,
+          companyId: user.companyId,
         },
       });
     }
