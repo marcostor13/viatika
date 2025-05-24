@@ -6,6 +6,7 @@ import { NotificationService } from '../../../services/notification.service';
 import { InvoicesService } from '../../invoices/services/invoices.service';
 import { HttpErrorResponse } from '@angular/common/http';
 import { ICategory } from '../../invoices/interfaces/category.interface';
+import { UserStateService } from '../../../services/user-state.service';
 
 @Component({
   selector: 'app-add-category',
@@ -18,6 +19,7 @@ export class AddCategoryComponent implements OnInit {
   private route = inject(ActivatedRoute);
   private notificationService = inject(NotificationService);
   private invoicesService = inject(InvoicesService);
+  private userStateService = inject(UserStateService);
 
   category: ICategory = {
     name: '',
@@ -35,18 +37,21 @@ export class AddCategoryComponent implements OnInit {
   }
 
   loadCategory(id: string) {
-    this.invoicesService.getCategoryById(id).subscribe({
-      next: (category: ICategory) => {
-        this.category = category;
-      },
-      error: (error: HttpErrorResponse) => {
-        this.notificationService.show(
-          'Error al cargar la categoría: ' + error.message,
-          'error'
-        );
-        this.router.navigate(['/consolidated-invoices']);
-      },
-    });
+    const companyId = this.userStateService.getUser()?.companyId;
+    if (companyId) {
+      this.invoicesService.getCategoryById(id, companyId).subscribe({
+        next: (category: ICategory) => {
+          this.category = category;
+        },
+        error: (error: HttpErrorResponse) => {
+          this.notificationService.show(
+            'Error al cargar la categoría: ' + error.message,
+            'error'
+          );
+          this.router.navigate(['/consolidated-invoices']);
+        },
+      });
+    }
   }
 
   back() {
@@ -61,6 +66,16 @@ export class AddCategoryComponent implements OnInit {
       );
       return;
     }
+
+    const companyId = this.userStateService.getUser()?.companyId;
+    if (!companyId) {
+      this.notificationService.show(
+        'No se encontró companyId en el usuario',
+        'error'
+      );
+      return;
+    }
+    this.category.companyId = companyId;
 
     if (!this.isEditing) {
       this.invoicesService.createCategory(this.category).subscribe({

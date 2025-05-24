@@ -12,15 +12,14 @@ import { InvoicesService } from '../../invoices/services/invoices.service';
 import { IInvoiceResponse } from '../../invoices/interfaces/invoices.interface';
 import { IProject } from '../../invoices/interfaces/project.interface';
 import { ICategory } from '../../invoices/interfaces/category.interface';
+import { UserStateService } from '../../../services/user-state.service';
 
-// Importación condicional para evitar errores
 declare var Chart: any;
 
-// Interfaz para gastos por colaborador
 interface CollaboratorExpense {
   id: string;
   name: string;
-  expenses: { [key: string]: number }; // Mapeo de meses a cantidades
+  expenses: { [key: string]: number };
   color: string;
 }
 
@@ -39,35 +38,30 @@ export class ChartsComponent implements OnInit, AfterViewInit {
   collaboratorsChartRef!: ElementRef<HTMLCanvasElement>;
 
   private invoicesService = inject(InvoicesService);
+  private userStateService = inject(UserStateService);
 
   invoices: IInvoiceResponse[] = [];
   projects: IProject[] = [];
   categories: ICategory[] = [];
 
-  // Estado para control del accordion
   showCollaboratorsSection = true;
   showProjectsSection = true;
   showCategoriesSection = true;
   showSummarySection = true;
 
-  // Mapas para asociar IDs con nombres
   projectMap: Map<string, string> = new Map();
   categoryMap: Map<string, string> = new Map();
 
-  // Reemplazar los filtros de mes/año por rangos de fecha
   dateFrom: string = this.getDefaultStartDate();
   dateTo: string = this.getDefaultEndDate();
 
-  // Referencias a los gráficos
   projectsChart: any = null;
   categoriesChart: any = null;
   collaboratorsChart: any = null;
 
-  // Para controlar la carga de la librería
   chartLibraryLoaded = false;
   dataLoaded = false;
 
-  // Colores para los gráficos
   chartColors = [
     '#FF6384',
     '#36A2EB',
@@ -92,22 +86,18 @@ export class ChartsComponent implements OnInit, AfterViewInit {
   }
 
   loadData() {
-    // Cargar proyectos y categorías antes que las facturas para tener los nombres listos
     this.getProjects();
     this.getCategories();
-    // Después de cargar proyectos y categorías, cargar facturas
     setTimeout(() => {
       this.getInvoices();
     }, 300);
   }
 
   ngAfterViewInit() {
-    // Iniciar un temporizador para verificar si todo está listo para renderizar
     this.checkAndRenderCharts();
   }
 
   checkAndRenderCharts() {
-    // Verificar si los datos y la librería están listos
     if (
       this.chartLibraryLoaded &&
       this.dataLoaded &&
@@ -116,25 +106,21 @@ export class ChartsComponent implements OnInit, AfterViewInit {
     ) {
       this.updateCharts();
     } else {
-      // Volver a intentar en 500ms
       setTimeout(() => this.checkAndRenderCharts(), 500);
     }
   }
 
-  // Obtener fecha predeterminada de inicio (primer día del mes actual)
   getDefaultStartDate(): string {
     const date = new Date();
-    date.setMonth(date.getMonth() - 5); // 6 meses atrás para tener suficientes datos
+    date.setMonth(date.getMonth() - 5);
     date.setDate(1);
     return this.formatDateForInput(date);
   }
 
-  // Obtener fecha predeterminada de fin (día actual)
   getDefaultEndDate(): string {
     return this.formatDateForInput(new Date());
   }
 
-  // Formatear fecha para input type="date"
   formatDateForInput(date: Date): string {
     const year = date.getFullYear();
     const month = String(date.getMonth() + 1).padStart(2, '0');
@@ -143,7 +129,6 @@ export class ChartsComponent implements OnInit, AfterViewInit {
   }
 
   loadChartLibrary() {
-    // Cargar Chart.js de forma segura
     if (typeof Chart !== 'undefined') {
       this.chartLibraryLoaded = true;
       return;
@@ -159,18 +144,21 @@ export class ChartsComponent implements OnInit, AfterViewInit {
   }
 
   getInvoices() {
-    this.invoicesService.getInvoices().subscribe({
-      next: (invoices) => {
-        this.invoices = invoices;
-        console.log('Facturas cargadas:', this.invoices.length);
-        this.dataLoaded = true;
-        this.checkAndRenderCharts();
-      },
-      error: (error) => {
-        console.error('Error al obtener facturas', error);
-        this.dataLoaded = true; // Aunque haya error, marcamos como cargado para no bloquear
-      },
-    });
+    const companyId = this.userStateService.getUser()?.companyId;
+    if (companyId) {
+      this.invoicesService.getInvoices(companyId).subscribe({
+        next: (invoices) => {
+          this.invoices = invoices;
+          console.log('Facturas cargadas:', this.invoices.length);
+          this.dataLoaded = true;
+          this.checkAndRenderCharts();
+        },
+        error: (error) => {
+          console.error('Error al obtener facturas', error);
+          this.dataLoaded = true;
+        },
+      });
+    }
   }
 
   getProjects() {
@@ -179,7 +167,6 @@ export class ChartsComponent implements OnInit, AfterViewInit {
         this.projects = projects;
         console.log('Proyectos cargados:', this.projects.length);
 
-        // Crear mapa de ID a nombre
         this.projectMap.clear();
         this.projects.forEach((project) => {
           if (project._id) {
@@ -194,41 +181,39 @@ export class ChartsComponent implements OnInit, AfterViewInit {
   }
 
   getCategories() {
-    this.invoicesService.getCategories().subscribe({
-      next: (categories) => {
-        this.categories = categories;
-        console.log('Categorías cargadas:', this.categories.length);
-
-        // Crear mapa de ID a nombre
-        this.categoryMap.clear();
-        this.categories.forEach((category) => {
-          if (category._id) {
-            this.categoryMap.set(category._id, category.name);
-          }
-        });
-      },
-      error: (error) => {
-        console.error('Error al obtener categorías', error);
-      },
-    });
+    const companyId = this.userStateService.getUser()?.companyId;
+    if (companyId) {
+      this.invoicesService.getCategories(companyId).subscribe({
+        next: (categories) => {
+          this.categories = categories;
+          console.log('Categorías cargadas:', this.categories.length);
+          this.categoryMap.clear();
+          this.categories.forEach((category) => {
+            if (category._id) {
+              this.categoryMap.set(category._id, category.name);
+            }
+          });
+        },
+        error: (error) => {
+          console.error('Error al obtener categorías', error);
+        },
+      });
+    }
   }
 
   updateCharts() {
-    // Asegurarse de que la librería está cargada
     if (!this.chartLibraryLoaded || typeof Chart === 'undefined') {
       console.log('Chart.js no está cargado aún, reintentando en 500ms');
       setTimeout(() => this.updateCharts(), 500);
       return;
     }
 
-    // Asegurarse de que los elementos DOM estén disponibles
     if (!this.projectsChartRef || !this.categoriesChartRef) {
       console.log('Referencias a canvas no disponibles, reintentando en 500ms');
       setTimeout(() => this.updateCharts(), 500);
       return;
     }
 
-    // Ahora podemos crear los gráficos con seguridad
     this.createProjectsChart();
     this.createCategoriesChart();
     this.createCollaboratorsChart();
@@ -238,9 +223,7 @@ export class ChartsComponent implements OnInit, AfterViewInit {
     this.updateCharts();
   }
 
-  // Filtra las facturas según el rango de fechas seleccionado
   getFilteredInvoices(): IInvoiceResponse[] {
-    // Si no hay facturas, devolver un array vacío
     if (!this.invoices || this.invoices.length === 0) {
       return [];
     }
@@ -249,7 +232,6 @@ export class ChartsComponent implements OnInit, AfterViewInit {
     const dateTo = this.dateTo ? new Date(this.dateTo) : null;
 
     if (dateTo) {
-      // Ajustar la fecha final para incluir todo el día
       dateTo.setHours(23, 59, 59, 999);
     }
 
@@ -263,22 +245,16 @@ export class ChartsComponent implements OnInit, AfterViewInit {
     });
   }
 
-  // Obtener la proyectId de la factura
   getProjectId(invoice: IInvoiceResponse): string {
-    // En este caso, usamos proyect como el identificador del proyecto
     return invoice.proyect || '';
   }
 
-  // Obtener nombre del proyecto por su ID
   getProjectName(projectId: string): string {
-    // Usar el mapa para obtener el nombre directamente
     const projectName = this.projectMap.get(projectId);
 
-    // Si no se encuentra en el mapa, buscar en projects
     if (!projectName && projectId) {
       const project = this.projects.find((p) => p._id === projectId);
       if (project) {
-        // Actualizar el mapa para futuras consultas
         this.projectMap.set(projectId, project.name);
         return project.name;
       }
@@ -287,16 +263,12 @@ export class ChartsComponent implements OnInit, AfterViewInit {
     return projectName || projectId || 'Proyecto desconocido';
   }
 
-  // Obtener nombre de la categoría por su ID
   getCategoryName(categoryId: string): string {
-    // Usar el mapa para obtener el nombre directamente
     const categoryName = this.categoryMap.get(categoryId);
 
-    // Si no se encuentra en el mapa, buscar en categories
     if (!categoryName && categoryId) {
       const category = this.categories.find((c) => c._id === categoryId);
       if (category) {
-        // Actualizar el mapa para futuras consultas
         this.categoryMap.set(categoryId, category.name);
         return category.name;
       }
@@ -305,12 +277,10 @@ export class ChartsComponent implements OnInit, AfterViewInit {
     return categoryName || categoryId || 'Categoría desconocida';
   }
 
-  // Calcula el total de gastos por proyecto
   getTotalByProject(projectId: string): number {
     return this.getFilteredInvoices()
       .filter((invoice) => this.getProjectId(invoice) === projectId)
       .reduce((sum, invoice) => {
-        // Convertir a número si es string
         const total =
           typeof invoice.total === 'string'
             ? parseFloat(invoice.total)
@@ -319,12 +289,10 @@ export class ChartsComponent implements OnInit, AfterViewInit {
       }, 0);
   }
 
-  // Calcula el total de gastos por categoría
   getTotalByCategory(categoryId: string): number {
     return this.getFilteredInvoices()
       .filter((invoice) => invoice.category === categoryId)
       .reduce((sum, invoice) => {
-        // Convertir a número si es string
         const total =
           typeof invoice.total === 'string'
             ? parseFloat(invoice.total)
@@ -333,7 +301,6 @@ export class ChartsComponent implements OnInit, AfterViewInit {
       }, 0);
   }
 
-  // Gastos por proyecto
   createProjectsChart() {
     if (
       !this.projectsChartRef ||
@@ -352,7 +319,6 @@ export class ChartsComponent implements OnInit, AfterViewInit {
 
     const filteredInvoices = this.getFilteredInvoices();
 
-    // Si no hay facturas filtradas, mostrar gráfico vacío
     if (filteredInvoices.length === 0) {
       this.projectsChart = new Chart(this.projectsChartRef.nativeElement, {
         type: 'pie',
@@ -384,7 +350,6 @@ export class ChartsComponent implements OnInit, AfterViewInit {
 
     const projectTotals = new Map<string, number>();
 
-    // Sumar los montos por proyecto
     filteredInvoices.forEach((invoice) => {
       const projectId = this.getProjectId(invoice);
       if (projectId) {
@@ -397,21 +362,18 @@ export class ChartsComponent implements OnInit, AfterViewInit {
       }
     });
 
-    // Eliminar proyectos sin gastos
     for (const [id, total] of projectTotals.entries()) {
       if (total === 0) {
         projectTotals.delete(id);
       }
     }
 
-    // Preparar datos para el gráfico con nombres reales
     const labels = Array.from(projectTotals.keys()).map((id) =>
       this.getProjectName(id)
     );
 
     const data = Array.from(projectTotals.values());
 
-    // Crear el gráfico
     this.projectsChart = new Chart(this.projectsChartRef.nativeElement, {
       type: 'pie',
       data: {
@@ -439,7 +401,6 @@ export class ChartsComponent implements OnInit, AfterViewInit {
     });
   }
 
-  // Gastos por categoría
   createCategoriesChart() {
     if (
       !this.categoriesChartRef ||
@@ -458,7 +419,6 @@ export class ChartsComponent implements OnInit, AfterViewInit {
 
     const filteredInvoices = this.getFilteredInvoices();
 
-    // Si no hay facturas filtradas, mostrar gráfico vacío
     if (filteredInvoices.length === 0) {
       this.categoriesChart = new Chart(this.categoriesChartRef.nativeElement, {
         type: 'pie',
@@ -490,7 +450,6 @@ export class ChartsComponent implements OnInit, AfterViewInit {
 
     const categoryTotals = new Map<string, number>();
 
-    // Sumar los montos por categoría
     filteredInvoices.forEach((invoice) => {
       if (invoice.category) {
         const currentTotal = categoryTotals.get(invoice.category) || 0;
@@ -502,21 +461,18 @@ export class ChartsComponent implements OnInit, AfterViewInit {
       }
     });
 
-    // Eliminar categorías sin gastos
     for (const [id, total] of categoryTotals.entries()) {
       if (total === 0) {
         categoryTotals.delete(id);
       }
     }
 
-    // Preparar datos para el gráfico con nombres reales
     const labels = Array.from(categoryTotals.keys()).map((id) =>
       this.getCategoryName(id)
     );
 
     const data = Array.from(categoryTotals.values());
 
-    // Crear el gráfico
     this.categoriesChart = new Chart(this.categoriesChartRef.nativeElement, {
       type: 'pie',
       data: {
@@ -544,7 +500,6 @@ export class ChartsComponent implements OnInit, AfterViewInit {
     });
   }
 
-  // Gastos de colaboradores en el tiempo (gráfico de barras)
   createCollaboratorsChart() {
     if (
       !this.collaboratorsChartRef ||
@@ -563,7 +518,6 @@ export class ChartsComponent implements OnInit, AfterViewInit {
 
     const filteredInvoices = this.getFilteredInvoices();
 
-    // Si no hay facturas filtradas, mostrar gráfico vacío
     if (filteredInvoices.length === 0) {
       this.collaboratorsChart = new Chart(
         this.collaboratorsChartRef.nativeElement,
@@ -612,16 +566,13 @@ export class ChartsComponent implements OnInit, AfterViewInit {
       return;
     }
 
-    // Obtener intervalo de fechas para el eje X
     const months = this.getMonthsInRange();
 
-    // Agrupar por colaborador y mes
     const collaboratorsData = this.getCollaboratorsData(
       filteredInvoices,
       months
     );
 
-    // Preparar datasets para Chart.js
     const datasets = collaboratorsData.map((collaborator, index) => {
       const colorIndex = index % this.chartColors.length;
       return {
@@ -633,7 +584,6 @@ export class ChartsComponent implements OnInit, AfterViewInit {
       };
     });
 
-    // Crear el gráfico
     this.collaboratorsChart = new Chart(
       this.collaboratorsChartRef.nativeElement,
       {
@@ -673,19 +623,15 @@ export class ChartsComponent implements OnInit, AfterViewInit {
     );
   }
 
-  // Obtener los meses dentro del rango de fechas seleccionado
   getMonthsInRange(): string[] {
     const months: string[] = [];
     const dateFrom = new Date(this.dateFrom);
     const dateTo = new Date(this.dateTo);
 
-    // Crear una copia de la fecha inicial para no modificar la original
     const currentDate = new Date(dateFrom);
 
-    // Ajustar al primer día del mes
     currentDate.setDate(1);
 
-    // Añadir cada mes hasta llegar al mes final
     while (currentDate <= dateTo) {
       months.push(
         `${currentDate.getFullYear()}-${String(
@@ -698,7 +644,6 @@ export class ChartsComponent implements OnInit, AfterViewInit {
     return months;
   }
 
-  // Formatea una etiqueta de mes para mostrar (ej: "2023-01" -> "Ene 2023")
   formatMonthLabel(monthKey: string): string {
     const [year, month] = monthKey.split('-');
     const date = new Date(parseInt(year), parseInt(month) - 1, 1);
@@ -721,40 +666,29 @@ export class ChartsComponent implements OnInit, AfterViewInit {
     return `${monthNames[date.getMonth()]} ${year}`;
   }
 
-  // Obtener datos de colaboradores agrupados por mes
   getCollaboratorsData(
     invoices: IInvoiceResponse[],
     months: string[]
   ): CollaboratorExpense[] {
-    // Mapeo para agrupar por colaborador
     const collaboratorsMap: Map<string, CollaboratorExpense> = new Map();
 
-    // Obtener el ID del colaborador de la factura
-    // Nota: Como no tenemos userId directamente en IInvoiceResponse,
-    // usamos el ID del proyecto como identificador del colaborador para este ejemplo
     const getCollaboratorId = (invoice: IInvoiceResponse): string => {
-      // Podríamos tener userId en los datos (data) de la factura
       let userId = '';
 
-      // Intentar extraer userId de data si existe y es un objeto
       if (invoice.data && typeof invoice.data === 'object') {
         userId = (invoice.data as any).userId || '';
       }
 
-      // Si no hay userId, usamos el ID del proyecto como alternativa
       return userId || invoice.proyect || 'unknown';
     };
 
-    // Obtener el nombre del colaborador
     const getCollaboratorName = (invoice: IInvoiceResponse): string => {
-      // Si hay datos de usuario en data, podríamos intentar extraer el nombre
       let userName = '';
 
       if (invoice.data && typeof invoice.data === 'object') {
         userName = (invoice.data as any).userName || '';
       }
 
-      // Si no hay nombre de usuario, usamos el nombre del proyecto
       return (
         userName ||
         invoice.projectName ||
@@ -763,7 +697,6 @@ export class ChartsComponent implements OnInit, AfterViewInit {
       );
     };
 
-    // Inicializar estructura para cada colaborador
     invoices.forEach((invoice) => {
       const collaboratorId = getCollaboratorId(invoice);
       const invoiceDate = new Date(invoice.updatedAt);
@@ -771,7 +704,6 @@ export class ChartsComponent implements OnInit, AfterViewInit {
         invoiceDate.getMonth() + 1
       ).padStart(2, '0')}`;
 
-      // Si el mes no está en nuestro rango, ignoramos esta factura
       if (!months.includes(monthKey)) {
         return;
       }
@@ -784,7 +716,6 @@ export class ChartsComponent implements OnInit, AfterViewInit {
           color: '',
         };
 
-        // Inicializar todos los meses con cero
         months.forEach((month) => {
           collaboratorExpense.expenses[month] = 0;
         });
@@ -792,7 +723,6 @@ export class ChartsComponent implements OnInit, AfterViewInit {
         collaboratorsMap.set(collaboratorId, collaboratorExpense);
       }
 
-      // Sumar el gasto al mes correspondiente
       const total =
         typeof invoice.total === 'string'
           ? parseFloat(invoice.total)
@@ -803,10 +733,8 @@ export class ChartsComponent implements OnInit, AfterViewInit {
         (collaborator.expenses[monthKey] || 0) + total;
     });
 
-    // Convertir el mapa a un array y asignar colores
     const result = Array.from(collaboratorsMap.values());
 
-    // Asignar colores (limitar a máximo 10 colaboradores para evitar demasiados colores)
     result.slice(0, 10).forEach((collaborator, index) => {
       collaborator.color = this.chartColors[index % this.chartColors.length];
     });
@@ -814,7 +742,6 @@ export class ChartsComponent implements OnInit, AfterViewInit {
     return result;
   }
 
-  // Formatea el número para mostrar como moneda
   formatCurrency(value: number): string {
     return new Intl.NumberFormat('es-PE', {
       style: 'currency',
@@ -822,7 +749,6 @@ export class ChartsComponent implements OnInit, AfterViewInit {
     }).format(value);
   }
 
-  // Obtener los IDs de los proyectos que tienen gastos en el período filtrado
   getProjectIdsWithExpenses(): string[] {
     const filteredInvoices = this.getFilteredInvoices();
     const projectIdsWithExpenses = new Set<string>();
@@ -837,7 +763,6 @@ export class ChartsComponent implements OnInit, AfterViewInit {
     return Array.from(projectIdsWithExpenses);
   }
 
-  // Obtener los IDs de las categorías que tienen gastos en el período filtrado
   getCategoryIdsWithExpenses(): string[] {
     const filteredInvoices = this.getFilteredInvoices();
     const categoryIdsWithExpenses = new Set<string>();
@@ -851,7 +776,6 @@ export class ChartsComponent implements OnInit, AfterViewInit {
     return Array.from(categoryIdsWithExpenses);
   }
 
-  // Calcular el total general de gastos en el período filtrado
   getTotalExpenses(): number {
     const filteredInvoices = this.getFilteredInvoices();
 
@@ -864,7 +788,6 @@ export class ChartsComponent implements OnInit, AfterViewInit {
     }, 0);
   }
 
-  // Métodos para controlar el accordion
   toggleSection(
     section: 'collaborators' | 'projects' | 'categories' | 'summary'
   ) {
@@ -888,8 +811,6 @@ export class ChartsComponent implements OnInit, AfterViewInit {
   }
 
   refreshChart(chartType: 'collaborators' | 'projects' | 'categories') {
-    // Cuando se expande una sección, necesitamos actualizar el gráfico
-    // ya que Chart.js puede no renderizar correctamente en elementos ocultos
     setTimeout(() => {
       switch (chartType) {
         case 'collaborators':

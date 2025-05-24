@@ -16,6 +16,7 @@ import { CommonModule } from '@angular/common';
 import { IProject } from '../interfaces/project.interface';
 import { ICategory } from '../interfaces/category.interface';
 import { InvoiceStatus } from '../interfaces/invoices.interface';
+import { UserStateService } from '../../../services/user-state.service';
 
 @Component({
   selector: 'app-add-invoice',
@@ -32,6 +33,7 @@ export default class AddInvoiceComponent implements OnInit {
   private route = inject(ActivatedRoute);
   private sanitizer = inject(DomSanitizer);
   private uploadService = inject(UploadService);
+  private userStateService = inject(UserStateService);
 
   form: FormGroup = this.fb.group({
     proyect: ['', Validators.required],
@@ -56,18 +58,26 @@ export default class AddInvoiceComponent implements OnInit {
     this.loadCategories();
     this.loadProjects();
 
-    if (this.id) {
-      this.getInvoice();
+    const companyId = this.userStateService.getUser()?.companyId;
+    if (this.id && companyId) {
+      this.invoiceService
+        .getInvoiceById(this.id, companyId)
+        .subscribe((res) => {
+          this.form.patchValue(res);
+        });
     }
   }
 
   loadCategories() {
-    this.invoiceService.getCategories().subscribe({
-      next: (categories) => {
-        this.categories = categories;
-      },
-      error: (error) => { },
-    });
+    const companyId = this.userStateService.getUser()?.companyId;
+    if (companyId) {
+      this.invoiceService.getCategories(companyId).subscribe({
+        next: (categories) => {
+          this.categories = categories;
+        },
+        error: (error) => {},
+      });
+    }
   }
 
   loadProjects() {
@@ -75,13 +85,7 @@ export default class AddInvoiceComponent implements OnInit {
       next: (projects) => {
         this.proyects = projects;
       },
-      error: (error) => { },
-    });
-  }
-
-  getInvoice() {
-    this.invoiceService.getInvoiceById(this.id).subscribe((res) => {
-      this.form.patchValue(res);
+      error: (error) => {},
     });
   }
 
@@ -180,7 +184,7 @@ export default class AddInvoiceComponent implements OnInit {
           this.isLoading.set(false);
           this.notificationService.show(
             'Error al subir la factura: ' +
-            (error.message || 'Intente nuevamente'),
+              (error.message || 'Intente nuevamente'),
             'error'
           );
         },

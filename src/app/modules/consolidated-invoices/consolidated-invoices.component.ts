@@ -18,6 +18,7 @@ import { IProject } from '../invoices/interfaces/project.interface';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { tap } from 'rxjs/operators';
+import { UserStateService } from '../../services/user-state.service';
 
 interface IInvoice {
   _id?: string;
@@ -73,6 +74,7 @@ export class ConsolidatedInvoicesComponent implements OnInit {
   private router = inject(Router);
   private notificationService = inject(NotificationService);
   private confirmationService = inject(ConfirmationService);
+  private userStateService = inject(UserStateService);
 
   private currentUserId = '1';
 
@@ -166,17 +168,20 @@ export class ConsolidatedInvoicesComponent implements OnInit {
 
   ngOnInit() {
     this.getProjects();
-    this.getCategories().subscribe({
-      next: () => {
-        this.getInvoices();
-      },
-      error: (error) => {
-        this.notificationService.show(
-          'Error al cargar las categorías: ' + error.message,
-          'error'
-        );
-      },
-    });
+    const categories$ = this.getCategories();
+    if (categories$) {
+      categories$.subscribe({
+        next: () => {
+          this.getInvoices();
+        },
+        error: (error) => {
+          this.notificationService.show(
+            'Error al cargar las categorías: ' + error.message,
+            'error'
+          );
+        },
+      });
+    }
   }
 
   toggleCategoriesSection() {
@@ -210,16 +215,17 @@ export class ConsolidatedInvoicesComponent implements OnInit {
       accept: () => {
         this.agentService.deleteCategory(id).subscribe({
           next: () => {
-            this.categories = this.categories.filter(
+            this.categories = this.categories?.filter(
               (category) => category._id !== id
             );
-
+            const categories$ = this.getCategories();
+            if (categories$) {
+              categories$.subscribe();
+            }
             this.notificationService.show(
               'Categoría eliminada correctamente',
               'success'
             );
-
-            this.getCategories().subscribe();
           },
           error: (error) => {
             this.notificationService.show(
@@ -264,7 +270,17 @@ export class ConsolidatedInvoicesComponent implements OnInit {
 
   getInvoices() {
     this.loading = true;
-    this.agentService.getInvoices().subscribe({
+    const user = this.userStateService.getUser();
+    const companyId = user?.companyId;
+    if (!companyId) {
+      this.notificationService.show(
+        'No se encontró companyId en el usuario',
+        'error'
+      );
+      this.loading = false;
+      return;
+    }
+    this.agentService.getInvoices(companyId).subscribe({
       next: (res) => {
         if (res && res.length > 0) {
           const firstItem = res[0];
@@ -555,7 +571,15 @@ export class ConsolidatedInvoicesComponent implements OnInit {
   }
 
   getCategories() {
-    return this.agentService.getCategories().pipe(
+    const companyId = this.userStateService.getUser()?.companyId;
+    if (!companyId) {
+      this.notificationService.show(
+        'No se encontró companyId en el usuario',
+        'error'
+      );
+      return;
+    }
+    return this.agentService.getCategories(companyId).pipe(
       tap({
         next: (categories) => {
           this.categories = categories;

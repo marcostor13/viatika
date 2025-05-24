@@ -13,6 +13,7 @@ import {
 import { IHeaderList } from '../../interfaces/header-list.interface';
 import { CATEGORIES } from './constants/categories';
 import { IProject } from './interfaces/project.interface';
+import { UserStateService } from '../../services/user-state.service';
 
 @Component({
   selector: 'app-invoices',
@@ -26,6 +27,7 @@ export default class InvoicesComponent implements OnInit {
   private router = inject(Router);
   private notificationService = inject(NotificationService);
   private confirmationService = inject(ConfirmationService);
+  private userStateService = inject(UserStateService);
 
   invoices: IInvoiceResponse[] = [];
   projects: IProject[] = [];
@@ -104,9 +106,14 @@ export default class InvoicesComponent implements OnInit {
   }
 
   getInvoices() {
-    this.agentService.getInvoices().subscribe((res) => {
-      this.invoices = this.formatResponse(res);
-    });
+    const companyId = this.userStateService.getUser()?.companyId;
+    if (companyId) {
+      this.agentService.getInvoices(companyId).subscribe((res) => {
+        this.invoices = this.formatResponse(res);
+      });
+    } else {
+      this.getInvoices();
+    }
   }
 
   downloadInvoice(_id: string) {

@@ -6,4 +6,5 @@ export interface ICategory {
   isActive?: boolean;
   createdAt?: Date;
   updatedAt?: Date;
+  companyId?: string;
 }

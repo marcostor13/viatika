@@ -27,12 +27,12 @@ export class InvoicesService {
     );
   }
 
-  getInvoices(): Observable<IInvoiceResponse[]> {
-    return this.http.get<IInvoiceResponse[]>(`${this.url}`);
+  getInvoices(companyId: string): Observable<IInvoiceResponse[]> {
+    return this.http.get<IInvoiceResponse[]>(`${this.url}/${companyId}`);
   }
 
-  getInvoiceById(id: string): Observable<IInvoiceResponse> {
-    return this.http.get<IInvoiceResponse>(`${this.url}/${id}`);
+  getInvoiceById(id: string, companyId: string): Observable<IInvoiceResponse> {
+    return this.http.get<IInvoiceResponse>(`${this.url}/${id}/${companyId}`);
   }
 
   uploadInvoice(formData: FormData): Observable<IInvoiceResponse> {
@@ -63,12 +63,12 @@ export class InvoicesService {
     );
   }
 
-  getCategories(): Observable<ICategory[]> {
-    return this.http.get<ICategory[]>(`${this.categoryUrl}`);
+  getCategories(companyId: string): Observable<ICategory[]> {
+    return this.http.get<ICategory[]>(`${this.categoryUrl}/${companyId}`);
   }
 
-  getCategoryById(id: string): Observable<ICategory> {
-    return this.http.get<ICategory>(`${this.categoryUrl}/${id}`);
+  getCategoryById(id: string, companyId: string): Observable<ICategory> {
+    return this.http.get<ICategory>(`${this.categoryUrl}/${id}/${companyId}`);
   }
 
   createCategory(category: ICategory): Observable<ICategory> {
