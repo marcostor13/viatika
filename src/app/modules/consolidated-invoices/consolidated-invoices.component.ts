@@ -330,12 +330,12 @@ export class ConsolidatedInvoicesComponent implements OnInit {
           if (typeof invoice.data === 'string') {
             try {
               invoiceData = JSON.parse(invoice.data);
-            } catch (parseError) {}
+            } catch (parseError) { }
           } else if (typeof invoice.data === 'object') {
             invoiceData = invoice.data;
           }
         }
-      } catch (error) {}
+      } catch (error) { }
 
       const categoryObj = categories.find((c) => c.key === invoice.category);
       const categoryName = categoryObj

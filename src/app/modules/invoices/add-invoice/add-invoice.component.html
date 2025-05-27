@@ -33,7 +33,7 @@
       formControlName="proyectId"
       class="w-full p-2 border border-gray-300"
     >
-      <option [value]="">Seleccione un proyecto</option>
+      <option value="">Seleccione un proyecto</option>
       @for(proyect of proyects; track proyect._id){
       <option [value]="proyect._id">{{ proyect.name }}</option>
       }
@@ -49,8 +49,9 @@
       formControlName="categoryId"
       class="w-full p-2 border border-gray-300"
     >
-      @for(category of categories; track category){
-      <option value="{{ category.key }}">{{ category.name }}</option>
+      <option value="">Seleccione una categoría</option>
+      @for(category of categories; track category._id){
+      <option value="{{ category._id }}">{{ category.name }}</option>
       }
     </select>
     @if (categoryId?.invalid && categoryId?.touched) {

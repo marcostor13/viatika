@@ -35,12 +35,7 @@ export default class AddInvoiceComponent implements OnInit {
   private uploadService = inject(UploadService);
   private userStateService = inject(UserStateService);
 
-  form: FormGroup = this.fb.group({
-    proyect: ['', Validators.required],
-    category: ['', Validators.required],
-    file: ['', Validators.required],
-  });
-
+  form!: FormGroup
   id: string = this.route.snapshot.params['id'];
   categories: ICategory[] = [];
   proyects: IProject[] = [];
@@ -75,7 +70,7 @@ export default class AddInvoiceComponent implements OnInit {
         next: (categories) => {
           this.categories = categories;
         },
-        error: (error) => {},
+        error: (error) => { },
       });
     }
   }
@@ -85,7 +80,7 @@ export default class AddInvoiceComponent implements OnInit {
       next: (projects) => {
         this.proyects = projects;
       },
-      error: (error) => {},
+      error: (error) => { },
     });
   }
 
@@ -158,19 +153,15 @@ export default class AddInvoiceComponent implements OnInit {
 
   save() {
     if (this.form.valid) {
-      const projectId = this.form.get('proyect')?.value;
-
-      const selectedProject = this.proyects.find((p) => p._id === projectId);
-      const projectName = selectedProject?.name || '';
 
       const payload = {
-        proyect: projectId,
-        projectName: projectName,
-        category: this.form.get('category')?.value,
+        categoryId: this.form.get('categoryId')?.value,
+        proyectId: this.form.get('proyectId')?.value,
         imageUrl: this.form.get('file')?.value,
         status: 'pending' as InvoiceStatus,
       };
 
+      console.log(payload);
       this.invoiceService.analyzeInvoice(payload).subscribe({
         next: (res) => {
           this.isLoading.set(false);
@@ -184,7 +175,7 @@ export default class AddInvoiceComponent implements OnInit {
           this.isLoading.set(false);
           this.notificationService.show(
             'Error al subir la factura: ' +
-              (error.message || 'Intente nuevamente'),
+            (error.message || 'Intente nuevamente'),
             'error'
           );
         },

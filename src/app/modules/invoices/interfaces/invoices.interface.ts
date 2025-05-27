@@ -1,3 +1,5 @@
+import { IProject } from "./project.interface";
+import { ICategory } from "./category.interface";
 export interface IInvoice {
   proyect: string;
   category: string;
@@ -12,6 +14,8 @@ export type InvoiceStatus = 'pending' | 'approved' | 'rejected';
 export interface IInvoiceResponse {
   _id: string;
   proyect: string;
+  proyectId: IProject;
+  categoryId: ICategory;
   projectName?: string;
   category: string;
   file: string;
@@ -38,9 +42,8 @@ export interface IInvoiceResponse {
 }
 
 export interface InvoicePayload {
-  proyect: string;
-  projectName?: string;
-  category: string;
+  proyectId: string;
+  categoryId: string;
   imageUrl: string;
   status?: InvoiceStatus;
 }

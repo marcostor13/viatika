@@ -126,8 +126,6 @@ export default class InvoicesComponent implements OnInit {
   }
 
   formatResponse(res: IInvoiceResponse[]): IInvoiceResponse[] {
-    const categories = CATEGORIES;
-    const projectList = this.projects;
 
     return res.map((invoice) => {
       let invoiceData: any = {};
@@ -137,22 +135,12 @@ export default class InvoicesComponent implements OnInit {
           if (typeof invoice.data === 'string') {
             try {
               invoiceData = JSON.parse(invoice.data);
-            } catch (parseError) {}
+            } catch (parseError) { }
           } else if (typeof invoice.data === 'object') {
             invoiceData = invoice.data;
           }
         }
-      } catch (error) {}
-
-      const categoryObj = categories.find((c) => c.key === invoice.category);
-      const categoryName = categoryObj
-        ? categoryObj.name
-        : this.capitalizeFirstLetter(invoice.category) || 'No disponible';
-
-      const projectObj = projectList.find((p) => p._id === invoice.proyect);
-      const projectName = projectObj
-        ? projectObj.name
-        : invoice.proyect || 'No disponible';
+      } catch (error) { }
 
       const razonSocial = invoiceData.razonSocial || 'No disponible';
       const direccionEmisor = invoiceData.direccionEmisor || 'No disponible';
@@ -164,9 +152,8 @@ export default class InvoicesComponent implements OnInit {
 
       return {
         ...invoice,
-        proyect: projectName,
-        proyectId: invoice.proyect,
-        category: categoryName,
+        proyect: invoice.proyectId.name,
+        category: invoice.categoryId.name,
         ruc: rucEmisor,
         tipo: tipoComprobante,
         createdAt: new Date(invoice.createdAt).toLocaleDateString('es-ES', {

@@ -16,7 +16,7 @@ import { IProject } from '../interfaces/project.interface';
 export class InvoicesService {
   url: string = `${environment.api}/expense`;
   categoryUrl: string = `${environment.api}/categories`;
-  projectUrl: string = `${environment.api}/project-types`;
+  projectUrl: string = `${environment.api}/projects`;
 
   private http = inject(HttpClient);
 
