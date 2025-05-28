@@ -284,7 +284,7 @@ export class ConsolidatedInvoicesComponent implements OnInit {
       next: (res) => {
         if (res && res.length > 0) {
           const firstItem = res[0];
-          if ('category' in firstItem && 'data' in firstItem) {
+          if ('categoryId' in firstItem && 'data' in firstItem) {
             this.invoices = this.formatResponse(res);
             this.calculateProjectsWithInvoiceCount();
           } else {
@@ -320,8 +320,6 @@ export class ConsolidatedInvoicesComponent implements OnInit {
   }
 
   formatResponse(res: IInvoiceResponse[]) {
-    const categories = this.categories;
-    const projectList = this.projects;
     return res.map((invoice) => {
       let invoiceData: any = {};
 
@@ -337,15 +335,9 @@ export class ConsolidatedInvoicesComponent implements OnInit {
         }
       } catch (error) { }
 
-      const categoryObj = categories.find((c) => c.key === invoice.category);
-      const categoryName = categoryObj
-        ? categoryObj.name
-        : this.capitalizeFirstLetter(invoice.category) || 'No disponible';
+      const categoryName = invoice.categoryId.name || 'No disponible';
 
-      const projectObj = projectList.find((p) => p._id === invoice.proyect);
-      const projectName = projectObj
-        ? projectObj.name
-        : invoice.proyect || 'No disponible';
+      const projectName = invoice.proyectId.name || 'No disponible';
       const razonSocial = invoiceData.razonSocial || 'No disponible';
       const direccionEmisor = invoiceData.direccionEmisor || 'No disponible';
       const rucEmisor = invoiceData.rucEmisor || 'No disponible';
@@ -545,9 +537,11 @@ export class ConsolidatedInvoicesComponent implements OnInit {
       const from = this.filterDateFrom()
         ? new Date(this.filterDateFrom())
         : null;
+      from?.setHours(0, 0, 0, 0);
       const to = this.filterDateTo() ? new Date(this.filterDateTo()) : null;
-      const matchesFrom = from ? date >= from : true;
-      const matchesTo = to ? date <= to : true;
+      to?.setHours(23, 59, 59, 999);
+      const matchesFrom = from?.getTime() ? date.getTime() >= from.getTime() : true;
+      const matchesTo = to?.getTime() ? date.getTime() <= to.getTime() : true;
       const amount =
         parseFloat(inv.total?.toString().replace(/[^\d.]/g, '')) || 0;
       const min = this.filterAmountMin()
