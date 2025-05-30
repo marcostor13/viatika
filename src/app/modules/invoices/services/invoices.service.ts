@@ -1,4 +1,4 @@
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpParams } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import {
   IInvoiceResponse,
@@ -27,8 +27,25 @@ export class InvoicesService {
     );
   }
 
-  getInvoices(companyId: string): Observable<IInvoiceResponse[]> {
-    return this.http.get<IInvoiceResponse[]>(`${this.url}/${companyId}`);
+  getInvoices(
+    companyId: string,
+    filters?: any
+  ): Observable<IInvoiceResponse[]> {
+    let params = new HttpParams();
+    if (filters) {
+      Object.keys(filters).forEach((key) => {
+        if (
+          filters[key] !== undefined &&
+          filters[key] !== null &&
+          filters[key] !== ''
+        ) {
+          params = params.set(key, filters[key]);
+        }
+      });
+    }
+    return this.http.get<IInvoiceResponse[]>(`${this.url}/${companyId}`, {
+      params,
+    });
   }
 
   getInvoiceById(id: string, companyId: string): Observable<IInvoiceResponse> {

@@ -23,7 +23,7 @@ import { UserStateService } from '../../services/user-state.service';
 interface IInvoice {
   _id?: string;
   proyect: string;
-  proyectId?: string;
+  proyectId?: string | IProject;
   category: string;
   categoryKey?: string;
   file: string;
@@ -166,6 +166,16 @@ export class ConsolidatedInvoicesComponent implements OnInit {
     { header: 'Estado', field: 'status' },
   ];
 
+  filters = computed(() => ({
+    projectId: this.filterProject(),
+    categoryId: this.filterCategory(),
+    status: this.filterStatus(),
+    dateFrom: this.filterDateFrom(),
+    dateTo: this.filterDateTo(),
+    amountMin: this.filterAmountMin(),
+    amountMax: this.filterAmountMax(),
+  }));
+
   ngOnInit() {
     this.getProjects();
     const categories$ = this.getCategories();
@@ -280,7 +290,7 @@ export class ConsolidatedInvoicesComponent implements OnInit {
       this.loading = false;
       return;
     }
-    this.agentService.getInvoices(companyId).subscribe({
+    this.agentService.getInvoices(companyId, this.filters()).subscribe({
       next: (res) => {
         if (res && res.length > 0) {
           const firstItem = res[0];
@@ -328,12 +338,12 @@ export class ConsolidatedInvoicesComponent implements OnInit {
           if (typeof invoice.data === 'string') {
             try {
               invoiceData = JSON.parse(invoice.data);
-            } catch (parseError) { }
+            } catch (parseError) {}
           } else if (typeof invoice.data === 'object') {
             invoiceData = invoice.data;
           }
         }
-      } catch (error) { }
+      } catch (error) {}
 
       const categoryName = invoice.categoryId.name || 'No disponible';
 
@@ -355,7 +365,7 @@ export class ConsolidatedInvoicesComponent implements OnInit {
       const processedInvoice = {
         _id: invoice._id,
         proyect: projectName,
-        proyectId: invoice.proyect,
+        proyectId: invoice.proyectId,
         category: categoryName,
         categoryKey: invoice.category,
         file: invoice.file,
@@ -523,45 +533,7 @@ export class ConsolidatedInvoicesComponent implements OnInit {
   }
 
   get filteredInvoices() {
-    return this.invoices.filter((inv) => {
-      const matchesProject = this.filterProject()
-        ? inv.proyect === this.filterProject()
-        : true;
-      const matchesCategory = this.filterCategory()
-        ? inv.category === this.filterCategory()
-        : true;
-      const matchesStatus = this.filterStatus()
-        ? inv.status === this.filterStatus()
-        : true;
-      const date = new Date(inv.createdAt.split('/').reverse().join('-'));
-      const from = this.filterDateFrom()
-        ? new Date(this.filterDateFrom())
-        : null;
-      from?.setHours(0, 0, 0, 0);
-      const to = this.filterDateTo() ? new Date(this.filterDateTo()) : null;
-      to?.setHours(23, 59, 59, 999);
-      const matchesFrom = from?.getTime() ? date.getTime() >= from.getTime() : true;
-      const matchesTo = to?.getTime() ? date.getTime() <= to.getTime() : true;
-      const amount =
-        parseFloat(inv.total?.toString().replace(/[^\d.]/g, '')) || 0;
-      const min = this.filterAmountMin()
-        ? parseFloat(this.filterAmountMin())
-        : null;
-      const max = this.filterAmountMax()
-        ? parseFloat(this.filterAmountMax())
-        : null;
-      const matchesMin = min !== null ? amount >= min : true;
-      const matchesMax = max !== null ? amount <= max : true;
-      return (
-        matchesProject &&
-        matchesCategory &&
-        matchesStatus &&
-        matchesFrom &&
-        matchesTo &&
-        matchesMin &&
-        matchesMax
-      );
-    });
+    return this.invoices;
   }
 
   getCategories() {
@@ -620,7 +592,13 @@ export class ConsolidatedInvoicesComponent implements OnInit {
     });
 
     this.invoices.forEach((invoice) => {
-      const projectId = invoice.proyectId as string;
+      let projectId = '';
+      const pId = invoice.proyectId as any;
+      if (pId && typeof pId === 'object' && '_id' in pId) {
+        projectId = pId._id || '';
+      } else {
+        projectId = pId || '';
+      }
       const projectName = invoice.proyect;
 
       if (projectId) {

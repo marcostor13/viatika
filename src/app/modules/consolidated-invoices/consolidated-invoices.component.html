@@ -272,7 +272,7 @@
       <select
         class="w-full px-4 py-2 rounded-lg border border-blue-100 bg-blue-50 focus:outline-none focus:ring-2 focus:ring-blue-200 text-sm"
         [ngModel]="filterProject()"
-        (ngModelChange)="filterProject.set($event)"
+        (ngModelChange)="filterProject.set($event); getInvoices()"
         name="project"
       >
         <option value="">Todos los proyectos</option>
@@ -283,7 +283,7 @@
       <select
         class="w-full px-4 py-2 rounded-lg border border-blue-100 bg-blue-50 focus:outline-none focus:ring-2 focus:ring-blue-200 text-sm"
         [ngModel]="filterCategory()"
-        (ngModelChange)="filterCategory.set($event)"
+        (ngModelChange)="filterCategory.set($event); getInvoices()"
         name="category"
       >
         <option value="">Todas las categorías</option>
@@ -294,7 +294,7 @@
       <select
         class="w-full px-4 py-2 rounded-lg border border-blue-100 bg-blue-50 focus:outline-none focus:ring-2 focus:ring-blue-200 text-sm"
         [ngModel]="filterStatus()"
-        (ngModelChange)="filterStatus.set($event)"
+        (ngModelChange)="filterStatus.set($event); getInvoices()"
         name="status"
       >
         <option value="">Todos los estados</option>
@@ -307,7 +307,7 @@
         class="w-full px-4 py-2 rounded-lg border border-blue-100 bg-blue-50 focus:outline-none focus:ring-2 focus:ring-blue-200 text-sm"
         placeholder="Desde"
         [ngModel]="filterDateFrom()"
-        (ngModelChange)="filterDateFrom.set($event)"
+        (ngModelChange)="filterDateFrom.set($event); getInvoices()"
         name="dateFrom"
       />
       <input
@@ -315,7 +315,7 @@
         class="w-full px-4 py-2 rounded-lg border border-blue-100 bg-blue-50 focus:outline-none focus:ring-2 focus:ring-blue-200 text-sm"
         placeholder="Hasta"
         [ngModel]="filterDateTo()"
-        (ngModelChange)="filterDateTo.set($event)"
+        (ngModelChange)="filterDateTo.set($event); getInvoices()"
         name="dateTo"
       />
       <div class="grid grid-cols-2 gap-2">
@@ -324,7 +324,7 @@
           class="w-full px-4 py-2 rounded-lg border border-blue-100 bg-blue-50 focus:outline-none focus:ring-2 focus:ring-blue-200 text-sm"
           placeholder="Monto mínimo"
           [ngModel]="filterAmountMin()"
-          (ngModelChange)="filterAmountMin.set($event)"
+          (ngModelChange)="filterAmountMin.set($event); getInvoices()"
           name="amountMin"
           min="0"
         />
@@ -333,7 +333,7 @@
           class="w-full px-4 py-2 rounded-lg border border-blue-100 bg-blue-50 focus:outline-none focus:ring-2 focus:ring-blue-200 text-sm"
           placeholder="Monto máximo"
           [ngModel]="filterAmountMax()"
-          (ngModelChange)="filterAmountMax.set($event)"
+          (ngModelChange)="filterAmountMax.set($event); getInvoices()"
           name="amountMax"
           min="0"
         />

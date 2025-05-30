@@ -5,6 +5,7 @@ import {
   ElementRef,
   ViewChild,
   inject,
+  ChangeDetectorRef,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -13,6 +14,8 @@ import { IInvoiceResponse } from '../../invoices/interfaces/invoices.interface';
 import { IProject } from '../../invoices/interfaces/project.interface';
 import { ICategory } from '../../invoices/interfaces/category.interface';
 import { UserStateService } from '../../../services/user-state.service';
+import { ExpenseService } from '../../../services/expense.service';
+import { forkJoin } from 'rxjs';
 
 declare var Chart: any;
 
@@ -39,10 +42,14 @@ export class ChartsComponent implements OnInit, AfterViewInit {
 
   private invoicesService = inject(InvoicesService);
   private userStateService = inject(UserStateService);
+  private expenseService = inject(ExpenseService);
+  private cdr = inject(ChangeDetectorRef);
 
   invoices: IInvoiceResponse[] = [];
   projects: IProject[] = [];
   categories: ICategory[] = [];
+  expenses: any[] = [];
+  filteredExpenses: any[] = [];
 
   showCollaboratorsSection = true;
   showProjectsSection = true;
@@ -80,33 +87,27 @@ export class ChartsComponent implements OnInit, AfterViewInit {
     '#FF73A6',
   ];
 
+  filterProject: string = '';
+  filterCategory: string = '';
+
   ngOnInit() {
     this.loadData();
     this.loadChartLibrary();
   }
 
-  loadData() {
-    this.getProjects();
-    this.getCategories();
-    setTimeout(() => {
-      this.getInvoices();
-    }, 300);
-  }
-
   ngAfterViewInit() {
-    this.checkAndRenderCharts();
+    this.tryRenderCharts();
   }
 
-  checkAndRenderCharts() {
+  private tryRenderCharts() {
     if (
       this.chartLibraryLoaded &&
       this.dataLoaded &&
       this.projectsChartRef &&
-      this.categoriesChartRef
+      this.categoriesChartRef &&
+      this.collaboratorsChartRef
     ) {
       this.updateCharts();
-    } else {
-      setTimeout(() => this.checkAndRenderCharts(), 500);
     }
   }
 
@@ -131,6 +132,7 @@ export class ChartsComponent implements OnInit, AfterViewInit {
   loadChartLibrary() {
     if (typeof Chart !== 'undefined') {
       this.chartLibraryLoaded = true;
+      this.tryRenderCharts();
       return;
     }
 
@@ -138,115 +140,103 @@ export class ChartsComponent implements OnInit, AfterViewInit {
     script.src = 'https://cdn.jsdelivr.net/npm/chart.js';
     script.onload = () => {
       this.chartLibraryLoaded = true;
-      this.checkAndRenderCharts();
+      this.tryRenderCharts();
     };
     document.body.appendChild(script);
   }
 
-  getInvoices() {
+  loadData() {
     const companyId = this.userStateService.getUser()?.companyId;
-    if (companyId) {
-      this.invoicesService.getInvoices(companyId).subscribe({
-        next: (invoices) => {
-          this.invoices = invoices;
-          console.log('Facturas cargadas:', this.invoices.length);
-          this.dataLoaded = true;
-          this.checkAndRenderCharts();
-        },
-        error: (error) => {
-          console.error('Error al obtener facturas', error);
-          this.dataLoaded = true;
-        },
-      });
-    }
-  }
-
-  getProjects() {
-    this.invoicesService.getProjects().subscribe({
-      next: (projects) => {
+    forkJoin([
+      this.invoicesService.getProjects(),
+      companyId ? this.invoicesService.getCategories(companyId) : [],
+      companyId
+        ? this.expenseService.getExpenses(companyId, {
+            dateFrom: this.dateFrom,
+            dateTo: this.dateTo,
+            projectId: this.filterProject,
+            categoryId: this.filterCategory,
+          })
+        : [],
+    ]).subscribe({
+      next: ([projects, categories, expenses]) => {
         this.projects = projects;
-        console.log('Proyectos cargados:', this.projects.length);
-
+        this.categories = categories;
+        this.expenses = expenses;
         this.projectMap.clear();
         this.projects.forEach((project) => {
           if (project._id) {
             this.projectMap.set(project._id, project.name);
           }
         });
+        this.categoryMap.clear();
+        this.categories.forEach((category) => {
+          if (category._id) {
+            this.categoryMap.set(category._id, category.name);
+          }
+        });
+        this.updateFilteredExpenses();
+        this.dataLoaded = true;
+        this.cdr.detectChanges();
+        this.tryRenderCharts();
       },
       error: (error) => {
-        console.error('Error al obtener proyectos', error);
+        console.error('Error al cargar datos', error);
+        this.dataLoaded = true;
       },
     });
   }
 
-  getCategories() {
-    const companyId = this.userStateService.getUser()?.companyId;
-    if (companyId) {
-      this.invoicesService.getCategories(companyId).subscribe({
-        next: (categories) => {
-          this.categories = categories;
-          console.log('Categorías cargadas:', this.categories.length);
-          this.categoryMap.clear();
-          this.categories.forEach((category) => {
-            if (category._id) {
-              this.categoryMap.set(category._id, category.name);
-            }
-          });
-        },
-        error: (error) => {
-          console.error('Error al obtener categorías', error);
-        },
-      });
-    }
+  onFilterChange() {
+    this.updateFilteredExpenses();
+    this.updateCharts();
   }
 
   updateCharts() {
     if (!this.chartLibraryLoaded || typeof Chart === 'undefined') {
-      console.log('Chart.js no está cargado aún, reintentando en 500ms');
-      setTimeout(() => this.updateCharts(), 500);
       return;
     }
-
-    if (!this.projectsChartRef || !this.categoriesChartRef) {
-      console.log('Referencias a canvas no disponibles, reintentando en 500ms');
-      setTimeout(() => this.updateCharts(), 500);
+    if (
+      !this.projectsChartRef ||
+      !this.categoriesChartRef ||
+      !this.collaboratorsChartRef
+    ) {
       return;
     }
-
     this.createProjectsChart();
     this.createCategoriesChart();
     this.createCollaboratorsChart();
   }
 
-  onFilterChange() {
-    this.updateCharts();
-  }
-
-  getFilteredInvoices(): IInvoiceResponse[] {
-    if (!this.invoices || this.invoices.length === 0) {
-      return [];
-    }
-
+  updateFilteredExpenses() {
     const dateFrom = this.dateFrom ? new Date(this.dateFrom) : null;
     const dateTo = this.dateTo ? new Date(this.dateTo) : null;
-
-    if (dateTo) {
-      dateTo.setHours(23, 59, 59, 999);
-    }
-
-    return this.invoices.filter((invoice) => {
-      const invoiceDate = new Date(invoice.updatedAt);
-
-      const isAfterFrom = dateFrom ? invoiceDate >= dateFrom : true;
-      const isBeforeTo = dateTo ? invoiceDate <= dateTo : true;
-
+    if (dateTo) dateTo.setHours(23, 59, 59, 999);
+    this.filteredExpenses = this.expenses.filter((expense) => {
+      if (!expense.fechaEmision) return false;
+      const expenseDate = new Date(expense.fechaEmision);
+      const isAfterFrom = dateFrom ? expenseDate >= dateFrom : true;
+      const isBeforeTo = dateTo ? expenseDate <= dateTo : true;
       return isAfterFrom && isBeforeTo;
     });
   }
 
-  getProjectId(invoice: IInvoiceResponse): string {
-    return invoice.proyect || '';
+  getFilteredInvoices(): any[] {
+    return this.filteredExpenses;
+  }
+
+  getProjectId(expense: any): string {
+    if (expense.proyectId && typeof expense.proyectId === 'object') {
+      return expense.proyectId._id || '';
+    }
+    return expense.proyectId || '';
+  }
+
+  getCategoryId(expense: any): string {
+    if (expense.categoryId && typeof expense.categoryId === 'object') {
+      return expense.categoryId._id || '';
+    }
+    return expense.categoryId || '';
   }
 
   getProjectName(projectId: string): string {
@@ -279,24 +269,24 @@ export class ChartsComponent implements OnInit, AfterViewInit {
 
   getTotalByProject(projectId: string): number {
     return this.getFilteredInvoices()
-      .filter((invoice) => this.getProjectId(invoice) === projectId)
-      .reduce((sum, invoice) => {
+      .filter((expense) => this.getProjectId(expense) === projectId)
+      .reduce((sum, expense) => {
         const total =
-          typeof invoice.total === 'string'
-            ? parseFloat(invoice.total)
-            : invoice.total || 0;
+          typeof expense.total === 'string'
+            ? parseFloat(expense.total)
+            : expense.total || 0;
         return sum + total;
       }, 0);
   }
 
   getTotalByCategory(categoryId: string): number {
     return this.getFilteredInvoices()
-      .filter((invoice) => invoice.category === categoryId)
-      .reduce((sum, invoice) => {
+      .filter((expense) => this.getCategoryId(expense) === categoryId)
+      .reduce((sum, expense) => {
         const total =
-          typeof invoice.total === 'string'
-            ? parseFloat(invoice.total)
-            : invoice.total || 0;
+          typeof expense.total === 'string'
+            ? parseFloat(expense.total)
+            : expense.total || 0;
         return sum + total;
       }, 0);
   }
@@ -317,9 +307,9 @@ export class ChartsComponent implements OnInit, AfterViewInit {
       this.projectsChart.destroy();
     }
 
-    const filteredInvoices = this.getFilteredInvoices();
+    const filteredExpenses = this.getFilteredInvoices();
 
-    if (filteredInvoices.length === 0) {
+    if (filteredExpenses.length === 0) {
       this.projectsChart = new Chart(this.projectsChartRef.nativeElement, {
         type: 'pie',
         data: {
@@ -350,15 +340,15 @@ export class ChartsComponent implements OnInit, AfterViewInit {
 
     const projectTotals = new Map<string, number>();
 
-    filteredInvoices.forEach((invoice) => {
-      const projectId = this.getProjectId(invoice);
+    filteredExpenses.forEach((expense) => {
+      const projectId = this.getProjectId(expense);
       if (projectId) {
         const currentTotal = projectTotals.get(projectId) || 0;
-        const invoiceTotal =
-          typeof invoice.total === 'string'
-            ? parseFloat(invoice.total)
-            : invoice.total || 0;
-        projectTotals.set(projectId, currentTotal + invoiceTotal);
+        const expenseTotal =
+          typeof expense.total === 'string'
+            ? parseFloat(expense.total)
+            : expense.total || 0;
+        projectTotals.set(projectId, currentTotal + expenseTotal);
       }
     });
 
@@ -417,9 +407,9 @@ export class ChartsComponent implements OnInit, AfterViewInit {
       this.categoriesChart.destroy();
     }
 
-    const filteredInvoices = this.getFilteredInvoices();
+    const filteredExpenses = this.getFilteredInvoices();
 
-    if (filteredInvoices.length === 0) {
+    if (filteredExpenses.length === 0) {
       this.categoriesChart = new Chart(this.categoriesChartRef.nativeElement, {
         type: 'pie',
         data: {
@@ -450,14 +440,15 @@ export class ChartsComponent implements OnInit, AfterViewInit {
 
     const categoryTotals = new Map<string, number>();
 
-    filteredInvoices.forEach((invoice) => {
-      if (invoice.category) {
-        const currentTotal = categoryTotals.get(invoice.category) || 0;
-        const invoiceTotal =
-          typeof invoice.total === 'string'
-            ? parseFloat(invoice.total)
-            : invoice.total || 0;
-        categoryTotals.set(invoice.category, currentTotal + invoiceTotal);
+    filteredExpenses.forEach((expense) => {
+      const categoryId = this.getCategoryId(expense);
+      if (categoryId) {
+        const currentTotal = categoryTotals.get(categoryId) || 0;
+        const expenseTotal =
+          typeof expense.total === 'string'
+            ? parseFloat(expense.total)
+            : expense.total || 0;
+        categoryTotals.set(categoryId, currentTotal + expenseTotal);
       }
     });
 
@@ -516,9 +507,9 @@ export class ChartsComponent implements OnInit, AfterViewInit {
       this.collaboratorsChart.destroy();
     }
 
-    const filteredInvoices = this.getFilteredInvoices();
+    const filteredExpenses = this.getFilteredInvoices();
 
-    if (filteredInvoices.length === 0) {
+    if (filteredExpenses.length === 0) {
       this.collaboratorsChart = new Chart(
         this.collaboratorsChartRef.nativeElement,
         {
@@ -569,7 +560,7 @@ export class ChartsComponent implements OnInit, AfterViewInit {
     const months = this.getMonthsInRange();
 
     const collaboratorsData = this.getCollaboratorsData(
-      filteredInvoices,
+      filteredExpenses,
       months
     );
 
@@ -667,41 +658,41 @@ export class ChartsComponent implements OnInit, AfterViewInit {
   }
 
   getCollaboratorsData(
-    invoices: IInvoiceResponse[],
+    expenses: any[],
     months: string[]
   ): CollaboratorExpense[] {
     const collaboratorsMap: Map<string, CollaboratorExpense> = new Map();
 
-    const getCollaboratorId = (invoice: IInvoiceResponse): string => {
+    const getCollaboratorId = (expense: any): string => {
       let userId = '';
 
-      if (invoice.data && typeof invoice.data === 'object') {
-        userId = (invoice.data as any).userId || '';
+      if (expense.data && typeof expense.data === 'object') {
+        userId = (expense.data as any).userId || '';
       }
 
-      return userId || invoice.proyect || 'unknown';
+      return userId || expense.proyectId || 'unknown';
     };
 
-    const getCollaboratorName = (invoice: IInvoiceResponse): string => {
+    const getCollaboratorName = (expense: any): string => {
       let userName = '';
 
-      if (invoice.data && typeof invoice.data === 'object') {
-        userName = (invoice.data as any).userName || '';
+      if (expense.data && typeof expense.data === 'object') {
+        userName = (expense.data as any).userName || '';
       }
 
       return (
         userName ||
-        invoice.projectName ||
-        this.getProjectName(invoice.proyect) ||
+        expense.projectName ||
+        this.getProjectName(expense.proyectId) ||
         'Colaborador desconocido'
       );
     };
 
-    invoices.forEach((invoice) => {
-      const collaboratorId = getCollaboratorId(invoice);
-      const invoiceDate = new Date(invoice.updatedAt);
-      const monthKey = `${invoiceDate.getFullYear()}-${String(
-        invoiceDate.getMonth() + 1
+    expenses.forEach((expense) => {
+      const collaboratorId = getCollaboratorId(expense);
+      const expenseDate = new Date(expense.fechaEmision);
+      const monthKey = `${expenseDate.getFullYear()}-${String(
+        expenseDate.getMonth() + 1
       ).padStart(2, '0')}`;
 
       if (!months.includes(monthKey)) {
@@ -711,7 +702,7 @@ export class ChartsComponent implements OnInit, AfterViewInit {
       if (!collaboratorsMap.has(collaboratorId)) {
         const collaboratorExpense: CollaboratorExpense = {
           id: collaboratorId,
-          name: getCollaboratorName(invoice),
+          name: getCollaboratorName(expense),
           expenses: {},
           color: '',
         };
@@ -724,9 +715,9 @@ export class ChartsComponent implements OnInit, AfterViewInit {
       }
 
       const total =
-        typeof invoice.total === 'string'
-          ? parseFloat(invoice.total)
-          : invoice.total || 0;
+        typeof expense.total === 'string'
+          ? parseFloat(expense.total)
+          : expense.total || 0;
 
       const collaborator = collaboratorsMap.get(collaboratorId)!;
       collaborator.expenses[monthKey] =
@@ -750,41 +741,38 @@ export class ChartsComponent implements OnInit, AfterViewInit {
   }
 
   getProjectIdsWithExpenses(): string[] {
-    const filteredInvoices = this.getFilteredInvoices();
+    const filteredExpenses = this.getFilteredInvoices();
     const projectIdsWithExpenses = new Set<string>();
-
-    filteredInvoices.forEach((invoice) => {
-      const projectId = this.getProjectId(invoice);
+    filteredExpenses.forEach((expense) => {
+      const projectId = this.getProjectId(expense);
       if (projectId && this.getTotalByProject(projectId) > 0) {
         projectIdsWithExpenses.add(projectId);
       }
     });
-
     return Array.from(projectIdsWithExpenses);
   }
 
   getCategoryIdsWithExpenses(): string[] {
-    const filteredInvoices = this.getFilteredInvoices();
+    const filteredExpenses = this.getFilteredInvoices();
     const categoryIdsWithExpenses = new Set<string>();
-
-    filteredInvoices.forEach((invoice) => {
-      if (invoice.category && this.getTotalByCategory(invoice.category) > 0) {
-        categoryIdsWithExpenses.add(invoice.category);
+    filteredExpenses.forEach((expense) => {
+      const categoryId = this.getCategoryId(expense);
+      if (categoryId && this.getTotalByCategory(categoryId) > 0) {
+        categoryIdsWithExpenses.add(categoryId);
       }
     });
-
     return Array.from(categoryIdsWithExpenses);
   }
 
   getTotalExpenses(): number {
-    const filteredInvoices = this.getFilteredInvoices();
+    const filteredExpenses = this.getFilteredInvoices();
 
-    return filteredInvoices.reduce((total, invoice) => {
-      const invoiceTotal =
-        typeof invoice.total === 'string'
-          ? parseFloat(invoice.total)
-          : invoice.total || 0;
-      return total + invoiceTotal;
+    return filteredExpenses.reduce((total, expense) => {
+      const expenseTotal =
+        typeof expense.total === 'string'
+          ? parseFloat(expense.total)
+          : expense.total || 0;
+      return total + expenseTotal;
     }, 0);
   }
 
@@ -811,27 +799,25 @@ export class ChartsComponent implements OnInit, AfterViewInit {
   }
 
   refreshChart(chartType: 'collaborators' | 'projects' | 'categories') {
-    setTimeout(() => {
-      switch (chartType) {
-        case 'collaborators':
-          if (this.collaboratorsChart) {
-            this.collaboratorsChart.destroy();
-            this.createCollaboratorsChart();
-          }
-          break;
-        case 'projects':
-          if (this.projectsChart) {
-            this.projectsChart.destroy();
-            this.createProjectsChart();
-          }
-          break;
-        case 'categories':
-          if (this.categoriesChart) {
-            this.categoriesChart.destroy();
-            this.createCategoriesChart();
-          }
-          break;
-      }
-    }, 50);
+    switch (chartType) {
+      case 'collaborators':
+        if (this.collaboratorsChart) {
+          this.collaboratorsChart.destroy();
+          this.createCollaboratorsChart();
+        }
+        break;
+      case 'projects':
+        if (this.projectsChart) {
+          this.projectsChart.destroy();
+          this.createProjectsChart();
+        }
+        break;
+      case 'categories':
+        if (this.categoriesChart) {
+          this.categoriesChart.destroy();
+          this.createCategoriesChart();
+        }
+        break;
+    }
   }
 }
