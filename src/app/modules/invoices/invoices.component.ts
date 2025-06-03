@@ -117,6 +117,7 @@ export default class InvoicesComponent implements OnInit {
     if (companyId) {
       this.agentService.getInvoices(companyId).subscribe((res) => {
         this.invoices = this.formatResponse(res);
+        this.invoices = this.sortInvoicesByDate(this.invoices);
       });
     } else {
       this.getInvoices();
@@ -282,5 +283,36 @@ export default class InvoicesComponent implements OnInit {
         );
       }
     }, 100);
+  }
+
+  sortInvoicesByDate(invoices: IInvoiceResponse[]): IInvoiceResponse[] {
+    return invoices.sort((a, b) => {
+      const dateA = this.extractInvoiceDate(a);
+      const dateB = this.extractInvoiceDate(b);
+      return dateB.getTime() - dateA.getTime();
+    });
+  }
+
+  private extractInvoiceDate(invoice: IInvoiceResponse): Date {
+    try {
+      if (invoice.data) {
+        const invoiceData =
+          typeof invoice.data === 'string'
+            ? JSON.parse(invoice.data)
+            : invoice.data;
+
+        if (
+          invoiceData.fechaEmision &&
+          invoiceData.fechaEmision !== 'No disponible'
+        ) {
+          const date = new Date(invoiceData.fechaEmision);
+          if (!isNaN(date.getTime())) {
+            return date;
+          }
+        }
+      }
+    } catch (error) {}
+
+    return new Date(invoice.createdAt);
   }
 }
