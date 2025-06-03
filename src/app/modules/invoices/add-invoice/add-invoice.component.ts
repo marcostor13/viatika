@@ -234,7 +234,6 @@ export default class AddInvoiceComponent implements OnInit {
         status: 'pending' as InvoiceStatus,
       };
 
-      console.log(payload);
       this.invoiceService.analyzeInvoice(payload).subscribe({
         next: (res) => {
           this.isLoading.set(false);
@@ -246,11 +245,17 @@ export default class AddInvoiceComponent implements OnInit {
         },
         error: (error) => {
           this.isLoading.set(false);
-          this.notificationService.show(
-            'Error al subir la factura: ' +
-              (error.message || 'Intente nuevamente'),
-            'error'
-          );
+          const errorMessage =
+            error.error?.message || error.message || 'Intente nuevamente';
+
+          if (error.status === 409) {
+            this.notificationService.show(errorMessage, 'error');
+          } else {
+            this.notificationService.show(
+              'Error al analizar la factura: ' + errorMessage,
+              'error'
+            );
+          }
         },
       });
     } else {
