@@ -35,12 +35,13 @@ export default class AddInvoiceComponent implements OnInit {
   private uploadService = inject(UploadService);
   private userStateService = inject(UserStateService);
 
-  form!: FormGroup
+  form!: FormGroup;
   id: string = this.route.snapshot.params['id'];
   categories: ICategory[] = [];
   proyects: IProject[] = [];
   previewImage: SafeUrl | null = null;
   selectedFile!: File;
+  originalInvoice: any = null;
 
   percentage = signal(0);
   isLoading = signal(false);
@@ -58,7 +59,39 @@ export default class AddInvoiceComponent implements OnInit {
       this.invoiceService
         .getInvoiceById(this.id, companyId)
         .subscribe((res) => {
-          this.form.patchValue(res);
+          this.originalInvoice = res;
+          let dataObj: any = {};
+          if (res.data) {
+            try {
+              dataObj =
+                typeof res.data === 'string' ? JSON.parse(res.data) : res.data;
+            } catch {}
+          }
+          // Formatear fecha para el input type="date"
+          let fecha = '';
+          if (dataObj.fechaEmision) {
+            // Si es string tipo ISO o Date, formatear a yyyy-MM-dd
+            const d = new Date(dataObj.fechaEmision);
+            if (!isNaN(d.getTime())) {
+              fecha = d.toISOString().slice(0, 10);
+            } else {
+              fecha = dataObj.fechaEmision;
+            }
+          } else if ((res as any).fechaEmision) {
+            const d = new Date((res as any).fechaEmision);
+            if (!isNaN(d.getTime())) {
+              fecha = d.toISOString().slice(0, 10);
+            } else {
+              fecha = (res as any).fechaEmision;
+            }
+          }
+          this.form.patchValue({
+            ...res,
+            fechaEmision: fecha,
+            rucEmisor: dataObj.rucEmisor || '',
+            proyectId: res.proyectId?._id || res.proyectId || '',
+            categoryId: res.categoryId?._id || res.categoryId || '',
+          });
         });
     }
   }
@@ -70,7 +103,7 @@ export default class AddInvoiceComponent implements OnInit {
         next: (categories) => {
           this.categories = categories;
         },
-        error: (error) => { },
+        error: (error) => {},
       });
     }
   }
@@ -80,7 +113,7 @@ export default class AddInvoiceComponent implements OnInit {
       next: (projects) => {
         this.proyects = projects;
       },
-      error: (error) => { },
+      error: (error) => {},
     });
   }
 
@@ -89,6 +122,8 @@ export default class AddInvoiceComponent implements OnInit {
       proyectId: ['', Validators.required],
       categoryId: ['', Validators.required],
       file: ['', Validators.required],
+      fechaEmision: [''],
+      rucEmisor: [''],
     });
   }
 
@@ -109,7 +144,46 @@ export default class AddInvoiceComponent implements OnInit {
   }
 
   update() {
-    if (this.form.valid) {
+    if (this.form.valid && this.originalInvoice) {
+      const formValue = this.form.value;
+      let dataObj: any = {};
+      const currentData = this.originalInvoice.data || '';
+      if (currentData) {
+        try {
+          dataObj =
+            typeof currentData === 'string'
+              ? JSON.parse(currentData)
+              : currentData;
+        } catch {}
+      }
+      dataObj.rucEmisor = formValue.rucEmisor;
+      dataObj.fechaEmision = formValue.fechaEmision;
+      const { file, fechaEmision, _id, createdAt, updatedAt, __v, ...rest } =
+        this.originalInvoice;
+      const payload = {
+        ...rest,
+        proyectId: formValue.proyectId,
+        categoryId: formValue.categoryId,
+        fechaEmision: formValue.fechaEmision,
+        data: JSON.stringify(dataObj),
+      };
+      const companyId = this.userStateService.getUser()?.companyId || '';
+      this.invoiceService.updateInvoice(this.id, companyId, payload).subscribe({
+        next: () => {
+          this.notificationService.show(
+            'Factura actualizada correctamente',
+            'success'
+          );
+          this.router.navigate(['/invoices']);
+        },
+        error: (error: any) => {
+          this.notificationService.show(
+            'Error al actualizar la factura: ' +
+              (error.message || 'Intente nuevamente'),
+            'error'
+          );
+        },
+      });
     }
   }
 
@@ -153,7 +227,6 @@ export default class AddInvoiceComponent implements OnInit {
 
   save() {
     if (this.form.valid) {
-
       const payload = {
         categoryId: this.form.get('categoryId')?.value,
         proyectId: this.form.get('proyectId')?.value,
@@ -175,7 +248,7 @@ export default class AddInvoiceComponent implements OnInit {
           this.isLoading.set(false);
           this.notificationService.show(
             'Error al subir la factura: ' +
-            (error.message || 'Intente nuevamente'),
+              (error.message || 'Intente nuevamente'),
             'error'
           );
         },

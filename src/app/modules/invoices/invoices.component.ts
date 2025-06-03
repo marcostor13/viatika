@@ -11,7 +11,6 @@ import {
   InvoiceStatus,
 } from './interfaces/invoices.interface';
 import { IHeaderList } from '../../interfaces/header-list.interface';
-import { CATEGORIES } from './constants/categories';
 import { IProject } from './interfaces/project.interface';
 import { UserStateService } from '../../services/user-state.service';
 
@@ -56,6 +55,14 @@ export default class InvoicesComponent implements OnInit {
     {
       header: 'Tipo',
       value: 'tipo',
+    },
+    {
+      header: 'Serie',
+      value: 'serie',
+    },
+    {
+      header: 'Correlativo',
+      value: 'correlativo',
     },
     {
       header: 'Total',
@@ -126,7 +133,6 @@ export default class InvoicesComponent implements OnInit {
   }
 
   formatResponse(res: IInvoiceResponse[]): IInvoiceResponse[] {
-
     return res.map((invoice) => {
       let invoiceData: any = {};
 
@@ -135,12 +141,12 @@ export default class InvoicesComponent implements OnInit {
           if (typeof invoice.data === 'string') {
             try {
               invoiceData = JSON.parse(invoice.data);
-            } catch (parseError) { }
+            } catch (parseError) {}
           } else if (typeof invoice.data === 'object') {
             invoiceData = invoice.data;
           }
         }
-      } catch (error) { }
+      } catch (error) {}
 
       const razonSocial = invoiceData.razonSocial || 'No disponible';
       const direccionEmisor = invoiceData.direccionEmisor || 'No disponible';
@@ -149,11 +155,13 @@ export default class InvoicesComponent implements OnInit {
       const fechaEmision = invoiceData.fechaEmision || 'No disponible';
       const moneda = invoiceData.moneda || '';
       const montoTotal = invoiceData.montoTotal || invoice.total || 0;
+      const serie = invoiceData.serie || 'No disponible';
+      const correlativo = invoiceData.correlativo || 'No disponible';
 
       return {
         ...invoice,
-        proyect: invoice.proyectId.name,
-        category: invoice.categoryId.name,
+        proyect: invoice.proyectId?.name || 'No disponible',
+        category: invoice.categoryId?.name || 'No disponible',
         ruc: rucEmisor,
         tipo: tipoComprobante,
         createdAt: new Date(invoice.createdAt).toLocaleDateString('es-ES', {
@@ -166,6 +174,8 @@ export default class InvoicesComponent implements OnInit {
         provider: razonSocial,
         date: fechaEmision,
         status: invoice.status || 'pending',
+        serie,
+        correlativo,
       };
     });
   }

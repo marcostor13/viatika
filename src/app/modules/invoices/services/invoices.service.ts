@@ -122,4 +122,8 @@ export class InvoicesService {
   deleteProject(id: string): Observable<any> {
     return this.http.delete(`${this.projectUrl}/${id}`);
   }
+
+  updateInvoice(id: string, companyId: string, payload: any) {
+    return this.http.patch(`${this.url}/${id}/${companyId}`, payload);
+  }
 }
