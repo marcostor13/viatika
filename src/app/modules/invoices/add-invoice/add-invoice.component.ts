@@ -158,8 +158,20 @@ export default class AddInvoiceComponent implements OnInit {
       }
       dataObj.rucEmisor = formValue.rucEmisor;
       dataObj.fechaEmision = formValue.fechaEmision;
-      const { file, fechaEmision, _id, createdAt, updatedAt, __v, ...rest } =
-        this.originalInvoice;
+      const {
+        file,
+        fechaEmision,
+        _id,
+        createdAt,
+        updatedAt,
+        __v,
+        createdBy,
+        approvedBy,
+        rejectedBy,
+        rejectionReason,
+        statusDate,
+        ...rest
+      } = this.originalInvoice;
       const payload = {
         ...rest,
         proyectId: formValue.proyectId,
