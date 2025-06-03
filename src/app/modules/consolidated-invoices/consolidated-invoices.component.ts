@@ -561,7 +561,15 @@ export class ConsolidatedInvoicesComponent implements OnInit {
   }
 
   getProjects() {
-    this.agentService.getProjects().subscribe({
+    const companyId = this.userStateService.getUser()?.companyId;
+    if (!companyId) {
+      this.notificationService.show(
+        'No se encontró companyId en el usuario',
+        'error'
+      );
+      return;
+    }
+    this.agentService.getProjects(companyId).subscribe({
       next: (projects) => {
         this.projects = projects;
         this.calculateProjectsWithInvoiceCount();

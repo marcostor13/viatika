@@ -101,15 +101,20 @@ export default class InvoicesComponent implements OnInit {
   }
 
   loadProjects() {
-    this.agentService.getProjects().subscribe({
-      next: (projects) => {
-        this.projects = projects;
-        this.getInvoices();
-      },
-      error: (error) => {
-        this.getInvoices();
-      },
-    });
+    const companyId = this.userStateService.getUser()?.companyId;
+    if (companyId) {
+      this.agentService.getProjects(companyId).subscribe({
+        next: (projects) => {
+          this.projects = projects;
+          this.getInvoices();
+        },
+        error: (error) => {
+          this.getInvoices();
+        },
+      });
+    } else {
+      this.getInvoices();
+    }
   }
 
   getInvoices() {

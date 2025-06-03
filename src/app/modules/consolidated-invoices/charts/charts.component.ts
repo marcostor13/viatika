@@ -147,34 +147,42 @@ export class ChartsComponent implements OnInit, AfterViewInit {
 
   loadData() {
     const companyId = this.userStateService.getUser()?.companyId;
+    if (!companyId) {
+      console.error('No se encontró companyId en el usuario');
+      this.dataLoaded = true;
+      return;
+    }
+    this.dataLoaded = false;
+
     forkJoin([
-      this.invoicesService.getProjects(),
-      companyId ? this.invoicesService.getCategories(companyId) : [],
-      companyId
-        ? this.expenseService.getExpenses(companyId, {
-            dateFrom: this.dateFrom,
-            dateTo: this.dateTo,
-            projectId: this.filterProject,
-            categoryId: this.filterCategory,
-          })
-        : [],
+      this.invoicesService.getProjects(companyId),
+      this.invoicesService.getCategories(companyId),
+      this.expenseService.getExpenses(companyId, {
+        dateFrom: this.dateFrom,
+        dateTo: this.dateTo,
+        projectId: this.filterProject,
+        categoryId: this.filterCategory,
+      }),
     ]).subscribe({
       next: ([projects, categories, expenses]) => {
         this.projects = projects;
         this.categories = categories;
         this.expenses = expenses;
+
         this.projectMap.clear();
         this.projects.forEach((project) => {
           if (project._id) {
             this.projectMap.set(project._id, project.name);
           }
         });
+
         this.categoryMap.clear();
         this.categories.forEach((category) => {
           if (category._id) {
             this.categoryMap.set(category._id, category.name);
           }
         });
+
         this.updateFilteredExpenses();
         this.dataLoaded = true;
         this.cdr.detectChanges();
@@ -188,8 +196,7 @@ export class ChartsComponent implements OnInit, AfterViewInit {
   }
 
   onFilterChange() {
-    this.updateFilteredExpenses();
-    this.updateCharts();
+    this.loadData();
   }
 
   updateCharts() {
@@ -229,17 +236,35 @@ export class ChartsComponent implements OnInit, AfterViewInit {
     if (expense.proyectId && typeof expense.proyectId === 'object') {
       return expense.proyectId._id || '';
     }
-    return expense.proyectId || '';
+    if (typeof expense.proyectId === 'string') {
+      return expense.proyectId;
+    }
+    return '';
   }
 
   getCategoryId(expense: any): string {
     if (expense.categoryId && typeof expense.categoryId === 'object') {
       return expense.categoryId._id || '';
     }
-    return expense.categoryId || '';
+    if (typeof expense.categoryId === 'string') {
+      return expense.categoryId;
+    }
+    return '';
   }
 
-  getProjectName(projectId: string): string {
+  getProjectName(projectId: any): string {
+    if (typeof projectId !== 'string') {
+      if (
+        projectId &&
+        typeof projectId === 'object' &&
+        (projectId as any)._id
+      ) {
+        projectId = (projectId as any)._id;
+      } else {
+        return 'Proyecto inválido';
+      }
+    }
+
     const projectName = this.projectMap.get(projectId);
 
     if (!projectName && projectId) {
@@ -253,7 +278,19 @@ export class ChartsComponent implements OnInit, AfterViewInit {
     return projectName || projectId || 'Proyecto desconocido';
   }
 
-  getCategoryName(categoryId: string): string {
+  getCategoryName(categoryId: any): string {
+    if (typeof categoryId !== 'string') {
+      if (
+        categoryId &&
+        typeof categoryId === 'object' &&
+        (categoryId as any)._id
+      ) {
+        categoryId = (categoryId as any)._id;
+      } else {
+        return 'Categoría inválida';
+      }
+    }
+
     const categoryName = this.categoryMap.get(categoryId);
 
     if (!categoryName && categoryId) {
@@ -358,9 +395,9 @@ export class ChartsComponent implements OnInit, AfterViewInit {
       }
     }
 
-    const labels = Array.from(projectTotals.keys()).map((id) =>
-      this.getProjectName(id)
-    );
+    const labels = Array.from(projectTotals.keys()).map((id) => {
+      return this.getProjectName(id);
+    });
 
     const data = Array.from(projectTotals.values());
 
@@ -458,9 +495,9 @@ export class ChartsComponent implements OnInit, AfterViewInit {
       }
     }
 
-    const labels = Array.from(categoryTotals.keys()).map((id) =>
-      this.getCategoryName(id)
-    );
+    const labels = Array.from(categoryTotals.keys()).map((id) => {
+      return this.getCategoryName(id);
+    });
 
     const data = Array.from(categoryTotals.values());
 
@@ -670,7 +707,7 @@ export class ChartsComponent implements OnInit, AfterViewInit {
         userId = (expense.data as any).userId || '';
       }
 
-      return userId || expense.proyectId || 'unknown';
+      return userId || this.getProjectId(expense) || 'unknown';
     };
 
     const getCollaboratorName = (expense: any): string => {
@@ -680,10 +717,13 @@ export class ChartsComponent implements OnInit, AfterViewInit {
         userName = (expense.data as any).userName || '';
       }
 
+      const projectId = this.getProjectId(expense);
+      const projectName = projectId ? this.getProjectName(projectId) : '';
+
       return (
         userName ||
         expense.projectName ||
-        this.getProjectName(expense.proyectId) ||
+        projectName ||
         'Colaborador desconocido'
       );
     };

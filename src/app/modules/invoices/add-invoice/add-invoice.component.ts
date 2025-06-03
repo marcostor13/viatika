@@ -109,12 +109,15 @@ export default class AddInvoiceComponent implements OnInit {
   }
 
   loadProjects() {
-    this.invoiceService.getProjects().subscribe({
-      next: (projects) => {
-        this.proyects = projects;
-      },
-      error: (error) => {},
-    });
+    const companyId = this.userStateService.getUser()?.companyId;
+    if (companyId) {
+      this.invoiceService.getProjects(companyId).subscribe({
+        next: (projects) => {
+          this.proyects = projects;
+        },
+        error: (error) => {},
+      });
+    }
   }
 
   initForm() {

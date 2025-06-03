@@ -69,6 +69,17 @@
     </div>
   </div>
 
+  <!-- Indicador de carga -->
+  @if (!dataLoaded) {
+  <div class="bg-white p-4 rounded-lg shadow-md text-center">
+    <div class="flex items-center justify-center space-x-2">
+      <div
+        class="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"
+      ></div>
+      <span class="text-gray-600">Cargando datos...</span>
+    </div>
+  </div>
+  } @if (dataLoaded) {
   <div class="bg-white p-3 sm:p-4 rounded-lg shadow-md">
     <div
       class="flex items-center justify-between cursor-pointer"
@@ -258,4 +269,5 @@
     </div>
     }
   </div>
+  }
 </div>

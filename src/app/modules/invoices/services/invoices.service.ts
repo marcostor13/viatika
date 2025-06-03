@@ -109,8 +109,8 @@ export class InvoicesService {
     return this.http.delete(`${this.categoryUrl}/${id}`);
   }
 
-  getProjects(): Observable<IProject[]> {
-    return this.http.get<IProject[]>(`${this.projectUrl}`);
+  getProjects(companyId: string): Observable<IProject[]> {
+    return this.http.get<IProject[]>(`${this.projectUrl}/${companyId}`);
   }
 
   getProjectById(id: string): Observable<IProject> {
