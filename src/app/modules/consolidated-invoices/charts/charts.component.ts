@@ -154,17 +154,21 @@ export class ChartsComponent implements OnInit, AfterViewInit {
     }
     this.dataLoaded = false;
 
+    const filters = {
+      dateFrom: this.dateFrom,
+      dateTo: this.dateTo,
+      projectId: this.filterProject || undefined,
+      categoryId: this.filterCategory || undefined,
+    };
+
     forkJoin([
       this.invoicesService.getProjects(companyId),
       this.invoicesService.getCategories(companyId),
-      this.expenseService.getExpenses(companyId, {
-        dateFrom: this.dateFrom,
-        dateTo: this.dateTo,
-        projectId: this.filterProject,
-        categoryId: this.filterCategory,
-      }),
+      this.expenseService.getExpenses(companyId, filters),
     ]).subscribe({
       next: ([projects, categories, expenses]) => {
+        console.log('Datos cargados - Gastos encontrados:', expenses.length);
+
         this.projects = projects;
         this.categories = categories;
         this.expenses = expenses;
@@ -219,6 +223,7 @@ export class ChartsComponent implements OnInit, AfterViewInit {
     const dateFrom = this.dateFrom ? new Date(this.dateFrom) : null;
     const dateTo = this.dateTo ? new Date(this.dateTo) : null;
     if (dateTo) dateTo.setHours(23, 59, 59, 999);
+
     this.filteredExpenses = this.expenses.filter((expense) => {
       if (!expense.fechaEmision) return false;
       const expenseDate = new Date(expense.fechaEmision);
@@ -226,6 +231,11 @@ export class ChartsComponent implements OnInit, AfterViewInit {
       const isBeforeTo = dateTo ? expenseDate <= dateTo : true;
       return isAfterFrom && isBeforeTo;
     });
+
+    console.log(
+      'Gastos después de filtro de fechas:',
+      this.filteredExpenses.length
+    );
   }
 
   getFilteredInvoices(): any[] {
