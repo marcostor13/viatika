@@ -50,6 +50,35 @@ export default class AddInvoiceComponent implements OnInit {
     this.initForm();
   }
 
+  private formatDateForInput(dateValue: any): string {
+    if (!dateValue) return '';
+
+    let date: Date;
+
+    if (typeof dateValue === 'string') {
+      const dateStr = dateValue.trim();
+
+      if (dateStr.match(/^\d{2}[-\/]\d{2}[-\/]\d{4}$/)) {
+        const parts = dateStr.split(/[-\/]/);
+        const day = parts[0];
+        const month = parts[1];
+        const year = parts[2];
+        date = new Date(`${year}-${month}-${day}`);
+      } else {
+        date = new Date(dateStr);
+      }
+    } else {
+      date = new Date(dateValue);
+    }
+
+    if (isNaN(date.getTime())) {
+      console.warn('Fecha inválida:', dateValue);
+      return '';
+    }
+
+    return date.toISOString().slice(0, 10);
+  }
+
   ngOnInit() {
     this.loadCategories();
     this.loadProjects();
@@ -67,24 +96,17 @@ export default class AddInvoiceComponent implements OnInit {
                 typeof res.data === 'string' ? JSON.parse(res.data) : res.data;
             } catch {}
           }
-          // Formatear fecha para el input type="date"
+
           let fecha = '';
+
           if (dataObj.fechaEmision) {
-            // Si es string tipo ISO o Date, formatear a yyyy-MM-dd
-            const d = new Date(dataObj.fechaEmision);
-            if (!isNaN(d.getTime())) {
-              fecha = d.toISOString().slice(0, 10);
-            } else {
-              fecha = dataObj.fechaEmision;
-            }
+            fecha = this.formatDateForInput(dataObj.fechaEmision);
+          } else if (res.date) {
+            fecha = this.formatDateForInput(res.date);
           } else if ((res as any).fechaEmision) {
-            const d = new Date((res as any).fechaEmision);
-            if (!isNaN(d.getTime())) {
-              fecha = d.toISOString().slice(0, 10);
-            } else {
-              fecha = (res as any).fechaEmision;
-            }
+            fecha = this.formatDateForInput((res as any).fechaEmision);
           }
+
           this.form.patchValue({
             ...res,
             fechaEmision: fecha,
@@ -251,12 +273,66 @@ export default class AddInvoiceComponent implements OnInit {
 
       this.invoiceService.analyzeInvoice(payload).subscribe({
         next: (res) => {
-          this.isLoading.set(false);
-          this.notificationService.show(
-            'Factura subida correctamente',
-            'success'
-          );
-          this.router.navigate(['/invoices']);
+          if (res && res._id) {
+            let dataObj: any = {};
+            if (res.data) {
+              try {
+                dataObj =
+                  typeof res.data === 'string'
+                    ? JSON.parse(res.data)
+                    : res.data;
+              } catch {}
+            }
+
+            if (dataObj.fechaEmision) {
+              const updatePayload = {
+                ...res,
+                fechaEmision: dataObj.fechaEmision,
+                data: JSON.stringify(dataObj),
+              };
+
+              const companyId =
+                this.userStateService.getUser()?.companyId || '';
+              this.invoiceService
+                .updateInvoice(res._id, companyId, updatePayload)
+                .subscribe({
+                  next: () => {
+                    this.isLoading.set(false);
+                    this.notificationService.show(
+                      'Factura subida correctamente',
+                      'success'
+                    );
+                    this.router.navigate(['/invoices']);
+                  },
+                  error: (updateError) => {
+                    console.warn(
+                      'Error al actualizar fechaEmision:',
+                      updateError
+                    );
+                    this.isLoading.set(false);
+                    this.notificationService.show(
+                      'Factura subida correctamente',
+                      'success'
+                    );
+                    this.router.navigate(['/invoices']);
+                  },
+                });
+            } else {
+              this.isLoading.set(false);
+              this.notificationService.show(
+                'Factura subida correctamente',
+                'success'
+              );
+              this.router.navigate(['/invoices']);
+            }
+          } else {
+            this.isLoading.set(false);
+            this.notificationService.show(
+              'Factura subida correctamente',
+              'success'
+            );
+            this.router.navigate(['/invoices']);
+          }
         },
         error: (error) => {
           this.isLoading.set(false);
