@@ -167,8 +167,6 @@ export class ChartsComponent implements OnInit, AfterViewInit {
       this.expenseService.getExpenses(companyId, filters),
     ]).subscribe({
       next: ([projects, categories, expenses]) => {
-        console.log('Datos cargados - Gastos encontrados:', expenses.length);
-
         this.projects = projects;
         this.categories = categories;
         this.expenses = expenses;
@@ -231,11 +229,6 @@ export class ChartsComponent implements OnInit, AfterViewInit {
       const isBeforeTo = dateTo ? expenseDate <= dateTo : true;
       return isAfterFrom && isBeforeTo;
     });
-
-    console.log(
-      'Gastos después de filtro de fechas:',
-      this.filteredExpenses.length
-    );
   }
 
   getFilteredInvoices(): any[] {
@@ -342,11 +335,10 @@ export class ChartsComponent implements OnInit, AfterViewInit {
     if (
       !this.projectsChartRef ||
       !this.chartLibraryLoaded ||
-      typeof Chart === 'undefined'
+      typeof Chart === 'undefined' ||
+      !this.projectsChartRef.nativeElement ||
+      !this.showProjectsSection
     ) {
-      console.log(
-        'No se puede crear el gráfico de proyectos, faltan dependencias'
-      );
       return;
     }
 
@@ -442,11 +434,10 @@ export class ChartsComponent implements OnInit, AfterViewInit {
     if (
       !this.categoriesChartRef ||
       !this.chartLibraryLoaded ||
-      typeof Chart === 'undefined'
+      typeof Chart === 'undefined' ||
+      !this.categoriesChartRef.nativeElement ||
+      !this.showCategoriesSection
     ) {
-      console.log(
-        'No se puede crear el gráfico de categorías, faltan dependencias'
-      );
       return;
     }
 
@@ -542,11 +533,10 @@ export class ChartsComponent implements OnInit, AfterViewInit {
     if (
       !this.collaboratorsChartRef ||
       !this.chartLibraryLoaded ||
-      typeof Chart === 'undefined'
+      typeof Chart === 'undefined' ||
+      !this.collaboratorsChartRef.nativeElement ||
+      !this.showCollaboratorsSection
     ) {
-      console.log(
-        'No se puede crear el gráfico de colaboradores, faltan dependencias'
-      );
       return;
     }
 
@@ -832,15 +822,24 @@ export class ChartsComponent implements OnInit, AfterViewInit {
     switch (section) {
       case 'collaborators':
         this.showCollaboratorsSection = !this.showCollaboratorsSection;
-        if (this.showCollaboratorsSection) this.refreshChart('collaborators');
+        if (this.showCollaboratorsSection) {
+          this.cdr.detectChanges();
+          setTimeout(() => this.refreshChart('collaborators'), 100);
+        }
         break;
       case 'projects':
         this.showProjectsSection = !this.showProjectsSection;
-        if (this.showProjectsSection) this.refreshChart('projects');
+        if (this.showProjectsSection) {
+          this.cdr.detectChanges();
+          setTimeout(() => this.refreshChart('projects'), 100);
+        }
         break;
       case 'categories':
         this.showCategoriesSection = !this.showCategoriesSection;
-        if (this.showCategoriesSection) this.refreshChart('categories');
+        if (this.showCategoriesSection) {
+          this.cdr.detectChanges();
+          setTimeout(() => this.refreshChart('categories'), 100);
+        }
         break;
       case 'summary':
         this.showSummarySection = !this.showSummarySection;
@@ -849,23 +848,43 @@ export class ChartsComponent implements OnInit, AfterViewInit {
   }
 
   refreshChart(chartType: 'collaborators' | 'projects' | 'categories') {
+    if (
+      !this.chartLibraryLoaded ||
+      !this.dataLoaded ||
+      typeof Chart === 'undefined'
+    ) {
+      return;
+    }
+
     switch (chartType) {
       case 'collaborators':
-        if (this.collaboratorsChart) {
-          this.collaboratorsChart.destroy();
-          this.createCollaboratorsChart();
+        if (
+          this.collaboratorsChartRef &&
+          this.collaboratorsChartRef.nativeElement
+        ) {
+          if (this.collaboratorsChart) {
+            this.collaboratorsChart.destroy();
+            this.collaboratorsChart = null;
+          }
+          setTimeout(() => this.createCollaboratorsChart(), 50);
         }
         break;
       case 'projects':
-        if (this.projectsChart) {
-          this.projectsChart.destroy();
-          this.createProjectsChart();
+        if (this.projectsChartRef && this.projectsChartRef.nativeElement) {
+          if (this.projectsChart) {
+            this.projectsChart.destroy();
+            this.projectsChart = null;
+          }
+          setTimeout(() => this.createProjectsChart(), 50);
         }
         break;
       case 'categories':
-        if (this.categoriesChart) {
-          this.categoriesChart.destroy();
-          this.createCategoriesChart();
+        if (this.categoriesChartRef && this.categoriesChartRef.nativeElement) {
+          if (this.categoriesChart) {
+            this.categoriesChart.destroy();
+            this.categoriesChart = null;
+          }
+          setTimeout(() => this.createCategoriesChart(), 50);
         }
         break;
     }
