@@ -29,9 +29,15 @@ export class InvoicesService {
 
   getInvoices(
     companyId: string,
-    filters?: any
+    filters?: any,
+    sortBy: string = 'fechaEmision',
+    sortOrder: 'asc' | 'desc' = 'desc'
   ): Observable<IInvoiceResponse[]> {
     let params = new HttpParams();
+
+    params = params.set('sortBy', sortBy);
+    params = params.set('sortOrder', sortOrder);
+
     if (filters) {
       Object.keys(filters).forEach((key) => {
         if (
