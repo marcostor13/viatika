@@ -18,9 +18,27 @@
     />
   </svg>
 
-  <div class="flex">
-    <span class="font-bold title">{{ headers[0].header }}</span>
-    <span>{{ item[headers[0].value] }}</span>
+  <div class="flex-1 grid grid-cols-2">
+    <div>
+      <div class="flex flex-col">
+        <span class="font-semibold">{{ item[headers[0].value] || "-" }}</span>
+      </div>
+      <div class="flex flex-col">
+        <span class="font-semibold text-green-600 text-xs">{{
+          item[headers[8].value] || "-"
+        }}</span>
+      </div>
+    </div>
+    <div>
+      <div class="flex flex-col">
+        <span class="font-semibold">{{ item[headers[1].value] || "-" }}</span>
+      </div>
+      <div class="flex flex-col">
+        <span class="font-semibold text-xs">{{
+          item.createdAt || item.date || "-"
+        }}</span>
+      </div>
+    </div>
   </div>
 </div>
 
