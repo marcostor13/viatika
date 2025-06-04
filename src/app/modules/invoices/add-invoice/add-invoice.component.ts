@@ -111,6 +111,8 @@ export default class AddInvoiceComponent implements OnInit {
             ...res,
             fechaEmision: fecha,
             rucEmisor: dataObj.rucEmisor || '',
+            serie: dataObj.serie || '',
+            correlativo: dataObj.correlativo || '',
             proyectId: res.proyectId?._id || res.proyectId || '',
             categoryId: res.categoryId?._id || res.categoryId || '',
           });
@@ -149,6 +151,8 @@ export default class AddInvoiceComponent implements OnInit {
       file: ['', Validators.required],
       fechaEmision: [''],
       rucEmisor: [''],
+      serie: [''],
+      correlativo: [''],
     });
   }
 
@@ -183,6 +187,8 @@ export default class AddInvoiceComponent implements OnInit {
       }
       dataObj.rucEmisor = formValue.rucEmisor;
       dataObj.fechaEmision = formValue.fechaEmision;
+      dataObj.serie = formValue.serie;
+      dataObj.correlativo = formValue.correlativo;
       const {
         file,
         fechaEmision,
@@ -378,5 +384,13 @@ export default class AddInvoiceComponent implements OnInit {
 
   get imageUrl() {
     return this.form.get('file');
+  }
+
+  get serie() {
+    return this.form.get('serie');
+  }
+
+  get correlativo() {
+    return this.form.get('correlativo');
   }
 }
