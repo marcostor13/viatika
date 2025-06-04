@@ -277,7 +277,7 @@
       >
         <option value="">Todos los proyectos</option>
         @for (project of projectsWithInvoiceCount; track project.id) {
-        <option [value]="project.name">{{ project.name }}</option>
+        <option [value]="project.id">{{ project.name }}</option>
         }
       </select>
       <select
@@ -288,7 +288,7 @@
       >
         <option value="">Todas las categorías</option>
         @for (category of categories; track category._id) {
-        <option [value]="category.name">{{ category.name }}</option>
+        <option [value]="category._id">{{ category.name }}</option>
         }
       </select>
       <select
