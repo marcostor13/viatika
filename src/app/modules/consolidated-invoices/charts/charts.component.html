@@ -45,6 +45,24 @@
           </select>
         </div>
         <div class="flex flex-col flex-1">
+          <label for="collaboratorFilter" class="text-sm font-medium mb-1"
+            >Colaborador:</label
+          >
+          <select
+            id="collaboratorFilter"
+            class="border border-gray-300 rounded-md p-2 w-full"
+            [(ngModel)]="filterCollaborator"
+            (ngModelChange)="onFilterChange()"
+          >
+            <option value="">Todos los colaboradores</option>
+            @for (collaborator of collaborators; track collaborator.id) {
+            <option [value]="collaborator.id">
+              {{ collaborator.name }}
+            </option>
+            }
+          </select>
+        </div>
+        <div class="flex flex-col flex-1">
           <label for="dateFrom" class="text-sm font-medium mb-1">Desde:</label>
           <input
             type="date"
@@ -80,38 +98,74 @@
     </div>
   </div>
   } @if (dataLoaded) {
-  <div class="bg-white p-3 sm:p-4 rounded-lg shadow-md">
-    <div
-      class="flex items-center justify-between cursor-pointer"
-      (click)="toggleSection('collaborators')"
-    >
-      <h3 class="text-base sm:text-lg font-semibold">
-        Gastos de Colaboradores en el Tiempo
-      </h3>
-      <svg
-        xmlns="http://www.w3.org/2000/svg"
-        class="h-5 w-5 text-gray-500 transition-transform duration-300"
-        [class.rotate-180]="!showCollaboratorsSection"
-        fill="none"
-        viewBox="0 0 24 24"
-        stroke="currentColor"
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+    <div class="bg-white p-3 sm:p-4 rounded-lg shadow-md">
+      <div
+        class="flex items-center justify-between cursor-pointer"
+        (click)="toggleSection('collaborators')"
       >
-        <path
-          stroke-linecap="round"
-          stroke-linejoin="round"
-          stroke-width="2"
-          d="M19 9l-7 7-7-7"
-        />
-      </svg>
+        <h3 class="text-base sm:text-lg font-semibold">
+          Gastos por Proyecto en el Tiempo
+        </h3>
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          class="h-5 w-5 text-gray-500 transition-transform duration-300"
+          [class.rotate-180]="!showCollaboratorsSection"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+        >
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            d="M19 9l-7 7-7-7"
+          />
+        </svg>
+      </div>
+
+      @if (showCollaboratorsSection) {
+      <div
+        class="mt-3 chart-container transition-all duration-300 ease-in-out overflow-hidden"
+      >
+        <canvas #collaboratorsChart></canvas>
+      </div>
+      }
     </div>
 
-    @if (showCollaboratorsSection) {
-    <div
-      class="mt-3 chart-container transition-all duration-300 ease-in-out overflow-hidden"
-    >
-      <canvas #collaboratorsChart></canvas>
+    <div class="bg-white p-3 sm:p-4 rounded-lg shadow-md">
+      <div
+        class="flex items-center justify-between cursor-pointer"
+        (click)="toggleSection('collaborator-consumption')"
+      >
+        <h3 class="text-base sm:text-lg font-semibold">
+          Consumo Total por Colaborador
+        </h3>
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          class="h-5 w-5 text-gray-500 transition-transform duration-300"
+          [class.rotate-180]="!showCollaboratorConsumptionSection"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+        >
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            d="M19 9l-7 7-7-7"
+          />
+        </svg>
+      </div>
+
+      @if (showCollaboratorConsumptionSection) {
+      <div
+        class="mt-3 chart-container transition-all duration-300 ease-in-out overflow-hidden"
+      >
+        <canvas #collaboratorConsumptionChart></canvas>
+      </div>
+      }
     </div>
-    }
   </div>
 
   <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
@@ -255,6 +309,27 @@
           <tr class="border-b border-gray-200">
             <td class="px-3 py-2 text-gray-500 text-center" colspan="2">
               No hay gastos por categoría en el período seleccionado
+            </td>
+          </tr>
+          }
+
+          <tr class="bg-blue-50">
+            <td class="px-3 py-2 font-bold" colspan="2">Colaboradores</td>
+          </tr>
+
+          @if (getCollaboratorIdsWithExpenses().length > 0) { @for
+          (collaboratorId of getCollaboratorIdsWithExpenses(); track
+          collaboratorId) {
+          <tr class="border-b border-gray-200">
+            <td class="px-3 py-2">{{ getCollaboratorName(collaboratorId) }}</td>
+            <td class="px-3 py-2 text-right">
+              {{ formatCurrency(getTotalByCollaborator(collaboratorId)) }}
+            </td>
+          </tr>
+          } } @else {
+          <tr class="border-b border-gray-200">
+            <td class="px-3 py-2 text-gray-500 text-center" colspan="2">
+              No hay gastos por colaborador en el período seleccionado
             </td>
           </tr>
           }

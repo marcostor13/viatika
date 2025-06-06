@@ -19,8 +19,8 @@ export const httpInterceptor: HttpInterceptorFn = (req, next) => {
 
   let url = req.url;
 
-  const excludedEndpoints = ['/users', '/users/', '/auth', '/auth/'];
-  const skipCompanyIdEndpoints = ['/approve', '/reject'];
+  const excludedEndpoints = ['/auth', '/auth/'];
+  const skipCompanyIdEndpoints = ['/approve', '/reject', '/users', '/users/'];
   const isExcludedEndpoint = excludedEndpoints.some(
     (endpoint) => url.includes(endpoint) || url.endsWith('/api')
   );

@@ -15,11 +15,21 @@ import { IProject } from '../../invoices/interfaces/project.interface';
 import { ICategory } from '../../invoices/interfaces/category.interface';
 import { UserStateService } from '../../../services/user-state.service';
 import { ExpenseService } from '../../../services/expense.service';
-import { forkJoin } from 'rxjs';
+import { AdminUsersService } from '../../admin-users/services/admin-users.service';
+import { IUserResponse } from '../../../interfaces/user.interface';
+import { forkJoin, of } from 'rxjs';
+import { catchError } from 'rxjs/operators';
 
 declare var Chart: any;
 
 interface CollaboratorExpense {
+  id: string;
+  name: string;
+  expenses: { [key: string]: number };
+  color: string;
+}
+
+interface ProjectExpense {
   id: string;
   name: string;
   expenses: { [key: string]: number };
@@ -39,19 +49,24 @@ export class ChartsComponent implements OnInit, AfterViewInit {
   categoriesChartRef!: ElementRef<HTMLCanvasElement>;
   @ViewChild('collaboratorsChart')
   collaboratorsChartRef!: ElementRef<HTMLCanvasElement>;
+  @ViewChild('collaboratorConsumptionChart')
+  collaboratorConsumptionChartRef!: ElementRef<HTMLCanvasElement>;
 
   private invoicesService = inject(InvoicesService);
   private userStateService = inject(UserStateService);
   private expenseService = inject(ExpenseService);
+  private adminUsersService = inject(AdminUsersService);
   private cdr = inject(ChangeDetectorRef);
 
   invoices: IInvoiceResponse[] = [];
   projects: IProject[] = [];
   categories: ICategory[] = [];
+  users: IUserResponse[] = [];
   expenses: any[] = [];
   filteredExpenses: any[] = [];
 
   showCollaboratorsSection = true;
+  showCollaboratorConsumptionSection = true;
   showProjectsSection = true;
   showCategoriesSection = true;
   showSummarySection = true;
@@ -65,6 +80,7 @@ export class ChartsComponent implements OnInit, AfterViewInit {
   projectsChart: any = null;
   categoriesChart: any = null;
   collaboratorsChart: any = null;
+  collaboratorConsumptionChart: any = null;
 
   chartLibraryLoaded = false;
   dataLoaded = false;
@@ -89,6 +105,19 @@ export class ChartsComponent implements OnInit, AfterViewInit {
 
   filterProject: string = '';
   filterCategory: string = '';
+  filterCollaborator: string = '';
+
+  get collaborators() {
+    return this.users
+      .filter((user) => user.isActive !== false)
+      .map((user) => ({
+        id: user._id || '',
+        name:
+          user.firstName && user.lastName
+            ? `${user.firstName} ${user.lastName}`
+            : user.email || 'Usuario sin nombre',
+      }));
+  }
 
   ngOnInit() {
     this.loadData();
@@ -105,7 +134,8 @@ export class ChartsComponent implements OnInit, AfterViewInit {
       this.dataLoaded &&
       this.projectsChartRef &&
       this.categoriesChartRef &&
-      this.collaboratorsChartRef
+      this.collaboratorsChartRef &&
+      this.collaboratorConsumptionChartRef
     ) {
       this.updateCharts();
     }
@@ -159,17 +189,28 @@ export class ChartsComponent implements OnInit, AfterViewInit {
       dateTo: this.dateTo,
       projectId: this.filterProject || undefined,
       categoryId: this.filterCategory || undefined,
+      collaboratorId: this.filterCollaborator || undefined,
     };
 
     forkJoin([
       this.invoicesService.getProjects(companyId),
       this.invoicesService.getCategories(companyId),
       this.expenseService.getExpenses(companyId, filters),
+      this.adminUsersService.getUsers().pipe(
+        catchError((error) => {
+          console.warn(
+            'Error al cargar usuarios, continuando sin filtro de colaboradores:',
+            error
+          );
+          return of([]); // Retorna array vacío si falla
+        })
+      ),
     ]).subscribe({
-      next: ([projects, categories, expenses]) => {
+      next: ([projects, categories, expenses, users]) => {
         this.projects = projects;
         this.categories = categories;
         this.expenses = expenses;
+        this.users = Array.isArray(users) ? users : [];
 
         this.projectMap.clear();
         this.projects.forEach((project) => {
@@ -208,13 +249,15 @@ export class ChartsComponent implements OnInit, AfterViewInit {
     if (
       !this.projectsChartRef ||
       !this.categoriesChartRef ||
-      !this.collaboratorsChartRef
+      !this.collaboratorsChartRef ||
+      !this.collaboratorConsumptionChartRef
     ) {
       return;
     }
     this.createProjectsChart();
     this.createCategoriesChart();
     this.createCollaboratorsChart();
+    this.createCollaboratorConsumptionChart();
   }
 
   updateFilteredExpenses() {
@@ -224,10 +267,33 @@ export class ChartsComponent implements OnInit, AfterViewInit {
 
     this.filteredExpenses = this.expenses.filter((expense) => {
       if (!expense.fechaEmision) return false;
+
       const expenseDate = new Date(expense.fechaEmision);
       const isAfterFrom = dateFrom ? expenseDate >= dateFrom : true;
       const isBeforeTo = dateTo ? expenseDate <= dateTo : true;
-      return isAfterFrom && isBeforeTo;
+
+      // Aplicar filtro de proyecto
+      const projectMatches =
+        !this.filterProject ||
+        this.getProjectId(expense) === this.filterProject;
+
+      // Aplicar filtro de categoría
+      const categoryMatches =
+        !this.filterCategory ||
+        this.getCategoryId(expense) === this.filterCategory;
+
+      // Aplicar filtro de colaborador
+      const collaboratorMatches =
+        !this.filterCollaborator ||
+        expense.createdBy === this.filterCollaborator;
+
+      return (
+        isAfterFrom &&
+        isBeforeTo &&
+        projectMatches &&
+        categoryMatches &&
+        collaboratorMatches
+      );
     });
   }
 
@@ -582,7 +648,7 @@ export class ChartsComponent implements OnInit, AfterViewInit {
             plugins: {
               title: {
                 display: true,
-                text: 'Gastos de Colaboradores en el Tiempo',
+                text: 'Gastos por Proyecto en el Tiempo',
               },
               legend: {
                 position: 'top',
@@ -596,16 +662,13 @@ export class ChartsComponent implements OnInit, AfterViewInit {
 
     const months = this.getMonthsInRange();
 
-    const collaboratorsData = this.getCollaboratorsData(
-      filteredExpenses,
-      months
-    );
+    const projectsData = this.getProjectsData(filteredExpenses, months);
 
-    const datasets = collaboratorsData.map((collaborator, index) => {
+    const datasets = projectsData.map((project, index) => {
       const colorIndex = index % this.chartColors.length;
       return {
-        label: collaborator.name,
-        data: months.map((month) => collaborator.expenses[month] || 0),
+        label: project.name,
+        data: months.map((month) => project.expenses[month] || 0),
         backgroundColor: this.chartColors[colorIndex],
         borderColor: this.chartColors[colorIndex],
         borderWidth: 1,
@@ -640,10 +703,167 @@ export class ChartsComponent implements OnInit, AfterViewInit {
           plugins: {
             title: {
               display: true,
-              text: 'Gastos de Colaboradores en el Tiempo',
+              text: 'Gastos por Proyecto en el Tiempo',
             },
             legend: {
               position: 'top',
+            },
+          },
+        },
+      }
+    );
+  }
+
+  createCollaboratorConsumptionChart() {
+    if (
+      !this.collaboratorConsumptionChartRef ||
+      !this.chartLibraryLoaded ||
+      typeof Chart === 'undefined' ||
+      !this.collaboratorConsumptionChartRef.nativeElement ||
+      !this.showCollaboratorConsumptionSection
+    ) {
+      return;
+    }
+
+    if (this.collaboratorConsumptionChart) {
+      this.collaboratorConsumptionChart.destroy();
+    }
+
+    const filteredExpenses = this.getFilteredInvoices();
+
+    if (filteredExpenses.length === 0) {
+      this.collaboratorConsumptionChart = new Chart(
+        this.collaboratorConsumptionChartRef.nativeElement,
+        {
+          type: 'bar',
+          data: {
+            labels: ['Sin datos'],
+            datasets: [
+              {
+                label: 'Sin datos',
+                data: [0],
+                backgroundColor: '#e2e2e2',
+                borderWidth: 1,
+              },
+            ],
+          },
+          options: {
+            responsive: true,
+            scales: {
+              y: {
+                beginAtZero: true,
+                title: {
+                  display: true,
+                  text: 'Importe (S/)',
+                },
+              },
+              x: {
+                title: {
+                  display: true,
+                  text: 'Colaborador',
+                },
+              },
+            },
+            plugins: {
+              title: {
+                display: true,
+                text: 'Consumo Total por Colaborador',
+              },
+              legend: {
+                display: false,
+              },
+            },
+          },
+        }
+      );
+      return;
+    }
+
+    const collaboratorConsumption = new Map<string, number>();
+    const collaboratorNames = new Map<string, string>();
+
+    filteredExpenses.forEach((expense) => {
+      const collaboratorId = expense.createdBy || 'unknown';
+      const collaboratorName = this.getCollaboratorName(collaboratorId);
+
+      const total =
+        typeof expense.total === 'string'
+          ? parseFloat(expense.total)
+          : expense.total || 0;
+
+      collaboratorConsumption.set(
+        collaboratorId,
+        (collaboratorConsumption.get(collaboratorId) || 0) + total
+      );
+
+      collaboratorNames.set(collaboratorId, collaboratorName);
+    });
+
+    const sortedData = Array.from(collaboratorConsumption.entries())
+      .sort(([, a], [, b]) => b - a)
+      .slice(0, 15);
+
+    const labels = sortedData.map(([id]) => {
+      const name = collaboratorNames.get(id) || 'Desconocido';
+      return name.length > 20 ? name.substring(0, 20) + '...' : name;
+    });
+    const data = sortedData.map(([, total]) => total);
+    const colors = sortedData.map(
+      (_, index) => this.chartColors[index % this.chartColors.length]
+    );
+
+    this.collaboratorConsumptionChart = new Chart(
+      this.collaboratorConsumptionChartRef.nativeElement,
+      {
+        type: 'bar',
+        data: {
+          labels: labels,
+          datasets: [
+            {
+              label: 'Consumo Total',
+              data: data,
+              backgroundColor: colors,
+              borderColor: colors,
+              borderWidth: 1,
+            },
+          ],
+        },
+        options: {
+          responsive: true,
+          scales: {
+            y: {
+              beginAtZero: true,
+              title: {
+                display: true,
+                text: 'Importe (S/)',
+              },
+            },
+            x: {
+              title: {
+                display: true,
+                text: 'Colaborador',
+              },
+              ticks: {
+                maxRotation: 45,
+                minRotation: 0,
+              },
+            },
+          },
+          plugins: {
+            title: {
+              display: true,
+              text: 'Consumo Total por Colaborador',
+            },
+            legend: {
+              display: false,
+            },
+            tooltip: {
+              callbacks: {
+                label: (context: any) => {
+                  const value = context.parsed.y;
+                  return `${context.label}: ${this.formatCurrency(value)}`;
+                },
+              },
             },
           },
         },
@@ -694,6 +914,55 @@ export class ChartsComponent implements OnInit, AfterViewInit {
     return `${monthNames[date.getMonth()]} ${year}`;
   }
 
+  getProjectsData(expenses: any[], months: string[]): ProjectExpense[] {
+    const projectsMap: Map<string, ProjectExpense> = new Map();
+
+    expenses.forEach((expense) => {
+      const projectId = this.getProjectId(expense);
+      if (!projectId) return;
+
+      const expenseDate = new Date(expense.fechaEmision);
+      const monthKey = `${expenseDate.getFullYear()}-${String(
+        expenseDate.getMonth() + 1
+      ).padStart(2, '0')}`;
+
+      if (!months.includes(monthKey)) {
+        return;
+      }
+
+      if (!projectsMap.has(projectId)) {
+        const projectExpense: ProjectExpense = {
+          id: projectId,
+          name: this.getProjectName(projectId),
+          expenses: {},
+          color: '',
+        };
+
+        months.forEach((month) => {
+          projectExpense.expenses[month] = 0;
+        });
+
+        projectsMap.set(projectId, projectExpense);
+      }
+
+      const total =
+        typeof expense.total === 'string'
+          ? parseFloat(expense.total)
+          : expense.total || 0;
+
+      const project = projectsMap.get(projectId)!;
+      project.expenses[monthKey] = (project.expenses[monthKey] || 0) + total;
+    });
+
+    const result = Array.from(projectsMap.values());
+
+    result.slice(0, 10).forEach((project, index) => {
+      project.color = this.chartColors[index % this.chartColors.length];
+    });
+
+    return result;
+  }
+
   getCollaboratorsData(
     expenses: any[],
     months: string[]
@@ -701,35 +970,11 @@ export class ChartsComponent implements OnInit, AfterViewInit {
     const collaboratorsMap: Map<string, CollaboratorExpense> = new Map();
 
     const getCollaboratorId = (expense: any): string => {
-      let userId = '';
-
-      if (expense.data && typeof expense.data === 'object') {
-        userId = (expense.data as any).userId || '';
-      }
-
-      return userId || this.getProjectId(expense) || 'unknown';
-    };
-
-    const getCollaboratorName = (expense: any): string => {
-      let userName = '';
-
-      if (expense.data && typeof expense.data === 'object') {
-        userName = (expense.data as any).userName || '';
-      }
-
-      const projectId = this.getProjectId(expense);
-      const projectName = projectId ? this.getProjectName(projectId) : '';
-
-      return (
-        userName ||
-        expense.projectName ||
-        projectName ||
-        'Colaborador desconocido'
-      );
+      return expense.createdBy || 'unknown';
     };
 
     expenses.forEach((expense) => {
-      const collaboratorId = getCollaboratorId(expense);
+      const collaboratorId = getCollaboratorId(expense) || 'unknown';
       const expenseDate = new Date(expense.fechaEmision);
       const monthKey = `${expenseDate.getFullYear()}-${String(
         expenseDate.getMonth() + 1
@@ -742,7 +987,7 @@ export class ChartsComponent implements OnInit, AfterViewInit {
       if (!collaboratorsMap.has(collaboratorId)) {
         const collaboratorExpense: CollaboratorExpense = {
           id: collaboratorId,
-          name: getCollaboratorName(expense),
+          name: this.getCollaboratorName(collaboratorId),
           expenses: {},
           color: '',
         };
@@ -804,6 +1049,53 @@ export class ChartsComponent implements OnInit, AfterViewInit {
     return Array.from(categoryIdsWithExpenses);
   }
 
+  getCollaboratorIdsWithExpenses(): string[] {
+    const filteredExpenses = this.getFilteredInvoices();
+    const collaboratorIdsWithExpenses = new Set<string>();
+    filteredExpenses.forEach((expense) => {
+      const collaboratorId = this.getCollaboratorId(expense);
+      if (collaboratorId && this.getTotalByCollaborator(collaboratorId) > 0) {
+        collaboratorIdsWithExpenses.add(collaboratorId);
+      }
+    });
+    return Array.from(collaboratorIdsWithExpenses);
+  }
+
+  getCollaboratorId(expense: any): string {
+    return expense.createdBy || 'unknown';
+  }
+
+  getCollaboratorName(collaboratorId: string): string {
+    if (!collaboratorId || collaboratorId === 'unknown') {
+      return 'Sin asignar';
+    }
+
+    const user = this.users.find((u) => u._id === collaboratorId);
+    if (user) {
+      return user.firstName && user.lastName
+        ? `${user.firstName} ${user.lastName}`
+        : user.email || 'Colaborador desconocido';
+    }
+    return 'Colaborador desconocido';
+  }
+
+  getTotalByCollaborator(collaboratorId: string): number {
+    if (!collaboratorId) {
+      return 0;
+    }
+
+    const filteredExpenses = this.getFilteredInvoices();
+    return filteredExpenses
+      .filter((expense) => this.getCollaboratorId(expense) === collaboratorId)
+      .reduce((total, expense) => {
+        const expenseTotal =
+          typeof expense.total === 'string'
+            ? parseFloat(expense.total)
+            : expense.total || 0;
+        return total + expenseTotal;
+      }, 0);
+  }
+
   getTotalExpenses(): number {
     const filteredExpenses = this.getFilteredInvoices();
 
@@ -817,7 +1109,12 @@ export class ChartsComponent implements OnInit, AfterViewInit {
   }
 
   toggleSection(
-    section: 'collaborators' | 'projects' | 'categories' | 'summary'
+    section:
+      | 'collaborators'
+      | 'collaborator-consumption'
+      | 'projects'
+      | 'categories'
+      | 'summary'
   ) {
     switch (section) {
       case 'collaborators':
@@ -825,6 +1122,14 @@ export class ChartsComponent implements OnInit, AfterViewInit {
         if (this.showCollaboratorsSection) {
           this.cdr.detectChanges();
           setTimeout(() => this.refreshChart('collaborators'), 100);
+        }
+        break;
+      case 'collaborator-consumption':
+        this.showCollaboratorConsumptionSection =
+          !this.showCollaboratorConsumptionSection;
+        if (this.showCollaboratorConsumptionSection) {
+          this.cdr.detectChanges();
+          setTimeout(() => this.refreshChart('collaborator-consumption'), 100);
         }
         break;
       case 'projects':
@@ -847,7 +1152,13 @@ export class ChartsComponent implements OnInit, AfterViewInit {
     }
   }
 
-  refreshChart(chartType: 'collaborators' | 'projects' | 'categories') {
+  refreshChart(
+    chartType:
+      | 'collaborators'
+      | 'collaborator-consumption'
+      | 'projects'
+      | 'categories'
+  ) {
     if (
       !this.chartLibraryLoaded ||
       !this.dataLoaded ||
@@ -867,6 +1178,18 @@ export class ChartsComponent implements OnInit, AfterViewInit {
             this.collaboratorsChart = null;
           }
           setTimeout(() => this.createCollaboratorsChart(), 50);
+        }
+        break;
+      case 'collaborator-consumption':
+        if (
+          this.collaboratorConsumptionChartRef &&
+          this.collaboratorConsumptionChartRef.nativeElement
+        ) {
+          if (this.collaboratorConsumptionChart) {
+            this.collaboratorConsumptionChart.destroy();
+            this.collaboratorConsumptionChart = null;
+          }
+          setTimeout(() => this.createCollaboratorConsumptionChart(), 50);
         }
         break;
       case 'projects':

@@ -28,6 +28,15 @@ canvas {
   }
 }
 
+/* Estilos específicos para gráficos de colaboradores lado a lado */
+@media (min-width: 1024px) {
+  .chart-container {
+    min-height: 300px;
+    height: 55vh;
+    max-height: 450px;
+  }
+}
+
 /* Arreglo para la leyenda en móviles */
 :host ::ng-deep .chart-js-legend {
   display: flex;
@@ -48,6 +57,16 @@ canvas {
       height: 12px;
       margin-right: 5px;
       border-radius: 2px;
+    }
+  }
+}
+
+/* Mejoras para la visualización en pantallas grandes */
+@media (min-width: 1024px) {
+  .grid {
+    &.grid-cols-1.lg\\:grid-cols-2 {
+      grid-template-columns: 1fr 1fr;
+      gap: 1.5rem;
     }
   }
 }
