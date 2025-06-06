@@ -215,13 +215,12 @@ export default class InvoicesComponent implements OnInit {
   }
 
   approveInvoice(id: string) {
-    const userId = localStorage.getItem('userId') || '';
+    const companyId = this.userStateService.getUser()?.companyId || '';
     const payload = {
       status: 'approved' as InvoiceStatus,
-      userId: userId,
     };
 
-    this.agentService.approveInvoice(id, payload).subscribe({
+    this.agentService.approveInvoice(id, companyId, payload).subscribe({
       next: () => {
         this.notificationService.show(
           'Factura aprobada correctamente',
@@ -236,14 +235,13 @@ export default class InvoicesComponent implements OnInit {
   }
 
   rejectInvoice(id: string, reason: string) {
-    const userId = localStorage.getItem('userId') || '';
+    const companyId = this.userStateService.getUser()?.companyId || '';
     const payload = {
       status: 'rejected' as InvoiceStatus,
-      userId: userId,
       reason: reason,
     };
 
-    this.agentService.approveInvoice(id, payload).subscribe({
+    this.agentService.rejectInvoice(id, companyId, payload).subscribe({
       next: () => {
         this.notificationService.show(
           'Factura rechazada correctamente',

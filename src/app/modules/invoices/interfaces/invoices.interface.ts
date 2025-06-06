@@ -1,5 +1,5 @@
-import { IProject } from "./project.interface";
-import { ICategory } from "./category.interface";
+import { IProject } from './project.interface';
+import { ICategory } from './category.interface';
 export interface IInvoice {
   proyect: string;
   category: string;
@@ -50,7 +50,7 @@ export interface InvoicePayload {
 
 export interface ApprovalPayload {
   status: InvoiceStatus;
-  userId: string;
+  userId?: string;
   reason?: string;
 }
 

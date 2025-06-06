@@ -68,20 +68,22 @@ export class InvoicesService {
 
   approveInvoice(
     id: string,
+    companyId: string,
     payload: ApprovalPayload
   ): Observable<IInvoiceResponse> {
     return this.http.patch<IInvoiceResponse>(
-      `${this.url}/${id}/approve`,
+      `${this.url}/${id}/${companyId}/approve`,
       payload
     );
   }
 
   rejectInvoice(
     id: string,
+    companyId: string,
     payload: ApprovalPayload
   ): Observable<IInvoiceResponse> {
     return this.http.patch<IInvoiceResponse>(
-      `${this.url}/${id}/reject`,
+      `${this.url}/${id}/${companyId}/reject`,
       payload
     );
   }

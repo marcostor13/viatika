@@ -76,8 +76,6 @@ export class ConsolidatedInvoicesComponent implements OnInit {
   private confirmationService = inject(ConfirmationService);
   private userStateService = inject(UserStateService);
 
-  private currentUserId = '1';
-
   rejectionReason = signal('');
   selectedInvoiceId = signal('');
   showRejectionModal = signal(false);
@@ -312,11 +310,8 @@ export class ConsolidatedInvoicesComponent implements OnInit {
         }
         this.loading = false;
 
-        if (this.currentUserId) {
-          this.userInvoices = this.invoices.filter(
-            (invoice) => invoice.userId === this.currentUserId
-          );
-        }
+        // Las facturas del usuario se obtienen automáticamente según la empresa
+        this.userInvoices = this.invoices;
       },
       error: (error) => {
         this.invoices = [];
@@ -466,12 +461,12 @@ export class ConsolidatedInvoicesComponent implements OnInit {
   }
 
   approveInvoice(id: string) {
+    const companyId = this.userStateService.getUser()?.companyId || '';
     const payload: ApprovalPayload = {
       status: 'approved',
-      userId: this.currentUserId,
     };
 
-    this.agentService.approveInvoice(id, payload).subscribe({
+    this.agentService.approveInvoice(id, companyId, payload).subscribe({
       next: () => {
         this.notificationService.show(
           'Factura aprobada correctamente',
@@ -510,26 +505,31 @@ export class ConsolidatedInvoicesComponent implements OnInit {
     const id = this.selectedInvoiceId();
     const payload: ApprovalPayload = {
       status: 'rejected',
-      userId: this.currentUserId,
       reason: this.rejectionReason(),
     };
 
-    this.agentService.rejectInvoice(id, payload).subscribe({
-      next: () => {
-        this.notificationService.show(
-          'Factura rechazada correctamente',
-          'success'
-        );
-        this.closeRejectionModal();
-        this.getInvoices();
-      },
-      error: (error) => {
-        this.notificationService.show(
-          'Error al rechazar la factura: ' + error.message,
-          'error'
-        );
-      },
-    });
+    this.agentService
+      .rejectInvoice(
+        id,
+        this.userStateService.getUser()?.companyId || '',
+        payload
+      )
+      .subscribe({
+        next: () => {
+          this.notificationService.show(
+            'Factura rechazada correctamente',
+            'success'
+          );
+          this.closeRejectionModal();
+          this.getInvoices();
+        },
+        error: (error) => {
+          this.notificationService.show(
+            'Error al rechazar la factura: ' + error.message,
+            'error'
+          );
+        },
+      });
   }
 
   get filteredInvoices() {

@@ -20,8 +20,12 @@ export const httpInterceptor: HttpInterceptorFn = (req, next) => {
   let url = req.url;
 
   const excludedEndpoints = ['/users', '/users/', '/auth', '/auth/'];
+  const skipCompanyIdEndpoints = ['/approve', '/reject'];
   const isExcludedEndpoint = excludedEndpoints.some(
     (endpoint) => url.includes(endpoint) || url.endsWith('/api')
+  );
+  const shouldSkipCompanyId = skipCompanyIdEndpoints.some((endpoint) =>
+    url.includes(endpoint)
   );
 
   if (token) {
@@ -38,7 +42,8 @@ export const httpInterceptor: HttpInterceptorFn = (req, next) => {
   if (
     methods.includes(req.method) &&
     user?.companyId &&
-    !isExcludedEndpoint
+    !isExcludedEndpoint &&
+    !shouldSkipCompanyId
   ) {
     if (!url.endsWith(user.companyId)) {
       if (!url.endsWith('/')) {
