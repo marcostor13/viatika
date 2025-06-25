@@ -5,12 +5,18 @@ import { AuthColaboradorGuard } from './guards/auth-colaborador.guard';
 import { AuthAdmin2Guard } from './guards/auth-admin2.guard';
 import { MainComponent } from './layouts/main/main.component';
 import AdminUsersComponent from './modules/admin-users/admin-users.component';
+import { InvoiceApprovalComponent } from './modules/invoice-approval/invoice-approval.component';
 
 export const routes: Routes = [
   {
     path: '',
     component: MainComponent,
     children: [
+      {
+        path: '',
+        redirectTo: '/invoices', // Por defecto redirige a facturas para colaboradores
+        pathMatch: 'full',
+      },
       {
         path: 'invoices',
         component: InvoicesComponent,
@@ -25,6 +31,11 @@ export const routes: Routes = [
         path: 'invoices/edit/:id',
         component: AddInvoiceComponent,
         canActivate: [AuthColaboradorGuard],
+      },
+      {
+        path: 'invoice-approval',
+        component: InvoiceApprovalComponent,
+        canActivate: [AuthAdmin2Guard],
       },
       {
         path: 'consolidated-invoices',
@@ -69,7 +80,7 @@ export const routes: Routes = [
       {
         path: 'admin-users',
         component: AdminUsersComponent,
-        // canActivate: [AuthAdmin2Guard],
+        canActivate: [AuthAdmin2Guard],
       },
     ],
   },

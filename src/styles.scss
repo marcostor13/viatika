@@ -3,13 +3,10 @@
 @tailwind components;
 @tailwind utilities;
 
-@import url("https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&family=Roboto:ital,wght@0,100..900;1,100..900&family=Source+Code+Pro:ital,wght@0,200..900;1,200..900&display=swap");
-
 * {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
-  font-family: "Source Code Pro", monospace;
 }
 
 .text-color1 {
@@ -28,6 +25,10 @@
   color: vars.$color4;
 }
 
+.text-color5 {
+  color: vars.$color5;
+}
+
 .bg-color1 {
   background-color: vars.$color1;
 }
@@ -44,10 +45,22 @@
   background-color: vars.$color4;
 }
 
+.bg-color5 {
+  background-color: vars.$color5;
+}
+
 input,
 select,
 textarea {
   border: 1px solid vars.$color1;
   border-radius: 0.5rem !important;
   padding: 0.5rem;
+}
+
+.sidebar-shadow {
+  box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
+}
+
+.transition-smooth {
+  transition: all 0.3s ease-in-out;
 }

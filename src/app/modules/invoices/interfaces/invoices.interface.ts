@@ -9,7 +9,13 @@ export interface IInvoice {
   total: string | number;
 }
 
-export type InvoiceStatus = 'pending' | 'approved' | 'rejected';
+export type InvoiceStatus =
+  | 'PENDING'
+  | 'APPROVED'
+  | 'REJECTED'
+  | 'pending'
+  | 'approved'
+  | 'rejected';
 
 export interface IInvoiceResponse {
   _id: string;

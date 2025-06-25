@@ -24,11 +24,11 @@ export class LoginComponent {
   private notificationService = inject(NotificationService);
   private authService = inject(AuthService);
 
-  constructor(private router: Router) { }
+  constructor(private router: Router) {}
 
   redirect(role: string) {
     if (role === 'ADMIN2') {
-      this.router.navigate(['/consolidated-invoices']);
+      this.router.navigate(['/invoice-approval']);
     } else {
       this.router.navigate(['/invoices']);
     }
@@ -43,7 +43,6 @@ export class LoginComponent {
       });
     }
   }
-
 
   // login() {
   //   this.loading.set(true);
