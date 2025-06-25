@@ -59,4 +59,5 @@ export interface IUserUpdate {
   role?: string;
   isActive?: boolean;
   companyId?: string;
+  password?: string; // Campo opcional para cambiar contraseña
 }

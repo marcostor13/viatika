@@ -32,7 +32,7 @@ export default class AdminUsersComponent implements OnInit {
   data: IUserResponse[] = [];
 
   panelMode: 'none' | 'create' | 'edit' = 'none';
-  tempUser: Partial<IUser> & { confirmPassword?: string } = {};
+  tempUser: Partial<IUser> = {};
   isLoading = signal(false);
 
   constructor(
@@ -81,9 +81,8 @@ export default class AdminUsersComponent implements OnInit {
       firstName: '',
       lastName: '',
       email: '',
-      password: '',
-      confirmPassword: '',
       role: '',
+      password: '',
       isActive: true,
       companyId: currentUser?.companyId,
     };
@@ -100,6 +99,7 @@ export default class AdminUsersComponent implements OnInit {
       ...user,
       firstName: user.firstName || user.name?.split(' ')[0] || '',
       lastName: user.lastName || user.name?.split(' ')[1] || '',
+      password: '', // No mostrar la contraseña existente
     };
   }
 
@@ -121,34 +121,33 @@ export default class AdminUsersComponent implements OnInit {
       return;
     }
 
-    // Validar contraseña en modo crear
-    if (this.panelMode === 'create') {
-      if (!this.tempUser.password) {
-        this.notification.show('La contraseña es obligatoria', 'error');
-        return;
-      }
-      if (this.tempUser.password.length < 6) {
-        this.notification.show(
-          'La contraseña debe tener al menos 6 caracteres',
-          'error'
-        );
-        return;
-      }
-      if (!this.tempUser.confirmPassword) {
-        this.notification.show('Debes confirmar la contraseña', 'error');
-        return;
-      }
-      if (this.tempUser.password !== this.tempUser.confirmPassword) {
-        this.notification.show('Las contraseñas no coinciden', 'error');
-        return;
-      }
-    }
-
     // Validar formato de email
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(this.tempUser.email)) {
       this.notification.show('Por favor ingresa un email válido', 'error');
       return;
+    }
+
+    // Validar contraseña para nuevo usuario
+    if (this.panelMode === 'create') {
+      if (!this.tempUser.password || this.tempUser.password.length < 6) {
+        this.notification.show(
+          'La contraseña es obligatoria y debe tener al menos 6 caracteres',
+          'error'
+        );
+        return;
+      }
+    }
+
+    // Validar contraseña en modo edición (solo si se proporciona)
+    if (this.panelMode === 'edit' && this.tempUser.password) {
+      if (this.tempUser.password.length < 6) {
+        this.notification.show(
+          'La nueva contraseña debe tener al menos 6 caracteres',
+          'error'
+        );
+        return;
+      }
     }
 
     this.isLoading.set(true);
@@ -158,7 +157,7 @@ export default class AdminUsersComponent implements OnInit {
         firstName: this.tempUser.firstName.trim(),
         lastName: this.tempUser.lastName?.trim() || '',
         email: this.tempUser.email.trim().toLowerCase(),
-        password: this.tempUser.password!.trim(),
+        password: this.tempUser.password || 'Temporal123',
         role: this.tempUser.role,
         companyId: this.tempUser.companyId,
       };
@@ -195,6 +194,11 @@ export default class AdminUsersComponent implements OnInit {
         isActive: this.tempUser.isActive,
         companyId: this.tempUser.companyId,
       };
+
+      // Solo agregar password si se proporcionó una nueva
+      if (this.tempUser.password && this.tempUser.password.trim()) {
+        (updatedUser as any).password = this.tempUser.password.trim();
+      }
 
       console.log('Actualizando usuario con datos:', updatedUser);
 

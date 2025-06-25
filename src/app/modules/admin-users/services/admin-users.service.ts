@@ -56,7 +56,7 @@ export class AdminUsersService {
     const userData = {
       ...user,
       companyId: user.companyId || currentUser?.companyId,
-      // Usar la contraseña proporcionada o una por defecto
+      // Agregar password por defecto si no existe
       password: (user as any).password || 'Temporal123',
     };
 
