@@ -23,10 +23,10 @@ export class AdminUsersService {
     const token = this.userStateService.getToken();
     if (!token) {
       console.error('No hay token disponible');
-      return new HttpHeaders({
-        'Content-Type': 'application/json',
-      });
+      throw new Error('No hay token de autenticación disponible');
     }
+
+    console.log('Token utilizado:', token);
 
     return new HttpHeaders({
       Authorization: `Bearer ${token}`,
@@ -52,10 +52,16 @@ export class AdminUsersService {
   createUser(user: IUser): Observable<IUserResponse> {
     const currentUser = this.userStateService.getUser();
 
+    // Asegurar que se envíe el companyId del usuario actual
     const userData = {
       ...user,
-      companyId: currentUser?.companyId,
+      companyId: user.companyId || currentUser?.companyId,
+      // Usar la contraseña proporcionada o una por defecto
+      password: (user as any).password || 'Temporal123',
     };
+
+    console.log('Datos del usuario a crear:', userData);
+    console.log('Usuario actual:', currentUser);
 
     return this.http
       .post<IUserResponse>(this.apiUrl, userData, {
@@ -94,12 +100,27 @@ export class AdminUsersService {
   private handleError(error: HttpErrorResponse) {
     let errorMessage = 'Ha ocurrido un error';
 
+    console.error('Error completo:', error);
+
     if (error.error instanceof ErrorEvent) {
       errorMessage = `Error: ${error.error.message}`;
     } else {
-      errorMessage = `Código: ${error.status}, Mensaje: ${
-        error.error?.message || error.statusText
-      }`;
+      // Manejar errores específicos del backend
+      if (error.status === 400 && error.error?.message) {
+        if (Array.isArray(error.error.message)) {
+          errorMessage = error.error.message.join(', ');
+        } else {
+          errorMessage = error.error.message;
+        }
+      } else if (error.status === 401) {
+        errorMessage = 'No autorizado. Verifica tu sesión.';
+      } else if (error.status === 403) {
+        errorMessage = 'No tienes permisos para realizar esta acción.';
+      } else {
+        errorMessage = `Código: ${error.status}, Mensaje: ${
+          error.error?.message || error.statusText
+        }`;
+      }
 
       console.error('Detalles del error:', {
         status: error.status,

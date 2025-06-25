@@ -99,7 +99,9 @@
                 [(ngModel)]="tempUser.firstName"
                 name="firstName"
                 class="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-color1"
+                placeholder="Ingrese el nombre"
                 required
+                maxlength="50"
               />
             </div>
 
@@ -110,6 +112,8 @@
                 [(ngModel)]="tempUser.lastName"
                 name="lastName"
                 class="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-color1"
+                placeholder="Ingrese el apellido"
+                maxlength="50"
               />
             </div>
           </div>
@@ -123,8 +127,54 @@
               [(ngModel)]="tempUser.email"
               name="email"
               class="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-color1"
+              placeholder="ejemplo@correo.com"
               required
+              maxlength="100"
             />
+          </div>
+
+          <div
+            class="flex flex-col md:flex-row gap-3"
+            *ngIf="panelMode === 'create'"
+          >
+            <div class="flex flex-col gap-2 flex-1">
+              <label class="font-medium text-gray-700"
+                >Contraseña <span class="text-color1">*</span></label
+              >
+              <input
+                type="password"
+                [(ngModel)]="tempUser.password"
+                name="password"
+                class="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-color1"
+                placeholder="Mínimo 6 caracteres"
+                required
+                minlength="6"
+                maxlength="50"
+              />
+            </div>
+
+            <div class="flex flex-col gap-2 flex-1">
+              <label class="font-medium text-gray-700"
+                >Confirmar Contraseña <span class="text-color1">*</span></label
+              >
+              <input
+                type="password"
+                [(ngModel)]="tempUser.confirmPassword"
+                name="confirmPassword"
+                class="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-color1"
+                placeholder="Repite la contraseña"
+                required
+                minlength="6"
+                maxlength="50"
+              />
+            </div>
+          </div>
+
+          <div *ngIf="panelMode === 'create'" class="text-sm text-gray-500">
+            <p>• La contraseña debe tener al menos 6 caracteres</p>
+            <p>
+              • Se recomienda usar una combinación de letras, números y símbolos
+            </p>
           </div>
 
           <div class="flex flex-col gap-2">
@@ -137,14 +187,9 @@
               class="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-color1"
               required
             >
-              <option value="ADMIN">Administrador Principal</option>
+              <option value="" disabled>Selecciona un rol</option>
               <option value="ADMIN2">Administrador</option>
               <option value="COLABORADOR">Colaborador</option>
-              <option value="PROVIDER">Proveedor</option>
-              <option value="COMPANY">Empresa</option>
-              <option value="ACCOUNTING">Contabilidad</option>
-              <option value="TREASURY">Tesorería</option>
-              <option value="USER">Usuario</option>
             </select>
           </div>
 

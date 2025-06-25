@@ -9,6 +9,7 @@ export interface IUser {
   companyId?: string;
   status?: string;
   phone?: string;
+  password?: string; // Campo opcional para creación de usuarios
   createdAt?: Date;
   updatedAt?: Date;
 }

@@ -32,7 +32,7 @@ export default class AdminUsersComponent implements OnInit {
   data: IUserResponse[] = [];
 
   panelMode: 'none' | 'create' | 'edit' = 'none';
-  tempUser: Partial<IUser> = {};
+  tempUser: Partial<IUser> & { confirmPassword?: string } = {};
   isLoading = signal(false);
 
   constructor(
@@ -75,13 +75,23 @@ export default class AdminUsersComponent implements OnInit {
 
   showCreatePanel() {
     this.panelMode = 'create';
+    const currentUser = this.adminUsersService['userStateService'].getUser();
+
     this.tempUser = {
       firstName: '',
       lastName: '',
       email: '',
+      password: '',
+      confirmPassword: '',
       role: '',
       isActive: true,
+      companyId: currentUser?.companyId,
     };
+
+    console.log(
+      'Creando nuevo usuario para companyId:',
+      currentUser?.companyId
+    );
   }
 
   showEditPanel(user: IUserResponse) {
@@ -104,7 +114,40 @@ export default class AdminUsersComponent implements OnInit {
       !this.tempUser.email ||
       !this.tempUser.role
     ) {
-      this.notification.show('Todos los campos son obligatorios', 'error');
+      this.notification.show(
+        'Por favor completa todos los campos obligatorios',
+        'error'
+      );
+      return;
+    }
+
+    // Validar contraseña en modo crear
+    if (this.panelMode === 'create') {
+      if (!this.tempUser.password) {
+        this.notification.show('La contraseña es obligatoria', 'error');
+        return;
+      }
+      if (this.tempUser.password.length < 6) {
+        this.notification.show(
+          'La contraseña debe tener al menos 6 caracteres',
+          'error'
+        );
+        return;
+      }
+      if (!this.tempUser.confirmPassword) {
+        this.notification.show('Debes confirmar la contraseña', 'error');
+        return;
+      }
+      if (this.tempUser.password !== this.tempUser.confirmPassword) {
+        this.notification.show('Las contraseñas no coinciden', 'error');
+        return;
+      }
+    }
+
+    // Validar formato de email
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(this.tempUser.email)) {
+      this.notification.show('Por favor ingresa un email válido', 'error');
       return;
     }
 
@@ -112,18 +155,21 @@ export default class AdminUsersComponent implements OnInit {
 
     if (this.panelMode === 'create') {
       const newUser: IUserCreate = {
-        firstName: this.tempUser.firstName,
-        lastName: this.tempUser.lastName || '',
-        email: this.tempUser.email,
-        password: 'Temporal123',
+        firstName: this.tempUser.firstName.trim(),
+        lastName: this.tempUser.lastName?.trim() || '',
+        email: this.tempUser.email.trim().toLowerCase(),
+        password: this.tempUser.password!.trim(),
         role: this.tempUser.role,
         companyId: this.tempUser.companyId,
       };
+
+      console.log('Creando usuario con datos:', newUser);
 
       this.adminUsersService
         .createUser(newUser as IUser)
         .pipe(
           catchError((error) => {
+            console.error('Error al crear usuario:', error);
             this.notification.show(
               'Error al crear usuario: ' + error.message,
               'error'
@@ -133,7 +179,8 @@ export default class AdminUsersComponent implements OnInit {
           finalize(() => this.isLoading.set(false))
         )
         .subscribe({
-          next: () => {
+          next: (response) => {
+            console.log('Usuario creado exitosamente:', response);
             this.notification.show('Usuario creado correctamente', 'success');
             this.closePanel();
             this.loadUsers();
@@ -141,18 +188,21 @@ export default class AdminUsersComponent implements OnInit {
         });
     } else if (this.panelMode === 'edit' && this.tempUser._id) {
       const updatedUser: IUserUpdate = {
-        firstName: this.tempUser.firstName,
-        lastName: this.tempUser.lastName,
-        email: this.tempUser.email,
+        firstName: this.tempUser.firstName?.trim(),
+        lastName: this.tempUser.lastName?.trim(),
+        email: this.tempUser.email?.trim().toLowerCase(),
         role: this.tempUser.role,
         isActive: this.tempUser.isActive,
         companyId: this.tempUser.companyId,
       };
 
+      console.log('Actualizando usuario con datos:', updatedUser);
+
       this.adminUsersService
         .updateUser(this.tempUser._id, updatedUser as Partial<IUser>)
         .pipe(
           catchError((error) => {
+            console.error('Error al actualizar usuario:', error);
             this.notification.show(
               'Error al actualizar usuario: ' + error.message,
               'error'
@@ -162,8 +212,12 @@ export default class AdminUsersComponent implements OnInit {
           finalize(() => this.isLoading.set(false))
         )
         .subscribe({
-          next: () => {
-            this.notification.show('Usuario actualizado', 'success');
+          next: (response) => {
+            console.log('Usuario actualizado exitosamente:', response);
+            this.notification.show(
+              'Usuario actualizado correctamente',
+              'success'
+            );
             this.closePanel();
             this.loadUsers();
           },
