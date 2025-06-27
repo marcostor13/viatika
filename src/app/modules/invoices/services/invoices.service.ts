@@ -115,16 +115,23 @@ export class InvoicesService {
     return this.http.get<IProject[]>(`${this.projectUrl}/${companyId}`);
   }
 
-  getProjectById(id: string): Observable<IProject> {
-    return this.http.get<IProject>(`${this.projectUrl}/${id}`);
+  getProjectById(id: string, companyId: string): Observable<IProject> {
+    return this.http.get<IProject>(`${this.projectUrl}/${id}/${companyId}`);
   }
 
   createProject(project: IProject): Observable<IProject> {
     return this.http.post<IProject>(`${this.projectUrl}`, project);
   }
 
-  updateProject(id: string, project: Partial<IProject>): Observable<IProject> {
-    return this.http.patch<IProject>(`${this.projectUrl}/${id}`, project);
+  updateProject(
+    id: string,
+    project: Partial<IProject>,
+    companyId: string
+  ): Observable<IProject> {
+    return this.http.patch<IProject>(
+      `${this.projectUrl}/${id}/${companyId}`,
+      project
+    );
   }
 
   deleteProject(id: string): Observable<any> {

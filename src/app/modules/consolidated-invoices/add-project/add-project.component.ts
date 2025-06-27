@@ -6,6 +6,7 @@ import { NotificationService } from '../../../services/notification.service';
 import { InvoicesService } from '../../invoices/services/invoices.service';
 import { HttpErrorResponse } from '@angular/common/http';
 import { IProject } from '../../invoices/interfaces/project.interface';
+import { UserStateService } from '../../../services/user-state.service';
 
 @Component({
   selector: 'app-add-project',
@@ -18,6 +19,7 @@ export class AddProjectComponent implements OnInit {
   private route = inject(ActivatedRoute);
   private notificationService = inject(NotificationService);
   private invoicesService = inject(InvoicesService);
+  private userStateService = inject(UserStateService);
 
   project: IProject = {
     name: '',
@@ -35,7 +37,8 @@ export class AddProjectComponent implements OnInit {
   }
 
   loadProject(id: string) {
-    this.invoicesService.getProjectById(id).subscribe({
+    const companyId = this.userStateService.getUser()?.companyId || '';
+    this.invoicesService.getProjectById(id, companyId).subscribe({
       next: (project: IProject) => {
         this.project = project;
       },
@@ -87,8 +90,9 @@ export class AddProjectComponent implements OnInit {
         name: this.project.name,
       };
 
+      const companyId = this.userStateService.getUser()?.companyId || '';
       this.invoicesService
-        .updateProject(this.projectId!, updateData)
+        .updateProject(this.projectId!, updateData, companyId)
         .subscribe({
           next: () => {
             this.notificationService.show(
