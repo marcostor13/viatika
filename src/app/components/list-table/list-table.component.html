@@ -21,17 +21,21 @@
   <div class="flex-1 grid grid-cols-2">
     <div>
       <div class="flex flex-col">
-        <span class="font-semibold">{{ item[headers[0].value] || "-" }}</span>
+        <span class="font-semibold">{{
+          (headers[0] && headers[0].value ? item[headers[0].value] : "") || "-"
+        }}</span>
       </div>
       <div class="flex flex-col">
         <span class="font-semibold text-green-600 text-xs">{{
-          item[headers[8].value] || "-"
+          (headers[8] && headers[8].value ? item[headers[8].value] : "") || "-"
         }}</span>
       </div>
     </div>
     <div>
       <div class="flex flex-col">
-        <span class="font-semibold">{{ item[headers[1].value] || "-" }}</span>
+        <span class="font-semibold">{{
+          (headers[1] && headers[1].value ? item[headers[1].value] : "") || "-"
+        }}</span>
       </div>
       <div class="flex flex-col">
         <span class="font-semibold text-xs">{{
@@ -44,8 +48,8 @@
 
 @if (item.isVisible) {
 <div class="flex flex-col gap-6 ml-12 mt-5">
-  @for (header of headers; track header) { @if (header.value !==
-  headers[0].value) { @if (header.value === 'actions') {
+  @for (header of headers; track header) { @if (header && header.value !==
+  (headers[0] && headers[0].value)) { @if (header.value === 'actions') {
   <div class="flex items-center gap-2">
     @for (option of header.options; track option) { @if (option === 'edit') {
     <button
@@ -177,10 +181,10 @@
   </div>
   }@else {
   <div class="flex items-center gap-2">
-    <span class="font-bold title">{{ header.header }}</span>
-    @if(header.value === 'appSecret') {
+    <span class="font-bold title">{{ header?.header || "" }}</span>
+    @if(header?.value === 'appSecret') {
     <span>{{ "********" }}</span>
-    } @else if(header.value === 'status') { @if(item.status === 'pending') {
+    } @else if(header?.value === 'status') { @if(item.status === 'pending') {
     <span
       class="px-2 py-1 rounded-full bg-yellow-100 text-yellow-800 text-xs font-medium"
       >Pendiente</span
@@ -198,10 +202,10 @@
     } @else {
     <span
       class="px-2 py-1 rounded-full bg-gray-100 text-gray-800 text-xs font-medium"
-      >{{ item[header.value] || "Pendiente" }}</span
+      >{{ (header?.value ? item[header.value] : "") || "Pendiente" }}</span
     >
     } } @else {
-    <span>{{ item[header.value] }}</span>
+    <span>{{ header?.value ? item[header.value] : "" }}</span>
     }
   </div>
   } } }

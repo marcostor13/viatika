@@ -12,6 +12,7 @@ import {
 } from '../../interfaces/user.interface';
 import { FormsModule } from '@angular/forms';
 import { NotificationService } from '../../services/notification.service';
+import { UserStateService } from '../../services/user-state.service';
 import { finalize, catchError } from 'rxjs/operators';
 import { EMPTY } from 'rxjs';
 
@@ -37,10 +38,19 @@ export default class AdminUsersComponent implements OnInit {
 
   constructor(
     private adminUsersService: AdminUsersService,
-    private notification: NotificationService
+    private notification: NotificationService,
+    private userStateService: UserStateService
   ) {}
 
   ngOnInit() {
+    if (!this.adminUsersService || !this.userStateService) {
+      this.notification.show('Error: Servicios no disponibles', 'error');
+      return;
+    }
+
+    this.data = [];
+    this.tempUser = {};
+
     this.loadUsers();
   }
 
@@ -52,7 +62,8 @@ export default class AdminUsersComponent implements OnInit {
       .pipe(
         catchError((error) => {
           this.notification.show(
-            'Error al cargar usuarios: ' + error.message,
+            'Error al cargar usuarios: ' +
+              (error?.message || 'Error desconocido'),
             'error'
           );
           return EMPTY;
@@ -60,14 +71,21 @@ export default class AdminUsersComponent implements OnInit {
         finalize(() => this.isLoading.set(false))
       )
       .subscribe((users) => {
-        this.data = users.map((user) => {
-          const displayUser = {
-            ...user,
-            name: user.name || `${user.firstName} ${user.lastName}`,
-            isVisible: false,
-          };
-          return displayUser;
-        });
+        if (users && Array.isArray(users)) {
+          this.data = users.map((user) => {
+            const displayUser = {
+              ...user,
+              name:
+                user.name ||
+                `${user.firstName || ''} ${user.lastName || ''}`.trim() ||
+                'Sin nombre',
+              isVisible: false,
+            };
+            return displayUser;
+          });
+        } else {
+          this.data = [];
+        }
 
         console.log('Usuarios cargados:', this.data);
       });
@@ -75,7 +93,7 @@ export default class AdminUsersComponent implements OnInit {
 
   showCreatePanel() {
     this.panelMode = 'create';
-    const currentUser = this.adminUsersService['userStateService'].getUser();
+    const currentUser = this.userStateService.getUser();
 
     this.tempUser = {
       firstName: '',
@@ -84,7 +102,7 @@ export default class AdminUsersComponent implements OnInit {
       role: '',
       password: '',
       isActive: true,
-      companyId: currentUser?.companyId,
+      companyId: currentUser?.companyId || '',
     };
 
     console.log(
@@ -94,25 +112,43 @@ export default class AdminUsersComponent implements OnInit {
   }
 
   showEditPanel(user: IUserResponse) {
+    if (!user) {
+      this.notification.show('Error: Usuario no encontrado', 'error');
+      return;
+    }
+
     this.panelMode = 'edit';
+    const nameParts = user.name?.split(' ') || [];
+
     this.tempUser = {
       ...user,
-      firstName: user.firstName || user.name?.split(' ')[0] || '',
-      lastName: user.lastName || user.name?.split(' ')[1] || '',
-      password: '', // No mostrar la contraseña existente
+      firstName: user.firstName || nameParts[0] || '',
+      lastName: user.lastName || nameParts.slice(1).join(' ') || '',
+      password: '',
+      isActive: user.isActive ?? true,
+      role: user.role || '',
+      email: user.email || '',
     };
   }
 
   closePanel() {
     this.panelMode = 'none';
-    this.tempUser = {};
+    this.tempUser = {
+      firstName: '',
+      lastName: '',
+      email: '',
+      role: '',
+      password: '',
+      isActive: true,
+      companyId: '',
+    };
   }
 
   saveUser() {
     if (
-      !this.tempUser.firstName ||
-      !this.tempUser.email ||
-      !this.tempUser.role
+      !this.tempUser?.firstName?.trim() ||
+      !this.tempUser?.email?.trim() ||
+      !this.tempUser?.role?.trim()
     ) {
       this.notification.show(
         'Por favor completa todos los campos obligatorios',
@@ -123,7 +159,7 @@ export default class AdminUsersComponent implements OnInit {
 
     // Validar formato de email
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(this.tempUser.email)) {
+    if (!emailRegex.test(this.tempUser.email.trim())) {
       this.notification.show('Por favor ingresa un email válido', 'error');
       return;
     }
@@ -262,10 +298,19 @@ export default class AdminUsersComponent implements OnInit {
   }
 
   optionsEvent(event: { option: string; _id: string }) {
+    if (!event || !event.option || !event._id) {
+      this.notification.show('Error: Evento inválido', 'error');
+      return;
+    }
+
     const user = this.data.find((u) => u._id === event._id);
 
-    if (event.option === 'edit' && user) {
-      this.showEditPanel(user);
+    if (event.option === 'edit') {
+      if (user) {
+        this.showEditPanel(user);
+      } else {
+        this.notification.show('Error: Usuario no encontrado', 'error');
+      }
     } else if (event.option === 'delete') {
       this.deleteUser(event._id);
     }

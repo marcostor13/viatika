@@ -12,7 +12,7 @@
     <tbody>
       @for (item of data; track item) {
       <tr class="border-t hover:bg-gray-50">
-        @for (header of headers; track header) { @if (header.value !==
+        @for (header of headers; track header) { @if (header && header.value !==
         'actions') { @if(header.value === 'appSecret') {
         <td class="px-6 py-3">{{ "********" }}</td>
         } @else if(header.value === 'status') {
@@ -35,12 +35,16 @@
           } @else {
           <span
             class="px-2 py-1 rounded-full bg-gray-100 text-gray-800 text-xs font-medium"
-            >{{ item[header.value] || "Pendiente" }}</span
+            >{{
+              header?.value ? item[header.value] || "Pendiente" : "Pendiente"
+            }}</span
           >
           }
         </td>
         } @else {
-        <td class="px-6 py-3">{{ item[header.value] }}</td>
+        <td class="px-6 py-3">
+          {{ header?.value ? item[header.value] || "" : "" }}
+        </td>
         } } @else {
         <td class="px-6 py-3 w-full">
           @for (option of header.options; track option) { @if (option ===
