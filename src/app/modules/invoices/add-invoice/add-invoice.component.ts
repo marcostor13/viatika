@@ -189,26 +189,14 @@ export default class AddInvoiceComponent implements OnInit {
       dataObj.fechaEmision = formValue.fechaEmision;
       dataObj.serie = formValue.serie;
       dataObj.correlativo = formValue.correlativo;
-      const {
-        file,
-        fechaEmision,
-        _id,
-        createdAt,
-        updatedAt,
-        __v,
-        createdBy,
-        approvedBy,
-        rejectedBy,
-        rejectionReason,
-        statusDate,
-        ...rest
-      } = this.originalInvoice;
+      // Solo enviar campos actualizables, excluyendo metadatos de MongoDB
       const payload = {
-        ...rest,
         proyectId: formValue.proyectId,
         categoryId: formValue.categoryId,
-        fechaEmision: formValue.fechaEmision,
+        total: this.originalInvoice.total,
         data: JSON.stringify(dataObj),
+        fechaEmision: formValue.fechaEmision,
+        status: this.originalInvoice.status,
       };
       const companyId = this.userStateService.getUser()?.companyId || '';
       this.invoiceService.updateInvoice(this.id, companyId, payload).subscribe({
@@ -291,10 +279,14 @@ export default class AddInvoiceComponent implements OnInit {
             }
 
             if (dataObj.fechaEmision) {
+              // Solo enviar campos actualizables, excluyendo metadatos de MongoDB
               const updatePayload = {
-                ...res,
-                fechaEmision: dataObj.fechaEmision,
+                proyectId: res.proyectId,
+                categoryId: res.categoryId,
+                total: res.total,
                 data: JSON.stringify(dataObj),
+                fechaEmision: dataObj.fechaEmision,
+                status: res.status,
               };
 
               const companyId =
