@@ -9,6 +9,7 @@ import { ConfirmationService } from '../../services/confirmation.service';
 import {
   IInvoiceResponse,
   InvoiceStatus,
+  SunatValidationInfo,
 } from './interfaces/invoices.interface';
 import { IHeaderList } from '../../interfaces/header-list.interface';
 import { IProject } from './interfaces/project.interface';
@@ -77,9 +78,13 @@ export default class InvoicesComponent implements OnInit {
       value: 'status',
     },
     {
+      header: 'SUNAT',
+      value: 'sunatStatus',
+    },
+    {
       header: 'Acciones',
       value: 'actions',
-      options: ['download', 'edit', 'delete'],
+      options: ['download', 'edit', 'delete', 'sunat-info'],
     },
   ];
 
@@ -94,6 +99,7 @@ export default class InvoicesComponent implements OnInit {
     { header: 'Total', field: 'total' },
     { header: 'Fecha', field: 'date' },
     { header: 'Estado', field: 'status' },
+    { header: 'SUNAT', field: 'sunatStatus' },
   ];
 
   ngOnInit() {
@@ -163,6 +169,13 @@ export default class InvoicesComponent implements OnInit {
       const serie = invoiceData.serie || 'No disponible';
       const correlativo = invoiceData.correlativo || 'No disponible';
 
+      // Información de validación SUNAT
+      const sunatValidation = invoiceData.sunatValidation;
+      const sunatStatus = this.formatSunatStatus(
+        invoice.status || 'pending',
+        sunatValidation
+      );
+
       return {
         ...invoice,
         proyect: invoice.proyectId?.name || 'No disponible',
@@ -181,6 +194,7 @@ export default class InvoicesComponent implements OnInit {
         status: invoice.status || 'pending',
         serie,
         correlativo,
+        sunatStatus,
       };
     });
   }
@@ -188,6 +202,21 @@ export default class InvoicesComponent implements OnInit {
   capitalizeFirstLetter(text: string): string {
     if (!text) return '';
     return text.charAt(0).toUpperCase() + text.slice(1).toLowerCase();
+  }
+
+  formatSunatStatus(status: string, sunatValidation?: any): string {
+    switch (status) {
+      case 'sunat_valid':
+        return '✅ Válido';
+      case 'sunat_valid_not_ours':
+        return '⚠️ Válido (No pertenece)';
+      case 'sunat_not_found':
+        return '❌ No encontrado';
+      case 'sunat_error':
+        return '🔧 Error SUNAT';
+      default:
+        return '⏳ Sin validar';
+    }
   }
 
   editInvoice(id: string) {
@@ -211,6 +240,52 @@ export default class InvoicesComponent implements OnInit {
       case 'download':
         this.downloadInvoice(id);
         break;
+      case 'sunat-info':
+        this.showSunatInfo(id);
+        break;
+    }
+  }
+
+  showSunatInfo(id: string) {
+    const companyId = this.userStateService.getUser()?.companyId;
+    if (companyId) {
+      this.agentService.getSunatValidation(id, companyId).subscribe({
+        next: (validationInfo: SunatValidationInfo) => {
+          this.displaySunatValidationInfo(validationInfo);
+        },
+        error: (error) => {
+          this.notificationService.show(
+            'Error al obtener información de SUNAT',
+            'error'
+          );
+          console.error('Error fetching SUNAT validation:', error);
+        },
+      });
+    }
+  }
+
+  displaySunatValidationInfo(info: SunatValidationInfo) {
+    const statusMessage = this.formatSunatStatus(info.status);
+
+    // Usar la notificación existente para mostrar información básica
+    let shortMessage = `${statusMessage} - ${info.message}`;
+
+    if (info.extractedData && info.extractedData.rucEmisor) {
+      shortMessage += ` | RUC: ${info.extractedData.rucEmisor}`;
+    }
+
+    // Determinar el tipo de notificación basado en el estado - solo success o error
+    const isError =
+      info.status === 'sunat_error' ||
+      info.status === 'sunat_not_found' ||
+      info.status === 'sunat_valid_not_ours';
+
+    this.notificationService.show(shortMessage, isError ? 'error' : 'success');
+
+    // Para detalles completos, mantener el alert temporal
+    // TODO: Se puede reemplazar con un modal personalizado más adelante
+    if (info.sunatValidation?.details) {
+      console.log('Detalles completos de SUNAT:', info);
     }
   }
 

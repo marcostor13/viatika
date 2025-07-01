@@ -3,8 +3,22 @@
   <div class="hidden lg:flex lg:w-64 bg-gray-900 flex-col">
     <!-- Header del sidebar -->
     <div class="p-6 border-b border-gray-700">
-      <h2 class="text-white text-lg font-semibold">Panel de Control</h2>
-      <p class="text-gray-300 text-sm">Sistema de Facturas</p>
+      <div class="flex items-center mb-3">
+        @if (getCompanyLogo()) {
+        <img
+          [src]="getCompanyLogo()"
+          alt="Logo de la empresa"
+          class="w-10 h-10 rounded-lg object-cover mr-3"
+          onerror="this.style.display='none'"
+        />
+        }
+        <div>
+          <h2 class="text-white text-lg font-semibold">
+            {{ getCompanyName() }}
+          </h2>
+          <p class="text-gray-300 text-sm">Sistema de Facturas</p>
+        </div>
+      </div>
     </div>
 
     <!-- Navegación -->
@@ -51,6 +65,17 @@
       >
         <span class="mr-3 text-xl">📊</span>
         <span class="font-medium">Consolidado</span>
+      </a>
+
+      <!-- Configuración - Solo para ADMINISTRADORES -->
+      <a
+        *ngIf="isAdmin()"
+        [routerLink]="['/configuracion']"
+        routerLinkActive="bg-blue-600 text-white"
+        class="flex items-center px-4 py-3 text-gray-300 rounded-lg hover:bg-gray-700 hover:text-white transition-colors"
+      >
+        <span class="mr-3 text-xl">⚙️</span>
+        <span class="font-medium">Configuración</span>
       </a>
     </nav>
 
@@ -100,9 +125,21 @@
         class="p-6 border-b border-gray-700 bg-gradient-to-r from-gray-900 to-gray-800"
       >
         <div class="flex items-center justify-between">
-          <div>
-            <h2 class="text-white text-xl font-bold">Panel de Control</h2>
-            <p class="text-gray-300 text-sm mt-1">Sistema de Facturas</p>
+          <div class="flex items-center">
+            @if (getCompanyLogo()) {
+            <img
+              [src]="getCompanyLogo()"
+              alt="Logo de la empresa"
+              class="w-12 h-12 rounded-lg object-cover mr-3"
+              onerror="this.style.display='none'"
+            />
+            }
+            <div>
+              <h2 class="text-white text-xl font-bold">
+                {{ getCompanyName() }}
+              </h2>
+              <p class="text-gray-300 text-sm mt-1">Sistema de Facturas</p>
+            </div>
           </div>
           <button
             (click)="toggleSidebar()"
@@ -185,6 +222,21 @@
             >📊</span
           >
           <span class="font-medium text-lg">Consolidado</span>
+        </a>
+
+        <!-- Configuración - Solo para ADMINISTRADORES (Móvil) -->
+        <a
+          *ngIf="isAdmin()"
+          [routerLink]="['/configuracion']"
+          (click)="toggleSidebar()"
+          routerLinkActive="bg-blue-600 text-white shadow-lg"
+          class="flex items-center px-4 py-4 text-gray-300 rounded-xl hover:bg-gray-700 hover:text-white transition-all duration-200 hover:shadow-lg hover:translate-x-1 group"
+        >
+          <span
+            class="mr-4 text-2xl group-hover:scale-110 transition-transform duration-200"
+            >⚙️</span
+          >
+          <span class="font-medium text-lg">Configuración</span>
         </a>
       </nav>
 

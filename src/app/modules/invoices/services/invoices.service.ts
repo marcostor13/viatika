@@ -4,11 +4,17 @@ import {
   IInvoiceResponse,
   InvoicePayload,
   ApprovalPayload,
+  SunatValidationInfo,
 } from '../interfaces/invoices.interface';
 import { Observable } from 'rxjs';
 import { environment } from '../../../../environments/environment';
 import { ICategory } from '../interfaces/category.interface';
 import { IProject } from '../interfaces/project.interface';
+import { ICompanyConfig } from '../../../interfaces/company-config.interface';
+import {
+  ISunatConfig,
+  ISunatCredentials,
+} from '../../../interfaces/sunat-config.interface';
 
 @Injectable({
   providedIn: 'root',
@@ -17,6 +23,8 @@ export class InvoicesService {
   url: string = `${environment.api}/expense`;
   categoryUrl: string = `${environment.api}/categories`;
   projectUrl: string = `${environment.api}/projects`;
+  companyConfigUrl: string = `${environment.api}/users/config`;
+  sunatConfigUrl: string = `${environment.api}/sunat-config`;
 
   private http = inject(HttpClient);
 
@@ -140,5 +148,69 @@ export class InvoicesService {
 
   updateInvoice(id: string, companyId: string, payload: any) {
     return this.http.patch(`${this.url}/${id}/${companyId}`, payload);
+  }
+
+  // Métodos para validación SUNAT
+  getSunatValidation(
+    id: string,
+    companyId: string
+  ): Observable<SunatValidationInfo> {
+    return this.http.get<SunatValidationInfo>(
+      `${this.url}/${id}/${companyId}/sunat-validation`
+    );
+  }
+
+  // Métodos para configuración de empresa
+  getCompanyConfig(companyId: string): Observable<ICompanyConfig> {
+    return this.http.get<ICompanyConfig>(
+      `${this.companyConfigUrl}/${companyId}`
+    );
+  }
+
+  updateCompanyConfig(
+    companyId: string,
+    config: Partial<ICompanyConfig>
+  ): Observable<ICompanyConfig> {
+    return this.http.patch<ICompanyConfig>(
+      `${this.companyConfigUrl}/${companyId}`,
+      config
+    );
+  }
+
+  uploadCompanyLogo(
+    companyId: string,
+    formData: FormData
+  ): Observable<ICompanyConfig> {
+    return this.http.post<ICompanyConfig>(
+      `${this.companyConfigUrl}/${companyId}/logo`,
+      formData
+    );
+  }
+
+  // Métodos para configuración de SUNAT
+  getSunatConfig(): Observable<ISunatConfig> {
+    return this.http.get<ISunatConfig>(this.sunatConfigUrl);
+  }
+
+  createSunatConfig(config: Partial<ISunatConfig>): Observable<ISunatConfig> {
+    return this.http.post<ISunatConfig>(this.sunatConfigUrl, config);
+  }
+
+  updateSunatConfig(config: Partial<ISunatConfig>): Observable<ISunatConfig> {
+    return this.http.patch<ISunatConfig>(this.sunatConfigUrl, config);
+  }
+
+  deleteSunatConfig(): Observable<any> {
+    return this.http.delete(this.sunatConfigUrl);
+  }
+
+  getSunatCredentials(): Observable<ISunatCredentials> {
+    return this.http.get<ISunatCredentials>(
+      `${this.sunatConfigUrl}/credentials`
+    );
+  }
+
+  testSunatCredentials(): Observable<any> {
+    return this.http.get(`${this.url}/test-sunat-credentials`);
   }
 }

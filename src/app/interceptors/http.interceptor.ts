@@ -20,7 +20,16 @@ export const httpInterceptor: HttpInterceptorFn = (req, next) => {
   let url = req.url;
 
   const excludedEndpoints = ['/auth', '/auth/'];
-  const skipCompanyIdEndpoints = ['/approve', '/reject', '/users', '/users/'];
+  const skipCompanyIdEndpoints = [
+    '/approve',
+    '/reject',
+    '/users',
+    '/users/',
+    '/sunat-config',
+    '/sunat-config/',
+    '/config',
+    '/logo',
+  ];
   const isExcludedEndpoint = excludedEndpoints.some(
     (endpoint) => url.includes(endpoint) || url.endsWith('/api')
   );
@@ -29,12 +38,18 @@ export const httpInterceptor: HttpInterceptorFn = (req, next) => {
   );
 
   if (token) {
+    const headers: any = {
+      ...objectHeaders,
+      Authorization: `Bearer ${token}`,
+    };
+
+    // No establecer Content-Type para FormData (subida de archivos)
+    if (!(req.body instanceof FormData)) {
+      headers['Content-Type'] = 'application/json';
+    }
+
     req = req.clone({
-      setHeaders: {
-        ...objectHeaders,
-        Authorization: `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
+      setHeaders: headers,
     });
   }
 
@@ -54,7 +69,12 @@ export const httpInterceptor: HttpInterceptorFn = (req, next) => {
     }
   }
 
-  if (req.method === 'POST' && user?.companyId && !isExcludedEndpoint) {
+  if (
+    req.method === 'POST' &&
+    user?.companyId &&
+    !isExcludedEndpoint &&
+    !shouldSkipCompanyId
+  ) {
     if (req.body instanceof FormData) {
       req.body.append('companyId', user.companyId);
     } else {

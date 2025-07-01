@@ -82,6 +82,14 @@ export const routes: Routes = [
         component: AdminUsersComponent,
         canActivate: [AuthAdmin2Guard],
       },
+      {
+        path: 'configuracion',
+        loadComponent: () =>
+          import('./modules/configuracion/configuracion.component').then(
+            (m) => m.ConfiguracionComponent
+          ),
+        canActivate: [AuthAdmin2Guard],
+      },
     ],
   },
   {

@@ -15,7 +15,11 @@ export type InvoiceStatus =
   | 'REJECTED'
   | 'pending'
   | 'approved'
-  | 'rejected';
+  | 'rejected'
+  | 'sunat_valid'
+  | 'sunat_valid_not_ours'
+  | 'sunat_not_found'
+  | 'sunat_error';
 
 export interface IInvoiceResponse {
   _id: string;
@@ -70,4 +74,30 @@ export interface InvoiceData {
   montoTotal?: number;
   razonSocial?: string;
   direccionEmisor?: string;
+}
+
+// Nuevas interfaces para validación SUNAT
+export interface SunatValidationResult {
+  status:
+    | 'VALIDO_ACEPTADO'
+    | 'VALIDO_NO_PERTENECE'
+    | 'NO_ENCONTRADO'
+    | 'ERROR_SUNAT';
+  details: any;
+  message: string;
+}
+
+export interface SunatValidationInfo {
+  expenseId: string;
+  status: InvoiceStatus;
+  sunatValidation: SunatValidationResult | null;
+  hasValidation: boolean;
+  message: string;
+  extractedData?: {
+    rucEmisor?: string;
+    serie?: string;
+    correlativo?: string;
+    fechaEmision?: string;
+    montoTotal?: number;
+  };
 }
