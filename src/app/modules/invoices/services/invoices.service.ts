@@ -177,16 +177,6 @@ export class InvoicesService {
     );
   }
 
-  uploadCompanyLogo(
-    companyId: string,
-    formData: FormData
-  ): Observable<ICompanyConfig> {
-    return this.http.post<ICompanyConfig>(
-      `${this.companyConfigUrl}/${companyId}/logo`,
-      formData
-    );
-  }
-
   // Métodos para configuración de SUNAT
   getSunatConfig(): Observable<ISunatConfig> {
     return this.http.get<ISunatConfig>(this.sunatConfigUrl);

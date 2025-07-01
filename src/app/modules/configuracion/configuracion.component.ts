@@ -43,6 +43,8 @@ export class ConfiguracionComponent implements OnInit {
   selectedLogoFile: File | null = null;
   logoPreview: string | null = null;
   companyName: string = '';
+  logoUploadProgress: number = 0;
+  isUploadingLogo: boolean = false;
 
   // Configuración de SUNAT
   sunatConfig: ISunatConfig | null = null;
@@ -136,21 +138,36 @@ export class ConfiguracionComponent implements OnInit {
   private uploadLogo() {
     if (!this.selectedLogoFile) return;
 
+    this.isUploadingLogo = true;
+    this.logoUploadProgress = 0;
+
     this.companyConfigService
       .uploadCompanyLogo(this.selectedLogoFile)
       .subscribe({
-        next: () => {
-          this.notificationService.show(
-            'Logo de empresa actualizado exitosamente',
-            'success'
-          );
-          this.cancelCompanyEdit();
+        next: (result) => {
+          if (result.type === 'progress' && result.progress !== undefined) {
+            this.logoUploadProgress = Math.round(result.progress);
+          } else if (result.type === 'complete') {
+            this.notificationService.show(
+              'Logo de empresa actualizado exitosamente',
+              'success'
+            );
+            this.isUploadingLogo = false;
+            this.logoUploadProgress = 0;
+            this.cancelCompanyEdit();
+          } else if (result.type === 'error') {
+            this.notificationService.show('Error al subir logo', 'error');
+            this.isUploadingLogo = false;
+            this.logoUploadProgress = 0;
+          }
         },
         error: (error: HttpErrorResponse) => {
           this.notificationService.show(
             'Error al subir logo: ' + error.message,
             'error'
           );
+          this.isUploadingLogo = false;
+          this.logoUploadProgress = 0;
         },
       });
   }
