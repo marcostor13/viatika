@@ -1,14 +1,16 @@
 import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { IPreview } from '../../interfaces/preview.interface';
 import { FormsModule } from '@angular/forms';
+import { CommonModule } from '@angular/common';
+
 @Component({
   selector: 'app-preview',
-  imports: [FormsModule],
+  standalone: true,
+  imports: [FormsModule, CommonModule],
   templateUrl: './preview.component.html',
-  styleUrl: './preview.component.scss'
+  styleUrl: './preview.component.scss',
 })
 export class PreviewComponent {
-
   message: string = '';
   @Input() dataPreview: IPreview = {} as IPreview;
   @Output() uploadEvent = new EventEmitter<string>();
@@ -21,5 +23,4 @@ export class PreviewComponent {
   upload() {
     this.uploadEvent.emit(this.message);
   }
-
 }

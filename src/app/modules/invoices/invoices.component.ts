@@ -204,18 +204,25 @@ export default class InvoicesComponent implements OnInit {
     return text.charAt(0).toUpperCase() + text.slice(1).toLowerCase();
   }
 
-  formatSunatStatus(status: string, sunatValidation?: any): string {
+  formatSunatStatus(
+    status: string,
+    sunatValidation?: any
+  ): { text: string; icon: string; color: string } {
     switch (status) {
       case 'sunat_valid':
-        return '✅ Válido';
+        return { text: 'Válido', icon: 'check', color: 'green' };
       case 'sunat_valid_not_ours':
-        return '⚠️ Válido (No pertenece)';
+        return {
+          text: 'Válido (No pertenece)',
+          icon: 'warning',
+          color: 'yellow',
+        };
       case 'sunat_not_found':
-        return '❌ No encontrado';
+        return { text: 'No encontrado', icon: 'x', color: 'red' };
       case 'sunat_error':
-        return '🔧 Error SUNAT';
+        return { text: 'Error SUNAT', icon: 'x', color: 'red' };
       default:
-        return '⏳ Sin validar';
+        return { text: 'Sin validar', icon: 'question', color: 'gray' };
     }
   }
 
@@ -268,7 +275,7 @@ export default class InvoicesComponent implements OnInit {
     const statusMessage = this.formatSunatStatus(info.status);
 
     // Usar la notificación existente para mostrar información básica
-    let shortMessage = `${statusMessage} - ${info.message}`;
+    let shortMessage = `${statusMessage.text} - ${info.message}`;
 
     if (info.extractedData && info.extractedData.rucEmisor) {
       shortMessage += ` | RUC: ${info.extractedData.rucEmisor}`;
