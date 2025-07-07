@@ -142,8 +142,8 @@ export class InvoicesService {
     );
   }
 
-  deleteProject(id: string): Observable<any> {
-    return this.http.delete(`${this.projectUrl}/${id}`);
+  deleteProject(id: string, companyId: string): Observable<any> {
+    return this.http.delete(`${this.projectUrl}/${id}/${companyId}`);
   }
 
   updateInvoice(id: string, companyId: string, payload: any) {
