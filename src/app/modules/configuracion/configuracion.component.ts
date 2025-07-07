@@ -406,7 +406,15 @@ export class ConfiguracionComponent implements OnInit {
         `¿Estás seguro de que quieres eliminar el proyecto "${project.name}"?`
       )
     ) {
-      this.invoicesService.deleteProject(project._id!).subscribe({
+      const companyId = this.userStateService.getUser()?.companyId;
+      if (!companyId) {
+        this.notificationService.show(
+          'No se encontró companyId en el usuario',
+          'error'
+        );
+        return;
+      }
+      this.invoicesService.deleteProject(project._id!, companyId).subscribe({
         next: () => {
           this.notificationService.show(
             'Proyecto eliminado exitosamente',
