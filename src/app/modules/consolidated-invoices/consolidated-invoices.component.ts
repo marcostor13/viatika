@@ -1,6 +1,4 @@
 import { Component, inject, signal, OnInit, computed } from '@angular/core';
-import { ListTableComponent } from '../../components/list-table/list-table.component';
-import { TableComponent } from '../../components/table/table.component';
 import { FileDownloadComponent } from '../../components/file-download/file-download.component';
 import { ChartsComponent } from './charts/charts.component';
 import { Router } from '@angular/router';
@@ -19,6 +17,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { tap } from 'rxjs/operators';
 import { UserStateService } from '../../services/user-state.service';
+import { DataComponent } from '../../components/data/data.component';
 
 interface IInvoice {
   _id?: string;
@@ -61,8 +60,7 @@ interface IInvoice {
   imports: [
     CommonModule,
     FormsModule,
-    TableComponent,
-    ListTableComponent,
+    DataComponent,
     FileDownloadComponent,
     ChartsComponent,
   ],
@@ -278,17 +276,8 @@ export class ConsolidatedInvoicesComponent implements OnInit {
 
   getInvoices() {
     this.loading = true;
-    const user = this.userStateService.getUser();
-    const companyId = user?.companyId;
-    if (!companyId) {
-      this.notificationService.show(
-        'No se encontró companyId en el usuario',
-        'error'
-      );
-      this.loading = false;
-      return;
-    }
-    this.agentService.getInvoices(companyId, this.filters()).subscribe({
+
+    this.agentService.getInvoices(this.filters()).subscribe({
       next: (res) => {
         if (res && res.length > 0) {
           const firstItem = res[0];
@@ -333,12 +322,12 @@ export class ConsolidatedInvoicesComponent implements OnInit {
           if (typeof invoice.data === 'string') {
             try {
               invoiceData = JSON.parse(invoice.data);
-            } catch (parseError) {}
+            } catch (parseError) { }
           } else if (typeof invoice.data === 'object') {
             invoiceData = invoice.data;
           }
         }
-      } catch (error) {}
+      } catch (error) { }
 
       const categoryName = invoice.categoryId.name || 'No disponible';
 
@@ -412,7 +401,8 @@ export class ConsolidatedInvoicesComponent implements OnInit {
     this.router.navigate(['/invoices/add']);
   }
 
-  clickOptions(option: string, _id: string) {
+  clickOptions(event: { option: string, _id: string }) {
+    const { option, _id } = event;
     switch (option) {
       case 'download':
         this.downloadInvoice(_id);
@@ -461,12 +451,11 @@ export class ConsolidatedInvoicesComponent implements OnInit {
   }
 
   approveInvoice(id: string) {
-    const companyId = this.userStateService.getUser()?.companyId || '';
     const payload: ApprovalPayload = {
       status: 'approved',
     };
 
-    this.agentService.approveInvoice(id, companyId, payload).subscribe({
+    this.agentService.approveInvoice(id, payload).subscribe({
       next: () => {
         this.notificationService.show(
           'Factura aprobada correctamente',
@@ -511,7 +500,6 @@ export class ConsolidatedInvoicesComponent implements OnInit {
     this.agentService
       .rejectInvoice(
         id,
-        this.userStateService.getUser()?.companyId || '',
         payload
       )
       .subscribe({
@@ -537,15 +525,7 @@ export class ConsolidatedInvoicesComponent implements OnInit {
   }
 
   getCategories() {
-    const companyId = this.userStateService.getUser()?.companyId;
-    if (!companyId) {
-      this.notificationService.show(
-        'No se encontró companyId en el usuario',
-        'error'
-      );
-      return;
-    }
-    return this.agentService.getCategories(companyId).pipe(
+    return this.agentService.getCategories().pipe(
       tap({
         next: (categories) => {
           this.categories = categories;
@@ -561,15 +541,7 @@ export class ConsolidatedInvoicesComponent implements OnInit {
   }
 
   getProjects() {
-    const companyId = this.userStateService.getUser()?.companyId;
-    if (!companyId) {
-      this.notificationService.show(
-        'No se encontró companyId en el usuario',
-        'error'
-      );
-      return;
-    }
-    this.agentService.getProjects(companyId).subscribe({
+    this.agentService.getProjects().subscribe({
       next: (projects) => {
         this.projects = projects;
         this.calculateProjectsWithInvoiceCount();

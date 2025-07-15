@@ -4,7 +4,7 @@ import { UserStateService } from '../services/user-state.service';
 
 @Injectable({ providedIn: 'root' })
 export class AuthAdmin2Guard implements CanActivate {
-  constructor(private userState: UserStateService, private router: Router) {}
+  constructor(private userState: UserStateService, private router: Router) { }
 
   canActivate(): boolean {
     const user = this.userState.getUser();
@@ -14,9 +14,9 @@ export class AuthAdmin2Guard implements CanActivate {
       return false;
     }
 
-    const role = user?.role || user?.roleId?.name;
+    const role = user?.role?.name;
 
-    const allowedRoles = ['ADMIN2', 'admin2', 'Admin2', 'admin 2', 'ADMIN'];
+    const allowedRoles = ['Admin', 'Super'];
     const hasValidRole = role ? allowedRoles.includes(role) : false;
 
     if (!hasValidRole) {

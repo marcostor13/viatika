@@ -1,20 +1,15 @@
 export interface IUser {
-  _id?: string;
-  firstName: string;
-  lastName: string;
+  name: string;
   email: string;
-  role: string;
+  password: string;
+  roleId: string;
+  roleName?: string;
+  roleKey?: string;
+  clientId: string;
   isActive?: boolean;
-  userId?: string;
-  companyId?: string;
-  status?: string;
-  phone?: string;
-  password?: string; // Campo opcional para creación de usuarios
-  createdAt?: Date;
-  updatedAt?: Date;
 }
 
-export interface IClient {
+export interface IClientResponse {
   _id: string;
   comercialName: string;
   businessName: string;
@@ -27,7 +22,7 @@ export interface IClient {
   updatedAt: Date;
 }
 
-export interface IRole {
+export interface IRoleResponse {
   _id: string;
   name: string;
   active: boolean;
@@ -35,29 +30,19 @@ export interface IRole {
   updatedAt: Date;
 }
 
-export interface IUserResponse extends IUser {
+export interface IUserResponse {
   _id: string;
+  name: string;
   access_token: string;
-  clientId?: IClient;
-  roleId?: IRole;
-  name?: string; // Campo para compatibilidad
-}
-
-export interface IUserCreate {
-  firstName: string;
-  lastName: string;
+  client: IClientResponse;
+  role: IRoleResponse;
+  roleId: string;
+  roleName?: string;
+  roleKey?: string;
   email: string;
-  password: string;
-  role: string;
-  companyId?: string;
+  isActive: boolean;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
-export interface IUserUpdate {
-  firstName?: string;
-  lastName?: string;
-  email?: string;
-  role?: string;
-  isActive?: boolean;
-  companyId?: string;
-  password?: string; // Campo opcional para cambiar contraseña
-}
+

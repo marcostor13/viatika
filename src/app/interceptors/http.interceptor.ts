@@ -8,65 +8,44 @@ export const httpInterceptor: HttpInterceptorFn = (req, next) => {
   const userStateService = inject(UserStateService);
   const loaderService = inject(LoaderService);
   loaderService.show();
-
-  const token = userStateService.getToken();
   const user = userStateService.getUser();
-
   const currentHeaders = req.headers;
-  const objectHeaders = Object.fromEntries(
-    currentHeaders.keys().map((key) => [key, currentHeaders.get(key)])
-  );
-
-  let url = req.url;
-
-  const excludedEndpoints = ['/auth', '/auth/'];
-  const skipCompanyIdEndpoints = ['/approve', '/reject', '/users', '/users/'];
-  const isExcludedEndpoint = excludedEndpoints.some(
-    (endpoint) => url.includes(endpoint) || url.endsWith('/api')
-  );
-  const shouldSkipCompanyId = skipCompanyIdEndpoints.some((endpoint) =>
-    url.includes(endpoint)
-  );
-
-  if (token) {
+  const objectHeaders = Object.fromEntries(currentHeaders.keys().map(key => [key, currentHeaders.get(key)]));
+  if (user) {
     req = req.clone({
       setHeaders: {
         ...objectHeaders,
-        Authorization: `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
+        Authorization: `Bearer ${user.access_token}`
+      }
     });
   }
 
-  const methods = ['GET', 'PATCH', 'DELETE'];
-  if (
-    methods.includes(req.method) &&
-    user?.companyId &&
-    !isExcludedEndpoint &&
-    !shouldSkipCompanyId
-  ) {
-    if (!url.endsWith(user.companyId)) {
-      if (!url.endsWith('/')) {
-        url = `${url}/`;
-      }
-      url = `${url}${user.companyId}`;
-      req = req.clone({ url });
-    }
+  if (req.url.includes('with-super-admin')) {
+    return next(req).pipe(
+      finalize(() => loaderService.hide())
+    );
   }
 
-  if (req.method === 'POST' && user?.companyId && !isExcludedEndpoint) {
+  const methods = ['GET'];
+  if (methods.includes(req.method) && user?.client?._id) {
+    req = req.clone({ url: `${req.url}/${user.client._id}` });
+  }
+  if (req.method === 'POST' && user?.client?._id) {
+
     if (req.body instanceof FormData) {
-      req.body.append('companyId', user.companyId);
+      req.body.append('clientId', user.client._id);
     } else {
       const body = req.body || {};
       req = req.clone({
         body: {
           ...body,
-          companyId: user.companyId,
-        },
+          clientId: user.client._id
+        }
       });
     }
-  }
 
-  return next(req).pipe(finalize(() => loaderService.hide()));
+  }
+  return next(req).pipe(
+    finalize(() => loaderService.hide())
+  );
 };

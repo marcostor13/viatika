@@ -1,22 +1,80 @@
-<div class="create-user">
-  <h2>Crear Usuario</h2>
-  <form>
-    <div>
+<div class="create-user xl:w-1/2 w-full">
+  <div class="flex items-center gap-2 w-full justify-between">
+    <button
+      class="bg-color1 text-white px-4 py-3 sm:py-2 rounded-md flex items-center justify-center gap-2 text-sm sm:text-base shadow-sm"
+      (click)="back()"
+    >
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        fill="none"
+        viewBox="0 0 24 24"
+        stroke-width="1.5"
+        stroke="currentColor"
+        class="size-6"
+      >
+        <path
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          d="M9 15 3 9m0 0 6-6M3 9h12a6 6 0 0 1 0 12h-3"
+        />
+      </svg>
+
+      Volver
+    </button>
+    <h2 class="font-bold">{{ id ? "Editar Usuario" : "Crear Usuario" }}</h2>
+  </div>
+  <form [formGroup]="form" class="py-5 flex flex-col gap-2">
+    <div class="flex flex-col gap-2">
       <label>Nombre</label>
-      <input type="text" name="name" />
+      <input
+        type="text"
+        name="name"
+        formControlName="name"
+        [ngClass]="{ 'border-red-500': name?.invalid && name?.touched }"
+      />
+      @if(name?.invalid && name?.touched) {
+      <p class="text-red-500">El nombre es requerido</p>
+      }
     </div>
-    <div>
+    <div class="flex flex-col gap-2">
       <label>Email</label>
-      <input type="email" name="email" />
+      <input
+        type="email"
+        name="email"
+        formControlName="email"
+        [ngClass]="{ 'border-red-500': email?.invalid && email?.touched }"
+      />
+      @if(email?.invalid && email?.touched) {
+      <p class="text-red-500">El email es requerido</p>
+      }
     </div>
-    <div>
+    <div class="flex flex-col gap-2">
       <label>Rol</label>
-      <select name="role">
-        <option value="ADMIN2">ADMIN2</option>
-        <option value="COLABORADOR">COLABORADOR</option>
-        <option value="PROVIDER">PROVIDER</option>
+      <select
+        name="role"
+        formControlName="roleId"
+        [ngClass]="{ 'border-red-500': roleId?.invalid && roleId?.touched }"
+      >
+        @for(role of roles; track role._id) {
+        <option [value]="role._id">{{ getRoleName(role._id) }}</option>
+        }
       </select>
     </div>
-    <button type="submit" class="btn btn-success">Crear</button>
+    @if(!id) {
+    <div class="flex flex-col gap-2">
+      <label>Contraseña</label>
+      <input type="password" name="password" formControlName="password" />
+      @if(password?.invalid && password?.touched) {
+      <p class="text-red-500">La contraseña es requerida</p>
+      }
+    </div>
+    }
+    <button
+      type="submit"
+      class="bg-color2 text-white px-4 py-3 sm:py-2 rounded-md flex items-center justify-center gap-2 text-sm sm:text-base shadow-sm mt-5"
+      (click)="id ? updateUser() : createUser()"
+    >
+      {{ id ? "Actualizar" : "Crear" }}
+    </button>
   </form>
 </div>

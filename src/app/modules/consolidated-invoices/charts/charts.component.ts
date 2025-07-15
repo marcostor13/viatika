@@ -109,13 +109,9 @@ export class ChartsComponent implements OnInit, AfterViewInit {
 
   get collaborators() {
     return this.users
-      .filter((user) => user.isActive !== false)
       .map((user) => ({
         id: user._id || '',
-        name:
-          user.firstName && user.lastName
-            ? `${user.firstName} ${user.lastName}`
-            : user.email || 'Usuario sin nombre',
+        name: user.name || user.email || 'Usuario sin nombre',
       }));
   }
 
@@ -176,12 +172,6 @@ export class ChartsComponent implements OnInit, AfterViewInit {
   }
 
   loadData() {
-    const companyId = this.userStateService.getUser()?.companyId;
-    if (!companyId) {
-      console.error('No se encontró companyId en el usuario');
-      this.dataLoaded = true;
-      return;
-    }
     this.dataLoaded = false;
 
     const filters = {
@@ -193,9 +183,9 @@ export class ChartsComponent implements OnInit, AfterViewInit {
     };
 
     forkJoin([
-      this.invoicesService.getProjects(companyId),
-      this.invoicesService.getCategories(companyId),
-      this.expenseService.getExpenses(companyId, filters),
+      this.invoicesService.getProjects(),
+      this.invoicesService.getCategories(),
+      this.expenseService.getExpenses(filters),
       this.adminUsersService.getUsers().pipe(
         catchError((error) => {
           console.warn(
@@ -1072,9 +1062,7 @@ export class ChartsComponent implements OnInit, AfterViewInit {
 
     const user = this.users.find((u) => u._id === collaboratorId);
     if (user) {
-      return user.firstName && user.lastName
-        ? `${user.firstName} ${user.lastName}`
-        : user.email || 'Colaborador desconocido';
+      return user.name || user.email || 'Colaborador desconocido';
     }
     return 'Colaborador desconocido';
   }

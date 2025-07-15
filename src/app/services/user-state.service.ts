@@ -66,7 +66,4 @@ export class UserStateService {
     return !!this._user();
   }
 
-  isColaborador() {
-    return this._user()?.role === 'COLABORADOR' || 'PROVIDER';
-  }
 }

@@ -342,21 +342,11 @@
   </div>
 </div>
 
-<div class="px-5 lg:block hidden">
-  <app-table
-    [headers]="headers"
-    [data]="filteredInvoices"
-    (optionsEvent)="clickOptions($event.option, $event._id)"
-  ></app-table>
-</div>
-
-<div class="px-5 block lg:hidden">
-  <app-list-table
-    [headers]="headers"
-    [data]="filteredInvoices"
-    (clickOptionsEvent)="clickOptions($event.option, $event._id)"
-  ></app-list-table>
-</div>
+<app-data
+  [headers]="headers"
+  [data]="filteredInvoices"
+  (clickOptionsEvent)="clickOptions($event)"
+></app-data>
 
 @if (showRejectionModal()) {
 <div

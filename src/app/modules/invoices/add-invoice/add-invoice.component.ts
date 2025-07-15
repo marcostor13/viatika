@@ -16,7 +16,6 @@ import { CommonModule } from '@angular/common';
 import { IProject } from '../interfaces/project.interface';
 import { ICategory } from '../interfaces/category.interface';
 import { InvoiceStatus } from '../interfaces/invoices.interface';
-import { UserStateService } from '../../../services/user-state.service';
 
 @Component({
   selector: 'app-add-invoice',
@@ -33,7 +32,6 @@ export default class AddInvoiceComponent implements OnInit {
   private route = inject(ActivatedRoute);
   private sanitizer = inject(DomSanitizer);
   private uploadService = inject(UploadService);
-  private userStateService = inject(UserStateService);
 
   form!: FormGroup;
   id: string = this.route.snapshot.params['id'];
@@ -83,10 +81,9 @@ export default class AddInvoiceComponent implements OnInit {
     this.loadCategories();
     this.loadProjects();
 
-    const companyId = this.userStateService.getUser()?.companyId;
-    if (this.id && companyId) {
+    if (this.id) {
       this.invoiceService
-        .getInvoiceById(this.id, companyId)
+        .getInvoiceById(this.id)
         .subscribe((res) => {
           this.originalInvoice = res;
           let dataObj: any = {};
@@ -94,7 +91,7 @@ export default class AddInvoiceComponent implements OnInit {
             try {
               dataObj =
                 typeof res.data === 'string' ? JSON.parse(res.data) : res.data;
-            } catch {}
+            } catch { }
           }
 
           let fecha = '';
@@ -121,27 +118,21 @@ export default class AddInvoiceComponent implements OnInit {
   }
 
   loadCategories() {
-    const companyId = this.userStateService.getUser()?.companyId;
-    if (companyId) {
-      this.invoiceService.getCategories(companyId).subscribe({
-        next: (categories) => {
-          this.categories = categories;
-        },
-        error: (error) => {},
-      });
-    }
+    this.invoiceService.getCategories().subscribe({
+      next: (categories) => {
+        this.categories = categories;
+      },
+      error: (error) => { },
+    });
   }
 
   loadProjects() {
-    const companyId = this.userStateService.getUser()?.companyId;
-    if (companyId) {
-      this.invoiceService.getProjects(companyId).subscribe({
-        next: (projects) => {
-          this.proyects = projects;
-        },
-        error: (error) => {},
-      });
-    }
+    this.invoiceService.getProjects().subscribe({
+      next: (projects) => {
+        this.proyects = projects;
+      }
+    });
+
   }
 
   initForm() {
@@ -183,7 +174,7 @@ export default class AddInvoiceComponent implements OnInit {
             typeof currentData === 'string'
               ? JSON.parse(currentData)
               : currentData;
-        } catch {}
+        } catch { }
       }
       dataObj.rucEmisor = formValue.rucEmisor;
       dataObj.fechaEmision = formValue.fechaEmision;
@@ -210,8 +201,7 @@ export default class AddInvoiceComponent implements OnInit {
         fechaEmision: formValue.fechaEmision,
         data: JSON.stringify(dataObj),
       };
-      const companyId = this.userStateService.getUser()?.companyId || '';
-      this.invoiceService.updateInvoice(this.id, companyId, payload).subscribe({
+      this.invoiceService.updateInvoice(this.id, payload).subscribe({
         next: () => {
           this.notificationService.show(
             'Factura actualizada correctamente',
@@ -222,7 +212,7 @@ export default class AddInvoiceComponent implements OnInit {
         error: (error: any) => {
           this.notificationService.show(
             'Error al actualizar la factura: ' +
-              (error.message || 'Intente nuevamente'),
+            (error.message || 'Intente nuevamente'),
             'error'
           );
         },
@@ -287,7 +277,7 @@ export default class AddInvoiceComponent implements OnInit {
                   typeof res.data === 'string'
                     ? JSON.parse(res.data)
                     : res.data;
-              } catch {}
+              } catch { }
             }
 
             if (dataObj.fechaEmision) {
@@ -297,10 +287,8 @@ export default class AddInvoiceComponent implements OnInit {
                 data: JSON.stringify(dataObj),
               };
 
-              const companyId =
-                this.userStateService.getUser()?.companyId || '';
               this.invoiceService
-                .updateInvoice(res._id, companyId, updatePayload)
+                .updateInvoice(res._id, updatePayload)
                 .subscribe({
                   next: () => {
                     this.isLoading.set(false);

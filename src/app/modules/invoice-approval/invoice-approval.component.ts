@@ -1,8 +1,5 @@
 import { Component, inject, signal, OnInit, computed } from '@angular/core';
-import { ListTableComponent } from '../../components/list-table/list-table.component';
-import { TableComponent } from '../../components/table/table.component';
 import { FileDownloadComponent } from '../../components/file-download/file-download.component';
-import { Router } from '@angular/router';
 import { NotificationService } from '../../services/notification.service';
 import { ConfirmationService } from '../../services/confirmation.service';
 import { IHeaderList } from '../../interfaces/header-list.interface';
@@ -16,8 +13,8 @@ import { ICategory } from '../invoices/interfaces/category.interface';
 import { IProject } from '../invoices/interfaces/project.interface';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { tap } from 'rxjs/operators';
 import { UserStateService } from '../../services/user-state.service';
+import { DataComponent } from '../../components/data/data.component';
 
 interface IInvoice {
   _id?: string;
@@ -60,8 +57,7 @@ interface IInvoice {
   imports: [
     CommonModule,
     FormsModule,
-    TableComponent,
-    ListTableComponent,
+    DataComponent,
     FileDownloadComponent,
   ],
   templateUrl: './invoice-approval.component.html',
@@ -69,7 +65,6 @@ interface IInvoice {
 })
 export class InvoiceApprovalComponent implements OnInit {
   private agentService = inject(InvoicesService);
-  private router = inject(Router);
   private notificationService = inject(NotificationService);
   private confirmationService = inject(ConfirmationService);
   private userStateService = inject(UserStateService);
@@ -80,7 +75,7 @@ export class InvoiceApprovalComponent implements OnInit {
   categories: ICategory[] = [];
   projects: IProject[] = [];
   invoices: IInvoice[] = [];
-  allInvoices = signal<IInvoice[]>([]); // Para estadísticas sin filtrar - ahora es un signal
+  allInvoices = signal<IInvoice[]>([]);
   loading = false;
 
   headers: IHeaderList[] = [
@@ -198,18 +193,10 @@ export class InvoiceApprovalComponent implements OnInit {
   getInvoices() {
     this.loading = true;
     const user = this.userStateService.getUser();
-    const companyId = user?.companyId;
-    if (!companyId) {
-      this.notificationService.show(
-        'No se encontró companyId en el usuario',
-        'error'
-      );
-      this.loading = false;
-      return;
-    }
+
 
     // Cargar todas las facturas sin filtros para estadísticas
-    this.agentService.getInvoices(companyId, {}).subscribe({
+    this.agentService.getInvoices().subscribe({
       next: (res) => {
         if (res && res.length > 0) {
           const firstItem = res[0];
@@ -231,18 +218,18 @@ export class InvoiceApprovalComponent implements OnInit {
         }
 
         // Después de cargar todas las facturas, cargar las filtradas
-        this.loadFilteredInvoices(companyId);
+        this.loadFilteredInvoices();
       },
       error: (error) => {
         console.error('Error cargando todas las facturas:', error);
         this.allInvoices.set([]);
-        this.loadFilteredInvoices(companyId);
+        this.loadFilteredInvoices();
       },
     });
   }
 
-  private loadFilteredInvoices(companyId: string) {
-    this.agentService.getInvoices(companyId, this.filters()).subscribe({
+  private loadFilteredInvoices() {
+    this.agentService.getInvoices(this.filters()).subscribe({
       next: (res) => {
         if (res && res.length > 0) {
           const firstItem = res[0];
@@ -282,12 +269,12 @@ export class InvoiceApprovalComponent implements OnInit {
           if (typeof invoice.data === 'string') {
             try {
               invoiceData = JSON.parse(invoice.data);
-            } catch (parseError) {}
+            } catch (parseError) { }
           } else if (typeof invoice.data === 'object') {
             invoiceData = invoice.data;
           }
         }
-      } catch (error) {}
+      } catch (error) { }
 
       const categoryName = invoice.categoryId.name || 'No disponible';
       const projectName = invoice.proyectId.name || 'No disponible';
@@ -347,7 +334,8 @@ export class InvoiceApprovalComponent implements OnInit {
     });
   }
 
-  clickOptions(option: string, _id: string) {
+  clickOptions(event: { option: string, _id: string }) {
+    const { option, _id } = event;
     switch (option) {
       case 'download':
         this.downloadInvoice(_id);
@@ -381,12 +369,11 @@ export class InvoiceApprovalComponent implements OnInit {
   }
 
   approveInvoice(id: string) {
-    const companyId = this.userStateService.getUser()?.companyId || '';
     const payload: ApprovalPayload = {
       status: 'approved',
     };
 
-    this.agentService.approveInvoice(id, companyId, payload).subscribe({
+    this.agentService.approveInvoice(id, payload).subscribe({
       next: () => {
         this.notificationService.show(
           'Factura aprobada correctamente',
@@ -432,7 +419,6 @@ export class InvoiceApprovalComponent implements OnInit {
     this.agentService
       .rejectInvoice(
         id,
-        this.userStateService.getUser()?.companyId || '',
         payload
       )
       .subscribe({
@@ -459,15 +445,7 @@ export class InvoiceApprovalComponent implements OnInit {
   }
 
   getCategories() {
-    const companyId = this.userStateService.getUser()?.companyId;
-    if (!companyId) {
-      this.notificationService.show(
-        'No se encontró companyId en el usuario',
-        'error'
-      );
-      return;
-    }
-    this.agentService.getCategories(companyId).subscribe({
+    this.agentService.getCategories().subscribe({
       next: (categories) => {
         this.categories = categories;
       },
@@ -481,15 +459,7 @@ export class InvoiceApprovalComponent implements OnInit {
   }
 
   getProjects() {
-    const companyId = this.userStateService.getUser()?.companyId;
-    if (!companyId) {
-      this.notificationService.show(
-        'No se encontró companyId en el usuario',
-        'error'
-      );
-      return;
-    }
-    this.agentService.getProjects(companyId).subscribe({
+    this.agentService.getProjects().subscribe({
       next: (projects) => {
         this.projects = projects;
       },

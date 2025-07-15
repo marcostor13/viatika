@@ -257,39 +257,11 @@
   </div>
 </div>
 
-<div class="px-5 lg:block hidden">
-  @if (loading) {
-  <div class="flex justify-center items-center py-12">
-    <div
-      class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"
-    ></div>
-    <span class="ml-3 text-gray-600">Cargando facturas...</span>
-  </div>
-  } @else {
-  <app-table
-    [headers]="headers"
-    [data]="filteredInvoices"
-    (optionsEvent)="clickOptions($event.option, $event._id)"
-  ></app-table>
-  }
-</div>
-
-<div class="px-5 block lg:hidden">
-  @if (loading) {
-  <div class="flex justify-center items-center py-12">
-    <div
-      class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"
-    ></div>
-    <span class="ml-3 text-gray-600">Cargando facturas...</span>
-  </div>
-  } @else {
-  <app-list-table
-    [headers]="headers"
-    [data]="filteredInvoices"
-    (clickOptionsEvent)="clickOptions($event.option, $event._id)"
-  ></app-list-table>
-  }
-</div>
+<app-data
+  [headers]="headers"
+  [data]="filteredInvoices"
+  (clickOptionsEvent)="clickOptions($event)"
+></app-data>
 
 @if (showRejectionModal()) {
 <div

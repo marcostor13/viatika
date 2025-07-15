@@ -71,3 +71,28 @@ export interface InvoiceData {
   razonSocial?: string;
   direccionEmisor?: string;
 }
+
+export interface SunatValidationResult {
+  status:
+  | 'VALIDO_ACEPTADO'
+  | 'VALIDO_NO_PERTENECE'
+  | 'NO_ENCONTRADO'
+  | 'ERROR_SUNAT';
+  details: any;
+  message: string;
+}
+
+export interface SunatValidationInfo {
+  expenseId: string;
+  status: InvoiceStatus;
+  sunatValidation: SunatValidationResult | null;
+  hasValidation: boolean;
+  message: string;
+  extractedData?: {
+    rucEmisor?: string;
+    serie?: string;
+    correlativo?: string;
+    fechaEmision?: string;
+    montoTotal?: number;
+  };
+}

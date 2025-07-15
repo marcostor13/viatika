@@ -1,6 +1,4 @@
 import { Component, inject, OnInit } from '@angular/core';
-import { ListTableComponent } from '../../components/list-table/list-table.component';
-import { TableComponent } from '../../components/table/table.component';
 import { FileDownloadComponent } from '../../components/file-download/file-download.component';
 import { InvoicesService } from './services/invoices.service';
 import { Router } from '@angular/router';
@@ -12,12 +10,12 @@ import {
 } from './interfaces/invoices.interface';
 import { IHeaderList } from '../../interfaces/header-list.interface';
 import { IProject } from './interfaces/project.interface';
-import { UserStateService } from '../../services/user-state.service';
+import { DataComponent } from '../../components/data/data.component';
 
 @Component({
   selector: 'app-invoices',
   standalone: true,
-  imports: [ListTableComponent, TableComponent, FileDownloadComponent],
+  imports: [DataComponent, FileDownloadComponent],
   templateUrl: './invoices.component.html',
   styleUrl: './invoices.component.scss',
 })
@@ -26,7 +24,6 @@ export default class InvoicesComponent implements OnInit {
   private router = inject(Router);
   private notificationService = inject(NotificationService);
   private confirmationService = inject(ConfirmationService);
-  private userStateService = inject(UserStateService);
 
   invoices: IInvoiceResponse[] = [];
   projects: IProject[] = [];
@@ -101,31 +98,20 @@ export default class InvoicesComponent implements OnInit {
   }
 
   loadProjects() {
-    const companyId = this.userStateService.getUser()?.companyId;
-    if (companyId) {
-      this.agentService.getProjects(companyId).subscribe({
-        next: (projects) => {
-          this.projects = projects;
-          this.getInvoices();
-        },
-        error: (error) => {
-          this.getInvoices();
-        },
-      });
-    } else {
-      this.getInvoices();
-    }
+    this.agentService.getProjects().subscribe({
+      next: (projects) => {
+        this.projects = projects;
+      },
+      complete: () => {
+        this.getInvoices();
+      },
+    });
   }
 
   getInvoices() {
-    const companyId = this.userStateService.getUser()?.companyId;
-    if (companyId) {
-      this.agentService.getInvoices(companyId).subscribe((res) => {
-        this.invoices = this.formatResponse(res);
-      });
-    } else {
-      this.getInvoices();
-    }
+    this.agentService.getInvoices().subscribe((res) => {
+      this.invoices = this.formatResponse(res);
+    })
   }
 
   downloadInvoice(_id: string) {
@@ -146,12 +132,12 @@ export default class InvoicesComponent implements OnInit {
           if (typeof invoice.data === 'string') {
             try {
               invoiceData = JSON.parse(invoice.data);
-            } catch (parseError) {}
+            } catch (parseError) { }
           } else if (typeof invoice.data === 'object') {
             invoiceData = invoice.data;
           }
         }
-      } catch (error) {}
+      } catch (error) { }
 
       const razonSocial = invoiceData.razonSocial || 'No disponible';
       const direccionEmisor = invoiceData.direccionEmisor || 'No disponible';
@@ -198,29 +184,29 @@ export default class InvoicesComponent implements OnInit {
     this.router.navigate(['/invoices/add']);
   }
 
-  clickOptions(option: string, id: string) {
+  clickOptions(event: { option: string, _id: string }) {
+    const { option, _id } = event;
     switch (option) {
       case 'edit':
-        this.router.navigate(['/invoices/edit', id]);
+        this.router.navigate(['/invoices/edit', _id]);
         break;
       case 'delete':
         this.confirmationService.show('¿Desea eliminar esta factura?', () => {
-          this.deleteInvoice(id);
+          this.deleteInvoice(_id);
         });
         break;
       case 'download':
-        this.downloadInvoice(id);
+        this.downloadInvoice(_id);
         break;
     }
   }
 
   approveInvoice(id: string) {
-    const companyId = this.userStateService.getUser()?.companyId || '';
     const payload = {
       status: 'approved' as InvoiceStatus,
     };
 
-    this.agentService.approveInvoice(id, companyId, payload).subscribe({
+    this.agentService.approveInvoice(id, payload).subscribe({
       next: () => {
         this.notificationService.show(
           'Factura aprobada correctamente',
@@ -235,13 +221,12 @@ export default class InvoicesComponent implements OnInit {
   }
 
   rejectInvoice(id: string, reason: string) {
-    const companyId = this.userStateService.getUser()?.companyId || '';
     const payload = {
       status: 'rejected' as InvoiceStatus,
       reason: reason,
     };
 
-    this.agentService.rejectInvoice(id, companyId, payload).subscribe({
+    this.agentService.rejectInvoice(id, payload).subscribe({
       next: () => {
         this.notificationService.show(
           'Factura rechazada correctamente',

@@ -37,84 +37,61 @@ export class AddCategoryComponent implements OnInit {
   }
 
   loadCategory(id: string) {
-    const companyId = this.userStateService.getUser()?.companyId;
-    if (companyId) {
-      this.invoicesService.getCategoryById(id, companyId).subscribe({
-        next: (category: ICategory) => {
-          this.category = category;
-        },
-        error: (error: HttpErrorResponse) => {
-          this.notificationService.show(
-            'Error al cargar la categoría: ' + error.message,
-            'error'
-          );
-          this.router.navigate(['/consolidated-invoices']);
-        },
-      });
-    }
+    this.invoicesService.getCategoryById(id).subscribe((category: ICategory) => {
+      this.category = category;
+      this.router.navigate(['/consolidated-invoices']);
+    });
   }
 
   back() {
     this.router.navigate(['/consolidated-invoices']);
   }
 
-  saveCategory() {
+  save() {
+    if (this.isEditing) {
+      this.updateCategory();
+    } else {
+      this.saveCategory();
+    }
+  }
+
+  validateName() {
     if (!this.category.name) {
       this.notificationService.show(
         'El nombre de la categoría es obligatorio',
         'error'
       );
+      return false;
+    }
+    return true;
+  }
+
+  saveCategory() {
+    if (!this.validateName()) {
       return;
     }
-
-    const companyId = this.userStateService.getUser()?.companyId;
-    if (!companyId) {
+    const createData: ICategory = {
+      name: this.category.name,
+    };
+    this.invoicesService.createCategory(createData).subscribe(() => {
       this.notificationService.show(
-        'No se encontró companyId en el usuario',
-        'error'
+        'Categoría creada exitosamente',
+        'success'
       );
+      this.router.navigate(['/consolidated-invoices']);
+    });
+  }
+
+  updateCategory() {
+    if (!this.validateName()) {
       return;
     }
-    this.category.companyId = companyId;
-
-    if (!this.isEditing) {
-      this.invoicesService.createCategory(this.category).subscribe({
-        next: () => {
-          this.notificationService.show(
-            'Categoría creada exitosamente',
-            'success'
-          );
-          this.router.navigate(['/consolidated-invoices']);
-        },
-        error: (error: HttpErrorResponse) => {
-          this.notificationService.show(
-            'Error al crear categoría: ' + error.message,
-            'error'
-          );
-        },
-      });
-    } else {
-      const updateData: Partial<ICategory> = {
-        name: this.category.name,
-      };
-
-      this.invoicesService
-        .updateCategory(this.categoryId!, updateData)
-        .subscribe({
-          next: () => {
-            this.notificationService.show(
-              'Categoría actualizada exitosamente',
-              'success'
-            );
-            this.router.navigate(['/consolidated-invoices']);
-          },
-          error: (error: HttpErrorResponse) => {
-            this.notificationService.show(
-              'Error al actualizar categoría: ' + error.message,
-              'error'
-            );
-          },
-        });
-    }
+    const updateData: Partial<ICategory> = {
+      name: this.category.name,
+    };
+    this.invoicesService.updateCategory(this.categoryId!, updateData).subscribe(() => {
+      this.notificationService.show('Categoría actualizada exitosamente', 'success');
+      this.router.navigate(['/consolidated-invoices']);
+    });
   }
 }

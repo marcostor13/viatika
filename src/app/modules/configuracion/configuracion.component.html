@@ -1,0 +1,475 @@
+<div class="p-6">
+  <div class="mb-8">
+    <h1 class="text-3xl font-bold text-gray-900 mb-2">Configuración</h1>
+    <p class="text-gray-600">
+      Gestiona las categorías y proyectos de tu empresa
+    </p>
+  </div>
+
+  @if (loading) {
+  <div class="flex justify-center items-center py-8">
+    <div
+      class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"
+    ></div>
+  </div>
+  } @if (!loading) {
+  <section class="bg-white rounded-lg shadow-lg p-6 mb-8">
+    <div class="flex justify-between items-center mb-6">
+      <h2 class="text-xl font-semibold text-gray-900">
+        Configuración de Empresa
+      </h2>
+      @if (!showCompanyForm) {
+      <button
+        (click)="editCompanyConfig()"
+        class="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg transition-colors duration-200 flex items-center"
+      >
+        <span class="mr-2">✏️</span>
+        Editar Empresa
+      </button>
+      }
+    </div>
+
+    @if (!showCompanyForm) {
+    <div class="flex items-center space-x-6">
+      @if (companyConfig?.logo) {
+      <img
+        [src]="companyConfig?.logo || ''"
+        alt="Logo de la empresa"
+        class="w-20 h-20 rounded-lg object-cover border-2 border-gray-200"
+        onerror="this.style.display='none'"
+      />
+      }
+      <div>
+        <h3 class="text-lg font-medium text-gray-900">
+          {{ companyConfig?.name || "Mi Empresa" }}
+        </h3>
+        <p class="text-gray-500">Configuración general de la empresa</p>
+      </div>
+    </div>
+    } @if (showCompanyForm) {
+    <div class="space-y-6">
+      <div>
+        <label
+          for="companyName"
+          class="block text-sm font-medium text-gray-700 mb-2"
+        >
+          Nombre de la empresa
+        </label>
+        <input
+          id="companyName"
+          type="text"
+          [(ngModel)]="companyName"
+          class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+          placeholder="Ingresa el nombre de la empresa"
+        />
+      </div>
+
+      <div>
+        <label
+          for="companyLogo"
+          class="block text-sm font-medium text-gray-700 mb-2"
+        >
+          Logo de la empresa
+        </label>
+        <div class="flex items-center space-x-4">
+          @if (logoPreview || companyConfig?.logo) {
+          <img
+            [src]="logoPreview || companyConfig?.logo"
+            alt="Preview del logo"
+            class="w-16 h-16 rounded-lg object-cover border-2 border-gray-200"
+          />
+          }
+          <div class="flex-1">
+            <input
+              id="companyLogo"
+              type="file"
+              accept="image/*"
+              (change)="onLogoSelected($event)"
+              [disabled]="isUploadingLogo"
+              class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-purple-50 file:text-purple-700 hover:file:bg-purple-100 disabled:opacity-50"
+            />
+            <p class="text-xs text-gray-500 mt-1">
+              Formatos: JPG, PNG, GIF. Máximo 2MB
+            </p>
+
+            @if (isUploadingLogo) {
+            <div class="mt-2">
+              <div class="w-full bg-gray-200 rounded-full h-2">
+                <div
+                  class="bg-purple-600 h-2 rounded-full transition-all duration-300"
+                  [style.width.%]="logoUploadProgress"
+                ></div>
+              </div>
+              <p class="text-xs text-gray-600 mt-1">
+                Subiendo logo... {{ logoUploadProgress }}%
+              </p>
+            </div>
+            }
+          </div>
+        </div>
+      </div>
+
+      <div class="flex space-x-3">
+        <button
+          (click)="saveCompanyConfig()"
+          [disabled]="isUploadingLogo"
+          class="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          @if (isUploadingLogo) {
+          <span class="flex items-center">
+            <svg
+              class="animate-spin -ml-1 mr-2 h-4 w-4 text-white"
+              xmlns="http://www.w3.org/2000/svg"
+              fill="none"
+              viewBox="0 0 24 24"
+            >
+              <circle
+                class="opacity-25"
+                cx="12"
+                cy="12"
+                r="10"
+                stroke="currentColor"
+                stroke-width="4"
+              ></circle>
+              <path
+                class="opacity-75"
+                fill="currentColor"
+                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+              ></path>
+            </svg>
+            Guardando...
+          </span>
+          } @else { Guardar Cambios }
+        </button>
+        <button
+          (click)="cancelCompanyEdit()"
+          [disabled]="isUploadingLogo"
+          class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          Cancelar
+        </button>
+      </div>
+    </div>
+    }
+  </section>
+
+  <section class="bg-white rounded-lg shadow-lg p-6 mb-8">
+    <div class="flex justify-between items-center mb-6">
+      <h2 class="text-xl font-semibold text-gray-900">
+        Configuración de SUNAT
+      </h2>
+      @if (!showSunatForm) {
+      <button
+        (click)="editSunatConfig()"
+        class="bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded-lg transition-colors duration-200 flex items-center"
+      >
+        <span class="mr-2">🔧</span>
+        {{ sunatConfig ? "Editar" : "Configurar" }} SUNAT
+      </button>
+      }
+    </div>
+
+    @if (!showSunatForm) {
+    <div class="space-y-4">
+      @if (sunatConfig) {
+      <div class="flex items-center space-x-4">
+        <div
+          class="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center"
+        >
+          <span class="text-orange-600 text-xl">🔧</span>
+        </div>
+        <div>
+          <h3 class="text-lg font-medium text-gray-900">
+            Configuración SUNAT Activa
+          </h3>
+          <p class="text-gray-500">
+            Client ID: {{ sunatConfig.clientIdSunat | mask : "00000000000" }}
+          </p>
+          <p class="text-gray-500">
+            Estado:
+            <span
+              [class]="sunatConfig.isActive ? 'text-green-600' : 'text-red-600'"
+            >
+              {{ sunatConfig.isActive ? "Activo" : "Inactivo" }}
+            </span>
+          </p>
+        </div>
+      </div>
+      } @else {
+      <div class="text-center py-6 text-gray-500">
+        <div
+          class="w-16 h-16 bg-gray-100 rounded-lg flex items-center justify-center mx-auto mb-4"
+        >
+          <span class="text-gray-400 text-2xl">🔧</span>
+        </div>
+        <p class="font-medium">No hay configuración de SUNAT</p>
+        <p class="text-sm">
+          Configura las credenciales para validar comprobantes
+        </p>
+      </div>
+      } @if (sunatConfig) {
+      <div class="flex space-x-3">
+        <button
+          (click)="testSunatConnection()"
+          class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors duration-200 flex items-center"
+        >
+          <span class="mr-2">🧪</span>
+          Probar Conexión
+        </button>
+        <button
+          (click)="deleteSunatConfig()"
+          class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg transition-colors duration-200 flex items-center"
+        >
+          <span class="mr-2">🗑️</span>
+          Eliminar Configuración
+        </button>
+      </div>
+      }
+    </div>
+    } @if (showSunatForm) {
+    <div class="space-y-6">
+      <div>
+        <label
+          for="clientId"
+          class="block text-sm font-medium text-gray-700 mb-2"
+        >
+          Client ID
+        </label>
+        <input
+          id="clientId"
+          type="text"
+          [(ngModel)]="sunatForm.clientIdSunat"
+          class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+          placeholder="Ingresa el Client ID de SUNAT"
+        />
+      </div>
+
+      <div>
+        <label
+          for="clientSecret"
+          class="block text-sm font-medium text-gray-700 mb-2"
+        >
+          Client Secret
+        </label>
+        <input
+          id="clientSecret"
+          type="password"
+          [(ngModel)]="sunatForm.clientSecret"
+          class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+          placeholder="Ingresa el Client Secret de SUNAT"
+        />
+      </div>
+
+      <div class="flex items-center">
+        <input
+          id="isActive"
+          type="checkbox"
+          [(ngModel)]="sunatForm.isActive"
+          class="h-4 w-4 text-orange-600 focus:ring-orange-500 border-gray-300 rounded"
+        />
+        <label for="isActive" class="ml-2 block text-sm text-gray-900">
+          Activar configuración
+        </label>
+      </div>
+
+      <div class="flex space-x-3">
+        <button
+          (click)="saveSunatConfig()"
+          class="bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded-lg transition-colors duration-200"
+        >
+          Guardar Configuración
+        </button>
+        <button
+          (click)="cancelSunatEdit()"
+          class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg transition-colors duration-200"
+        >
+          Cancelar
+        </button>
+      </div>
+    </div>
+    }
+  </section>
+
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+    <section class="bg-white rounded-lg shadow-lg p-6">
+      <div class="flex justify-between items-center mb-6">
+        <h2 class="text-xl font-semibold text-gray-900">Categorías</h2>
+        @if (!showCategoryForm) {
+        <button
+          (click)="addCategory()"
+          class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors duration-200 flex items-center"
+        >
+          <span class="mr-2">+</span>
+          Agregar Categoría
+        </button>
+        }
+      </div>
+
+      @if (showCategoryForm) {
+      <div class="mb-6 p-4 bg-gray-50 rounded-lg">
+        <h3 class="text-lg font-medium mb-4">
+          {{ editingCategory ? "Editar" : "Nueva" }} Categoría
+        </h3>
+        <div class="space-y-4">
+          <div>
+            <label
+              for="categoryName"
+              class="block text-sm font-medium text-gray-700 mb-1"
+            >
+              Nombre de la categoría
+            </label>
+            <input
+              id="categoryName"
+              type="text"
+              [(ngModel)]="newCategory.name"
+              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              placeholder="Ingresa el nombre de la categoría"
+            />
+          </div>
+          <div class="flex space-x-3">
+            <button
+              (click)="save()"
+              class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors duration-200"
+            >
+              {{ editingCategory ? "Actualizar" : "Guardar" }}
+            </button>
+            <button
+              (click)="cancelCategoryEdit()"
+              class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg transition-colors duration-200"
+            >
+              Cancelar
+            </button>
+          </div>
+        </div>
+      </div>
+      }
+
+      <div class="space-y-3">
+        @for (category of categories; track category._id) {
+        <div
+          class="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors duration-200"
+        >
+          <div class="flex items-center">
+            <span class="w-3 h-3 bg-blue-500 rounded-full mr-3"></span>
+            <span class="font-medium text-gray-900">{{ category.name }}</span>
+          </div>
+          <div class="flex space-x-2">
+            <button
+              (click)="editCategory(category)"
+              class="text-blue-600 hover:text-blue-800 p-2 rounded-lg hover:bg-blue-50 transition-colors duration-200"
+              title="Editar categoría"
+            >
+              ✏️
+            </button>
+            <button
+              (click)="deleteCategory(category)"
+              class="text-red-600 hover:text-red-800 p-2 rounded-lg hover:bg-red-50 transition-colors duration-200"
+              title="Eliminar categoría"
+            >
+              🗑️
+            </button>
+          </div>
+        </div>
+        } @if (categories.length === 0) {
+        <div class="text-center py-8 text-gray-500">
+          <p>No hay categorías registradas</p>
+          <p class="text-sm">
+            Haz clic en "Agregar Categoría" para crear la primera
+          </p>
+        </div>
+        }
+      </div>
+    </section>
+
+    <section class="bg-white rounded-lg shadow-lg p-6">
+      <div class="flex justify-between items-center mb-6">
+        <h2 class="text-xl font-semibold text-gray-900">Proyectos</h2>
+        @if (!showProjectForm) {
+        <button
+          (click)="addProject()"
+          class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg transition-colors duration-200 flex items-center"
+        >
+          <span class="mr-2">+</span>
+          Agregar Proyecto
+        </button>
+        }
+      </div>
+
+      @if (showProjectForm) {
+      <div class="mb-6 p-4 bg-gray-50 rounded-lg">
+        <h3 class="text-lg font-medium mb-4">
+          {{ editingProject ? "Editar" : "Nuevo" }} Proyecto
+        </h3>
+        <div class="space-y-4">
+          <div>
+            <label
+              for="projectName"
+              class="block text-sm font-medium text-gray-700 mb-1"
+            >
+              Nombre del proyecto
+            </label>
+            <input
+              id="projectName"
+              type="text"
+              [(ngModel)]="newProject.name"
+              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+              placeholder="Ingresa el nombre del proyecto"
+            />
+          </div>
+          <div class="flex space-x-3">
+            <button
+              (click)="saveProject()"
+              class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg transition-colors duration-200"
+            >
+              {{ editingProject ? "Actualizar" : "Guardar" }}
+            </button>
+            <button
+              (click)="cancelProjectEdit()"
+              class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg transition-colors duration-200"
+            >
+              Cancelar
+            </button>
+          </div>
+        </div>
+      </div>
+      }
+
+      <div class="space-y-3">
+        @for (project of projects; track project._id) {
+        <div
+          class="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors duration-200"
+        >
+          <div class="flex items-center">
+            <span class="w-3 h-3 bg-green-500 rounded-full mr-3"></span>
+            <span class="font-medium text-gray-900">{{ project.name }}</span>
+          </div>
+          <div class="flex space-x-2">
+            <button
+              (click)="editProject(project)"
+              class="text-green-600 hover:text-green-800 p-2 rounded-lg hover:bg-green-50 transition-colors duration-200"
+              title="Editar proyecto"
+            >
+              ✏️
+            </button>
+            <button
+              (click)="deleteProject(project)"
+              class="text-red-600 hover:text-red-800 p-2 rounded-lg hover:bg-red-50 transition-colors duration-200"
+              title="Eliminar proyecto"
+            >
+              🗑️
+            </button>
+          </div>
+        </div>
+        } @if (projects.length === 0) {
+        <div class="text-center py-8 text-gray-500">
+          <p>No hay proyectos registrados</p>
+          <p class="text-sm">
+            Haz clic en "Agregar Proyecto" para crear el primero
+          </p>
+        </div>
+        }
+      </div>
+    </section>
+  </div>
+  }
+</div>

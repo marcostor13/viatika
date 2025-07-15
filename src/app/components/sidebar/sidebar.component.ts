@@ -19,6 +19,7 @@ export class SidebarComponent implements OnDestroy {
   private confirmationService = inject(ConfirmationService);
   private userStateService = inject(UserStateService);
   private routerSubscription!: Subscription;
+  user = this.userStateService.getUser();
 
   currentPath = '';
   sidebarVisible = false;
@@ -53,21 +54,6 @@ export class SidebarComponent implements OnDestroy {
     this.sidebarVisible = !this.sidebarVisible;
   }
 
-  // Verificar si el usuario es administrador
-  isAdmin(): boolean {
-    const user = this.userStateService.getUser();
-    const role = user?.role || user?.roleId?.name;
-    const allowedRoles = ['ADMIN2', 'admin2', 'Admin2', 'admin 2', 'ADMIN'];
-    return role ? allowedRoles.includes(role) : false;
-  }
-
-  // Verificar si el usuario es colaborador
-  isColaborador(): boolean {
-    const user = this.userStateService.getUser();
-    const role = user?.role || user?.roleId?.name;
-    return role === 'COLABORADOR' || role === 'PROVIDER';
-  }
-
   confirmation() {
     this.confirmationService.show(
       '¿Estás seguro de querer cerrar sesión?',
@@ -75,6 +61,18 @@ export class SidebarComponent implements OnDestroy {
         this.logout();
       }
     );
+  }
+
+  isAdmin(): boolean {
+    const user = this.userStateService.getUser();
+    const role = user?.role?.name;
+    return role === 'Admin' || role === 'Super';
+  }
+
+  isColaborador(): boolean {
+    const user = this.userStateService.getUser();
+    const role = user?.role?.name;
+    return role === 'User';
   }
 
   logout() {

@@ -11,9 +11,9 @@ import { IHeaderList } from '../../interfaces/header-list.interface';
 export class TableComponent {
   @Input() headers: IHeaderList[] = [];
   @Input() data: any[] = [];
-  @Output() optionsEvent = new EventEmitter<{ option: string; _id: string }>();
+  @Output() clickOptionsEvent = new EventEmitter<{ option: string; _id: string }>();
 
   options(option: string, _id: string) {
-    this.optionsEvent.emit({ option, _id });
+    this.clickOptionsEvent.emit({ option, _id });
   }
 }

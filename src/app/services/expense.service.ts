@@ -8,7 +8,7 @@ export class ExpenseService {
   private http = inject(HttpClient);
   private url = `${environment.api}/expense`;
 
-  getExpenses(companyId: string, filters?: any): Observable<any[]> {
+  getExpenses(filters?: any): Observable<any[]> {
     let params = new HttpParams();
     if (filters) {
       Object.keys(filters).forEach((key) => {
@@ -21,6 +21,6 @@ export class ExpenseService {
         }
       });
     }
-    return this.http.get<any[]>(`${this.url}/${companyId}`, { params });
+    return this.http.get<any[]>(`${this.url}`, { params });
   }
 }

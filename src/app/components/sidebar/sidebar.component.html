@@ -1,15 +1,11 @@
 <div class="flex min-h-screen">
-  <!-- Sidebar Desktop -->
   <div class="hidden lg:flex lg:w-64 bg-gray-900 flex-col">
-    <!-- Header del sidebar -->
     <div class="p-6 border-b border-gray-700">
       <h2 class="text-white text-lg font-semibold">Panel de Control</h2>
       <p class="text-gray-300 text-sm">Sistema de Facturas</p>
     </div>
 
-    <!-- Navegación -->
     <nav class="flex-1 p-4 space-y-2">
-      <!-- Facturas - Disponible para COLABORADORES -->
       <a
         *ngIf="isColaborador()"
         [routerLink]="['/invoices']"
@@ -20,7 +16,6 @@
         <span class="font-medium">Facturas</span>
       </a>
 
-      <!-- Aprobación de Facturas - Solo para ADMINISTRADORES -->
       <a
         *ngIf="isAdmin()"
         [routerLink]="['/invoice-approval']"
@@ -31,7 +26,6 @@
         <span class="font-medium">Aprobación de Facturas</span>
       </a>
 
-      <!-- Usuarios Admin - Solo para ADMINISTRADORES -->
       <a
         *ngIf="isAdmin()"
         [routerLink]="['/admin-users']"
@@ -42,7 +36,6 @@
         <span class="font-medium">Usuarios Admin</span>
       </a>
 
-      <!-- Consolidado de Facturas - Solo para ADMINISTRADORES -->
       <a
         *ngIf="isAdmin()"
         [routerLink]="['/consolidated-invoices']"
@@ -52,9 +45,18 @@
         <span class="mr-3 text-xl">📊</span>
         <span class="font-medium">Consolidado</span>
       </a>
+
+      <a
+        *ngIf="isAdmin()"
+        [routerLink]="['/configuracion']"
+        routerLinkActive="bg-blue-600 text-white"
+        class="flex items-center px-4 py-3 text-gray-300 rounded-lg hover:bg-gray-700 hover:text-white transition-colors"
+      >
+        <span class="mr-3 text-xl">⚙️</span>
+        <span class="font-medium">Configuración</span>
+      </a>
     </nav>
 
-    <!-- Footer del sidebar -->
     <div class="p-4 border-t border-gray-700">
       <div class="flex items-center px-4 py-2 text-gray-300 mb-3">
         <img
@@ -65,7 +67,7 @@
         <div class="text-sm">
           <div class="font-medium text-white">Usuario</div>
           <div class="text-xs text-gray-400">
-            {{ isAdmin() ? "Administrador" : "Colaborador" }}
+            {{ user?.role?.name }}
           </div>
         </div>
       </div>
@@ -73,29 +75,40 @@
         (click)="confirmation()"
         class="flex items-center w-full px-4 py-2 text-gray-300 rounded-lg hover:bg-red-600 hover:text-white transition-colors"
       >
-        <span class="mr-3">🚪</span>
+        <span class="mr-3"
+          ><svg
+            xmlns="http://www.w3.org/2000/svg"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke-width="1.5"
+            stroke="currentColor"
+            class="size-6"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              d="M8.25 9V5.25A2.25 2.25 0 0 1 10.5 3h6a2.25 2.25 0 0 1 2.25 2.25v13.5A2.25 2.25 0 0 1 16.5 21h-6a2.25 2.25 0 0 1-2.25-2.25V15m-3 0-3-3m0 0 3-3m-3 3H15"
+            />
+          </svg>
+        </span>
         <span>Cerrar Sesión</span>
       </button>
     </div>
   </div>
 
-  <!-- Sidebar móvil overlay con animaciones mejoradas -->
   <div
     *ngIf="sidebarVisible"
     class="lg:hidden fixed inset-0 z-50 flex animate-in fade-in duration-300"
     (click)="toggleSidebar()"
   >
-    <!-- Overlay con blur -->
     <div
       class="fixed inset-0 bg-black/50 backdrop-blur-sm transition-all duration-300"
     ></div>
 
-    <!-- Sidebar móvil con animación de deslizamiento -->
     <div
       class="relative flex flex-col w-80 max-w-[85vw] bg-gray-900 shadow-2xl animate-in slide-in-from-left duration-300 ease-out"
       (click)="$event.stopPropagation()"
     >
-      <!-- Header del sidebar móvil mejorado -->
       <div
         class="p-6 border-b border-gray-700 bg-gradient-to-r from-gray-900 to-gray-800"
       >
@@ -125,9 +138,7 @@
         </div>
       </div>
 
-      <!-- Navegación móvil con mejor espaciado -->
       <nav class="flex-1 p-6 space-y-3 overflow-y-auto">
-        <!-- Facturas - Disponible para COLABORADORES -->
         <a
           *ngIf="isColaborador()"
           [routerLink]="['/invoices']"
@@ -142,7 +153,6 @@
           <span class="font-medium text-lg">Facturas</span>
         </a>
 
-        <!-- Aprobación de Facturas - Solo para ADMINISTRADORES -->
         <a
           *ngIf="isAdmin()"
           [routerLink]="['/invoice-approval']"
@@ -157,7 +167,6 @@
           <span class="font-medium text-lg">Aprobación de Facturas</span>
         </a>
 
-        <!-- Usuarios Admin - Solo para ADMINISTRADORES -->
         <a
           *ngIf="isAdmin()"
           [routerLink]="['/admin-users']"
@@ -172,7 +181,6 @@
           <span class="font-medium text-lg">Usuarios Admin</span>
         </a>
 
-        <!-- Consolidado de Facturas - Solo para ADMINISTRADORES -->
         <a
           *ngIf="isAdmin()"
           [routerLink]="['/consolidated-invoices']"
@@ -188,7 +196,6 @@
         </a>
       </nav>
 
-      <!-- Footer del sidebar móvil mejorado -->
       <div
         class="p-6 border-t border-gray-700 bg-gradient-to-r from-gray-900 to-gray-800"
       >
@@ -203,7 +210,7 @@
           <div class="text-sm">
             <div class="font-semibold text-white">Usuario</div>
             <div class="text-xs text-gray-400">
-              {{ isAdmin() ? "Administrador" : "Colaborador" }}
+              {{ user?.role?.name }}
             </div>
           </div>
         </div>
@@ -213,8 +220,21 @@
         >
           <span
             class="mr-3 text-xl group-hover:scale-110 transition-transform duration-200"
-            >🚪</span
-          >
+            ><svg
+              xmlns="http://www.w3.org/2000/svg"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke-width="1.5"
+              stroke="currentColor"
+              class="size-6"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                d="M8.25 9V5.25A2.25 2.25 0 0 1 10.5 3h6a2.25 2.25 0 0 1 2.25 2.25v13.5A2.25 2.25 0 0 1 16.5 21h-6a2.25 2.25 0 0 1-2.25-2.25V15m-3 0-3-3m0 0 3-3m-3 3H15"
+              />
+            </svg>
+          </span>
           <span class="font-medium">Cerrar Sesión</span>
         </button>
       </div>
@@ -222,15 +242,12 @@
   </div>
 </div>
 
-<!-- Botón hamburguesa mejorado para mobile -->
 <div class="lg:hidden fixed top-4 left-4 z-40">
   <button
     (click)="toggleSidebar()"
     class="p-3 rounded-xl bg-white shadow-xl text-gray-700 hover:text-gray-900 hover:bg-gray-50 transition-all duration-300 hover:shadow-2xl hover:scale-105 group border border-gray-200"
   >
-    <!-- Animación del icono hamburguesa -->
     <div class="relative w-6 h-6">
-      <!-- Líneas del hamburguesa que se transforman en X -->
       <span
         class="absolute top-1.5 left-0 w-6 h-0.5 bg-current transform transition-all duration-300 group-hover:rotate-45 group-hover:top-2.5"
         [class.rotate-45]="sidebarVisible"
