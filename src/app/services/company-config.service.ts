@@ -31,12 +31,17 @@ export class CompanyConfigService {
 
   constructor() {
     this.initCompanyConfig();
-    this.loadCompanyConfig();
+    if (this.userStateService.isAuthenticated()) {
+      this.loadCompanyConfig();
+    }
   }
 
   initCompanyConfig() {
+    const user = this.userStateService.getUser();
+    const clientId = user?.client?._id || '';
+
     const defaultConfig: ICompanyConfig = {
-      clientId: this.userStateService.getUser()?.client._id || '',
+      clientId: clientId,
       name: 'Mi Empresa',
       logo: '',
     };
@@ -48,9 +53,16 @@ export class CompanyConfigService {
   }
 
   private loadCompanyConfig() {
-    this.invoicesService.getCompanyConfig().subscribe((config: ICompanyConfig) => {
-      this.companyConfigSubject.next(config);
-    });
+    // Solo hacer la llamada si hay usuario autenticado
+    if (!this.userStateService.isAuthenticated()) {
+      return;
+    }
+
+    this.invoicesService
+      .getCompanyConfig()
+      .subscribe((config: ICompanyConfig) => {
+        this.companyConfigSubject.next(config);
+      });
   }
 
   getCompanyConfig(): ICompanyConfig | null {
@@ -59,15 +71,10 @@ export class CompanyConfigService {
 
   updateCompanyName(name: string): Observable<ICompanyConfig> {
     return new Observable((observer) => {
-      this.invoicesService.updateCompanyConfig({ name }).subscribe({
-        next: (config) => {
-          this.companyConfigSubject.next(config);
-          observer.next(config);
-          observer.complete();
-        },
-        error: (error) => {
-          observer.error(error);
-        },
+      this.invoicesService.updateCompanyConfig({ name }).subscribe((config) => {
+        this.companyConfigSubject.next(config);
+        observer.next(config);
+        observer.complete();
       });
     });
   }
@@ -101,16 +108,10 @@ export class CompanyConfigService {
             // Actualizar configuración de empresa con la nueva URL
             this.invoicesService
               .updateCompanyConfig({ logo: downloadURL })
-              .subscribe({
-                next: (config) => {
-                  this.companyConfigSubject.next(config);
-                  observer.next({ config, progress: 100, type: 'complete' });
-                  observer.complete();
-                },
-                error: (error) => {
-                  observer.next({ type: 'error' });
-                  observer.error(error);
-                },
+              .subscribe((config) => {
+                this.companyConfigSubject.next(config);
+                observer.next({ config, progress: 100, type: 'complete' });
+                observer.complete();
               });
           } catch (error) {
             observer.next({ type: 'error' });
@@ -122,6 +123,12 @@ export class CompanyConfigService {
   }
 
   refreshConfig() {
+    this.loadCompanyConfig();
+  }
+
+  // Método para recargar configuración cuando el usuario se autentique
+  reloadConfigOnAuth() {
+    this.initCompanyConfig();
     this.loadCompanyConfig();
   }
 }

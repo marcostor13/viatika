@@ -11,7 +11,10 @@ import { environment } from '../../../../environments/environment';
 import { ICategory } from '../interfaces/category.interface';
 import { IProject } from '../interfaces/project.interface';
 import { ICompanyConfig } from '../../../interfaces/company-config.interface';
-import { ISunatConfig, ISunatCredentials } from '../../../interfaces/sunat-config.interface';
+import {
+  ISunatConfig,
+  ISunatCredentials,
+} from '../../../interfaces/sunat-config.interface';
 
 @Injectable({
   providedIn: 'root',
@@ -149,18 +152,13 @@ export class InvoicesService {
 
   // Métodos para configuración de empresa
   getCompanyConfig(): Observable<ICompanyConfig> {
-    return this.http.get<ICompanyConfig>(
-      `${this.companyConfigUrl}`
-    );
+    return this.http.get<ICompanyConfig>(`${this.companyConfigUrl}`);
   }
 
   updateCompanyConfig(
     config: Partial<ICompanyConfig>
   ): Observable<ICompanyConfig> {
-    return this.http.patch<ICompanyConfig>(
-      `${this.companyConfigUrl}`,
-      config
-    );
+    return this.http.patch<ICompanyConfig>(`${this.companyConfigUrl}`, config);
   }
 
   getSunatConfig(): Observable<ISunatConfig> {

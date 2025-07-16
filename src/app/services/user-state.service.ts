@@ -1,6 +1,7 @@
 import { Injectable, signal } from '@angular/core';
 import { IUserResponse } from '../interfaces/user.interface';
 import { USER_LOCALSTORAGE_KEY } from '../constants/user-localstorage.constant';
+
 @Injectable({
   providedIn: 'root',
 })
@@ -44,26 +45,7 @@ export class UserStateService {
     this.clearUser();
   }
 
-  loginAsColaborador(email: string) {
-    const user = {
-      _id: '1',
-      email,
-      name: 'Colaborador',
-      access_token: 'fake-token',
-      clientId: {},
-      roleId: {
-        _id: 'colab',
-        name: 'COLABORADOR',
-        active: true,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      },
-    };
-    this.setUser(user as any);
-  }
-
   isAuthenticated() {
     return !!this._user();
   }
-
 }

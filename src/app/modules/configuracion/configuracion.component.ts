@@ -63,9 +63,11 @@ export class ConfiguracionComponent implements OnInit {
   }
 
   loadCompanyConfig() {
-    this.companyConfigService.companyConfig$.subscribe((config: ICompanyConfig | null) => {
-      this.companyConfig = config;
-    });
+    this.companyConfigService.companyConfig$.subscribe(
+      (config: ICompanyConfig | null) => {
+        this.companyConfig = config;
+      }
+    );
   }
 
   editCompanyConfig() {
@@ -166,10 +168,9 @@ export class ConfiguracionComponent implements OnInit {
 
   // Métodos para Categorías
   loadCategories() {
-    this.invoicesService.getCategories().subscribe(
-      (categories) => {
-        this.categories = categories;
-      });
+    this.invoicesService.getCategories().subscribe((categories) => {
+      this.categories = categories;
+    });
   }
 
   addCategory() {
@@ -214,26 +215,25 @@ export class ConfiguracionComponent implements OnInit {
 
   saveCategory() {
     this.invoicesService.createCategory(this.newCategory).subscribe(() => {
-      this.notificationService.show(
-        'Categoría creada exitosamente',
-        'success'
-      );
+      this.notificationService.show('Categoría creada exitosamente', 'success');
       this.loadCategories();
       this.cancelCategoryEdit();
     });
   }
 
   updateCategory() {
-    this.invoicesService.updateCategory(this.editingCategory?._id!, {
-      name: this.newCategory.name,
-    }).subscribe(() => {
-      this.notificationService.show(
-        'Categoría creada exitosamente',
-        'success'
-      );
-      this.loadCategories();
-      this.cancelCategoryEdit();
-    });
+    this.invoicesService
+      .updateCategory(this.editingCategory?._id!, {
+        name: this.newCategory.name,
+      })
+      .subscribe(() => {
+        this.notificationService.show(
+          'Categoría actualizada exitosamente',
+          'success'
+        );
+        this.loadCategories();
+        this.cancelCategoryEdit();
+      });
   }
 
   deleteCategory(category: ICategory) {
@@ -242,37 +242,20 @@ export class ConfiguracionComponent implements OnInit {
         `¿Estás seguro de que quieres eliminar la categoría "${category.name}"?`
       )
     ) {
-      this.invoicesService.deleteCategory(category._id!).subscribe({
-        next: () => {
-          this.notificationService.show(
-            'Categoría eliminada exitosamente',
-            'success'
-          );
-          this.loadCategories();
-        },
-        error: (error: HttpErrorResponse) => {
-          this.notificationService.show(
-            'Error al eliminar categoría: ' + error.message,
-            'error'
-          );
-        },
+      this.invoicesService.deleteCategory(category._id!).subscribe(() => {
+        this.notificationService.show(
+          'Categoría eliminada exitosamente',
+          'success'
+        );
+        this.loadCategories();
       });
     }
   }
 
   // Métodos para Proyectos
   loadProjects() {
-    this.invoicesService.getProjects().subscribe({
-      next: (projects) => {
-        this.projects = projects;
-      },
-      error: (error: HttpErrorResponse) => {
-        this.notificationService.show(
-          'Error al cargar proyectos: ' + error.message,
-          'error'
-        );
-        this.loading = false;
-      },
+    this.invoicesService.getProjects().subscribe((projects) => {
+      this.projects = projects;
     });
   }
 
@@ -294,55 +277,43 @@ export class ConfiguracionComponent implements OnInit {
     this.newProject = { name: '' };
   }
 
-  saveProject() {
+  validateProjectName() {
     if (!this.newProject.name?.trim()) {
       this.notificationService.show(
         'El nombre del proyecto es obligatorio',
         'error'
       );
+      return false;
+    }
+    return true;
+  }
+
+  saveProject() {
+    if (!this.validateProjectName()) {
       return;
     }
 
     if (this.editingProject) {
       // Actualizar proyecto existente
       this.invoicesService
-        .updateProject(
-          this.editingProject._id!,
-          { name: this.newProject.name },
-        )
-        .subscribe({
-          next: () => {
-            this.notificationService.show(
-              'Proyecto actualizado exitosamente',
-              'success'
-            );
-            this.loadProjects();
-            this.cancelProjectEdit();
-          },
-          error: (error: HttpErrorResponse) => {
-            this.notificationService.show(
-              'Error al actualizar proyecto: ' + error.message,
-              'error'
-            );
-          },
-        });
-    } else {
-      // Crear nuevo proyecto
-      this.invoicesService.createProject(this.newProject).subscribe({
-        next: () => {
+        .updateProject(this.editingProject._id!, { name: this.newProject.name })
+        .subscribe(() => {
           this.notificationService.show(
-            'Proyecto creado exitosamente',
+            'Proyecto actualizado exitosamente',
             'success'
           );
           this.loadProjects();
           this.cancelProjectEdit();
-        },
-        error: (error: HttpErrorResponse) => {
-          this.notificationService.show(
-            'Error al crear proyecto: ' + error.message,
-            'error'
-          );
-        },
+        });
+    } else {
+      // Crear nuevo proyecto
+      this.invoicesService.createProject(this.newProject).subscribe(() => {
+        this.notificationService.show(
+          'Proyecto creado exitosamente',
+          'success'
+        );
+        this.loadProjects();
+        this.cancelProjectEdit();
       });
     }
   }
@@ -353,20 +324,12 @@ export class ConfiguracionComponent implements OnInit {
         `¿Estás seguro de que quieres eliminar el proyecto "${project.name}"?`
       )
     ) {
-      this.invoicesService.deleteProject(project._id!).subscribe({
-        next: () => {
-          this.notificationService.show(
-            'Proyecto eliminado exitosamente',
-            'success'
-          );
-          this.loadProjects();
-        },
-        error: (error: HttpErrorResponse) => {
-          this.notificationService.show(
-            'Error al eliminar proyecto: ' + error.message,
-            'error'
-          );
-        },
+      this.invoicesService.deleteProject(project._id!).subscribe(() => {
+        this.notificationService.show(
+          'Proyecto eliminado exitosamente',
+          'success'
+        );
+        this.loadProjects();
       });
     }
   }
