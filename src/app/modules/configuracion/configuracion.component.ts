@@ -22,20 +22,14 @@ export class ConfiguracionComponent implements OnInit {
   private invoicesService = inject(InvoicesService);
   private notificationService = inject(NotificationService);
   private companyConfigService = inject(CompanyConfigService);
-
-  // Categorías
   categories: ICategory[] = [];
   newCategory: ICategory = { name: '' };
   editingCategory: ICategory | null = null;
   showCategoryForm = false;
-
-  // Proyectos
   projects: IProject[] = [];
   newProject: IProject = { name: '' };
   editingProject: IProject | null = null;
   showProjectForm = false;
-
-  // Configuración de empresa
   companyConfig: ICompanyConfig | null = null;
   showCompanyForm = false;
   selectedLogoFile: File | null = null;
@@ -43,8 +37,6 @@ export class ConfiguracionComponent implements OnInit {
   companyName: string = '';
   logoUploadProgress: number = 0;
   isUploadingLogo: boolean = false;
-
-  // Configuración de SUNAT
   sunatConfig: ISunatConfig | null = null;
   showSunatForm = false;
   sunatForm: Partial<ISunatConfig> = {
@@ -72,7 +64,7 @@ export class ConfiguracionComponent implements OnInit {
 
   editCompanyConfig() {
     this.showCompanyForm = true;
-    this.companyName = this.companyConfig?.name || '';
+    this.companyName = this.companyConfig?.businessName || '';
   }
 
   cancelCompanyEdit() {
@@ -86,8 +78,6 @@ export class ConfiguracionComponent implements OnInit {
     const file = event.target.files[0];
     if (file) {
       this.selectedLogoFile = file;
-
-      // Crear preview
       const reader = new FileReader();
       reader.onload = (e: any) => {
         this.logoPreview = e.target.result;
@@ -105,15 +95,13 @@ export class ConfiguracionComponent implements OnInit {
       return;
     }
 
-    // Actualizar nombre
     this.companyConfigService.updateCompanyName(this.companyName).subscribe({
       next: () => {
         this.notificationService.show(
           'Nombre de empresa actualizado exitosamente',
           'success'
         );
-
-        // Si hay logo seleccionado, subirlo
+        this.loadCompanyConfig();
         if (this.selectedLogoFile) {
           this.uploadLogo();
         } else {
@@ -136,7 +124,7 @@ export class ConfiguracionComponent implements OnInit {
     this.logoUploadProgress = 0;
 
     this.companyConfigService
-      .uploadCompanyLogo(this.selectedLogoFile)
+      .uploadCompanyLogo(this.selectedLogoFile, this.companyConfig?._id!)
       .subscribe({
         next: (result) => {
           if (result.type === 'progress' && result.progress !== undefined) {
@@ -149,6 +137,7 @@ export class ConfiguracionComponent implements OnInit {
             this.isUploadingLogo = false;
             this.logoUploadProgress = 0;
             this.cancelCompanyEdit();
+            this.loadCompanyConfig();
           } else if (result.type === 'error') {
             this.notificationService.show('Error al subir logo', 'error');
             this.isUploadingLogo = false;
@@ -166,7 +155,6 @@ export class ConfiguracionComponent implements OnInit {
       });
   }
 
-  // Métodos para Categorías
   loadCategories() {
     this.invoicesService.getCategories().subscribe((categories) => {
       this.categories = categories;
@@ -252,7 +240,6 @@ export class ConfiguracionComponent implements OnInit {
     }
   }
 
-  // Métodos para Proyectos
   loadProjects() {
     this.invoicesService.getProjects().subscribe((projects) => {
       this.projects = projects;
@@ -294,7 +281,6 @@ export class ConfiguracionComponent implements OnInit {
     }
 
     if (this.editingProject) {
-      // Actualizar proyecto existente
       this.invoicesService
         .updateProject(this.editingProject._id!, { name: this.newProject.name })
         .subscribe(() => {
@@ -306,7 +292,6 @@ export class ConfiguracionComponent implements OnInit {
           this.cancelProjectEdit();
         });
     } else {
-      // Crear nuevo proyecto
       this.invoicesService.createProject(this.newProject).subscribe(() => {
         this.notificationService.show(
           'Proyecto creado exitosamente',
@@ -334,7 +319,6 @@ export class ConfiguracionComponent implements OnInit {
     }
   }
 
-  // Métodos para Configuración de SUNAT
   loadSunatConfig() {
     this.invoicesService.getSunatConfig().subscribe({
       next: (config) => {
@@ -347,7 +331,6 @@ export class ConfiguracionComponent implements OnInit {
             'error'
           );
         }
-        // Si es 404, significa que no hay configuración, lo cual es normal
       },
     });
   }
@@ -391,7 +374,6 @@ export class ConfiguracionComponent implements OnInit {
     }
 
     if (this.sunatConfig) {
-      // Actualizar configuración existente
       this.invoicesService.updateSunatConfig(this.sunatForm).subscribe({
         next: (config) => {
           this.sunatConfig = config;
@@ -409,7 +391,6 @@ export class ConfiguracionComponent implements OnInit {
         },
       });
     } else {
-      // Crear nueva configuración
       this.invoicesService.createSunatConfig(this.sunatForm).subscribe({
         next: (config) => {
           this.sunatConfig = config;
@@ -456,6 +437,7 @@ export class ConfiguracionComponent implements OnInit {
   testSunatConnection() {
     this.invoicesService.testSunatCredentials().subscribe({
       next: (result) => {
+        this.loadSunatConfig();
         if (result.success) {
           this.notificationService.show(
             'Conexión SUNAT exitosa: ' + result.message,

@@ -23,7 +23,7 @@ export class InvoicesService {
   url: string = `${environment.api}/expense`;
   categoryUrl: string = `${environment.api}/category`;
   projectUrl: string = `${environment.api}/project`;
-  companyConfigUrl: string = `${environment.api}/users/config`;
+  companyConfigUrl: string = `${environment.api}/client`;
   sunatConfigUrl: string = `${environment.api}/sunat-config`;
 
   private http = inject(HttpClient);
@@ -156,9 +156,13 @@ export class InvoicesService {
   }
 
   updateCompanyConfig(
+    id: string,
     config: Partial<ICompanyConfig>
   ): Observable<ICompanyConfig> {
-    return this.http.patch<ICompanyConfig>(`${this.companyConfigUrl}`, config);
+    return this.http.patch<ICompanyConfig>(
+      `${this.companyConfigUrl}/${id}`,
+      config
+    );
   }
 
   getSunatConfig(): Observable<ISunatConfig> {

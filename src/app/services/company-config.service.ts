@@ -41,8 +41,8 @@ export class CompanyConfigService {
     const clientId = user?.client?._id || '';
 
     const defaultConfig: ICompanyConfig = {
-      clientId: clientId,
-      name: 'Mi Empresa',
+      _id: clientId,
+      businessName: 'Mi Empresa',
       logo: '',
     };
     this.setCompanyConfig(defaultConfig);
@@ -71,7 +71,7 @@ export class CompanyConfigService {
 
   updateCompanyName(name: string): Observable<ICompanyConfig> {
     return new Observable((observer) => {
-      this.invoicesService.updateCompanyConfig({ name }).subscribe((config) => {
+      this.invoicesService.updateCompanyConfig(this.companyConfigSubject.value?._id!, { businessName: name }).subscribe((config) => {
         this.companyConfigSubject.next(config);
         observer.next(config);
         observer.complete();
@@ -79,7 +79,7 @@ export class CompanyConfigService {
     });
   }
 
-  uploadCompanyLogo(file: File): Observable<UploadProgress> {
+  uploadCompanyLogo(file: File, _id: string): Observable<UploadProgress> {
     const clientId = this.companyConfigSubject.value?._id!;
 
     return new Observable((observer) => {
@@ -107,7 +107,7 @@ export class CompanyConfigService {
 
             // Actualizar configuración de empresa con la nueva URL
             this.invoicesService
-              .updateCompanyConfig({ logo: downloadURL })
+              .updateCompanyConfig(this.companyConfigSubject.value?._id!, { logo: downloadURL })
               .subscribe((config) => {
                 this.companyConfigSubject.next(config);
                 observer.next({ config, progress: 100, type: 'complete' });
