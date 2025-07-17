@@ -174,7 +174,10 @@ export class InvoicesService {
   }
 
   updateSunatConfig(config: Partial<ISunatConfig>): Observable<ISunatConfig> {
-    return this.http.patch<ISunatConfig>(this.sunatConfigUrl, config);
+    return this.http.patch<ISunatConfig>(
+      `${this.sunatConfigUrl}/${config._id}`,
+      config
+    );
   }
 
   deleteSunatConfig(): Observable<any> {

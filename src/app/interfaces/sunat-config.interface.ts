@@ -3,6 +3,7 @@ export interface ISunatConfig {
   clientId: string;
   clientIdSunat: string;
   clientSecret: string;
+  ruc: string;
   isActive: boolean;
   createdAt?: Date;
   updatedAt?: Date;

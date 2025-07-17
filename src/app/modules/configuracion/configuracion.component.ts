@@ -42,6 +42,7 @@ export class ConfiguracionComponent implements OnInit {
   sunatForm: Partial<ISunatConfig> = {
     clientId: '',
     clientSecret: '',
+    ruc: '',
     isActive: true,
   };
 
@@ -339,12 +340,15 @@ export class ConfiguracionComponent implements OnInit {
     this.showSunatForm = true;
     if (this.sunatConfig) {
       this.sunatForm = {
+        _id: this.sunatConfig._id,
+        ruc: this.sunatConfig.ruc,
         clientIdSunat: this.sunatConfig.clientIdSunat,
         clientSecret: this.sunatConfig.clientSecret,
         isActive: this.sunatConfig.isActive,
       };
     } else {
       this.sunatForm = {
+        ruc: '',
         clientIdSunat: '',
         clientSecret: '',
         isActive: true,

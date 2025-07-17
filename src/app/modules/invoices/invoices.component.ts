@@ -70,7 +70,7 @@ export default class InvoicesComponent implements OnInit {
       value: 'date',
     },
     {
-      header: 'Estado',
+      header: 'Estado Sunat',
       value: 'status',
     },
     {
