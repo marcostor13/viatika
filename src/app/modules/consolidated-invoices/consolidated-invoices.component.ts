@@ -16,7 +16,6 @@ import { IProject } from '../invoices/interfaces/project.interface';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { tap } from 'rxjs/operators';
-import { UserStateService } from '../../services/user-state.service';
 import { DataComponent } from '../../components/data/data.component';
 
 interface IInvoice {
@@ -72,7 +71,6 @@ export class ConsolidatedInvoicesComponent implements OnInit {
   private router = inject(Router);
   private notificationService = inject(NotificationService);
   private confirmationService = inject(ConfirmationService);
-  private userStateService = inject(UserStateService);
 
   rejectionReason = signal('');
   selectedInvoiceId = signal('');
