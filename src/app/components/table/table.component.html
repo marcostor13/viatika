@@ -126,7 +126,9 @@
               />
             </svg>
           </button>
-          } @else if (option === 'approve' && item.status === 'pending') {
+          } @else if (option === 'approve' && item.status !== 'approved' &&
+          item.status !== 'APPROVED' && item.status !== 'rejected' &&
+          item.status !== 'REJECTED') {
           <button
             class="text-green-600 hover:underline w-7"
             title="Aprobar factura"
@@ -147,7 +149,9 @@
               />
             </svg>
           </button>
-          } @else if (option === 'reject' && item.status === 'pending') {
+          } @else if (option === 'reject' && item.status !== 'approved' &&
+          item.status !== 'APPROVED' && item.status !== 'rejected' &&
+          item.status !== 'REJECTED') {
           <button
             class="text-red-600 hover:underline w-7"
             title="Rechazar factura"
