@@ -15,7 +15,11 @@ export type InvoiceStatus =
   | 'REJECTED'
   | 'pending'
   | 'approved'
-  | 'rejected';
+  | 'rejected'
+  | 'sunat_valid'
+  | 'sunat_valid_not_ours'
+  | 'sunat_not_found'
+  | 'sunat_error';
 
 export interface IInvoiceResponse {
   _id: string;
@@ -74,10 +78,10 @@ export interface InvoiceData {
 
 export interface SunatValidationResult {
   status:
-  | 'VALIDO_ACEPTADO'
-  | 'VALIDO_NO_PERTENECE'
-  | 'NO_ENCONTRADO'
-  | 'ERROR_SUNAT';
+    | 'VALIDO_ACEPTADO'
+    | 'VALIDO_NO_PERTENECE'
+    | 'NO_ENCONTRADO'
+    | 'ERROR_SUNAT';
   details: any;
   message: string;
 }

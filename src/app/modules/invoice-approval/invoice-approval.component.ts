@@ -151,16 +151,13 @@ export class InvoiceApprovalComponent implements OnInit {
   // Estadísticas calculadas (siempre sobre todas las facturas, no filtradas)
   stats = computed(() => {
     const invoices = this.allInvoices();
-    const pending = invoices.filter(
-      (inv) =>
-        inv.status === 'pending' || inv.status === 'PENDING' || !inv.status
-    ).length;
     const approved = invoices.filter(
       (inv) => inv.status === 'approved' || inv.status === 'APPROVED'
     ).length;
     const rejected = invoices.filter(
       (inv) => inv.status === 'rejected' || inv.status === 'REJECTED'
     ).length;
+    const pending = invoices.length - approved - rejected; // Todas las demás son pendientes
     const total = invoices.length;
 
     console.log('Calculando estadísticas:', {
@@ -474,8 +471,16 @@ export class InvoiceApprovalComponent implements OnInit {
       case 'rejected':
       case 'REJECTED':
         return 'Rechazada';
+      case 'sunat_valid':
+        return 'Válido SUNAT';
+      case 'sunat_valid_not_ours':
+        return 'Válido - No Pertenece';
+      case 'sunat_not_found':
+        return 'No Encontrado SUNAT';
+      case 'sunat_error':
+        return 'Error SUNAT';
       default:
-        return 'Desconocido';
+        return status; // Mostrar el estado original si no coincide con ningún caso
     }
   }
 
