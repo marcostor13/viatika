@@ -54,12 +54,7 @@ interface IInvoice {
 @Component({
   selector: 'app-invoice-approval',
   standalone: true,
-  imports: [
-    CommonModule,
-    FormsModule,
-    DataComponent,
-    FileDownloadComponent,
-  ],
+  imports: [CommonModule, FormsModule, DataComponent, FileDownloadComponent],
   templateUrl: './invoice-approval.component.html',
   styleUrl: './invoice-approval.component.scss',
 })
@@ -128,7 +123,7 @@ export class InvoiceApprovalComponent implements OnInit {
   filterCategory = signal('');
   filterAmountMin = signal('');
   filterAmountMax = signal('');
-  filterStatus = signal('pending'); // Por defecto mostrar solo pendientes
+  filterStatus = signal(''); // Por defecto mostrar todas las facturas
 
   exportFileType: 'excel' | 'pdf' = 'excel';
   exportColumns = [
@@ -193,7 +188,6 @@ export class InvoiceApprovalComponent implements OnInit {
   getInvoices() {
     this.loading = true;
     const user = this.userStateService.getUser();
-
 
     // Cargar todas las facturas sin filtros para estadísticas
     this.agentService.getInvoices().subscribe({
@@ -269,12 +263,12 @@ export class InvoiceApprovalComponent implements OnInit {
           if (typeof invoice.data === 'string') {
             try {
               invoiceData = JSON.parse(invoice.data);
-            } catch (parseError) { }
+            } catch (parseError) {}
           } else if (typeof invoice.data === 'object') {
             invoiceData = invoice.data;
           }
         }
-      } catch (error) { }
+      } catch (error) {}
 
       const categoryName = invoice.categoryId.name || 'No disponible';
       const projectName = invoice.proyectId.name || 'No disponible';
@@ -334,7 +328,7 @@ export class InvoiceApprovalComponent implements OnInit {
     });
   }
 
-  clickOptions(event: { option: string, _id: string }) {
+  clickOptions(event: { option: string; _id: string }) {
     const { option, _id } = event;
     switch (option) {
       case 'download':
@@ -416,28 +410,23 @@ export class InvoiceApprovalComponent implements OnInit {
       reason: this.rejectionReason(),
     };
 
-    this.agentService
-      .rejectInvoice(
-        id,
-        payload
-      )
-      .subscribe({
-        next: () => {
-          this.notificationService.show(
-            'Factura rechazada correctamente',
-            'success'
-          );
-          this.closeRejectionModal();
-          // Recargar datos para actualizar estadísticas
-          this.getInvoices();
-        },
-        error: (error) => {
-          this.notificationService.show(
-            'Error al rechazar la factura: ' + error.message,
-            'error'
-          );
-        },
-      });
+    this.agentService.rejectInvoice(id, payload).subscribe({
+      next: () => {
+        this.notificationService.show(
+          'Factura rechazada correctamente',
+          'success'
+        );
+        this.closeRejectionModal();
+        // Recargar datos para actualizar estadísticas
+        this.getInvoices();
+      },
+      error: (error) => {
+        this.notificationService.show(
+          'Error al rechazar la factura: ' + error.message,
+          'error'
+        );
+      },
+    });
   }
 
   get filteredInvoices() {
@@ -516,7 +505,7 @@ export class InvoiceApprovalComponent implements OnInit {
     this.filterCategory.set('');
     this.filterAmountMin.set('');
     this.filterAmountMax.set('');
-    this.filterStatus.set('pending');
+    this.filterStatus.set('');
     this.getInvoices();
   }
 
