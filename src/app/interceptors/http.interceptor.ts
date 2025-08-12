@@ -28,7 +28,14 @@ export const httpInterceptor: HttpInterceptorFn = (req, next) => {
 
   const methods = ['GET'];
   if (methods.includes(req.method) && user?.client?._id) {
-    req = req.clone({ url: `${req.url}/${user.client._id}` });
+    const shouldAddClientId =
+      !req.url.includes('/expense/') ||
+      req.url.includes('/expense/client/') ||
+      req.url.includes('/expense/test-sunat-credentials/');
+
+    if (shouldAddClientId) {
+      req = req.clone({ url: `${req.url}/${user.client._id}` });
+    }
   }
 
   if (

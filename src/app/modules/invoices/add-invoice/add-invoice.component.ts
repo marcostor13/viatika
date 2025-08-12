@@ -82,38 +82,36 @@ export default class AddInvoiceComponent implements OnInit {
     this.loadProjects();
 
     if (this.id) {
-      this.invoiceService
-        .getInvoiceById(this.id)
-        .subscribe((res) => {
-          this.originalInvoice = res;
-          let dataObj: any = {};
-          if (res.data) {
-            try {
-              dataObj =
-                typeof res.data === 'string' ? JSON.parse(res.data) : res.data;
-            } catch { }
-          }
+      this.invoiceService.getInvoiceById(this.id).subscribe((res) => {
+        this.originalInvoice = res;
+        let dataObj: any = {};
+        if (res.data) {
+          try {
+            dataObj =
+              typeof res.data === 'string' ? JSON.parse(res.data) : res.data;
+          } catch {}
+        }
 
-          let fecha = '';
+        let fecha = '';
 
-          if (dataObj.fechaEmision) {
-            fecha = this.formatDateForInput(dataObj.fechaEmision);
-          } else if (res.date) {
-            fecha = this.formatDateForInput(res.date);
-          } else if ((res as any).fechaEmision) {
-            fecha = this.formatDateForInput((res as any).fechaEmision);
-          }
+        if (dataObj.fechaEmision) {
+          fecha = this.formatDateForInput(dataObj.fechaEmision);
+        } else if (res.date) {
+          fecha = this.formatDateForInput(res.date);
+        } else if ((res as any).fechaEmision) {
+          fecha = this.formatDateForInput((res as any).fechaEmision);
+        }
 
-          this.form.patchValue({
-            ...res,
-            fechaEmision: fecha,
-            rucEmisor: dataObj.rucEmisor || '',
-            serie: dataObj.serie || '',
-            correlativo: dataObj.correlativo || '',
-            proyectId: res.proyectId?._id || res.proyectId || '',
-            categoryId: res.categoryId?._id || res.categoryId || '',
-          });
+        this.form.patchValue({
+          ...res,
+          fechaEmision: fecha,
+          rucEmisor: dataObj.rucEmisor || '',
+          serie: dataObj.serie || '',
+          correlativo: dataObj.correlativo || '',
+          proyectId: res.proyectId?._id || res.proyectId || '',
+          categoryId: res.categoryId?._id || res.categoryId || '',
         });
+      });
     }
   }
 
@@ -122,7 +120,7 @@ export default class AddInvoiceComponent implements OnInit {
       next: (categories) => {
         this.categories = categories;
       },
-      error: (error) => { },
+      error: (error) => {},
     });
   }
 
@@ -130,9 +128,8 @@ export default class AddInvoiceComponent implements OnInit {
     this.invoiceService.getProjects().subscribe({
       next: (projects) => {
         this.proyects = projects;
-      }
+      },
     });
-
   }
 
   initForm() {
@@ -174,7 +171,7 @@ export default class AddInvoiceComponent implements OnInit {
             typeof currentData === 'string'
               ? JSON.parse(currentData)
               : currentData;
-        } catch { }
+        } catch {}
       }
       dataObj.rucEmisor = formValue.rucEmisor;
       dataObj.fechaEmision = formValue.fechaEmision;
@@ -212,7 +209,7 @@ export default class AddInvoiceComponent implements OnInit {
         error: (error: any) => {
           this.notificationService.show(
             'Error al actualizar la factura: ' +
-            (error.message || 'Intente nuevamente'),
+              (error.message || 'Intente nuevamente'),
             'error'
           );
         },
@@ -277,7 +274,7 @@ export default class AddInvoiceComponent implements OnInit {
                   typeof res.data === 'string'
                     ? JSON.parse(res.data)
                     : res.data;
-              } catch { }
+              } catch {}
             }
 
             if (dataObj.fechaEmision) {
