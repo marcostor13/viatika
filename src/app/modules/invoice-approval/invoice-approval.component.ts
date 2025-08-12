@@ -350,6 +350,28 @@ export class InvoiceApprovalComponent implements OnInit {
   }
 
   confirmApproveInvoice(id: string) {
+    const invoice = this.invoices.find((inv) => inv._id === id);
+    if (!invoice) {
+      this.notificationService.show('Factura no encontrada', 'error');
+      return;
+    }
+
+    if (invoice.status === 'approved' || invoice.status === 'APPROVED') {
+      this.notificationService.show(
+        'Esta factura ya ha sido aprobada',
+        'error'
+      );
+      return;
+    }
+
+    if (invoice.status === 'rejected' || invoice.status === 'REJECTED') {
+      this.notificationService.show(
+        'Esta factura ya ha sido rechazada',
+        'error'
+      );
+      return;
+    }
+
     this.confirmationService.confirm({
       title: 'Confirmar aprobación',
       message: '¿Está seguro que desea aprobar esta factura?',
@@ -383,6 +405,28 @@ export class InvoiceApprovalComponent implements OnInit {
   }
 
   openRejectionModal(id: string) {
+    const invoice = this.invoices.find((inv) => inv._id === id);
+    if (!invoice) {
+      this.notificationService.show('Factura no encontrada', 'error');
+      return;
+    }
+
+    if (invoice.status === 'approved' || invoice.status === 'APPROVED') {
+      this.notificationService.show(
+        'Esta factura ya ha sido aprobada',
+        'error'
+      );
+      return;
+    }
+
+    if (invoice.status === 'rejected' || invoice.status === 'REJECTED') {
+      this.notificationService.show(
+        'Esta factura ya ha sido rechazada',
+        'error'
+      );
+      return;
+    }
+
     this.selectedInvoiceId.set(id);
     this.rejectionReason.set('');
     this.showRejectionModal.set(true);

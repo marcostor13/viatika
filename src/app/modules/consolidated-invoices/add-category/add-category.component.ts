@@ -37,10 +37,12 @@ export class AddCategoryComponent implements OnInit {
   }
 
   loadCategory(id: string) {
-    this.invoicesService.getCategoryById(id).subscribe((category: ICategory) => {
-      this.category = category;
-      this.router.navigate(['/consolidated-invoices']);
-    });
+    this.invoicesService
+      .getCategoryById(id)
+      .subscribe((category: ICategory) => {
+        this.category = category;
+        this.router.navigate(['/consolidated-invoices']);
+      });
   }
 
   back() {
@@ -70,16 +72,17 @@ export class AddCategoryComponent implements OnInit {
     if (!this.validateName()) {
       return;
     }
-    const createData: ICategory = {
-      name: this.category.name,
-    };
-    this.invoicesService.createCategory(createData).subscribe(() => {
-      this.notificationService.show(
-        'Categoría creada exitosamente',
-        'success'
-      );
-      this.router.navigate(['/consolidated-invoices']);
-    });
+    // No necesitamos crear un objeto ICategory completo, solo enviar el nombre
+    // El interceptor HTTP agregará automáticamente el clientId
+    this.invoicesService
+      .createCategory({ name: this.category.name })
+      .subscribe(() => {
+        this.notificationService.show(
+          'Categoría creada exitosamente',
+          'success'
+        );
+        this.router.navigate(['/consolidated-invoices']);
+      });
   }
 
   updateCategory() {
@@ -89,9 +92,14 @@ export class AddCategoryComponent implements OnInit {
     const updateData: Partial<ICategory> = {
       name: this.category.name,
     };
-    this.invoicesService.updateCategory(this.categoryId!, updateData).subscribe(() => {
-      this.notificationService.show('Categoría actualizada exitosamente', 'success');
-      this.router.navigate(['/consolidated-invoices']);
-    });
+    this.invoicesService
+      .updateCategory(this.categoryId!, updateData)
+      .subscribe(() => {
+        this.notificationService.show(
+          'Categoría actualizada exitosamente',
+          'success'
+        );
+        this.router.navigate(['/consolidated-invoices']);
+      });
   }
 }

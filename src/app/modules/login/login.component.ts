@@ -6,7 +6,7 @@ import { UserStateService } from '../../services/user-state.service';
 import { NotificationService } from '../../services/notification.service';
 import { AuthService } from '../../services/auth.service';
 import { CompanyConfigService } from '../../services/company-config.service';
-import { HttpErrorResponse } from '@angular/common/http';
+import { finalize } from 'rxjs';
 
 @Component({
   selector: 'app-login',
@@ -45,11 +45,14 @@ export class LoginComponent {
     this.loading.set(true);
     this.error.set('');
 
-    this.authService.login(this.email(), this.password()).subscribe((res) => {
-      this.userStateService.setUser(res);
-      this.companyConfigService.reloadConfigOnAuth();
-      this.notificationService.show('Bienvenid@ ' + res.name, 'success');
-      this.redirect();
-    });
+    this.authService
+      .login(this.email(), this.password())
+      .pipe(finalize(() => this.loading.set(false)))
+      .subscribe((res) => {
+        this.userStateService.setUser(res);
+        this.companyConfigService.reloadConfigOnAuth();
+        this.notificationService.show('Bienvenid@ ' + res.name, 'success');
+        this.redirect();
+      });
   }
 }
