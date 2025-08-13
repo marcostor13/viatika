@@ -312,7 +312,11 @@ export class ConsolidatedInvoicesComponent implements OnInit {
   }
 
   formatResponse(res: IInvoiceResponse[]) {
-    return res.map((invoice) => {
+    if (!res || !Array.isArray(res)) {
+      return [];
+    }
+
+    return res.map((invoice, index) => {
       let invoiceData: any = {};
 
       try {
@@ -320,16 +324,16 @@ export class ConsolidatedInvoicesComponent implements OnInit {
           if (typeof invoice.data === 'string') {
             try {
               invoiceData = JSON.parse(invoice.data);
-            } catch (parseError) { }
+            } catch (parseError) {}
           } else if (typeof invoice.data === 'object') {
             invoiceData = invoice.data;
           }
         }
-      } catch (error) { }
+      } catch (error) {}
 
-      const categoryName = invoice.categoryId.name || 'No disponible';
+      const categoryName = invoice.categoryId?.name || 'No disponible';
 
-      const projectName = invoice.proyectId.name || 'No disponible';
+      const projectName = invoice.proyectId?.name || 'No disponible';
       const razonSocial = invoiceData.razonSocial || 'No disponible';
       const direccionEmisor = invoiceData.direccionEmisor || 'No disponible';
       const rucEmisor = invoiceData.rucEmisor || 'No disponible';
@@ -352,11 +356,13 @@ export class ConsolidatedInvoicesComponent implements OnInit {
         categoryKey: invoice.category,
         file: invoice.file,
         data: invoice.data,
-        createdAt: new Date(invoice.createdAt).toLocaleDateString('es-ES', {
-          day: '2-digit',
-          month: '2-digit',
-          year: 'numeric',
-        }),
+        createdAt: invoice.createdAt
+          ? new Date(invoice.createdAt).toLocaleDateString('es-ES', {
+              day: '2-digit',
+              month: '2-digit',
+              year: 'numeric',
+            })
+          : 'No disponible',
         updatedAt: invoice.updatedAt,
         total: formattedTotal,
 
@@ -399,7 +405,7 @@ export class ConsolidatedInvoicesComponent implements OnInit {
     this.router.navigate(['/invoices/add']);
   }
 
-  clickOptions(event: { option: string, _id: string }) {
+  clickOptions(event: { option: string; _id: string }) {
     const { option, _id } = event;
     switch (option) {
       case 'download':
@@ -495,27 +501,22 @@ export class ConsolidatedInvoicesComponent implements OnInit {
       reason: this.rejectionReason(),
     };
 
-    this.agentService
-      .rejectInvoice(
-        id,
-        payload
-      )
-      .subscribe({
-        next: () => {
-          this.notificationService.show(
-            'Factura rechazada correctamente',
-            'success'
-          );
-          this.closeRejectionModal();
-          this.getInvoices();
-        },
-        error: (error) => {
-          this.notificationService.show(
-            'Error al rechazar la factura: ' + error.message,
-            'error'
-          );
-        },
-      });
+    this.agentService.rejectInvoice(id, payload).subscribe({
+      next: () => {
+        this.notificationService.show(
+          'Factura rechazada correctamente',
+          'success'
+        );
+        this.closeRejectionModal();
+        this.getInvoices();
+      },
+      error: (error) => {
+        this.notificationService.show(
+          'Error al rechazar la factura: ' + error.message,
+          'error'
+        );
+      },
+    });
   }
 
   get filteredInvoices() {
@@ -560,7 +561,7 @@ export class ConsolidatedInvoicesComponent implements OnInit {
     >();
 
     this.projects.forEach((project) => {
-      if (project._id) {
+      if (project?._id && project?.name) {
         projectCountMap.set(project._id, {
           id: project._id,
           name: project.name,

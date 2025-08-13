@@ -160,15 +160,6 @@ export class InvoiceApprovalComponent implements OnInit {
     const pending = invoices.length - approved - rejected; // Todas las demás son pendientes
     const total = invoices.length;
 
-    console.log('Calculando estadísticas:', {
-      total,
-      pending,
-      approved,
-      rejected,
-      allInvoicesLength: invoices.length,
-      statuses: invoices.map((inv) => inv.status),
-    });
-
     return { pending, approved, rejected, total };
   });
 
@@ -194,15 +185,6 @@ export class InvoiceApprovalComponent implements OnInit {
           if ('categoryId' in firstItem && 'data' in firstItem) {
             const formattedInvoices = this.formatResponse(res);
             this.allInvoices.set(formattedInvoices);
-            console.log(
-              'Facturas cargadas para estadísticas:',
-              formattedInvoices.length
-            );
-            console.log(
-              'Estados encontrados:',
-              formattedInvoices.map((inv) => inv.status)
-            );
-            this.debugStats();
           }
         } else {
           this.allInvoices.set([]);
@@ -212,7 +194,6 @@ export class InvoiceApprovalComponent implements OnInit {
         this.loadFilteredInvoices();
       },
       error: (error) => {
-        console.error('Error cargando todas las facturas:', error);
         this.allInvoices.set([]);
         this.loadFilteredInvoices();
       },
@@ -252,7 +233,10 @@ export class InvoiceApprovalComponent implements OnInit {
   }
 
   formatResponse(res: IInvoiceResponse[]) {
-    return res.map((invoice) => {
+    if (!res || !Array.isArray(res)) {
+      return [];
+    }
+    return res.map((invoice, index) => {
       let invoiceData: any = {};
 
       try {
@@ -267,8 +251,8 @@ export class InvoiceApprovalComponent implements OnInit {
         }
       } catch (error) {}
 
-      const categoryName = invoice.categoryId.name || 'No disponible';
-      const projectName = invoice.proyectId.name || 'No disponible';
+      const categoryName = invoice.categoryId?.name || 'No disponible';
+      const projectName = invoice.proyectId?.name || 'No disponible';
       const razonSocial = invoiceData.razonSocial || 'No disponible';
       const direccionEmisor = invoiceData.direccionEmisor || 'No disponible';
       const rucEmisor = invoiceData.rucEmisor || 'No disponible';
@@ -291,11 +275,13 @@ export class InvoiceApprovalComponent implements OnInit {
         categoryKey: invoice.category,
         file: invoice.file,
         data: invoice.data,
-        createdAt: new Date(invoice.createdAt).toLocaleDateString('es-ES', {
-          day: '2-digit',
-          month: '2-digit',
-          year: 'numeric',
-        }),
+        createdAt: invoice.createdAt
+          ? new Date(invoice.createdAt).toLocaleDateString('es-ES', {
+              day: '2-digit',
+              month: '2-digit',
+              year: 'numeric',
+            })
+          : 'No disponible',
         updatedAt: invoice.updatedAt,
         total: formattedTotal,
 
@@ -559,18 +545,11 @@ export class InvoiceApprovalComponent implements OnInit {
   }
 
   private debugStats() {
-    console.log('=== DEBUG STATS ===');
     const invoices = this.allInvoices();
-    console.log('Total facturas:', invoices.length);
-
     const statusCounts = invoices.reduce((acc, inv) => {
       const status = inv.status || 'undefined';
       acc[status] = (acc[status] || 0) + 1;
       return acc;
     }, {} as Record<string, number>);
-
-    console.log('Conteo por estado:', statusCounts);
-    console.log('Stats calculados:', this.stats());
-    console.log('==================');
   }
 }

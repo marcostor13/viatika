@@ -108,11 +108,10 @@ export class ChartsComponent implements OnInit, AfterViewInit {
   filterCollaborator: string = '';
 
   get collaborators() {
-    return this.users
-      .map((user) => ({
-        id: user._id || '',
-        name: user.name || user.email || 'Usuario sin nombre',
-      }));
+    return this.users.map((user) => ({
+      id: user._id || '',
+      name: user.name || user.email || 'Usuario sin nombre',
+    }));
   }
 
   ngOnInit() {
@@ -185,7 +184,7 @@ export class ChartsComponent implements OnInit, AfterViewInit {
     forkJoin([
       this.invoicesService.getProjects(),
       this.invoicesService.getCategories(),
-      this.expenseService.getExpenses(filters),
+      this.invoicesService.getInvoices(filters),
       this.adminUsersService.getUsers().pipe(
         catchError((error) => {
           console.warn(
@@ -199,7 +198,55 @@ export class ChartsComponent implements OnInit, AfterViewInit {
       next: ([projects, categories, expenses, users]) => {
         this.projects = projects;
         this.categories = categories;
-        this.expenses = expenses;
+
+        // Transformar las facturas al formato esperado por los gráficos
+        if (Array.isArray(expenses)) {
+          this.expenses = expenses.map((invoice, index) => {
+            let invoiceData: any = {};
+
+            try {
+              if (invoice.data) {
+                if (typeof invoice.data === 'string') {
+                  try {
+                    invoiceData = JSON.parse(invoice.data);
+                  } catch (parseError) {}
+                } else if (typeof invoice.data === 'object') {
+                  invoiceData = invoice.data;
+                }
+              }
+            } catch (error) {}
+
+            // Asegurar que siempre tengamos una fecha válida
+            let normalizedDate = null;
+            if (invoiceData.fechaEmision) {
+              normalizedDate = invoiceData.fechaEmision;
+            } else if (invoice.date) {
+              normalizedDate = invoice.date;
+            } else if (invoice.createdAt) {
+              normalizedDate = invoice.createdAt;
+            } else {
+              // Si no hay fecha, usar la fecha actual
+              normalizedDate = new Date().toISOString();
+            }
+
+            const normalizedTotal =
+              typeof invoice.total === 'string'
+                ? parseFloat(invoice.total as any)
+                : (invoice as any).total || 0;
+
+            const transformedInvoice = {
+              ...invoice,
+              fechaEmision: normalizedDate,
+              total: normalizedTotal,
+              createdBy: (invoice as any).createdBy || (invoice as any).userId,
+            };
+
+            return transformedInvoice;
+          });
+        } else {
+          this.expenses = [];
+        }
+
         this.users = Array.isArray(users) ? users : [];
 
         this.projectMap.clear();
@@ -256,9 +303,16 @@ export class ChartsComponent implements OnInit, AfterViewInit {
     if (dateTo) dateTo.setHours(23, 59, 59, 999);
 
     this.filteredExpenses = this.expenses.filter((expense) => {
-      if (!expense.fechaEmision) return false;
+      if (!expense.fechaEmision) {
+        return false;
+      }
 
       const expenseDate = new Date(expense.fechaEmision);
+
+      if (isNaN(expenseDate.getTime())) {
+        return false;
+      }
+
       const isAfterFrom = dateFrom ? expenseDate >= dateFrom : true;
       const isBeforeTo = dateTo ? expenseDate <= dateTo : true;
 
@@ -277,13 +331,14 @@ export class ChartsComponent implements OnInit, AfterViewInit {
         !this.filterCollaborator ||
         expense.createdBy === this.filterCollaborator;
 
-      return (
+      const result =
         isAfterFrom &&
         isBeforeTo &&
         projectMatches &&
         categoryMatches &&
-        collaboratorMatches
-      );
+        collaboratorMatches;
+
+      return result;
     });
   }
 

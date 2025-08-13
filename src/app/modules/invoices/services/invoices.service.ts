@@ -62,7 +62,7 @@ export class InvoicesService {
   }
 
   getInvoiceById(id: string): Observable<IInvoiceResponse> {
-    return this.http.get<IInvoiceResponse>(`${this.url}/${id}`);
+    return this.http.get<IInvoiceResponse>(`${this.url}/invoice/${id}`);
   }
 
   uploadInvoice(formData: FormData): Observable<IInvoiceResponse> {
@@ -70,7 +70,7 @@ export class InvoicesService {
   }
 
   deleteInvoice(id: string): Observable<any> {
-    return this.http.delete(`${this.url}/${id}`);
+    return this.http.delete(`${this.url}/invoice/${id}`);
   }
 
   approveInvoice(
@@ -78,7 +78,7 @@ export class InvoicesService {
     payload: ApprovalPayload
   ): Observable<IInvoiceResponse> {
     return this.http.patch<IInvoiceResponse>(
-      `${this.url}/${id}/approve`,
+      `${this.url}/invoice/${id}/approve`,
       payload
     );
   }
@@ -88,7 +88,7 @@ export class InvoicesService {
     payload: ApprovalPayload
   ): Observable<IInvoiceResponse> {
     return this.http.patch<IInvoiceResponse>(
-      `${this.url}/${id}/reject`,
+      `${this.url}/invoice/${id}/reject`,
       payload
     );
   }
@@ -137,7 +137,7 @@ export class InvoicesService {
   }
 
   updateInvoice(id: string, payload: any) {
-    return this.http.patch(`${this.url}/${id}`, payload);
+    return this.http.patch(`${this.url}/invoice/${id}`, payload);
   }
 
   // Métodos para validación SUNAT
@@ -146,7 +146,7 @@ export class InvoicesService {
     companyId: string
   ): Observable<SunatValidationInfo> {
     return this.http.get<SunatValidationInfo>(
-      `${this.url}/${id}/${companyId}/sunat-validation`
+      `${this.url}/invoice/${id}/${companyId}/sunat-validation`
     );
   }
 

@@ -110,8 +110,8 @@ export default class InvoicesComponent implements OnInit {
 
   getInvoices() {
     this.agentService.getInvoices().subscribe((res) => {
-      this.invoices = this.formatResponse(res);
-    })
+      this.invoices = this.formatResponse(res || []);
+    });
   }
 
   downloadInvoice(_id: string) {
@@ -124,6 +124,9 @@ export default class InvoicesComponent implements OnInit {
   }
 
   formatResponse(res: IInvoiceResponse[]): IInvoiceResponse[] {
+    if (!res || !Array.isArray(res)) {
+      return [];
+    }
     return res.map((invoice) => {
       let invoiceData: any = {};
 
@@ -132,12 +135,12 @@ export default class InvoicesComponent implements OnInit {
           if (typeof invoice.data === 'string') {
             try {
               invoiceData = JSON.parse(invoice.data);
-            } catch (parseError) { }
+            } catch (parseError) {}
           } else if (typeof invoice.data === 'object') {
             invoiceData = invoice.data;
           }
         }
-      } catch (error) { }
+      } catch (error) {}
 
       const razonSocial = invoiceData.razonSocial || 'No disponible';
       const direccionEmisor = invoiceData.direccionEmisor || 'No disponible';
@@ -184,7 +187,7 @@ export default class InvoicesComponent implements OnInit {
     this.router.navigate(['/invoices/add']);
   }
 
-  clickOptions(event: { option: string, _id: string }) {
+  clickOptions(event: { option: string; _id: string }) {
     const { option, _id } = event;
     switch (option) {
       case 'edit':
