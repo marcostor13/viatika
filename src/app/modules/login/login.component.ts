@@ -30,7 +30,17 @@ export class LoginComponent {
   constructor(private router: Router) {}
 
   redirect() {
-    this.router.navigate(['/']);
+    const user = this.userStateService.getUser();
+    if (user && user.role) {
+      const roleName = user.role.name;
+      if (roleName === 'Admin' || roleName === 'Super') {
+        this.router.navigate(['/invoice-approval']);
+      } else {
+        this.router.navigate(['/invoices']);
+      }
+    } else {
+      this.router.navigate(['/invoices']);
+    }
   }
 
   login() {
