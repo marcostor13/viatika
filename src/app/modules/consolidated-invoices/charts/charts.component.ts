@@ -138,8 +138,7 @@ export class ChartsComponent implements OnInit, AfterViewInit {
 
   getDefaultStartDate(): string {
     const date = new Date();
-    date.setMonth(date.getMonth() - 5);
-    date.setDate(1);
+    date.setMonth(date.getMonth() - 6);
     return this.formatDateForInput(date);
   }
 
@@ -191,87 +190,84 @@ export class ChartsComponent implements OnInit, AfterViewInit {
             'Error al cargar usuarios, continuando sin filtro de colaboradores:',
             error
           );
-          return of([]); // Retorna array vacío si falla
+          return of([]);
         })
       ),
-    ]).subscribe({
-      next: ([projects, categories, expenses, users]) => {
-        this.projects = projects;
-        this.categories = categories;
+    ]).subscribe(([projects, categories, expenses, users]) => {
+      this.projects = projects;
+      this.categories = categories;
 
-        // Transformar las facturas al formato esperado por los gráficos
-        if (Array.isArray(expenses)) {
-          this.expenses = expenses.map((invoice, index) => {
-            let invoiceData: any = {};
+      if (Array.isArray(expenses)) {
+        this.expenses = expenses.map((invoice, index) => {
+          let invoiceData: any = {};
 
-            try {
-              if (invoice.data) {
-                if (typeof invoice.data === 'string') {
-                  try {
-                    invoiceData = JSON.parse(invoice.data);
-                  } catch (parseError) {}
-                } else if (typeof invoice.data === 'object') {
-                  invoiceData = invoice.data;
-                }
+          try {
+            if (invoice.data) {
+              if (typeof invoice.data === 'string') {
+                try {
+                  invoiceData = JSON.parse(invoice.data);
+                } catch (parseError) {}
+              } else if (typeof invoice.data === 'object') {
+                invoiceData = invoice.data;
               }
-            } catch (error) {}
-
-            // Asegurar que siempre tengamos una fecha válida
-            let normalizedDate = null;
-            if (invoiceData.fechaEmision) {
-              normalizedDate = invoiceData.fechaEmision;
-            } else if (invoice.date) {
-              normalizedDate = invoice.date;
-            } else if (invoice.createdAt) {
-              normalizedDate = invoice.createdAt;
-            } else {
-              // Si no hay fecha, usar la fecha actual
-              normalizedDate = new Date().toISOString();
             }
+          } catch (error) {}
 
-            const normalizedTotal =
-              typeof invoice.total === 'string'
-                ? parseFloat(invoice.total as any)
-                : (invoice as any).total || 0;
+          let normalizedDate = null;
+          if (invoiceData.fechaEmision) {
+            const fechaStr = invoiceData.fechaEmision;
+            if (fechaStr.match(/^\d{2}-\d{2}-\d{4}$/)) {
+              const [day, month, year] = fechaStr.split('-');
+              normalizedDate = `${year}-${month}-${day}`;
+            } else {
+              normalizedDate = fechaStr;
+            }
+          } else if (invoice.date) {
+            normalizedDate = invoice.date;
+          } else if (invoice.createdAt) {
+            normalizedDate = invoice.createdAt;
+          } else {
+            normalizedDate = new Date().toISOString();
+          }
 
-            const transformedInvoice = {
-              ...invoice,
-              fechaEmision: normalizedDate,
-              total: normalizedTotal,
-              createdBy: (invoice as any).createdBy || (invoice as any).userId,
-            };
+          const normalizedTotal =
+            typeof invoice.total === 'string'
+              ? parseFloat(invoice.total as any)
+              : (invoice as any).total || 0;
 
-            return transformedInvoice;
-          });
-        } else {
-          this.expenses = [];
+          const transformedInvoice = {
+            ...invoice,
+            fechaEmision: normalizedDate,
+            total: normalizedTotal,
+            createdBy: (invoice as any).createdBy || (invoice as any).userId,
+          };
+
+          return transformedInvoice;
+        });
+      } else {
+        this.expenses = [];
+      }
+
+      this.users = Array.isArray(users) ? users : [];
+
+      this.projectMap.clear();
+      this.projects.forEach((project) => {
+        if (project._id) {
+          this.projectMap.set(project._id, project.name);
         }
+      });
 
-        this.users = Array.isArray(users) ? users : [];
+      this.categoryMap.clear();
+      this.categories.forEach((category) => {
+        if (category._id) {
+          this.categoryMap.set(category._id, category.name);
+        }
+      });
 
-        this.projectMap.clear();
-        this.projects.forEach((project) => {
-          if (project._id) {
-            this.projectMap.set(project._id, project.name);
-          }
-        });
-
-        this.categoryMap.clear();
-        this.categories.forEach((category) => {
-          if (category._id) {
-            this.categoryMap.set(category._id, category.name);
-          }
-        });
-
-        this.updateFilteredExpenses();
-        this.dataLoaded = true;
-        this.cdr.detectChanges();
-        this.tryRenderCharts();
-      },
-      error: (error) => {
-        console.error('Error al cargar datos', error);
-        this.dataLoaded = true;
-      },
+      this.updateFilteredExpenses();
+      this.dataLoaded = true;
+      this.cdr.detectChanges();
+      this.tryRenderCharts();
     });
   }
 
@@ -316,29 +312,25 @@ export class ChartsComponent implements OnInit, AfterViewInit {
       const isAfterFrom = dateFrom ? expenseDate >= dateFrom : true;
       const isBeforeTo = dateTo ? expenseDate <= dateTo : true;
 
-      // Aplicar filtro de proyecto
       const projectMatches =
         !this.filterProject ||
         this.getProjectId(expense) === this.filterProject;
 
-      // Aplicar filtro de categoría
       const categoryMatches =
         !this.filterCategory ||
         this.getCategoryId(expense) === this.filterCategory;
 
-      // Aplicar filtro de colaborador
       const collaboratorMatches =
         !this.filterCollaborator ||
         expense.createdBy === this.filterCollaborator;
 
-      const result =
+      return (
         isAfterFrom &&
         isBeforeTo &&
         projectMatches &&
         categoryMatches &&
-        collaboratorMatches;
-
-      return result;
+        collaboratorMatches
+      );
     });
   }
 
@@ -1097,12 +1089,16 @@ export class ChartsComponent implements OnInit, AfterViewInit {
   getCollaboratorIdsWithExpenses(): string[] {
     const filteredExpenses = this.getFilteredInvoices();
     const collaboratorIdsWithExpenses = new Set<string>();
+
     filteredExpenses.forEach((expense) => {
       const collaboratorId = this.getCollaboratorId(expense);
-      if (collaboratorId && this.getTotalByCollaborator(collaboratorId) > 0) {
+      const total = this.getTotalByCollaborator(collaboratorId);
+
+      if (collaboratorId && total > 0) {
         collaboratorIdsWithExpenses.add(collaboratorId);
       }
     });
+
     return Array.from(collaboratorIdsWithExpenses);
   }
 
@@ -1128,15 +1124,19 @@ export class ChartsComponent implements OnInit, AfterViewInit {
     }
 
     const filteredExpenses = this.getFilteredInvoices();
-    return filteredExpenses
-      .filter((expense) => this.getCollaboratorId(expense) === collaboratorId)
-      .reduce((total, expense) => {
-        const expenseTotal =
-          typeof expense.total === 'string'
-            ? parseFloat(expense.total)
-            : expense.total || 0;
-        return total + expenseTotal;
-      }, 0);
+    const expensesForCollaborator = filteredExpenses.filter(
+      (expense) => this.getCollaboratorId(expense) === collaboratorId
+    );
+
+    const total = expensesForCollaborator.reduce((total, expense) => {
+      const expenseTotal =
+        typeof expense.total === 'string'
+          ? parseFloat(expense.total as any)
+          : expense.total || 0;
+      return total + expenseTotal;
+    }, 0);
+
+    return total;
   }
 
   getTotalExpenses(): number {
