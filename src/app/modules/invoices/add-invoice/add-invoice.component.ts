@@ -58,10 +58,12 @@ export default class AddInvoiceComponent implements OnInit {
 
       if (dateStr.match(/^\d{2}[-\/]\d{2}[-\/]\d{4}$/)) {
         const parts = dateStr.split(/[-\/]/);
-        const day = parts[0];
-        const month = parts[1];
-        const year = parts[2];
-        date = new Date(`${year}-${month}-${day}`);
+        const day = parseInt(parts[0], 10);
+        const month = parseInt(parts[1], 10) - 1;
+        const year = parseInt(parts[2], 10);
+        date = new Date(year, month, day);
+      } else if (dateStr.match(/^\d{4}[-\/]\d{2}[-\/]\d{2}$/)) {
+        date = new Date(dateStr);
       } else {
         date = new Date(dateStr);
       }
@@ -74,7 +76,39 @@ export default class AddInvoiceComponent implements OnInit {
       return '';
     }
 
-    return date.toISOString().slice(0, 10);
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+
+    return `${year}-${month}-${day}`;
+  }
+
+  private formatDateForBackend(dateValue: string): string {
+    if (!dateValue) return '';
+
+    if (dateValue.match(/^\d{4}-\d{2}-\d{2}$/)) {
+      const parts = dateValue.split('-');
+      const year = parts[0];
+      const month = parts[1];
+      const day = parts[2];
+      return `${day}-${month}-${year}`;
+    }
+
+    if (dateValue.match(/^\d{2}-\d{2}-\d{4}$/)) {
+      return dateValue;
+    }
+
+    const date = new Date(dateValue);
+    if (isNaN(date.getTime())) {
+      console.warn('Fecha inválida para backend:', dateValue);
+      return dateValue;
+    }
+
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+
+    return `${day}-${month}-${year}`;
   }
 
   ngOnInit() {
@@ -82,14 +116,11 @@ export default class AddInvoiceComponent implements OnInit {
     this.loadProjects();
 
     if (this.id) {
-      console.log('Modo edición - ID de factura:', this.id);
-      // En modo edición, el archivo no es requerido
       this.form.get('file')?.clearValidators();
       this.form.get('file')?.updateValueAndValidity();
 
       this.invoiceService.getInvoiceById(this.id).subscribe({
         next: (res) => {
-          console.log('Factura cargada exitosamente:', res);
           this.originalInvoice = res;
           let dataObj: any = {};
           if (res.data) {
@@ -119,9 +150,7 @@ export default class AddInvoiceComponent implements OnInit {
             categoryId: res.categoryId?._id || res.categoryId || '',
           };
 
-          console.log('Valores del formulario a establecer:', formValues);
           this.form.patchValue(formValues);
-          console.log('Formulario actualizado, estado:', this.form.value);
         },
         error: (error) => {
           console.error('Error al cargar la factura:', error);
@@ -133,8 +162,6 @@ export default class AddInvoiceComponent implements OnInit {
         },
       });
     } else {
-      console.log('Modo creación');
-      // En modo creación, el archivo es requerido
       this.form.get('file')?.setValidators([Validators.required]);
       this.form.get('file')?.updateValueAndValidity();
     }
@@ -186,14 +213,8 @@ export default class AddInvoiceComponent implements OnInit {
   }
 
   update() {
-    console.log('Iniciando actualización de factura...');
-    console.log('ID de factura:', this.id);
-    console.log('Formulario válido:', this.form.valid);
-    console.log('Factura original:', this.originalInvoice);
-
     if (this.form.valid && this.originalInvoice) {
       const formValue = this.form.value;
-      console.log('Valores del formulario:', formValue);
 
       let dataObj: any = {};
       const currentData = this.originalInvoice.data || '';
@@ -207,7 +228,7 @@ export default class AddInvoiceComponent implements OnInit {
       }
 
       dataObj.rucEmisor = formValue.rucEmisor;
-      dataObj.fechaEmision = formValue.fechaEmision;
+      dataObj.fechaEmision = this.formatDateForBackend(formValue.fechaEmision);
       dataObj.serie = formValue.serie;
       dataObj.correlativo = formValue.correlativo;
 
@@ -230,15 +251,12 @@ export default class AddInvoiceComponent implements OnInit {
         ...rest,
         proyectId: formValue.proyectId,
         categoryId: formValue.categoryId,
-        fechaEmision: formValue.fechaEmision,
+        fechaEmision: this.formatDateForBackend(formValue.fechaEmision),
         data: JSON.stringify(dataObj),
       };
 
-      console.log('Payload a enviar:', payload);
-
       this.invoiceService.updateInvoice(this.id, payload).subscribe({
         next: (response) => {
-          console.log('Respuesta exitosa:', response);
           this.notificationService.show(
             'Factura actualizada correctamente',
             'success'
@@ -255,18 +273,8 @@ export default class AddInvoiceComponent implements OnInit {
         },
       });
     } else {
-      console.error('Formulario inválido o factura original no disponible');
-      console.log('Formulario válido:', this.form.valid);
-      console.log('Factura original:', this.originalInvoice);
-
       if (!this.form.valid) {
-        console.log('Errores del formulario:', this.form.errors);
-        Object.keys(this.form.controls).forEach((key) => {
-          const control = this.form.get(key);
-          if (control?.errors) {
-            console.log(`Errores en ${key}:`, control.errors);
-          }
-        });
+        // Formulario inválido
       }
     }
   }
@@ -334,7 +342,7 @@ export default class AddInvoiceComponent implements OnInit {
             if (dataObj.fechaEmision) {
               const updatePayload = {
                 ...res,
-                fechaEmision: dataObj.fechaEmision,
+                fechaEmision: this.formatDateForBackend(dataObj.fechaEmision),
                 data: JSON.stringify(dataObj),
               };
 
