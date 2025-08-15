@@ -109,9 +109,11 @@ export default class InvoicesComponent implements OnInit {
   }
 
   getInvoices() {
-    this.agentService.getInvoices().subscribe((res) => {
-      this.invoices = this.formatResponse(res || []);
-    });
+    this.agentService
+      .getInvoices(undefined, 'createdAt', 'desc')
+      .subscribe((res) => {
+        this.invoices = this.formatResponse(res || []);
+      });
   }
 
   downloadInvoice(_id: string) {
