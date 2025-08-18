@@ -64,24 +64,84 @@
         </div>
         <div class="flex flex-col flex-1">
           <label for="dateFrom" class="text-sm font-medium mb-1">Desde:</label>
-          <input
-            type="date"
-            id="dateFrom"
-            class="border border-gray-300 rounded-md p-2 w-full"
-            [(ngModel)]="dateFrom"
-            (ngModelChange)="onFilterChange()"
-          />
+          <div class="relative">
+            <input
+              type="text"
+              id="dateFrom"
+              class="border border-gray-300 rounded-md p-2 w-full font-mono pr-10"
+              placeholder="dd/mm/aaaa"
+              [value]="formatDateForInputDisplay(dateFrom)"
+              (input)="onDateInputChange($event, 'dateFrom')"
+              (blur)="onDateBlur($event, 'dateFrom')"
+            />
+            <button
+              type="button"
+              class="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
+              (click)="openDatePicker('dateFrom')"
+            >
+              <svg
+                class="w-5 h-5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+                ></path>
+              </svg>
+            </button>
+            <input
+              type="date"
+              id="dateFromPicker"
+              class="absolute opacity-0 w-full h-full top-0 left-0 cursor-pointer"
+              [value]="dateFrom"
+              (change)="onDatePickerChange($event, 'dateFrom')"
+            />
+          </div>
         </div>
 
         <div class="flex flex-col flex-1">
           <label for="dateTo" class="text-sm font-medium mb-1">Hasta:</label>
-          <input
-            type="date"
-            id="dateTo"
-            class="border border-gray-300 rounded-md p-2 w-full"
-            [(ngModel)]="dateTo"
-            (ngModelChange)="onFilterChange()"
-          />
+          <div class="relative">
+            <input
+              type="text"
+              id="dateTo"
+              class="border border-gray-300 rounded-md p-2 w-full font-mono pr-10"
+              placeholder="dd/mm/aaaa"
+              [value]="formatDateForInputDisplay(dateTo)"
+              (input)="onDateInputChange($event, 'dateTo')"
+              (blur)="onDateBlur($event, 'dateTo')"
+            />
+            <button
+              type="button"
+              class="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
+              (click)="openDatePicker('dateTo')"
+            >
+              <svg
+                class="w-5 h-5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+                ></path>
+              </svg>
+            </button>
+            <input
+              type="date"
+              id="dateToPicker"
+              class="absolute opacity-0 w-full h-full top-0 left-0 cursor-pointer"
+              [value]="dateTo"
+              (change)="onDatePickerChange($event, 'dateTo')"
+            />
+          </div>
         </div>
       </div>
     </div>

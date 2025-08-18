@@ -153,6 +153,104 @@ export class ChartsComponent implements OnInit, AfterViewInit {
     return `${year}-${month}-${day}`;
   }
 
+  formatDateForDisplay(dateString: string): string {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return '';
+
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const year = date.getFullYear();
+
+    return `${day}/${month}/${year}`;
+  }
+
+  formatDateForInputDisplay(dateString: string): string {
+    if (!dateString) return '';
+
+    if (dateString.includes('-')) {
+      const [year, month, day] = dateString.split('-').map(Number);
+      return `${String(day).padStart(2, '0')}/${String(month).padStart(
+        2,
+        '0'
+      )}/${year}`;
+    }
+
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return '';
+
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const year = date.getFullYear();
+
+    return `${day}/${month}/${year}`;
+  }
+
+  onDateInputChange(event: any, field: 'dateFrom' | 'dateTo') {
+    const value = event.target.value;
+
+    const dateRegex = /^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/;
+    const match = value.match(dateRegex);
+
+    if (match) {
+      const day = parseInt(match[1]);
+      const month = parseInt(match[2]);
+      const year = parseInt(match[3]);
+
+      const date = new Date(year, month - 1, day);
+      if (
+        date.getDate() === day &&
+        date.getMonth() === month - 1 &&
+        date.getFullYear() === year
+      ) {
+        const isoDate = `${year}-${String(month).padStart(2, '0')}-${String(
+          day
+        ).padStart(2, '0')}`;
+        this[field] = isoDate;
+        this.onFilterChange();
+      }
+    }
+  }
+
+  onDateBlur(event: any, field: 'dateFrom' | 'dateTo') {
+    const value = event.target.value;
+    if (value && this[field]) {
+      event.target.value = this.formatDateForInputDisplay(this[field]);
+    }
+  }
+
+  openDatePicker(field: 'dateFrom' | 'dateTo') {
+    const pickerId = field === 'dateFrom' ? 'dateFromPicker' : 'dateToPicker';
+    const picker = document.getElementById(pickerId) as HTMLInputElement;
+    if (picker) {
+      if (!picker.value) {
+        picker.value = this[field] || new Date().toISOString().split('T')[0];
+      }
+      picker.focus();
+      picker.showPicker ? picker.showPicker() : picker.click();
+    }
+  }
+
+  onDatePickerChange(event: any, field: 'dateFrom' | 'dateTo') {
+    const value = event.target.value;
+    if (value) {
+      const [year, month, day] = value.split('-').map(Number);
+      const date = new Date(year, month - 1, day);
+      const isoDate = date.toISOString().split('T')[0];
+
+      this[field] = isoDate;
+
+      const textInputId = field;
+      const textInput = document.getElementById(
+        textInputId
+      ) as HTMLInputElement;
+      if (textInput) {
+        textInput.value = this.formatDateForInputDisplay(isoDate);
+      }
+      this.onFilterChange();
+    }
+  }
+
   loadChartLibrary() {
     if (typeof Chart !== 'undefined') {
       this.chartLibraryLoaded = true;
