@@ -64,64 +64,61 @@
         </div>
         <div class="flex flex-col flex-1">
           <label for="dateFrom" class="text-sm font-medium mb-1">Desde:</label>
-          <div class="relative">
-            <input
-              type="text"
-              id="dateFrom"
-              class="border border-gray-300 rounded-md p-2 w-full font-mono pr-10"
-              placeholder="dd/mm/aaaa"
-              [value]="formatDateForInputDisplay(dateFrom)"
-              (input)="onDateInputChange($event, 'dateFrom')"
-              (blur)="onDateBlur($event, 'dateFrom')"
-            />
-            <button
-              type="button"
-              class="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
-              (click)="openDatePicker('dateFrom')"
+          <button
+            type="button"
+            id="dateFromButton"
+            class="w-full px-3 py-2 rounded-md border border-gray-300 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-200 text-sm text-left flex items-center justify-between transition-colors"
+            (click)="openDatePicker('dateFrom')"
+          >
+            <span class="text-gray-600">
+              {{
+                dateFrom
+                  ? formatDateForInputDisplay(dateFrom)
+                  : formatDateForInputDisplay(getCurrentDate())
+              }}
+            </span>
+            <svg
+              class="w-4 h-4 text-gray-500"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
             >
-              <svg
-                class="w-5 h-5"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
-                ></path>
-              </svg>
-            </button>
-            <input
-              type="date"
-              id="dateFromPicker"
-              class="absolute opacity-0 w-full h-full top-0 left-0 cursor-pointer"
-              [value]="dateFrom"
-              (change)="onDatePickerChange($event, 'dateFrom')"
-            />
-          </div>
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+              ></path>
+            </svg>
+          </button>
+          <input
+            type="date"
+            id="dateFromPicker"
+            class="sr-only"
+            style="position: absolute; opacity: 0; pointer-events: none"
+            [value]="dateFrom"
+            (change)="onDatePickerChange($event, 'dateFrom')"
+          />
         </div>
 
         <div class="flex flex-col flex-1">
           <label for="dateTo" class="text-sm font-medium mb-1">Hasta:</label>
           <div class="relative">
-            <input
-              type="text"
-              id="dateTo"
-              class="border border-gray-300 rounded-md p-2 w-full font-mono pr-10"
-              placeholder="dd/mm/aaaa"
-              [value]="formatDateForInputDisplay(dateTo)"
-              (input)="onDateInputChange($event, 'dateTo')"
-              (blur)="onDateBlur($event, 'dateTo')"
-            />
             <button
               type="button"
-              class="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
+              id="dateToButton"
+              class="w-full px-3 py-2 rounded-md border border-gray-300 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-200 text-sm text-left flex items-center justify-between transition-colors"
               (click)="openDatePicker('dateTo')"
             >
+              <span class="text-gray-600">
+                {{
+                  dateTo
+                    ? formatDateForInputDisplay(dateTo)
+                    : formatDateForInputDisplay(getCurrentDate())
+                }}
+              </span>
               <svg
-                class="w-5 h-5"
+                class="w-4 h-4 text-gray-500"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -130,14 +127,15 @@
                   stroke-linecap="round"
                   stroke-linejoin="round"
                   stroke-width="2"
-                  d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+                  d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2 2v12a2 2 0 002 2z"
                 ></path>
               </svg>
             </button>
             <input
               type="date"
               id="dateToPicker"
-              class="absolute opacity-0 w-full h-full top-0 left-0 cursor-pointer"
+              class="sr-only"
+              style="position: absolute; opacity: 0; pointer-events: none"
               [value]="dateTo"
               (change)="onDatePickerChange($event, 'dateTo')"
             />

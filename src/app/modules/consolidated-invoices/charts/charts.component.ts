@@ -108,10 +108,12 @@ export class ChartsComponent implements OnInit, AfterViewInit {
   filterCollaborator: string = '';
 
   get collaborators() {
-    return this.users.map((user) => ({
-      id: user._id || '',
-      name: user.name || user.email || 'Usuario sin nombre',
-    }));
+    return this.users
+      .filter((user) => user.role?.name === 'User')
+      .map((user) => ({
+        id: user._id || '',
+        name: user.name || user.email || 'Usuario sin nombre',
+      }));
   }
 
   ngOnInit() {
@@ -221,11 +223,28 @@ export class ChartsComponent implements OnInit, AfterViewInit {
 
   openDatePicker(field: 'dateFrom' | 'dateTo') {
     const pickerId = field === 'dateFrom' ? 'dateFromPicker' : 'dateToPicker';
+    const buttonId = field === 'dateFrom' ? 'dateFromButton' : 'dateToButton';
+
     const picker = document.getElementById(pickerId) as HTMLInputElement;
-    if (picker) {
+    const button = document.getElementById(buttonId) as HTMLButtonElement;
+
+    if (picker && button) {
+      // Obtener la posición del botón
+      const buttonRect = button.getBoundingClientRect();
+
+      // Posicionar el input de fecha en la misma posición que el botón
+      picker.style.position = 'fixed';
+      picker.style.top = buttonRect.top + 'px';
+      picker.style.left = buttonRect.left + 'px';
+      picker.style.width = buttonRect.width + 'px';
+      picker.style.height = buttonRect.height + 'px';
+      picker.style.opacity = '0';
+      picker.style.pointerEvents = 'auto';
+
       if (!picker.value) {
         picker.value = this[field] || new Date().toISOString().split('T')[0];
       }
+
       picker.focus();
       picker.showPicker ? picker.showPicker() : picker.click();
     }
@@ -1352,5 +1371,9 @@ export class ChartsComponent implements OnInit, AfterViewInit {
         }
         break;
     }
+  }
+
+  getCurrentDate(): string {
+    return new Date().toISOString().split('T')[0];
   }
 }

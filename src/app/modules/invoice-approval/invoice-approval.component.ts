@@ -544,6 +544,124 @@ export class InvoiceApprovalComponent implements OnInit {
     this.getInvoices();
   }
 
+  formatDateForInputDisplay(dateString: string): string {
+    if (!dateString) return '';
+
+    if (dateString.includes('-')) {
+      const [year, month, day] = dateString.split('-').map(Number);
+      return `${String(day).padStart(2, '0')}/${String(month).padStart(
+        2,
+        '0'
+      )}/${year}`;
+    }
+
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return '';
+
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const year = date.getFullYear();
+
+    return `${day}/${month}/${year}`;
+  }
+
+  onDateInputChange(event: any, field: 'dateFrom' | 'dateTo') {
+    const value = event.target.value;
+
+    const dateRegex = /^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/;
+    const match = value.match(dateRegex);
+
+    if (match) {
+      const day = parseInt(match[1]);
+      const month = parseInt(match[2]);
+      const year = parseInt(match[3]);
+
+      const date = new Date(year, month - 1, day);
+      if (
+        date.getDate() === day &&
+        date.getMonth() === month - 1 &&
+        date.getFullYear() === year
+      ) {
+        const isoDate = `${year}-${String(month).padStart(2, '0')}-${String(
+          day
+        ).padStart(2, '0')}`;
+        if (field === 'dateFrom') {
+          this.filterDateFrom.set(isoDate);
+        } else {
+          this.filterDateTo.set(isoDate);
+        }
+        this.getInvoices();
+      }
+    }
+  }
+
+  onDateBlur(event: any, field: 'dateFrom' | 'dateTo') {
+    const value = event.target.value;
+    if (
+      value &&
+      (field === 'dateFrom' ? this.filterDateFrom() : this.filterDateTo())
+    ) {
+      event.target.value = this.formatDateForInputDisplay(
+        field === 'dateFrom' ? this.filterDateFrom() : this.filterDateTo()
+      );
+    }
+  }
+
+  openDatePicker(field: 'dateFrom' | 'dateTo') {
+    const pickerId = field === 'dateFrom' ? 'dateFromPicker' : 'dateToPicker';
+    const buttonId = field === 'dateFrom' ? 'dateFromButton' : 'dateToButton';
+
+    const picker = document.getElementById(pickerId) as HTMLInputElement;
+    const button = document.getElementById(buttonId) as HTMLButtonElement;
+
+    if (picker && button) {
+      // Obtener la posición del botón
+      const buttonRect = button.getBoundingClientRect();
+
+      // Posicionar el input de fecha en la misma posición que el botón
+      picker.style.position = 'fixed';
+      picker.style.top = buttonRect.top + 'px';
+      picker.style.left = buttonRect.left + 'px';
+      picker.style.width = buttonRect.width + 'px';
+      picker.style.height = buttonRect.height + 'px';
+      picker.style.opacity = '0';
+      picker.style.pointerEvents = 'auto';
+
+      if (!picker.value) {
+        const currentValue =
+          field === 'dateFrom' ? this.filterDateFrom() : this.filterDateTo();
+        picker.value = currentValue || new Date().toISOString().split('T')[0];
+      }
+
+      picker.focus();
+      picker.showPicker ? picker.showPicker() : picker.click();
+    }
+  }
+
+  onDatePickerChange(event: any, field: 'dateFrom' | 'dateTo') {
+    const value = event.target.value;
+    if (value) {
+      const [year, month, day] = value.split('-').map(Number);
+      const date = new Date(year, month - 1, day);
+      const isoDate = date.toISOString().split('T')[0];
+
+      if (field === 'dateFrom') {
+        this.filterDateFrom.set(isoDate);
+      } else {
+        this.filterDateTo.set(isoDate);
+      }
+
+      const textInputId = field;
+      const textInput = document.getElementById(
+        textInputId
+      ) as HTMLInputElement;
+      if (textInput) {
+        textInput.value = this.formatDateForInputDisplay(isoDate);
+      }
+      this.getInvoices();
+    }
+  }
+
   private debugStats() {
     const invoices = this.allInvoices();
     const statusCounts = invoices.reduce((acc, inv) => {
@@ -551,5 +669,9 @@ export class InvoiceApprovalComponent implements OnInit {
       acc[status] = (acc[status] || 0) + 1;
       return acc;
     }, {} as Record<string, number>);
+  }
+
+  getCurrentDate(): string {
+    return new Date().toISOString().split('T')[0];
   }
 }
