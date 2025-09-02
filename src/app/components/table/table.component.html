@@ -40,9 +40,16 @@
           }
         </td>
         } @else {
-        <td class="px-6 py-3">{{ item[header.value] }}</td>
+        <td
+          class="px-6 py-3"
+          [class.whitespace-nowrap]="
+            isDateField(header.value) || isTotalField(header.value)
+          "
+        >
+          {{ item[header.value] }}
+        </td>
         } } @else {
-        <td class="px-6 py-3 w-full">
+        <td class="px-6 py-3 w-full whitespace-nowrap">
           @for (option of header.options; track option) { @if (option ===
           'edit') {
           <button

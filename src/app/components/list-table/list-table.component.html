@@ -167,7 +167,12 @@
     @if(header.value === 'appSecret') {
     <span>{{ "********" }}</span>
     } @else {
-    <span>{{ item[header.value] }}</span>
+    <span
+      [class.whitespace-nowrap]="
+        isDateField(header.value) || isTotalField(header.value)
+      "
+      >{{ item[header.value] }}</span
+    >
     }
   </div>
   } } }

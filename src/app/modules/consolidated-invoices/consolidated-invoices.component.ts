@@ -275,7 +275,9 @@ export class ConsolidatedInvoicesComponent implements OnInit {
   getInvoices() {
     this.loading = true;
 
-    this.agentService.getInvoices(this.filters()).subscribe({
+    const currentFilters = this.filters();
+
+    this.agentService.getInvoices(currentFilters).subscribe({
       next: (res) => {
         if (res && res.length > 0) {
           const firstItem = res[0];
@@ -296,8 +298,6 @@ export class ConsolidatedInvoicesComponent implements OnInit {
           this.calculateProjectsWithInvoiceCount();
         }
         this.loading = false;
-
-        // Las facturas del usuario se obtienen automáticamente según la empresa
         this.userInvoices = this.invoices;
       },
       error: (error) => {
@@ -630,5 +630,59 @@ export class ConsolidatedInvoicesComponent implements OnInit {
         );
       }
     }, 100);
+  }
+
+  formatDateForInputDisplay(dateString: string): string {
+    if (!dateString) return '';
+
+    const [year, month, day] = dateString.split('-').map(Number);
+    return `${String(day).padStart(2, '0')}/${String(month).padStart(
+      2,
+      '0'
+    )}/${year}`;
+  }
+
+  openDatePicker(field: 'dateFrom' | 'dateTo') {
+    const pickerId =
+      field === 'dateFrom'
+        ? 'consolidated-dateFromPicker'
+        : 'consolidated-dateToPicker';
+    const picker = document.getElementById(pickerId) as HTMLInputElement;
+
+    if (picker) {
+      if (!picker.value) {
+        const currentValue =
+          field === 'dateFrom' ? this.filterDateFrom() : this.filterDateTo();
+        picker.value = currentValue || new Date().toISOString().split('T')[0];
+      }
+
+      if (picker.showPicker && typeof picker.showPicker === 'function') {
+        try {
+          picker.showPicker();
+        } catch (error) {
+          picker.click();
+        }
+      } else {
+        picker.click();
+      }
+    }
+  }
+
+  onDatePickerChange(event: any, field: 'dateFrom' | 'dateTo') {
+    const value = event.target.value;
+
+    if (value) {
+      if (field === 'dateFrom') {
+        this.filterDateFrom.set(value);
+      } else {
+        this.filterDateTo.set(value);
+      }
+
+      this.getInvoices();
+    }
+  }
+
+  getCurrentDate(): string {
+    return new Date().toISOString().split('T')[0];
   }
 }
