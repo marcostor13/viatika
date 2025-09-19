@@ -49,6 +49,9 @@ export interface IInvoiceResponse {
   serie?: string;
   montoTotal?: number;
   moneda?: string;
+  userId?: string;
+  createdBy?: string;
+  uploadedBy?: string;
 }
 
 export interface InvoicePayload {

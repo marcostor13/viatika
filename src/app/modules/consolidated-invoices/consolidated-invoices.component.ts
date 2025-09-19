@@ -17,6 +17,8 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { tap } from 'rxjs/operators';
 import { DataComponent } from '../../components/data/data.component';
+import { AdminUsersService } from '../admin-users/services/admin-users.service';
+import { IUserResponse } from '../../interfaces/user.interface';
 
 interface IInvoice {
   _id?: string;
@@ -29,6 +31,8 @@ interface IInvoice {
   updatedAt: string;
   total: string | number;
   userId?: string;
+  createdBy?: string;
+  uploadedBy?: string;
 
   ruc?: string;
   tipo?: string;
@@ -71,6 +75,7 @@ export class ConsolidatedInvoicesComponent implements OnInit {
   private router = inject(Router);
   private notificationService = inject(NotificationService);
   private confirmationService = inject(ConfirmationService);
+  private adminUsersService = inject(AdminUsersService);
 
   rejectionReason = signal('');
   selectedInvoiceId = signal('');
@@ -81,6 +86,7 @@ export class ConsolidatedInvoicesComponent implements OnInit {
   projects: IProject[] = [];
   invoices: IInvoice[] = [];
   userInvoices: IInvoice[] = [];
+  users: IUserResponse[] = [];
   loading = false;
 
   projectsWithInvoiceCount: { id: string; name: string; count: number }[] = [];
@@ -127,6 +133,10 @@ export class ConsolidatedInvoicesComponent implements OnInit {
       value: 'date',
     },
     {
+      header: 'Subido por',
+      value: 'uploadedBy',
+    },
+    {
       header: 'Estado',
       value: 'status',
     },
@@ -157,6 +167,7 @@ export class ConsolidatedInvoicesComponent implements OnInit {
     { header: 'Correlativo', field: 'correlativo' },
     { header: 'Total', field: 'total' },
     { header: 'Fecha', field: 'date' },
+    { header: 'Subido por', field: 'uploadedBy' },
     { header: 'Estado', field: 'status' },
   ];
 
@@ -172,6 +183,7 @@ export class ConsolidatedInvoicesComponent implements OnInit {
 
   ngOnInit() {
     this.getProjects();
+    this.getUsers();
     const categories$ = this.getCategories();
     if (categories$) {
       categories$.subscribe({
@@ -186,6 +198,26 @@ export class ConsolidatedInvoicesComponent implements OnInit {
         },
       });
     }
+  }
+
+  getUsers() {
+    this.adminUsersService.getUsers().subscribe({
+      next: (users) => {
+        this.users = users;
+      },
+      error: (error) => {
+        console.warn('Error al cargar usuarios:', error);
+      },
+    });
+  }
+
+  getUserName(userId?: string): string {
+    if (!userId) {
+      return 'No disponible';
+    }
+
+    const user = this.users.find((u) => u._id === userId);
+    return user ? user.name : 'Usuario no encontrado';
   }
 
   toggleCategoriesSection() {
@@ -386,6 +418,7 @@ export class ConsolidatedInvoicesComponent implements OnInit {
         montoTotal: montoTotal,
         serie: serie,
         correlativo: correlativo,
+        uploadedBy: this.getUserName(invoice.createdBy),
       };
 
       return processedInvoice;
