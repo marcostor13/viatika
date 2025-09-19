@@ -72,9 +72,7 @@
           >
             <span class="text-gray-600">
               {{
-                dateFrom
-                  ? formatDateForInputDisplay(dateFrom)
-                  : formatDateForInputDisplay(getCurrentDate())
+                dateFrom ? formatDateForInputDisplay(dateFrom) : "Fecha desde"
               }}
             </span>
             <svg
@@ -111,11 +109,7 @@
               (click)="openDatePicker('dateTo')"
             >
               <span class="text-gray-600">
-                {{
-                  dateTo
-                    ? formatDateForInputDisplay(dateTo)
-                    : formatDateForInputDisplay(getCurrentDate())
-                }}
+                {{ dateTo ? formatDateForInputDisplay(dateTo) : "Fecha hasta" }}
               </span>
               <svg
                 class="w-4 h-4 text-gray-500"
