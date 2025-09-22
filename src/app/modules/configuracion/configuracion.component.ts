@@ -102,7 +102,7 @@ export class ConfiguracionComponent implements OnInit {
           'Nombre de empresa actualizado exitosamente',
           'success'
         );
-        this.loadCompanyConfig();
+        this.companyConfigService.refreshConfig();
         if (this.selectedLogoFile) {
           this.uploadLogo();
         } else {
@@ -138,7 +138,7 @@ export class ConfiguracionComponent implements OnInit {
             this.isUploadingLogo = false;
             this.logoUploadProgress = 0;
             this.cancelCompanyEdit();
-            this.loadCompanyConfig();
+            this.companyConfigService.refreshConfig();
           } else if (result.type === 'error') {
             this.notificationService.show('Error al subir logo', 'error');
             this.isUploadingLogo = false;

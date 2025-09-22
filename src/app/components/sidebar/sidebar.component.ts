@@ -5,6 +5,7 @@ import {
   Input,
   Output,
   EventEmitter,
+  effect,
 } from '@angular/core';
 import { Router, NavigationEnd, RouterModule } from '@angular/router';
 import { AuthService } from '../../services/auth.service';
@@ -40,6 +41,7 @@ export class SidebarComponent implements OnDestroy {
   constructor() {
     this.detectPath();
     this.loadCompanyConfig();
+    this.loadUser();
   }
 
   ngOnDestroy() {
@@ -96,6 +98,12 @@ export class SidebarComponent implements OnDestroy {
   private loadCompanyConfig() {
     this.companyConfigService.companyConfig$.subscribe((config) => {
       this.companyConfig = config;
+    });
+  }
+
+  private loadUser() {
+    effect(() => {
+      this.user = this.userStateService.getUser();
     });
   }
 }

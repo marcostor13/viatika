@@ -4,8 +4,12 @@ import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { AdminUsersService } from '../services/admin-users.service';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule } from '@angular/forms';
-import { IRoleResponse, IUserResponse } from '../../../interfaces/user.interface';
+import {
+  IRoleResponse,
+  IUserResponse,
+} from '../../../interfaces/user.interface';
 import { NotificationService } from '../../../services/notification.service';
+import { UserStateService } from '../../../services/user-state.service';
 import { ERoles } from '../interfaces/roles.enum';
 
 @Component({
@@ -13,14 +17,16 @@ import { ERoles } from '../interfaces/roles.enum';
   selector: 'app-create-user',
   templateUrl: './create-user.component.html',
   styleUrls: ['./create-user.component.scss'],
+  standalone: true,
 })
 export class CreateUserComponent {
-
   private router: Router = inject(Router);
   private formBuilder: FormBuilder = inject(FormBuilder);
   private route: ActivatedRoute = inject(ActivatedRoute);
   private adminUsersService: AdminUsersService = inject(AdminUsersService);
-  private notificationService: NotificationService = inject(NotificationService);
+  private notificationService: NotificationService =
+    inject(NotificationService);
+  private userStateService: UserStateService = inject(UserStateService);
   id: string = this.route.snapshot.params['id'];
   form: FormGroup = this.formBuilder.group({
     name: ['', Validators.required],
@@ -39,7 +45,10 @@ export class CreateUserComponent {
   }
 
   getRoleName(roleId: string) {
-    return this.enumRoles[this.roles.find((role) => role._id === roleId)?.name as keyof typeof ERoles];
+    return this.enumRoles[
+      this.roles.find((role) => role._id === roleId)
+        ?.name as keyof typeof ERoles
+    ];
   }
 
   getRoles() {
@@ -69,7 +78,10 @@ export class CreateUserComponent {
   createUser() {
     if (this.form.valid) {
       this.adminUsersService.createUser(this.form.value).subscribe((user) => {
-        this.notificationService.show('Usuario creado correctamente', 'success');
+        this.notificationService.show(
+          'Usuario creado correctamente',
+          'success'
+        );
         this.router.navigate(['/admin-users']);
       });
     }
@@ -77,12 +89,24 @@ export class CreateUserComponent {
 
   updateUser() {
     if (this.form.valid) {
-      this.adminUsersService.updateUser(this.id, this.form.value).subscribe((user) => {
-        this.notificationService.show('Usuario editado correctamente', 'success');
-      });
+      const updateData = { ...this.form.value };
+      delete updateData.password;
+
+      this.adminUsersService
+        .updateUser(this.id, updateData)
+        .subscribe((user) => {
+          this.notificationService.show(
+            'Usuario editado correctamente',
+            'success'
+          );
+
+          const currentUser = this.userStateService.getUser();
+          if (currentUser && currentUser._id === this.id) {
+            this.userStateService.setUser({ ...currentUser, name: user.name });
+          }
+        });
     }
   }
-
 
   get name() {
     return this.form.get('name');
@@ -99,6 +123,4 @@ export class CreateUserComponent {
   get password() {
     return this.form.get('password');
   }
-
-
 }

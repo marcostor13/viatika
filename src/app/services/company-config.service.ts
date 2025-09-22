@@ -71,11 +71,15 @@ export class CompanyConfigService {
 
   updateCompanyName(name: string): Observable<ICompanyConfig> {
     return new Observable((observer) => {
-      this.invoicesService.updateCompanyConfig(this.companyConfigSubject.value?._id!, { businessName: name }).subscribe((config) => {
-        this.companyConfigSubject.next(config);
-        observer.next(config);
-        observer.complete();
-      });
+      this.invoicesService
+        .updateCompanyConfig(this.companyConfigSubject.value?._id!, {
+          businessName: name,
+        })
+        .subscribe((config) => {
+          this.companyConfigSubject.next(config);
+          observer.next(config);
+          observer.complete();
+        });
     });
   }
 
@@ -107,7 +111,9 @@ export class CompanyConfigService {
 
             // Actualizar configuración de empresa con la nueva URL
             this.invoicesService
-              .updateCompanyConfig(this.companyConfigSubject.value?._id!, { logo: downloadURL })
+              .updateCompanyConfig(this.companyConfigSubject.value?._id!, {
+                logo: downloadURL,
+              })
               .subscribe((config) => {
                 this.companyConfigSubject.next(config);
                 observer.next({ config, progress: 100, type: 'complete' });
