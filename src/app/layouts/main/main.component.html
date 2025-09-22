@@ -1,10 +1,25 @@
 <div class="flex h-screen">
-  <app-sidebar></app-sidebar>
+  <app-sidebar
+    [sidebarVisible]="sidebarVisible"
+    (sidebarToggle)="toggleSidebar()"
+  >
+  </app-sidebar>
 
   <div class="flex-1 flex flex-col lg:ml-0 overflow-x-hidden">
     <header
-      class="bg-white shadow-sm border-b border-gray-200 lg:ml-0 lg:pl-0 pl-16"
+      class="relative bg-white shadow-sm border-b border-gray-200 lg:ml-0 lg:pl-0 pl-16"
     >
+      <button
+        (click)="toggleSidebar()"
+        class="lg:hidden absolute top-1/2 left-4 -translate-y-1/2 z-40 p-3 rounded-xl bg-white shadow-xl text-gray-700 hover:text-gray-900 hover:bg-gray-50 transition-all duration-300 hover:shadow-2xl hover:scale-105 group border border-gray-200"
+      >
+        <div class="relative w-6 h-6 flex flex-col justify-center space-y-1">
+          <div class="w-6 h-0.5 bg-current"></div>
+          <div class="w-6 h-0.5 bg-current"></div>
+          <div class="w-6 h-0.5 bg-current"></div>
+        </div>
+      </button>
+
       <div class="flex items-center justify-between px-6 py-4">
         <div class="flex items-center">
           <h1 class="text-2xl font-bold text-gray-900">

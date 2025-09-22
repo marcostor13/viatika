@@ -61,11 +61,16 @@
       <div class="flex items-center px-4 py-2 text-gray-300 mb-3">
         <img
           class="w-8 h-8 rounded-full object-cover mr-3"
-          src="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=40&h=40&fit=crop&crop=face"
-          alt="Avatar del usuario"
+          [src]="
+            companyConfig?.logo ||
+            'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=40&h=40&fit=crop&crop=face'
+          "
+          [alt]="companyConfig?.businessName || 'Logo de la empresa'"
         />
         <div class="text-sm">
-          <div class="font-medium text-white">Usuario</div>
+          <div class="font-medium text-white">
+            {{ user?.name || "Usuario" }}
+          </div>
           <div class="text-xs text-gray-400">
             {{ user?.role?.name }}
           </div>
@@ -194,6 +199,20 @@
           >
           <span class="font-medium text-lg">Consolidado</span>
         </a>
+
+        <a
+          *ngIf="isAdmin()"
+          [routerLink]="['/configuracion']"
+          (click)="toggleSidebar()"
+          routerLinkActive="bg-blue-600 text-white shadow-lg"
+          class="flex items-center px-4 py-4 text-gray-300 rounded-xl hover:bg-gray-700 hover:text-white transition-all duration-200 hover:shadow-lg hover:translate-x-1 group"
+        >
+          <span
+            class="mr-4 text-2xl group-hover:scale-110 transition-transform duration-200"
+            >⚙️</span
+          >
+          <span class="font-medium text-lg">Configuración</span>
+        </a>
       </nav>
 
       <div
@@ -204,11 +223,16 @@
         >
           <img
             class="w-10 h-10 rounded-full object-cover mr-3 ring-2 ring-gray-600"
-            src="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=40&h=40&fit=crop&crop=face"
-            alt="Avatar del usuario"
+            [src]="
+              companyConfig?.logo ||
+              'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=40&h=40&fit=crop&crop=face'
+            "
+            [alt]="companyConfig?.businessName || 'Logo de la empresa'"
           />
           <div class="text-sm">
-            <div class="font-semibold text-white">Usuario</div>
+            <div class="font-semibold text-white">
+              {{ user?.name || "Usuario" }}
+            </div>
             <div class="text-xs text-gray-400">
               {{ user?.role?.name }}
             </div>
@@ -240,28 +264,4 @@
       </div>
     </div>
   </div>
-</div>
-
-<div class="lg:hidden fixed top-4 left-4 z-40">
-  <button
-    (click)="toggleSidebar()"
-    class="p-3 rounded-xl bg-white shadow-xl text-gray-700 hover:text-gray-900 hover:bg-gray-50 transition-all duration-300 hover:shadow-2xl hover:scale-105 group border border-gray-200"
-  >
-    <div class="relative w-6 h-6">
-      <span
-        class="absolute top-1.5 left-0 w-6 h-0.5 bg-current transform transition-all duration-300 group-hover:rotate-45 group-hover:top-2.5"
-        [class.rotate-45]="sidebarVisible"
-        [class.top-2.5]="sidebarVisible"
-      ></span>
-      <span
-        class="absolute top-3 left-0 w-6 h-0.5 bg-current transition-all duration-300"
-        [class.opacity-0]="sidebarVisible"
-      ></span>
-      <span
-        class="absolute top-4.5 left-0 w-6 h-0.5 bg-current transform transition-all duration-300 group-hover:-rotate-45 group-hover:top-2.5"
-        [class.-rotate-45]="sidebarVisible"
-        [class.top-2.5]="sidebarVisible"
-      ></span>
-    </div>
-  </button>
 </div>

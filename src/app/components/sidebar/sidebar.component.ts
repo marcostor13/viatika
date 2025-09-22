@@ -1,10 +1,19 @@
-import { Component, inject, OnDestroy } from '@angular/core';
+import {
+  Component,
+  inject,
+  OnDestroy,
+  Input,
+  Output,
+  EventEmitter,
+} from '@angular/core';
 import { Router, NavigationEnd, RouterModule } from '@angular/router';
 import { AuthService } from '../../services/auth.service';
 import { ConfirmationService } from '../../services/confirmation.service';
 import { UserStateService } from '../../services/user-state.service';
+import { CompanyConfigService } from '../../services/company-config.service';
 import { CommonModule } from '@angular/common';
 import { Subscription } from 'rxjs';
+import { ICompanyConfig } from '../../interfaces/company-config.interface';
 
 @Component({
   selector: 'app-sidebar',
@@ -14,18 +23,23 @@ import { Subscription } from 'rxjs';
   styleUrl: './sidebar.component.scss',
 })
 export class SidebarComponent implements OnDestroy {
+  @Input() sidebarVisible = false;
+  @Output() sidebarToggle = new EventEmitter<void>();
+
   private router = inject(Router);
   private authService = inject(AuthService);
   private confirmationService = inject(ConfirmationService);
   private userStateService = inject(UserStateService);
+  private companyConfigService = inject(CompanyConfigService);
   private routerSubscription!: Subscription;
   user = this.userStateService.getUser();
+  companyConfig: ICompanyConfig | null = null;
 
   currentPath = '';
-  sidebarVisible = false;
 
   constructor() {
     this.detectPath();
+    this.loadCompanyConfig();
   }
 
   ngOnDestroy() {
@@ -51,7 +65,7 @@ export class SidebarComponent implements OnDestroy {
   }
 
   toggleSidebar() {
-    this.sidebarVisible = !this.sidebarVisible;
+    this.sidebarToggle.emit();
   }
 
   confirmation() {
@@ -77,5 +91,11 @@ export class SidebarComponent implements OnDestroy {
 
   logout() {
     this.authService.logout();
+  }
+
+  private loadCompanyConfig() {
+    this.companyConfigService.companyConfig$.subscribe((config) => {
+      this.companyConfig = config;
+    });
   }
 }

@@ -14,6 +14,7 @@ export class MainComponent implements OnDestroy {
   private router = inject(Router);
   private routerSubscription!: Subscription;
   currentPath = '';
+  sidebarVisible = false;
 
   constructor() {
     this.detectPath();
@@ -51,5 +52,9 @@ export class MainComponent implements OnDestroy {
     }
 
     return 'Panel de Control';
+  }
+
+  toggleSidebar() {
+    this.sidebarVisible = !this.sidebarVisible;
   }
 }
