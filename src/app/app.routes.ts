@@ -8,6 +8,7 @@ import AdminUsersComponent from './modules/admin-users/admin-users.component';
 import { InvoiceApprovalComponent } from './modules/invoice-approval/invoice-approval.component';
 import { CreateUserComponent } from './modules/admin-users/create-user/create-user.component';
 import { ConfiguracionComponent } from './modules/configuracion/configuracion.component';
+import AdminAddInvoiceComponent from './components/admin-add-invoice/admin-add-invoice.component';
 
 export const routes: Routes = [
   {
@@ -37,6 +38,11 @@ export const routes: Routes = [
       {
         path: 'invoice-approval',
         component: InvoiceApprovalComponent,
+        canActivate: [AuthAdmin2Guard],
+      },
+      {
+        path: 'admin-add-invoice',
+        component: AdminAddInvoiceComponent,
         canActivate: [AuthAdmin2Guard],
       },
       {
@@ -99,7 +105,6 @@ export const routes: Routes = [
         component: ConfiguracionComponent,
         canActivate: [AuthAdmin2Guard],
       },
-
     ],
   },
   {

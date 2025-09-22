@@ -1,4 +1,5 @@
 import { Component, inject, signal, OnInit, computed } from '@angular/core';
+import { Router } from '@angular/router';
 import { FileDownloadComponent } from '../../components/file-download/file-download.component';
 import { NotificationService } from '../../services/notification.service';
 import { ConfirmationService } from '../../services/confirmation.service';
@@ -64,6 +65,7 @@ interface IInvoice {
 })
 export class InvoiceApprovalComponent implements OnInit {
   private agentService = inject(InvoicesService);
+  private router = inject(Router);
   private notificationService = inject(NotificationService);
   private confirmationService = inject(ConfirmationService);
   private userStateService = inject(UserStateService);
@@ -688,5 +690,9 @@ export class InvoiceApprovalComponent implements OnInit {
 
   getCurrentDate(): string {
     return new Date().toISOString().split('T')[0];
+  }
+
+  navigateToAddInvoice() {
+    this.router.navigate(['/admin-add-invoice']);
   }
 }
