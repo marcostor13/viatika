@@ -1,189 +1,229 @@
-<div class="overflow-x-auto rounded-xl relative">
-  <table
-    class="min-w-full border border-gray-200 bg-white shadow-lg rounded-xl"
+<div class="relative">
+  <div
+    class="overflow-x-auto mb-2 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100"
   >
-    <thead class="bg-color4 text-color2">
-      <tr>
-        @for (header of headers; track header) {
-        <th class="px-6 py-3 text-left">{{ header.header }}</th>
-        }
-      </tr>
-    </thead>
-    <tbody>
-      @for (item of data; track item) {
-      <tr class="border-t hover:bg-gray-50">
-        @for (header of headers; track header) { @if (header.value !==
-        'actions') { @if(header.value === 'appSecret') {
-        <td class="px-6 py-3">{{ "********" }}</td>
-        } @else if(header.value === 'status') {
-        <td class="px-6 py-3">
-          @if(item.status === 'pending') {
-          <span
-            class="px-2 py-1 rounded-full bg-yellow-100 text-yellow-800 text-xs font-medium"
-            >Pendiente</span
+    <div class="h-2"></div>
+  </div>
+
+  <div class="relative overflow-x-auto rounded-xl shadow-lg table-container">
+    <table class="min-w-full border border-gray-200 bg-white rounded-xl">
+      <thead class="bg-color4 text-color2 sticky top-0 z-10">
+        <tr>
+          @for (header of headers; track header) { @if (header.value !==
+          'actions') {
+          <th
+            class="px-4 py-3 text-left text-sm font-medium whitespace-nowrap min-w-[120px]"
           >
-          } @else if(item.status === 'approved') {
-          <span
-            class="px-2 py-1 rounded-full bg-green-100 text-green-800 text-xs font-medium"
-            >Aprobada</span
-          >
-          } @else if(item.status === 'rejected') {
-          <span
-            class="px-2 py-1 rounded-full bg-red-100 text-red-800 text-xs font-medium"
-            >Rechazada</span
-          >
+            {{ header.header }}
+          </th>
           } @else {
-          <span
-            class="px-2 py-1 rounded-full bg-gray-100 text-gray-800 text-xs font-medium"
-            >{{ item[header.value] || "Pendiente" }}</span
+          <th
+            class="px-4 py-3 text-center text-sm font-medium whitespace-nowrap w-32 sticky right-0 bg-color4 z-20 border-l border-gray-300"
           >
-          }
-        </td>
-        } @else {
-        <td
-          class="px-6 py-3"
-          [class.whitespace-nowrap]="
-            isDateField(header.value) || isTotalField(header.value)
-          "
-        >
-          {{ item[header.value] }}
-        </td>
-        } } @else {
-        <td class="px-6 py-3 w-full whitespace-nowrap">
-          @for (option of header.options; track option) { @if (option ===
-          'edit') {
-          <button
-            class="text-blue-600 hover:underline w-7"
-            (click)="options(option, item._id)"
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke-width="1.5"
-              stroke="currentColor"
-              class="size-6"
-            >
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10"
-              />
-            </svg>
-          </button>
-          } @else if (option === 'delete') {
-          <button
-            class="text-red-600 hover:underline w-7"
-            (click)="options(option, item._id)"
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke-width="1.5"
-              stroke="currentColor"
-              class="size-6"
-            >
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                d="m20.25 7.5-.625 10.632a2.25 2.25 0 0 1-2.247 2.118H6.622a2.25 2.25 0 0 1-2.247-2.118L3.75 7.5m6 4.125 2.25 2.25m0 0 2.25 2.25M12 13.875l2.25-2.25M12 13.875l-2.25 2.25M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125Z"
-              />
-            </svg>
-          </button>
-          } @else if (option === 'add-contact-list') {
-          <button
-            class="text-color2 hover:underline w-7"
-            title="Agregar contactos"
-            (click)="options(option, item._id)"
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke-width="1.5"
-              stroke="currentColor"
-              class="size-6"
-            >
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                d="M15 19.128a9.38 9.38 0 0 0 2.625.372 9.337 9.337 0 0 0 4.121-.952 4.125 4.125 0 0 0-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 0 1 8.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0 1 11.964-3.07M12 6.375a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0Zm8.25 2.25a2.625 2.625 0 1 1-5.25 0 2.625 2.625 0 0 1 5.25 0Z"
-              />
-            </svg>
-          </button>
-          } @else if (option === 'download') {
-          <button
-            class="text-color2 hover:underline w-7"
-            title="Descargar"
-            (click)="options(option, item._id)"
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke-width="1.5"
-              stroke="currentColor"
-              class="size-6"
-            >
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3"
-              />
-            </svg>
-          </button>
-          } @else if (option === 'approve' && item.status !== 'approved' &&
-          item.status !== 'APPROVED' && item.status !== 'rejected' &&
-          item.status !== 'REJECTED') {
-          <button
-            class="text-green-600 hover:underline w-7"
-            title="Aprobar factura"
-            (click)="options(option, item._id)"
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke-width="1.5"
-              stroke="currentColor"
-              class="size-6"
-            >
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"
-              />
-            </svg>
-          </button>
-          } @else if (option === 'reject' && item.status !== 'approved' &&
-          item.status !== 'APPROVED' && item.status !== 'rejected' &&
-          item.status !== 'REJECTED') {
-          <button
-            class="text-red-600 hover:underline w-7"
-            title="Rechazar factura"
-            (click)="options(option, item._id)"
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke-width="1.5"
-              stroke="currentColor"
-              class="size-6"
-            >
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                d="m9.75 9.75 4.5 4.5m0-4.5-4.5 4.5M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"
-              />
-            </svg>
-          </button>
+            {{ header.header }}
+          </th>
           } }
-        </td>
-        } }
-      </tr>
-      }
-    </tbody>
-  </table>
+        </tr>
+      </thead>
+      <tbody>
+        @for (item of data; track item) {
+        <tr class="border-t hover:bg-gray-50 group">
+          @for (header of headers; track header) { @if (header.value !==
+          'actions') { @if(header.value === 'appSecret') {
+          <td class="px-4 py-3 text-sm">
+            <span class="text-gray-500">********</span>
+          </td>
+          } @else if(header.value === 'status') {
+          <td class="px-4 py-3 text-sm">
+            @if(item.status === 'pending') {
+            <span
+              class="inline-flex px-2 py-1 rounded-full bg-yellow-100 text-yellow-800 text-xs font-medium"
+            >
+              Pendiente
+            </span>
+            } @else if(item.status === 'approved') {
+            <span
+              class="inline-flex px-2 py-1 rounded-full bg-green-100 text-green-800 text-xs font-medium"
+            >
+              Aprobada
+            </span>
+            } @else if(item.status === 'rejected') {
+            <span
+              class="inline-flex px-2 py-1 rounded-full bg-red-100 text-red-800 text-xs font-medium"
+            >
+              Rechazada
+            </span>
+            } @else {
+            <span
+              class="inline-flex px-2 py-1 rounded-full bg-gray-100 text-gray-800 text-xs font-medium"
+            >
+              {{ item[header.value] || "Pendiente" }}
+            </span>
+            }
+          </td>
+          } @else {
+          <td
+            class="px-4 py-3 text-sm text-gray-900"
+            [class.whitespace-nowrap]="
+              isDateField(header.value) || isTotalField(header.value)
+            "
+            [class.max-w-[200px]]="
+              !isDateField(header.value) && !isTotalField(header.value)
+            "
+            [class.truncate]="
+              !isDateField(header.value) && !isTotalField(header.value)
+            "
+            [title]="
+              !isDateField(header.value) && !isTotalField(header.value)
+                ? item[header.value]
+                : null
+            "
+          >
+            {{ item[header.value] }}
+          </td>
+          } } @else {
+          <td
+            class="px-4 py-3 w-32 sticky right-0 bg-white group-hover:bg-gray-50 z-10 border-l border-gray-300"
+          >
+            <div class="flex items-center justify-center space-x-1">
+              @for (option of header.options; track option) { @if (option ===
+              'edit') {
+              <button
+                class="p-1 text-blue-600 hover:bg-blue-50 rounded transition-colors duration-200"
+                (click)="options(option, item._id)"
+                title="Editar"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke-width="1.5"
+                  stroke="currentColor"
+                  class="w-4 h-4"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10"
+                  />
+                </svg>
+              </button>
+              } @else if (option === 'delete') {
+              <button
+                class="p-1 text-red-600 hover:bg-red-50 rounded transition-colors duration-200"
+                (click)="options(option, item._id)"
+                title="Eliminar"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke-width="1.5"
+                  stroke="currentColor"
+                  class="w-4 h-4"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    d="m20.25 7.5-.625 10.632a2.25 2.25 0 0 1-2.247 2.118H6.622a2.25 2.25 0 0 1-2.247-2.118L3.75 7.5m6 4.125 2.25 2.25m0 0 2.25 2.25M12 13.875l2.25-2.25M12 13.875l-2.25 2.25M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125Z"
+                  />
+                </svg>
+              </button>
+              } @else if (option === 'add-contact-list') {
+              <button
+                class="p-1 text-color2 hover:bg-gray-100 rounded transition-colors duration-200"
+                title="Agregar contactos"
+                (click)="options(option, item._id)"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke-width="1.5"
+                  stroke="currentColor"
+                  class="w-4 h-4"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    d="M15 19.128a9.38 9.38 0 0 0 2.625.372 9.337 9.337 0 0 0 4.121-.952 4.125 4.125 0 0 0-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 0 1 8.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0 1 11.964-3.07M12 6.375a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0Zm8.25 2.25a2.625 2.625 0 1 1-5.25 0 2.625 2.625 0 0 1 5.25 0Z"
+                  />
+                </svg>
+              </button>
+              } @else if (option === 'download') {
+              <button
+                class="p-1 text-color2 hover:bg-gray-100 rounded transition-colors duration-200"
+                title="Descargar"
+                (click)="options(option, item._id)"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke-width="1.5"
+                  stroke="currentColor"
+                  class="w-4 h-4"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3"
+                  />
+                </svg>
+              </button>
+              } @else if (option === 'approve' && item.status !== 'approved' &&
+              item.status !== 'APPROVED' && item.status !== 'rejected' &&
+              item.status !== 'REJECTED') {
+              <button
+                class="p-1 text-green-600 hover:bg-green-50 rounded transition-colors duration-200"
+                title="Aprobar factura"
+                (click)="options(option, item._id)"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke-width="1.5"
+                  stroke="currentColor"
+                  class="w-4 h-4"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"
+                  />
+                </svg>
+              </button>
+              } @else if (option === 'reject' && item.status !== 'approved' &&
+              item.status !== 'APPROVED' && item.status !== 'rejected' &&
+              item.status !== 'REJECTED') {
+              <button
+                class="p-1 text-red-600 hover:bg-red-50 rounded transition-colors duration-200"
+                title="Rechazar factura"
+                (click)="options(option, item._id)"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke-width="1.5"
+                  stroke="currentColor"
+                  class="w-4 h-4"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    d="m9.75 9.75 4.5 4.5m0-4.5-4.5 4.5M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"
+                  />
+                </svg>
+              </button>
+              } }
+            </div>
+          </td>
+          } }
+        </tr>
+        }
+      </tbody>
+    </table>
+  </div>
 </div>

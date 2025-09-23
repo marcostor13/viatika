@@ -3,12 +3,12 @@ import { IPreview } from '../../interfaces/preview.interface';
 import { FormsModule } from '@angular/forms';
 @Component({
   selector: 'app-preview',
+  standalone: true,
   imports: [FormsModule],
   templateUrl: './preview.component.html',
-  styleUrl: './preview.component.scss'
+  styleUrl: './preview.component.scss',
 })
 export class PreviewComponent {
-
   message: string = '';
   @Input() dataPreview: IPreview = {} as IPreview;
   @Output() uploadEvent = new EventEmitter<string>();
@@ -21,5 +21,4 @@ export class PreviewComponent {
   upload() {
     this.uploadEvent.emit(this.message);
   }
-
 }
