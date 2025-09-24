@@ -146,7 +146,7 @@ export class InvoicesService {
     companyId: string
   ): Observable<SunatValidationInfo> {
     return this.http.get<SunatValidationInfo>(
-      `${this.url}/invoice/${id}/${companyId}/sunat-validation`
+      `${this.url}/invoice/${id}/sunat-validation`
     );
   }
 

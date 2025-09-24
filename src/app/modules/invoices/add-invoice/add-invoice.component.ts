@@ -15,7 +15,10 @@ import { environment } from '../../../../environments/environment';
 import { CommonModule } from '@angular/common';
 import { IProject } from '../interfaces/project.interface';
 import { ICategory } from '../interfaces/category.interface';
-import { InvoiceStatus } from '../interfaces/invoices.interface';
+import {
+  InvoiceStatus,
+  SunatValidationInfo,
+} from '../interfaces/invoices.interface';
 
 @Component({
   selector: 'app-add-invoice',
@@ -40,6 +43,8 @@ export default class AddInvoiceComponent implements OnInit {
   previewImage: SafeUrl | null = null;
   selectedFile!: File;
   originalInvoice: any = null;
+  sunatValidation: SunatValidationInfo | null = null;
+  isSunatValidating = signal(false);
 
   percentage = signal(0);
   isLoading = signal(false);
@@ -255,15 +260,23 @@ export default class AddInvoiceComponent implements OnInit {
         data: JSON.stringify(dataObj),
       };
 
+      this.isLoading.set(true);
+
       this.invoiceService.updateInvoice(this.id, payload).subscribe({
         next: (response) => {
-          this.notificationService.show(
-            'Factura actualizada correctamente',
-            'success'
-          );
-          this.router.navigate(['/invoices']);
+          if (this.shouldValidateWithSunat(formValue)) {
+            this.validateWithSunat();
+          } else {
+            this.isLoading.set(false);
+            this.notificationService.show(
+              'Factura actualizada correctamente',
+              'success'
+            );
+            this.router.navigate(['/invoices']);
+          }
         },
         error: (error: any) => {
+          this.isLoading.set(false);
           console.error('Error al actualizar:', error);
           this.notificationService.show(
             'Error al actualizar la factura: ' +
@@ -439,5 +452,94 @@ export default class AddInvoiceComponent implements OnInit {
 
   get correlativo() {
     return this.form.get('correlativo');
+  }
+
+  private shouldValidateWithSunat(formValue: any): boolean {
+    return !!(
+      formValue.rucEmisor &&
+      formValue.serie &&
+      formValue.correlativo &&
+      formValue.fechaEmision
+    );
+  }
+
+  private validateWithSunat() {
+    this.isSunatValidating.set(true);
+
+    const clientId =
+      this.originalInvoice?.clientId?._id || this.originalInvoice?.clientId;
+
+    if (!clientId) {
+      this.isSunatValidating.set(false);
+      this.isLoading.set(false);
+      this.notificationService.show(
+        'No se pudo obtener el ID de la empresa para validar con SUNAT',
+        'error'
+      );
+      this.router.navigate(['/invoices']);
+      return;
+    }
+
+    this.invoiceService.getSunatValidation(this.id, clientId).subscribe({
+      next: (validationResult: SunatValidationInfo) => {
+        this.isSunatValidating.set(false);
+        this.isLoading.set(false);
+        this.sunatValidation = validationResult;
+
+        this.showSunatValidationResult(validationResult);
+
+        this.router.navigate(['/invoices']);
+      },
+      error: (error) => {
+        this.isSunatValidating.set(false);
+        this.isLoading.set(false);
+        console.error('Error al validar con SUNAT:', error);
+
+        this.notificationService.show(
+          'Factura actualizada correctamente, pero hubo un error al validar con SUNAT',
+          'error'
+        );
+        this.router.navigate(['/invoices']);
+      },
+    });
+  }
+
+  private showSunatValidationResult(validation: SunatValidationInfo) {
+    let message = '';
+    let type: 'success' | 'error' = 'success';
+
+    if (validation.sunatValidation) {
+      switch (validation.sunatValidation.status) {
+        case 'VALIDO_ACEPTADO':
+          message =
+            'Factura validada correctamente con SUNAT - Comprobante válido';
+          type = 'success';
+          break;
+        case 'VALIDO_NO_PERTENECE':
+          message =
+            'Comprobante válido en SUNAT pero no pertenece a esta empresa';
+          type = 'error';
+          break;
+        case 'NO_ENCONTRADO':
+          message = 'Comprobante no encontrado en SUNAT';
+          type = 'error';
+          break;
+        case 'ERROR_SUNAT':
+          message =
+            'Error al validar con SUNAT: ' + validation.sunatValidation.message;
+          type = 'error';
+          break;
+        default:
+          message =
+            'Resultado de validación SUNAT: ' +
+            validation.sunatValidation.message;
+          type = 'error';
+      }
+    } else {
+      message = 'No se pudo obtener información de validación SUNAT';
+      type = 'error';
+    }
+
+    this.notificationService.show(message, type);
   }
 }
