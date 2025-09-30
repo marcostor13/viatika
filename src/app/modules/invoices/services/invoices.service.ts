@@ -36,7 +36,10 @@ export class InvoicesService {
   }
 
   analyzePdf(formData: FormData): Observable<IInvoiceResponse> {
-    return this.http.post<IInvoiceResponse>(`${this.url}/analize-pdf`, formData);
+    return this.http.post<IInvoiceResponse>(
+      `${this.url}/analize-pdf`,
+      formData
+    );
   }
 
   getInvoices(
@@ -196,5 +199,20 @@ export class InvoicesService {
 
   testSunatCredentials(): Observable<any> {
     return this.http.get(`${this.url}/test-sunat-credentials`);
+  }
+
+  validateWithSunatData(
+    id: string,
+    data: {
+      rucEmisor: string;
+      serie: string;
+      correlativo: string;
+      fechaEmision: string;
+      montoTotal?: number;
+      clientId?: string;
+      tipoComprobante?: string;
+    }
+  ): Observable<any> {
+    return this.http.post(`${this.url}/invoice/${id}/validate-sunat`, data);
   }
 }
