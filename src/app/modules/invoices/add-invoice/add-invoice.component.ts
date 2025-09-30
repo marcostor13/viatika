@@ -53,6 +53,13 @@ export default class AddInvoiceComponent implements OnInit {
     this.initForm();
   }
 
+  private isPdfFile(file: File | null | undefined): boolean {
+    if (!file) return false;
+    const mimeType = (file.type || '').toLowerCase();
+    const name = (file.name || '').toLowerCase();
+    return mimeType.includes('pdf') || name.endsWith('.pdf');
+  }
+
   private formatDateForInput(dateValue: any): string {
     if (!dateValue) return '';
 
@@ -132,7 +139,7 @@ export default class AddInvoiceComponent implements OnInit {
             try {
               dataObj =
                 typeof res.data === 'string' ? JSON.parse(res.data) : res.data;
-            } catch {}
+            } catch { }
           }
 
           let fecha = '';
@@ -161,7 +168,7 @@ export default class AddInvoiceComponent implements OnInit {
           console.error('Error al cargar la factura:', error);
           this.notificationService.show(
             'Error al cargar la factura: ' +
-              (error.message || 'Intente nuevamente'),
+            (error.message || 'Intente nuevamente'),
             'error'
           );
         },
@@ -177,7 +184,7 @@ export default class AddInvoiceComponent implements OnInit {
       next: (categories) => {
         this.categories = categories;
       },
-      error: (error) => {},
+      error: (error) => { },
     });
   }
 
@@ -213,7 +220,12 @@ export default class AddInvoiceComponent implements OnInit {
         return;
       }
       this.isLoading.set(true);
-      this.uploadFile();
+      const isPdf = this.isPdfFile(this.selectedFile);
+      if (isPdf) {
+        this.uploadPdfDirectly();
+      } else {
+        this.uploadFile();
+      }
     }
   }
 
@@ -229,7 +241,7 @@ export default class AddInvoiceComponent implements OnInit {
             typeof currentData === 'string'
               ? JSON.parse(currentData)
               : currentData;
-        } catch {}
+        } catch { }
       }
 
       dataObj.rucEmisor = formValue.rucEmisor;
@@ -280,7 +292,7 @@ export default class AddInvoiceComponent implements OnInit {
           console.error('Error al actualizar:', error);
           this.notificationService.show(
             'Error al actualizar la factura: ' +
-              (error.message || 'Intente nuevamente'),
+            (error.message || 'Intente nuevamente'),
             'error'
           );
         },
@@ -296,9 +308,14 @@ export default class AddInvoiceComponent implements OnInit {
     const input = event.target as HTMLInputElement;
     if (input.files && input.files[0]) {
       this.selectedFile = input.files[0];
-      this.previewImage = this.sanitizer.bypassSecurityTrustUrl(
-        URL.createObjectURL(this.selectedFile)
-      );
+      console.log(this.selectedFile);
+      if (!this.isPdfFile(this.selectedFile)) {
+        this.previewImage = this.sanitizer.bypassSecurityTrustUrl(
+          URL.createObjectURL(this.selectedFile)
+        );
+      } else {
+        this.previewImage = null;
+      }
       this.form.patchValue({ file: this.selectedFile });
     }
   }
@@ -330,6 +347,28 @@ export default class AddInvoiceComponent implements OnInit {
     });
   }
 
+  private uploadPdfDirectly() {
+    const formData = new FormData();
+    formData.append('file', this.selectedFile);
+    formData.append('proyectId', this.form.get('proyectId')?.value);
+    formData.append('categoryId', this.form.get('categoryId')?.value);
+    formData.append('status', 'pending');
+
+    this.percentage.set(10);
+    this.invoiceService.analyzePdf(formData).subscribe({
+      next: (res) => {
+        this.isLoading.set(false);
+        this.notificationService.show('Factura PDF analizada correctamente', 'success');
+        this.router.navigate(['/invoices']);
+      },
+      error: (error) => {
+        this.isLoading.set(false);
+        const errorMessage = error.error?.message || error.message || 'Intente nuevamente';
+        this.notificationService.show('Error al analizar PDF: ' + errorMessage, 'error');
+      },
+    });
+  }
+
   save() {
     if (this.form.valid) {
       const payload = {
@@ -349,7 +388,7 @@ export default class AddInvoiceComponent implements OnInit {
                   typeof res.data === 'string'
                     ? JSON.parse(res.data)
                     : res.data;
-              } catch {}
+              } catch { }
             }
 
             if (dataObj.fechaEmision) {

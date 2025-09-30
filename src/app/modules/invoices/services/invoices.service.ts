@@ -35,6 +35,10 @@ export class InvoicesService {
     );
   }
 
+  analyzePdf(formData: FormData): Observable<IInvoiceResponse> {
+    return this.http.post<IInvoiceResponse>(`${this.url}/analize-pdf`, formData);
+  }
+
   getInvoices(
     filters?: any,
     sortBy: string = 'fechaEmision',

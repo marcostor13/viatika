@@ -278,12 +278,12 @@ export class InvoiceApprovalComponent implements OnInit {
           if (typeof invoice.data === 'string') {
             try {
               invoiceData = JSON.parse(invoice.data);
-            } catch (parseError) {}
+            } catch (parseError) { }
           } else if (typeof invoice.data === 'object') {
             invoiceData = invoice.data;
           }
         }
-      } catch (error) {}
+      } catch (error) { }
 
       const categoryName = invoice.categoryId?.name || 'No disponible';
       const projectName = invoice.proyectId?.name || 'No disponible';
@@ -311,10 +311,10 @@ export class InvoiceApprovalComponent implements OnInit {
         data: invoice.data,
         createdAt: invoice.createdAt
           ? new Date(invoice.createdAt).toLocaleDateString('es-ES', {
-              day: '2-digit',
-              month: '2-digit',
-              year: 'numeric',
-            })
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric',
+          })
           : 'No disponible',
         updatedAt: invoice.updatedAt,
         total: formattedTotal,
@@ -679,20 +679,11 @@ export class InvoiceApprovalComponent implements OnInit {
     }
   }
 
-  private debugStats() {
-    const invoices = this.allInvoices();
-    const statusCounts = invoices.reduce((acc, inv) => {
-      const status = inv.status || 'undefined';
-      acc[status] = (acc[status] || 0) + 1;
-      return acc;
-    }, {} as Record<string, number>);
-  }
-
   getCurrentDate(): string {
     return new Date().toISOString().split('T')[0];
   }
 
   navigateToAddInvoice() {
-    this.router.navigate(['/admin-add-invoice']);
+    this.router.navigate(['/invoices/add']);
   }
 }
