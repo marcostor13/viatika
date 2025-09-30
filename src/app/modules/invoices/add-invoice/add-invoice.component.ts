@@ -139,7 +139,7 @@ export default class AddInvoiceComponent implements OnInit {
             try {
               dataObj =
                 typeof res.data === 'string' ? JSON.parse(res.data) : res.data;
-            } catch { }
+            } catch {}
           }
 
           let fecha = '';
@@ -168,7 +168,7 @@ export default class AddInvoiceComponent implements OnInit {
           console.error('Error al cargar la factura:', error);
           this.notificationService.show(
             'Error al cargar la factura: ' +
-            (error.message || 'Intente nuevamente'),
+              (error.message || 'Intente nuevamente'),
             'error'
           );
         },
@@ -184,7 +184,7 @@ export default class AddInvoiceComponent implements OnInit {
       next: (categories) => {
         this.categories = categories;
       },
-      error: (error) => { },
+      error: (error) => {},
     });
   }
 
@@ -241,7 +241,7 @@ export default class AddInvoiceComponent implements OnInit {
             typeof currentData === 'string'
               ? JSON.parse(currentData)
               : currentData;
-        } catch { }
+        } catch {}
       }
 
       dataObj.rucEmisor = formValue.rucEmisor;
@@ -277,7 +277,7 @@ export default class AddInvoiceComponent implements OnInit {
       this.invoiceService.updateInvoice(this.id, payload).subscribe({
         next: (response) => {
           if (this.shouldValidateWithSunat(formValue)) {
-            this.validateWithSunat();
+            this.validateWithSunatData(formValue);
           } else {
             this.isLoading.set(false);
             this.notificationService.show(
@@ -292,7 +292,7 @@ export default class AddInvoiceComponent implements OnInit {
           console.error('Error al actualizar:', error);
           this.notificationService.show(
             'Error al actualizar la factura: ' +
-            (error.message || 'Intente nuevamente'),
+              (error.message || 'Intente nuevamente'),
             'error'
           );
         },
@@ -358,13 +358,20 @@ export default class AddInvoiceComponent implements OnInit {
     this.invoiceService.analyzePdf(formData).subscribe({
       next: (res) => {
         this.isLoading.set(false);
-        this.notificationService.show('Factura PDF analizada correctamente', 'success');
+        this.notificationService.show(
+          'Factura PDF analizada correctamente',
+          'success'
+        );
         this.router.navigate(['/invoices']);
       },
       error: (error) => {
         this.isLoading.set(false);
-        const errorMessage = error.error?.message || error.message || 'Intente nuevamente';
-        this.notificationService.show('Error al analizar PDF: ' + errorMessage, 'error');
+        const errorMessage =
+          error.error?.message || error.message || 'Intente nuevamente';
+        this.notificationService.show(
+          'Error al analizar PDF: ' + errorMessage,
+          'error'
+        );
       },
     });
   }
@@ -388,7 +395,7 @@ export default class AddInvoiceComponent implements OnInit {
                   typeof res.data === 'string'
                     ? JSON.parse(res.data)
                     : res.data;
-              } catch { }
+              } catch {}
             }
 
             if (dataObj.fechaEmision) {
@@ -580,5 +587,93 @@ export default class AddInvoiceComponent implements OnInit {
     }
 
     this.notificationService.show(message, type);
+  }
+
+  private getTipoComprobanteFromData(): string {
+    if (this.originalInvoice?.data) {
+      try {
+        const dataObj =
+          typeof this.originalInvoice.data === 'string'
+            ? JSON.parse(this.originalInvoice.data)
+            : this.originalInvoice.data;
+        return dataObj.tipoComprobante || 'Factura';
+      } catch {
+        return 'Factura';
+      }
+    }
+    return 'Factura';
+  }
+
+  private validateWithSunatData(formValue: any) {
+    this.isSunatValidating.set(true);
+
+    const validationData = {
+      rucEmisor: formValue.rucEmisor,
+      serie: formValue.serie,
+      correlativo: formValue.correlativo,
+      fechaEmision: this.formatDateForBackend(formValue.fechaEmision),
+      montoTotal:
+        this.originalInvoice?.total || this.originalInvoice?.montoTotal || 0,
+      clientId:
+        this.originalInvoice?.clientId || this.originalInvoice?.companyId,
+      tipoComprobante: this.getTipoComprobanteFromData(),
+    };
+
+    this.invoiceService
+      .validateWithSunatData(this.id, validationData)
+      .subscribe({
+        next: (response) => {
+          this.isSunatValidating.set(false);
+          this.isLoading.set(false);
+
+          let message = '';
+          let type: 'success' | 'error' = 'success';
+
+          switch (response.status) {
+            case 'VALIDO_ACEPTADO':
+              message =
+                'Factura validada correctamente con SUNAT - Comprobante válido';
+              type = 'success';
+              break;
+            case 'VALIDO_NO_PERTENECE':
+              message =
+                'Comprobante válido en SUNAT pero no pertenece a esta empresa';
+              type = 'error';
+              break;
+            case 'NO_ENCONTRADO':
+              message = 'Comprobante no encontrado en SUNAT';
+              type = 'error';
+              break;
+            case 'ERROR_SUNAT':
+              message =
+                'Error al validar con SUNAT: ' +
+                (response.details?.message || 'Error desconocido');
+              type = 'error';
+              break;
+            case 'SUNAT_CONFIG_NOT_FOUND':
+              message = 'No se encontró configuración SUNAT para esta empresa';
+              type = 'error';
+              break;
+            default:
+              message =
+                'Resultado de validación SUNAT: ' +
+                (response.details?.message || 'Estado desconocido');
+              type = 'error';
+          }
+
+          this.notificationService.show(message, type);
+          this.router.navigate(['/invoices']);
+        },
+        error: (error) => {
+          this.isSunatValidating.set(false);
+          this.isLoading.set(false);
+          console.error('Error al validar con SUNAT:', error);
+          this.notificationService.show(
+            'Factura actualizada correctamente, pero hubo un error al validar con SUNAT',
+            'error'
+          );
+          this.router.navigate(['/invoices']);
+        },
+      });
   }
 }
