@@ -1,66 +1,43 @@
-@use "./styles/variables" as vars;
+/* You can add global styles to this file, and also import other style files */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-* {
+:root {
+  --font-primary: "DM Sans", sans-serif;
+  --color-background: #f4f7fe;
+}
+
+body {
+  font-family: var(--font-primary);
+  background-color: var(--color-background);
+  color: #1b2559; /* Secondary color by default for text */
   margin: 0;
   padding: 0;
-  box-sizing: border-box;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
-.text-color1 {
-  color: vars.$color1;
+/* Custom Scrollbar for Webkit */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
 }
 
-.text-color2 {
-  color: vars.$color2;
+::-webkit-scrollbar-track {
+  background: transparent;
 }
 
-.text-color3 {
-  color: vars.$color3;
+::-webkit-scrollbar-thumb {
+  background: #a3aed0; /* Tertiary */
+  border-radius: 3px;
 }
 
-.text-color4 {
-  color: vars.$color4;
+::-webkit-scrollbar-thumb:hover {
+  background: #4318ff; /* Primary */
 }
 
-.text-color5 {
-  color: vars.$color5;
-}
-
-.bg-color1 {
-  background-color: vars.$color1;
-}
-
-.bg-color2 {
-  background-color: vars.$color2;
-}
-
-.bg-color3 {
-  background-color: vars.$color3;
-}
-
-.bg-color4 {
-  background-color: vars.$color4;
-}
-
-.bg-color5 {
-  background-color: vars.$color5;
-}
-
-input,
-select,
-textarea {
-  border: 1px solid vars.$color2;
-  border-radius: 0.5rem !important;
-  padding: 0.5rem;
-}
-
-.sidebar-shadow {
-  box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
-}
-
-.transition-smooth {
-  transition: all 0.3s ease-in-out;
+/* Utility classes to match design system */
+.card-3d {
+  @apply bg-white rounded-xl shadow-soft;
 }

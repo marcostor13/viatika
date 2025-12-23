@@ -1,7 +1,12 @@
-<div class="flex items-center justify-between w-full gap-2 p-5">
-  <button
-    class="bg-color1 text-white px-4 py-1 flex items-center gap-2 rounded-full"
-    (click)="back()"
+<div class="flex flex-col sm:flex-row items-start sm:items-center justify-between w-full gap-4 p-5">
+  <h1 class="text-2xl font-bold text-secondary">
+    @if (id) { Editar factura } @else { Agregar factura }
+  </h1>
+  <app-button
+    label="Volver"
+    variant="secondary"
+    size="md"
+    (clicked)="back()"
   >
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -9,7 +14,7 @@
       viewBox="0 0 24 24"
       stroke-width="1.5"
       stroke="currentColor"
-      class="w-7"
+      class="size-5"
     >
       <path
         stroke-linecap="round"
@@ -17,170 +22,207 @@
         d="M6.75 15.75 3 12m0 0 3.75-3.75M3 12h18"
       />
     </svg>
-
-    Volver
-  </button>
-  <h1 class="text-xl font-bold">
-    @if (id) { Editar factura } @else { Agregar factura }
-  </h1>
+  </app-button>
 </div>
 
-<form [formGroup]="form" class="flex flex-col gap-4 p-5">
-  <div class="flex flex-col gap-2">
-    <label for="proyectId">Proyecto <span class="text-color1">*</span></label>
-    <select
-      id="proyectId"
-      formControlName="proyectId"
-      class="w-full p-2 border border-gray-300"
-    >
-      <option value="">Seleccione un proyecto</option>
-      @for(proyect of proyects; track proyect._id){
-      <option [value]="proyect._id">{{ proyect.name }}</option>
+<form [formGroup]="form" class="flex flex-col gap-6 p-5">
+  <div class="bg-quaternary rounded-xl shadow-soft border border-gray-100 p-6 space-y-6">
+    <div class="flex flex-col gap-2">
+      <label for="proyectId" class="text-sm font-medium text-secondary">
+        Proyecto <span class="text-error">*</span>
+      </label>
+      <div class="relative">
+        <select
+          id="proyectId"
+          formControlName="proyectId"
+          class="w-full h-[42px] pl-4 pr-10 rounded-lg border border-gray-200 bg-background focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-sm cursor-pointer"
+          style="-webkit-appearance: none; -moz-appearance: none; appearance: none; background-image: none;"
+        >
+          <option value="">Seleccione un proyecto</option>
+          @for(proyect of proyects; track proyect._id){
+          <option [value]="proyect._id">{{ proyect.name }}</option>
+          }
+        </select>
+        <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-tertiary z-10">
+          <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
+          </svg>
+        </div>
+      </div>
+      @if (proyectId?.invalid && proyectId?.touched) {
+      <span class="text-sm text-error">El proyecto es requerido</span>
       }
-    </select>
-    @if (proyectId?.invalid && proyectId?.touched) {
-    <span class="text-red-500">El proyecto es requerido</span>
-    }
-  </div>
-  <div class="flex flex-col gap-2">
-    <label for="categoryId">Categoría <span class="text-color1">*</span></label>
-    <select
-      id="categoryId"
-      formControlName="categoryId"
-      class="w-full p-2 border border-gray-300"
-    >
-      <option value="">Seleccione una categoría</option>
-      @for(category of categories; track category._id){
-      <option value="{{ category._id }}">{{ category.name }}</option>
+    </div>
+    
+    <div class="flex flex-col gap-2">
+      <label for="categoryId" class="text-sm font-medium text-secondary">
+        Categoría <span class="text-error">*</span>
+      </label>
+      <div class="relative">
+        <select
+          id="categoryId"
+          formControlName="categoryId"
+          class="w-full h-[42px] pl-4 pr-10 rounded-lg border border-gray-200 bg-background focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-sm cursor-pointer"
+          style="-webkit-appearance: none; -moz-appearance: none; appearance: none; background-image: none;"
+        >
+          <option value="">Seleccione una categoría</option>
+          @for(category of categories; track category._id){
+          <option value="{{ category._id }}">{{ category.name }}</option>
+          }
+        </select>
+        <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-tertiary z-10">
+          <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
+          </svg>
+        </div>
+      </div>
+      @if (categoryId?.invalid && categoryId?.touched) {
+      <span class="text-sm text-error">La categoría es requerida</span>
       }
-    </select>
-    @if (categoryId?.invalid && categoryId?.touched) {
-    <span class="text-red-500">La categoría es requerida</span>
-    }
+    </div>
   </div>
 
   @if(!id) {
-  <div class="flex flex-col gap-2">
-    <label for="file"
-      >Adjuntar factura <span class="text-color1">*</span></label
-    >
+  <div class="bg-quaternary rounded-xl shadow-soft border border-gray-100 p-6">
+    <div class="flex flex-col gap-2">
+      <label for="file" class="text-sm font-medium text-secondary">
+        Adjuntar factura <span class="text-error">*</span>
+      </label>
 
-    <div
-      class="bg-blue-50 border border-blue-300 rounded-lg p-6 text-center shadow-sm w-full cursor-pointer hover:bg-blue-100 transition"
-      (click)="fileInput.click()"
-    >
-      <svg
-        xmlns="http://www.w3.org/2000/svg"
-        class="h-12 w-12 mx-auto text-blue-400"
-        fill="none"
-        viewBox="0 0 24 24"
-        stroke="currentColor"
+      <div
+        class="bg-background border-2 border-dashed border-tertiary rounded-xl p-8 text-center w-full cursor-pointer hover:border-primary hover:bg-primary/5 transition-all duration-200 group"
+        (click)="fileInput.click()"
       >
-        <path
-          stroke-linecap="round"
-          stroke-linejoin="round"
-          stroke-width="2"
-          d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          class="h-12 w-12 mx-auto text-tertiary group-hover:text-primary transition-colors"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+        >
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
+          />
+        </svg>
+        <p class="mt-3 text-sm text-secondary font-medium">
+          Haga clic para seleccionar una factura
+        </p>
+        <p class="mt-1 text-xs text-tertiary">
+          Formatos soportados: PDF, JPG, PNG
+        </p>
+        <input
+          type="file"
+          id="file"
+          accept="image/*,application/pdf"
+          capture="environment"
+          (change)="onFileSelected($event)"
+          class="hidden"
+          #fileInput
         />
-      </svg>
-      <p class="mt-2 text-sm text-gray-600">
-        Haga clic para seleccionar una factura
-      </p>
-      <input
-        type="file"
-        id="file"
-        accept="image/*,application/pdf"
-        capture="environment"
-        (change)="onFileSelected($event)"
-        class="hidden"
-        #fileInput
-      />
+      </div>
+      @if (imageUrl?.invalid && imageUrl?.touched) {
+      <span class="text-sm text-error mt-1">La factura es requerida</span>
+      }
     </div>
-    @if (imageUrl?.invalid && imageUrl?.touched) {
-    <span class="text-red-500">La factura es requerida</span>
-    }
   </div>
   } @if (previewImage) {
-  <div class="flex flex-col gap-2">
-    <div class="flex justify-between items-center">
-      <label for="preview">Vista previa</label>
-      <button
-        class="text-blue-600 hover:underline"
-        (click)="openInvoice()"
-        type="button"
-      >
-        Ver en pantalla completa
-      </button>
-    </div>
-    <div class="relative h-80 border rounded-lg overflow-hidden">
-      <img
-        [src]="previewImage"
-        class="absolute inset-0 w-full h-full object-contain"
-      />
+  <div class="bg-quaternary rounded-xl shadow-soft border border-gray-100 p-6">
+    <div class="flex flex-col gap-4">
+      <div class="flex justify-between items-center">
+        <label for="preview" class="text-sm font-medium text-secondary">Vista previa</label>
+        <button
+          class="text-sm text-primary hover:text-primary/80 font-medium transition-colors"
+          (click)="openInvoice()"
+          type="button"
+        >
+          Ver en pantalla completa
+        </button>
+      </div>
+      <div class="relative h-80 border border-gray-200 rounded-xl overflow-hidden bg-background">
+        <img
+          [src]="previewImage"
+          class="absolute inset-0 w-full h-full object-contain"
+        />
+      </div>
     </div>
   </div>
   } @if (percentage() > 0 && percentage() < 100) {
-  <div class="flex flex-col gap-2">
-    <label>Progreso</label>
-    <div class="w-full bg-gray-200 rounded-full h-2.5">
-      <div
-        class="bg-color1 h-2.5 rounded-full"
-        [style.width.%]="percentage()"
-      ></div>
+  <div class="bg-quaternary rounded-xl shadow-soft border border-gray-100 p-6">
+    <div class="flex flex-col gap-3">
+      <label class="text-sm font-medium text-secondary">Progreso de carga</label>
+      <div class="w-full bg-background rounded-full h-3 overflow-hidden">
+        <div
+          class="bg-primary h-3 rounded-full transition-all duration-300 ease-out"
+          [style.width.%]="percentage()"
+        ></div>
+      </div>
+      <p class="text-sm text-tertiary text-right">{{ percentage() }}%</p>
     </div>
-    <p class="text-xs text-right">{{ percentage() }}%</p>
   </div>
   } @if(id) {
-  <div class="flex flex-col gap-2">
-    <label for="fechaEmision">Fecha de Emisión</label>
-    <input
-      id="fechaEmision"
-      type="date"
-      formControlName="fechaEmision"
-      class="w-full p-2 border border-gray-300"
-    />
-  </div>
-  <div class="flex flex-col gap-2">
-    <label for="rucEmisor">RUC Emisor</label>
-    <input
-      id="rucEmisor"
-      type="text"
-      formControlName="rucEmisor"
-      class="w-full p-2 border border-gray-300"
-    />
-  </div>
-  <div class="flex flex-col gap-2">
-    <label for="serie">Serie</label>
-    <input
-      id="serie"
-      type="text"
-      formControlName="serie"
-      class="w-full p-2 border border-gray-300"
-      placeholder="Ej: F001"
-    />
-  </div>
-  <div class="flex flex-col gap-2">
-    <label for="correlativo">Correlativo</label>
-    <input
-      id="correlativo"
-      type="text"
-      formControlName="correlativo"
-      class="w-full p-2 border border-gray-300"
-      placeholder="Ej: 00001234"
-    />
+  <div class="bg-quaternary rounded-xl shadow-soft border border-gray-100 p-6 space-y-6">
+    <div class="flex flex-col gap-2">
+      <label for="fechaEmision" class="text-sm font-medium text-secondary">Fecha de Emisión</label>
+      <input
+        id="fechaEmision"
+        type="date"
+        formControlName="fechaEmision"
+        class="w-full h-[42px] px-4 rounded-lg border border-gray-200 bg-background focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-sm"
+      />
+    </div>
+    <div class="flex flex-col gap-2">
+      <label for="rucEmisor" class="text-sm font-medium text-secondary">RUC Emisor</label>
+      <input
+        id="rucEmisor"
+        type="text"
+        formControlName="rucEmisor"
+        class="w-full h-[42px] px-4 rounded-lg border border-gray-200 bg-background focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-sm"
+      />
+    </div>
+    <div class="flex flex-col gap-2">
+      <label for="serie" class="text-sm font-medium text-secondary">Serie</label>
+      <input
+        id="serie"
+        type="text"
+        formControlName="serie"
+        class="w-full h-[42px] px-4 rounded-lg border border-gray-200 bg-background focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-sm"
+        placeholder="Ej: F001"
+      />
+    </div>
+    <div class="flex flex-col gap-2">
+      <label for="correlativo" class="text-sm font-medium text-secondary">Correlativo</label>
+      <input
+        id="correlativo"
+        type="text"
+        formControlName="correlativo"
+        class="w-full h-[42px] px-4 rounded-lg border border-gray-200 bg-background focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-sm"
+        placeholder="Ej: 00001234"
+      />
+    </div>
   </div>
   }
 
-  <button
-    [disabled]="form.invalid || isLoading() || isSunatValidating()"
-    type="button"
-    (click)="saveOrUpdate()"
-    class="bg-color1 text-white px-4 py-2 rounded-md mt-4 disabled:opacity-50"
-  >
-    @if (id) { @if (isSunatValidating()) {
-    <span class="flex items-center gap-2">
+  <div class="flex flex-col sm:flex-row gap-3 justify-end pt-4">
+    <app-button
+      label="Cancelar"
+      variant="secondary"
+      size="md"
+      [disabled]="isLoading() || isSunatValidating()"
+      (clicked)="back()"
+    ></app-button>
+    <app-button
+      [label]="getButtonLabel()"
+      variant="primary"
+      size="md"
+      [disabled]="form.invalid || isLoading() || isSunatValidating()"
+      (clicked)="saveOrUpdate()"
+    >
+      @if (isLoading() || isSunatValidating()) {
       <svg
-        class="animate-spin h-4 w-4 text-white"
+        class="animate-spin h-5 w-5"
         xmlns="http://www.w3.org/2000/svg"
         fill="none"
         viewBox="0 0 24 24"
@@ -199,56 +241,7 @@
           d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
         ></path>
       </svg>
-      Validando con SUNAT...
-    </span>
-    } @else if (isLoading()) {
-    <span class="flex items-center gap-2">
-      <svg
-        class="animate-spin h-4 w-4 text-white"
-        xmlns="http://www.w3.org/2000/svg"
-        fill="none"
-        viewBox="0 0 24 24"
-      >
-        <circle
-          class="opacity-25"
-          cx="12"
-          cy="12"
-          r="10"
-          stroke="currentColor"
-          stroke-width="4"
-        ></circle>
-        <path
-          class="opacity-75"
-          fill="currentColor"
-          d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-        ></path>
-      </svg>
-      Actualizando...
-    </span>
-    } @else { Actualizar factura } } @else { @if (isLoading()) {
-    <span class="flex items-center gap-2">
-      <svg
-        class="animate-spin h-4 w-4 text-white"
-        xmlns="http://www.w3.org/2000/svg"
-        fill="none"
-        viewBox="0 0 24 24"
-      >
-        <circle
-          class="opacity-25"
-          cx="12"
-          cy="12"
-          r="10"
-          stroke="currentColor"
-          stroke-width="4"
-        ></circle>
-        <path
-          class="opacity-75"
-          fill="currentColor"
-          d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-        ></path>
-      </svg>
-      Procesando...
-    </span>
-    } @else { Subir factura } }
-  </button>
+      }
+    </app-button>
+  </div>
 </form>

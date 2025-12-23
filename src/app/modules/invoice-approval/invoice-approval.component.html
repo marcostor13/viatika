@@ -4,9 +4,13 @@
   >
     <h1 class="text-2xl font-bold">Aprobación de Facturas</h1>
     <div class="flex flex-wrap gap-2 w-full sm:w-auto">
-      <button
-        class="w-full sm:w-auto bg-color1 text-white px-4 py-3 sm:py-2 rounded-md flex items-center justify-center gap-2 text-sm sm:text-base shadow-sm"
-        (click)="navigateToAddInvoice()"
+      <app-button
+        label="Agregar Factura"
+        variant="primary"
+        size="md"
+        [fullWidth]="true"
+        class="sm:w-auto"
+        (clicked)="navigateToAddInvoice()"
       >
         <svg
           xmlns="http://www.w3.org/2000/svg"
@@ -22,64 +26,26 @@
             d="M12 4.5v15m7.5-7.5h-15"
           />
         </svg>
-        Agregar Factura
-      </button>
-      <button
-        class="w-full sm:w-auto bg-green-600 text-white px-4 py-3 sm:py-2 rounded-md flex items-center justify-center gap-2 text-sm sm:text-base shadow-sm"
-        (click)="exportInvoices('excel')"
-      >
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke-width="1.5"
-          stroke="currentColor"
-          class="size-5"
-        >
-          <path
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3"
-          />
-        </svg>
-        Descargar CSV
-      </button>
-      <button
-        class="w-full sm:w-auto bg-red-600 text-white px-4 py-3 sm:py-2 rounded-md flex items-center justify-center gap-2 text-sm sm:text-base shadow-sm"
-        (click)="exportInvoices('pdf')"
-      >
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke-width="1.5"
-          stroke="currentColor"
-          class="size-5"
-        >
-          <path
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3"
-          />
-        </svg>
-        Descargar PDF
-      </button>
+      </app-button>
+      <app-export-button
+        (exportClicked)="exportInvoices($event)"
+        class="sm:w-auto"
+      ></app-export-button>
     </div>
   </div>
 
-  <!-- Dashboard -->
-  <div class="mb-6">
-    <p class="text-gray-600">Panel de control de aprobación de facturas</p>
-  </div>
-
   <!-- Estadísticas principales -->
-  <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+  <div class="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
     <!-- Total de Facturas -->
-    <div class="bg-white rounded-lg shadow-md p-6">
-      <div class="flex items-center">
-        <div class="p-3 rounded-full bg-blue-100">
+    <div
+      class="bg-quaternary rounded-xl shadow-soft border border-gray-100 p-4 md:p-6"
+    >
+      <div
+        class="flex flex-col md:flex-row items-start md:items-center gap-2 md:gap-0"
+      >
+        <div class="p-2 md:p-3 rounded-full bg-blue-100">
           <svg
-            class="w-6 h-6 text-blue-600"
+            class="w-5 h-5 md:w-6 md:h-6 text-blue-600"
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
@@ -92,9 +58,9 @@
             />
           </svg>
         </div>
-        <div class="ml-4">
-          <p class="text-sm text-gray-600">Total Facturas</p>
-          <p class="text-2xl font-semibold text-gray-900">
+        <div class="md:ml-4">
+          <p class="text-xs md:text-sm text-tertiary">Total Facturas</p>
+          <p class="text-xl md:text-2xl font-semibold text-secondary">
             {{ stats().total }}
           </p>
         </div>
@@ -102,11 +68,15 @@
     </div>
 
     <!-- Facturas Pendientes -->
-    <div class="bg-white rounded-lg shadow-md p-6">
-      <div class="flex items-center">
-        <div class="p-3 rounded-full bg-yellow-100">
+    <div
+      class="bg-quaternary rounded-xl shadow-soft border border-gray-100 p-4 md:p-6"
+    >
+      <div
+        class="flex flex-col md:flex-row items-start md:items-center gap-2 md:gap-0"
+      >
+        <div class="p-2 md:p-3 rounded-full bg-yellow-100">
           <svg
-            class="w-6 h-6 text-yellow-600"
+            class="w-5 h-5 md:w-6 md:h-6 text-yellow-600"
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
@@ -119,9 +89,9 @@
             />
           </svg>
         </div>
-        <div class="ml-4">
-          <p class="text-sm text-gray-600">Facturas Pendientes</p>
-          <p class="text-2xl font-semibold text-yellow-600">
+        <div class="md:ml-4">
+          <p class="text-xs md:text-sm text-tertiary">Facturas Pendientes</p>
+          <p class="text-xl md:text-2xl font-semibold text-yellow-600">
             {{ stats().pending }}
           </p>
         </div>
@@ -129,11 +99,15 @@
     </div>
 
     <!-- Facturas Aprobadas -->
-    <div class="bg-white rounded-lg shadow-md p-6">
-      <div class="flex items-center">
-        <div class="p-3 rounded-full bg-green-100">
+    <div
+      class="bg-quaternary rounded-xl shadow-soft border border-gray-100 p-4 md:p-6"
+    >
+      <div
+        class="flex flex-col md:flex-row items-start md:items-center gap-2 md:gap-0"
+      >
+        <div class="p-2 md:p-3 rounded-full bg-green-100">
           <svg
-            class="w-6 h-6 text-green-600"
+            class="w-5 h-5 md:w-6 md:h-6 text-green-600"
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
@@ -146,9 +120,9 @@
             />
           </svg>
         </div>
-        <div class="ml-4">
-          <p class="text-sm text-gray-600">Facturas Aprobadas</p>
-          <p class="text-2xl font-semibold text-green-600">
+        <div class="md:ml-4">
+          <p class="text-xs md:text-sm text-tertiary">Facturas Aprobadas</p>
+          <p class="text-xl md:text-2xl font-semibold text-green-600">
             {{ stats().approved }}
           </p>
         </div>
@@ -156,11 +130,15 @@
     </div>
 
     <!-- Facturas Rechazadas -->
-    <div class="bg-white rounded-lg shadow-md p-6">
-      <div class="flex items-center">
-        <div class="p-3 rounded-full bg-red-100">
+    <div
+      class="bg-quaternary rounded-xl shadow-soft border border-gray-100 p-4 md:p-6"
+    >
+      <div
+        class="flex flex-col md:flex-row items-start md:items-center gap-2 md:gap-0"
+      >
+        <div class="p-2 md:p-3 rounded-full bg-red-100">
           <svg
-            class="w-6 h-6 text-red-600"
+            class="w-5 h-5 md:w-6 md:h-6 text-red-600"
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
@@ -173,9 +151,9 @@
             />
           </svg>
         </div>
-        <div class="ml-4">
-          <p class="text-sm text-gray-600">Facturas Rechazadas</p>
-          <p class="text-2xl font-semibold text-red-600">
+        <div class="md:ml-4">
+          <p class="text-xs md:text-sm text-tertiary">Facturas Rechazadas</p>
+          <p class="text-xl md:text-2xl font-semibold text-red-600">
             {{ stats().rejected }}
           </p>
         </div>
@@ -183,153 +161,299 @@
     </div>
   </div>
 
-  <div class="bg-white rounded-lg p-3 sm:p-4 shadow-sm border">
+  <div
+    class="bg-quaternary p-5 rounded-xl shadow-soft border border-gray-100 mb-6"
+  >
     <div
-      class="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-3 gap-2"
+      class="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-5 gap-4"
     >
-      <h3 class="font-bold text-sm sm:text-base">Filtros</h3>
-      <button
-        class="text-xs sm:text-sm text-blue-600 hover:text-blue-800 self-start sm:self-auto"
-        (click)="clearFilters()"
-      >
-        Limpiar filtros
-      </button>
+      <div class="flex items-center justify-between sm:justify-start gap-3">
+        <h3 class="font-bold text-lg text-secondary">Filtros de Búsqueda</h3>
+        <button
+          type="button"
+          class="sm:hidden flex items-center justify-center w-10 h-10 rounded-lg border border-gray-200 bg-background hover:bg-gray-50 transition-colors"
+          (click)="toggleFilters()"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            class="w-5 h-5 text-secondary transition-transform duration-200"
+            [class.rotate-180]="showFilters()"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M19 9l-7 7-7-7"
+            />
+          </svg>
+        </button>
+      </div>
+      <div class="flex items-center gap-3">
+        <button
+          type="button"
+          class="group flex items-center gap-2 text-sm font-medium text-primary hover:text-primary/80 transition-colors"
+          (click)="clearFilters()"
+        >
+          <span
+            class="border-b border-transparent group-hover:border-primary transition-all"
+            >Limpiar filtros</span
+          >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            class="w-4 h-4"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M6 18L18 6M6 6l12 12"
+            />
+          </svg>
+        </button>
+      </div>
     </div>
 
     <form
-      class="grid grid-cols-1 gap-2 sm:gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 w-full"
+      class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 sm:block"
+      [class.hidden]="!showFilters()"
     >
-      <select
-        class="w-full px-3 py-2 sm:px-4 sm:py-2 rounded-lg border border-blue-100 bg-blue-50 focus:outline-none focus:ring-2 focus:ring-blue-200 text-xs sm:text-sm"
-        [ngModel]="filterProject()"
-        (ngModelChange)="filterProject.set($event); getInvoices()"
-        name="project"
-      >
-        <option value="">Todos los proyectos</option>
-        @for (project of projects; track project._id) {
-        <option [value]="project._id">{{ project.name }}</option>
-        }
-      </select>
-
-      <select
-        class="w-full px-3 py-2 sm:px-4 sm:py-2 rounded-lg border border-blue-100 bg-blue-50 focus:outline-none focus:ring-2 focus:ring-blue-200 text-xs sm:text-sm"
-        [ngModel]="filterCategory()"
-        (ngModelChange)="filterCategory.set($event); getInvoices()"
-        name="category"
-      >
-        <option value="">Todas las categorías</option>
-        @for (category of categories; track category._id) {
-        <option [value]="category._id">{{ category.name }}</option>
-        }
-      </select>
-
-      <select
-        class="w-full px-3 py-2 sm:px-4 sm:py-2 rounded-lg border border-blue-100 bg-blue-50 focus:outline-none focus:ring-2 focus:ring-blue-200 text-xs sm:text-sm"
-        [ngModel]="filterStatus()"
-        (ngModelChange)="filterStatus.set($event); getInvoices()"
-        name="status"
-      >
-        <option value="">Todos los estados</option>
-        <option value="pending">Pendiente</option>
-        <option value="approved">Aprobada</option>
-        <option value="rejected">Rechazada</option>
-      </select>
-
-      <div class="flex flex-col flex-1">
-        <button
-          type="button"
-          id="dateFromButton"
-          class="w-full px-3 py-2 sm:px-4 sm:py-2 rounded-lg border border-blue-100 bg-blue-50 hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-blue-200 text-xs sm:text-sm text-left flex items-center justify-between transition-colors"
-          (click)="openDatePicker('dateFrom')"
+      <!-- Project Filter -->
+      <div class="flex flex-col gap-1.5">
+        <label class="text-xs font-bold text-tertiary uppercase tracking-wider"
+          >Proyecto</label
         >
-          <span class="text-gray-600">
-            {{
-              filterDateFrom()
-                ? formatDateForInputDisplay(filterDateFrom())
-                : "Fecha desde"
-            }}
-          </span>
-          <svg
-            class="w-4 h-4 text-gray-500"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
+        <div class="relative">
+          <select
+            class="w-full h-[42px] px-3 rounded-lg border border-gray-200 bg-gray-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-sm appearance-none cursor-pointer"
+            [ngModel]="filterProject()"
+            (ngModelChange)="filterProject.set($event); getInvoices()"
+            name="project"
           >
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width="2"
-              d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
-            ></path>
-          </svg>
-        </button>
-        <input
-          type="date"
-          id="dateFromPicker"
-          class="sr-only"
-          style="position: absolute; opacity: 0; pointer-events: none"
-          [value]="filterDateFrom()"
-          (change)="onDatePickerChange($event, 'dateFrom')"
-        />
+            <option value="">Todos los proyectos</option>
+            @for (project of projects; track project._id) {
+            <option [value]="project._id">{{ project.name }}</option>
+            }
+          </select>
+          <div
+            class="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none text-tertiary"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              class="w-4 h-4"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M19 9l-7 7-7-7"
+              />
+            </svg>
+          </div>
+        </div>
       </div>
 
-      <div class="flex flex-col flex-1">
-        <button
-          type="button"
-          id="dateToButton"
-          class="w-full px-3 py-2 sm:px-4 sm:py-2 rounded-lg border border-blue-100 bg-blue-50 hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-blue-200 text-xs sm:text-sm text-left flex items-center justify-between transition-colors"
-          (click)="openDatePicker('dateTo')"
+      <!-- Category Filter -->
+      <div class="flex flex-col gap-1.5">
+        <label class="text-xs font-bold text-tertiary uppercase tracking-wider"
+          >Categoría</label
         >
-          <span class="text-gray-600">
-            {{
-              filterDateTo()
-                ? formatDateForInputDisplay(filterDateTo())
-                : "Fecha hasta"
-            }}
-          </span>
-          <svg
-            class="w-4 h-4 text-gray-500"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
+        <div class="relative">
+          <select
+            class="w-full h-[42px] px-3 rounded-lg border border-gray-200 bg-gray-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-sm appearance-none cursor-pointer"
+            [ngModel]="filterCategory()"
+            (ngModelChange)="filterCategory.set($event); getInvoices()"
+            name="category"
           >
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width="2"
-              d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
-            ></path>
-          </svg>
-        </button>
-        <input
-          type="date"
-          id="dateToPicker"
-          class="sr-only"
-          style="position: absolute; opacity: 0; pointer-events: none"
-          [value]="filterDateTo()"
-          (change)="onDatePickerChange($event, 'dateTo')"
-        />
+            <option value="">Todas las categorías</option>
+            @for (category of categories; track category._id) {
+            <option [value]="category._id">{{ category.name }}</option>
+            }
+          </select>
+          <div
+            class="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none text-tertiary"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              class="w-4 h-4"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M19 9l-7 7-7-7"
+              />
+            </svg>
+          </div>
+        </div>
       </div>
 
-      <div class="grid grid-cols-2 gap-1 sm:gap-2 sm:col-span-2 md:col-span-1">
-        <input
-          type="number"
-          class="w-full px-2 py-2 sm:px-3 sm:py-2 rounded-lg border border-blue-100 bg-blue-50 focus:outline-none focus:ring-2 focus:ring-blue-200 text-xs sm:text-sm"
-          placeholder="Min."
-          [ngModel]="filterAmountMin()"
-          (ngModelChange)="filterAmountMin.set($event); getInvoices()"
-          name="amountMin"
-          min="0"
-        />
-        <input
-          type="number"
-          class="w-full px-2 py-2 sm:px-3 sm:py-2 rounded-lg border border-blue-100 bg-blue-50 focus:outline-none focus:ring-2 focus:ring-blue-200 text-xs sm:text-sm"
-          placeholder="Máx."
-          [ngModel]="filterAmountMax()"
-          (ngModelChange)="filterAmountMax.set($event); getInvoices()"
-          name="amountMax"
-          min="0"
-        />
+      <!-- Status Filter -->
+      <div class="flex flex-col gap-1.5">
+        <label class="text-xs font-bold text-tertiary uppercase tracking-wider"
+          >Estado</label
+        >
+        <div class="relative">
+          <select
+            class="w-full h-[42px] px-3 rounded-lg border border-gray-200 bg-gray-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-sm appearance-none cursor-pointer"
+            [ngModel]="filterStatus()"
+            (ngModelChange)="filterStatus.set($event); getInvoices()"
+            name="status"
+          >
+            <option value="">Todos los estados</option>
+            <option value="pending">Pendiente</option>
+            <option value="approved">Aprobada</option>
+            <option value="rejected">Rechazada</option>
+          </select>
+          <div
+            class="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none text-tertiary"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              class="w-4 h-4"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M19 9l-7 7-7-7"
+              />
+            </svg>
+          </div>
+        </div>
+      </div>
+
+      <!-- Amount Range Filter -->
+      <div class="flex flex-col gap-1.5">
+        <label class="text-xs font-bold text-tertiary uppercase tracking-wider"
+          >Rango de Monto</label
+        >
+        <div class="flex gap-2">
+          <input
+            type="number"
+            class="w-full h-[42px] px-3 rounded-lg border border-gray-200 bg-gray-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-sm"
+            placeholder="Min"
+            [ngModel]="filterAmountMin()"
+            (ngModelChange)="filterAmountMin.set($event); getInvoices()"
+            name="amountMin"
+            min="0"
+          />
+          <input
+            type="number"
+            class="w-full h-[42px] px-3 rounded-lg border border-gray-200 bg-gray-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-sm"
+            placeholder="Max"
+            [ngModel]="filterAmountMax()"
+            (ngModelChange)="filterAmountMax.set($event); getInvoices()"
+            name="amountMax"
+            min="0"
+          />
+        </div>
+      </div>
+
+      <!-- Date Range Filter -->
+      <div class="flex flex-col gap-1.5 sm:col-span-2 lg:col-span-2">
+        <label class="text-xs font-bold text-tertiary uppercase tracking-wider"
+          >Rango de Fechas</label
+        >
+        <div class="flex gap-2">
+          <!-- Date From -->
+          <div class="relative flex-1">
+            <button
+              type="button"
+              id="dateFromButton"
+              class="w-full h-[42px] px-3 rounded-lg border border-gray-200 bg-gray-50 hover:bg-white focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-sm text-left flex items-center justify-between group"
+              (click)="openDatePicker('dateFrom')"
+            >
+              <span
+                [class.text-tertiary]="!filterDateFrom()"
+                [class.text-secondary]="filterDateFrom()"
+              >
+                {{
+                  filterDateFrom()
+                    ? formatDateForInputDisplay(filterDateFrom())
+                    : "Desde"
+                }}
+              </span>
+              <svg
+                class="w-4 h-4 text-tertiary group-hover:text-primary transition-colors"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+                ></path>
+              </svg>
+            </button>
+            <input
+              type="date"
+              id="dateFromPicker"
+              class="sr-only"
+              style="position: absolute; opacity: 0; pointer-events: none"
+              [value]="filterDateFrom()"
+              (change)="onDatePickerChange($event, 'dateFrom')"
+            />
+          </div>
+
+          <!-- Date To -->
+          <div class="relative flex-1">
+            <button
+              type="button"
+              id="dateToButton"
+              class="w-full h-[42px] px-3 rounded-lg border border-gray-200 bg-gray-50 hover:bg-white focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-sm text-left flex items-center justify-between group"
+              (click)="openDatePicker('dateTo')"
+            >
+              <span
+                [class.text-tertiary]="!filterDateTo()"
+                [class.text-secondary]="filterDateTo()"
+              >
+                {{
+                  filterDateTo()
+                    ? formatDateForInputDisplay(filterDateTo())
+                    : "Hasta"
+                }}
+              </span>
+              <svg
+                class="w-4 h-4 text-tertiary group-hover:text-primary transition-colors"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+                ></path>
+              </svg>
+            </button>
+            <input
+              type="date"
+              id="dateToPicker"
+              class="sr-only"
+              style="position: absolute; opacity: 0; pointer-events: none"
+              [value]="filterDateTo()"
+              (change)="onDatePickerChange($event, 'dateTo')"
+            />
+          </div>
+        </div>
       </div>
     </form>
   </div>

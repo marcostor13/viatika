@@ -1,40 +1,14 @@
 .chart-container {
   position: relative;
-  min-height: 250px;
-  height: 50vh;
-  max-height: 400px;
+  height: 350px; /* Fixed height for consistency */
   width: 100%;
   margin: 0 auto;
 }
 
 canvas {
-  max-width: 100%;
-  height: auto !important;
-}
-
-/* Estilos para dispositivos móviles */
-@media (max-width: 576px) {
-  .chart-container {
-    min-height: 200px;
-    height: 40vh;
-  }
-}
-
-/* Estilos para tablets */
-@media (min-width: 577px) and (max-width: 991px) {
-  .chart-container {
-    min-height: 220px;
-    height: 45vh;
-  }
-}
-
-/* Estilos específicos para gráficos de colaboradores lado a lado */
-@media (min-width: 1024px) {
-  .chart-container {
-    min-height: 300px;
-    height: 55vh;
-    max-height: 450px;
-  }
+  width: 100% !important;
+  height: 100% !important;
+  display: block;
 }
 
 /* Arreglo para la leyenda en móviles */

@@ -29,3 +29,21 @@ button:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }
+
+// Ocultar icono nativo del select en todos los navegadores
+select {
+  -webkit-appearance: none !important;
+  -moz-appearance: none !important;
+  appearance: none !important;
+  background-image: none !important;
+  
+  // Ocultar icono en IE/Edge
+  &::-ms-expand {
+    display: none !important;
+  }
+  
+  // Ocultar icono en Safari
+  &::-webkit-appearance {
+    -webkit-appearance: none;
+  }
+}

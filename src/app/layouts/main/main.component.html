@@ -1,4 +1,4 @@
-<div class="flex h-screen">
+<div class="flex h-screen bg-background">
   <app-sidebar
     [sidebarVisible]="sidebarVisible"
     (sidebarToggle)="toggleSidebar()"
@@ -7,11 +7,11 @@
 
   <div class="flex-1 flex flex-col lg:ml-0 overflow-x-hidden">
     <header
-      class="relative bg-white shadow-sm border-b border-gray-200 lg:ml-0 lg:pl-0 pl-16"
+      class="relative bg-quaternary shadow-soft border-b border-tertiary/20 lg:ml-0 lg:pl-0 pl-16"
     >
       <button
         (click)="toggleSidebar()"
-        class="lg:hidden absolute top-1/2 left-4 -translate-y-1/2 z-40 p-3 rounded-xl bg-white shadow-xl text-gray-700 hover:text-gray-900 hover:bg-gray-50 transition-all duration-300 hover:shadow-2xl hover:scale-105 group border border-gray-200"
+        class="lg:hidden absolute top-1/2 left-4 -translate-y-1/2 z-40 p-3 rounded-xl bg-quaternary shadow-soft text-secondary hover:text-primary hover:bg-background transition-all duration-300 hover:shadow-lg hover:scale-105 group border border-tertiary/20"
       >
         <div class="relative w-6 h-6 flex flex-col justify-center space-y-1">
           <div class="w-6 h-0.5 bg-current"></div>
@@ -20,23 +20,17 @@
         </div>
       </button>
 
-      <div class="flex items-center justify-between px-6 py-4">
-        <div class="flex items-center">
-          <h1 class="text-2xl font-bold text-gray-900">
-            {{ getPageTitle() }}
-          </h1>
-        </div>
-
+      <div class="flex items-center justify-end px-6 py-4">
         <div class="flex items-center space-x-4">
-          <div class="text-sm text-gray-500">
+          <div class="text-sm text-tertiary">
             Sistema de Control de Facturas
           </div>
         </div>
       </div>
     </header>
 
-    <main class="flex-1 overflow-auto bg-gray-100">
-      <div class="p-6">
+    <main class="flex-1 overflow-auto bg-background">
+      <div class="p-4 md:p-6">
         <router-outlet />
       </div>
     </main>

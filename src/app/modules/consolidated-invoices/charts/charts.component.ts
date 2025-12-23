@@ -323,12 +323,12 @@ export class ChartsComponent implements OnInit, AfterViewInit {
               if (typeof invoice.data === 'string') {
                 try {
                   invoiceData = JSON.parse(invoice.data);
-                } catch (parseError) {}
+                } catch (parseError) { }
               } else if (typeof invoice.data === 'object') {
                 invoiceData = invoice.data;
               }
             }
-          } catch (error) {}
+          } catch (error) { }
 
           let normalizedDate = null;
           if (invoiceData.fechaEmision) {
@@ -583,6 +583,7 @@ export class ChartsComponent implements OnInit, AfterViewInit {
         },
         options: {
           responsive: true,
+          maintainAspectRatio: false,
           plugins: {
             legend: {
               position: 'right',
@@ -637,6 +638,7 @@ export class ChartsComponent implements OnInit, AfterViewInit {
       },
       options: {
         responsive: true,
+        maintainAspectRatio: false,
         plugins: {
           legend: {
             position: 'right',
@@ -682,6 +684,7 @@ export class ChartsComponent implements OnInit, AfterViewInit {
         },
         options: {
           responsive: true,
+          maintainAspectRatio: false,
           plugins: {
             legend: {
               position: 'right',
@@ -736,6 +739,7 @@ export class ChartsComponent implements OnInit, AfterViewInit {
       },
       options: {
         responsive: true,
+        maintainAspectRatio: false,
         plugins: {
           legend: {
             position: 'right',
@@ -784,6 +788,7 @@ export class ChartsComponent implements OnInit, AfterViewInit {
           },
           options: {
             responsive: true,
+            maintainAspectRatio: false,
             scales: {
               y: {
                 beginAtZero: true,
@@ -839,6 +844,7 @@ export class ChartsComponent implements OnInit, AfterViewInit {
         },
         options: {
           responsive: true,
+          maintainAspectRatio: false,
           scales: {
             y: {
               beginAtZero: true,
@@ -903,6 +909,7 @@ export class ChartsComponent implements OnInit, AfterViewInit {
           },
           options: {
             responsive: true,
+            maintainAspectRatio: false,
             scales: {
               y: {
                 beginAtZero: true,
@@ -984,6 +991,7 @@ export class ChartsComponent implements OnInit, AfterViewInit {
         },
         options: {
           responsive: true,
+          maintainAspectRatio: false,
           scales: {
             y: {
               beginAtZero: true,

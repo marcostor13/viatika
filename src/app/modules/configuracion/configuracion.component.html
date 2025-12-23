@@ -19,13 +19,12 @@
         Configuración de Empresa
       </h2>
       @if (!showCompanyForm) {
-      <button
-        (click)="editCompanyConfig()"
-        class="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg transition-colors duration-200 flex items-center"
-      >
-        <span class="mr-2">✏️</span>
-        Editar Empresa
-      </button>
+      <app-button
+        label="Editar Empresa"
+        variant="primary"
+        size="md"
+        (clicked)="editCompanyConfig()"
+      />
       }
     </div>
 
@@ -110,44 +109,43 @@
       </div>
 
       <div class="flex space-x-3">
-        <button
-          (click)="saveCompanyConfig()"
+        <app-button
+          [label]="isUploadingLogo ? 'Guardando...' : 'Guardar Cambios'"
+          variant="primary"
+          size="md"
           [disabled]="isUploadingLogo"
-          class="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+          (clicked)="saveCompanyConfig()"
         >
           @if (isUploadingLogo) {
-          <span class="flex items-center">
-            <svg
-              class="animate-spin -ml-1 mr-2 h-4 w-4 text-white"
-              xmlns="http://www.w3.org/2000/svg"
-              fill="none"
-              viewBox="0 0 24 24"
-            >
-              <circle
-                class="opacity-25"
-                cx="12"
-                cy="12"
-                r="10"
-                stroke="currentColor"
-                stroke-width="4"
-              ></circle>
-              <path
-                class="opacity-75"
-                fill="currentColor"
-                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-              ></path>
-            </svg>
-            Guardando...
-          </span>
-          } @else { Guardar Cambios }
-        </button>
-        <button
-          (click)="cancelCompanyEdit()"
+          <svg
+            class="animate-spin -ml-1 mr-2 h-4 w-4"
+            xmlns="http://www.w3.org/2000/svg"
+            fill="none"
+            viewBox="0 0 24 24"
+          >
+            <circle
+              class="opacity-25"
+              cx="12"
+              cy="12"
+              r="10"
+              stroke="currentColor"
+              stroke-width="4"
+            ></circle>
+            <path
+              class="opacity-75"
+              fill="currentColor"
+              d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+            ></path>
+          </svg>
+          }
+        </app-button>
+        <app-button
+          label="Cancelar"
+          variant="secondary"
+          size="md"
           [disabled]="isUploadingLogo"
-          class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          Cancelar
-        </button>
+          (clicked)="cancelCompanyEdit()"
+        />
       </div>
     </div>
     }
@@ -159,13 +157,12 @@
         Configuración de SUNAT
       </h2>
       @if (!showSunatForm) {
-      <button
-        (click)="editSunatConfig()"
-        class="bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded-lg transition-colors duration-200 flex items-center"
-      >
-        <span class="mr-2">🔧</span>
-        {{ sunatConfig ? "Editar" : "Configurar" }} SUNAT
-      </button>
+      <app-button
+        [label]="(sunatConfig ? 'Editar' : 'Configurar') + ' SUNAT'"
+        variant="primary"
+        size="md"
+        (clicked)="editSunatConfig()"
+      />
       }
     </div>
 
@@ -207,22 +204,20 @@
           Configura las credenciales para validar comprobantes
         </p>
       </div>
-      } @if (sunatConfig) {
+      }       @if (sunatConfig) {
       <div class="flex space-x-3">
-        <button
-          (click)="testSunatConnection()"
-          class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors duration-200 flex items-center"
-        >
-          <span class="mr-2">🧪</span>
-          Probar Conexión
-        </button>
-        <button
-          (click)="deleteSunatConfig()"
-          class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg transition-colors duration-200 flex items-center"
-        >
-          <span class="mr-2">🗑️</span>
-          Eliminar Configuración
-        </button>
+        <app-button
+          label="Probar Conexión"
+          variant="primary"
+          size="md"
+          (clicked)="testSunatConnection()"
+        />
+        <app-button
+          label="Eliminar Configuración"
+          variant="danger"
+          size="md"
+          (clicked)="deleteSunatConfig()"
+        />
       </div>
       }
     </div>
@@ -286,18 +281,18 @@
       </div>
 
       <div class="flex space-x-3">
-        <button
-          (click)="saveSunatConfig()"
-          class="bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded-lg transition-colors duration-200"
-        >
-          Guardar Configuración
-        </button>
-        <button
-          (click)="cancelSunatEdit()"
-          class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg transition-colors duration-200"
-        >
-          Cancelar
-        </button>
+        <app-button
+          label="Guardar Configuración"
+          variant="primary"
+          size="md"
+          (clicked)="saveSunatConfig()"
+        />
+        <app-button
+          label="Cancelar"
+          variant="secondary"
+          size="md"
+          (clicked)="cancelSunatEdit()"
+        />
       </div>
     </div>
     }
@@ -308,13 +303,12 @@
       <div class="flex justify-between items-center mb-6">
         <h2 class="text-xl font-semibold text-gray-900">Categorías</h2>
         @if (!showCategoryForm) {
-        <button
-          (click)="addCategory()"
-          class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors duration-200 flex items-center"
-        >
-          <span class="mr-2">+</span>
-          Agregar Categoría
-        </button>
+        <app-button
+          label="Agregar Categoría"
+          variant="primary"
+          size="md"
+          (clicked)="addCategory()"
+        />
         }
       </div>
 
@@ -340,18 +334,18 @@
             />
           </div>
           <div class="flex space-x-3">
-            <button
-              (click)="save()"
-              class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors duration-200"
-            >
-              {{ editingCategory ? "Actualizar" : "Guardar" }}
-            </button>
-            <button
-              (click)="cancelCategoryEdit()"
-              class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg transition-colors duration-200"
-            >
-              Cancelar
-            </button>
+            <app-button
+              [label]="editingCategory ? 'Actualizar' : 'Guardar'"
+              variant="primary"
+              size="md"
+              (clicked)="save()"
+            />
+            <app-button
+              label="Cancelar"
+              variant="secondary"
+              size="md"
+              (clicked)="cancelCategoryEdit()"
+            />
           </div>
         </div>
       </div>
@@ -398,13 +392,12 @@
       <div class="flex justify-between items-center mb-6">
         <h2 class="text-xl font-semibold text-gray-900">Proyectos</h2>
         @if (!showProjectForm) {
-        <button
-          (click)="addProject()"
-          class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg transition-colors duration-200 flex items-center"
-        >
-          <span class="mr-2">+</span>
-          Agregar Proyecto
-        </button>
+        <app-button
+          label="Agregar Proyecto"
+          variant="primary"
+          size="md"
+          (clicked)="addProject()"
+        />
         }
       </div>
 
@@ -430,18 +423,18 @@
             />
           </div>
           <div class="flex space-x-3">
-            <button
-              (click)="saveProject()"
-              class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg transition-colors duration-200"
-            >
-              {{ editingProject ? "Actualizar" : "Guardar" }}
-            </button>
-            <button
-              (click)="cancelProjectEdit()"
-              class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg transition-colors duration-200"
-            >
-              Cancelar
-            </button>
+            <app-button
+              [label]="editingProject ? 'Actualizar' : 'Guardar'"
+              variant="primary"
+              size="md"
+              (clicked)="saveProject()"
+            />
+            <app-button
+              label="Cancelar"
+              variant="secondary"
+              size="md"
+              (clicked)="cancelProjectEdit()"
+            />
           </div>
         </div>
       </div>

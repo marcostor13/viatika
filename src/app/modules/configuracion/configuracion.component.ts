@@ -10,13 +10,14 @@ import { MaskPipe } from '../../pipes/mask.pipe';
 import { ICompanyConfig } from '../../interfaces/company-config.interface';
 import { ISunatConfig } from '../../interfaces/sunat-config.interface';
 import { CompanyConfigService } from '../../services/company-config.service';
+import { ButtonComponent } from '../../design-system/button/button.component';
 
 @Component({
   selector: 'app-configuracion',
   templateUrl: './configuracion.component.html',
   styleUrls: ['./configuracion.component.scss'],
   standalone: true,
-  imports: [CommonModule, FormsModule, MaskPipe],
+  imports: [CommonModule, FormsModule, MaskPipe, ButtonComponent],
 })
 export class ConfiguracionComponent implements OnInit {
   private invoicesService = inject(InvoicesService);

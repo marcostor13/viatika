@@ -1,10 +1,11 @@
 @if (notificationService.visible | async) {
 
 <div
-  class="fixed top-5 right-5 px-4 py-3 rounded-lg shadow-lg text-white flex items-center gap-3"
+  class="fixed top-5 right-5 px-4 py-3 rounded-lg shadow-lg text-white flex items-center gap-3 z-50"
   [ngClass]="{
     'bg-green-500': (notificationService.type | async) === 'success',
-    'bg-red-500': (notificationService.type | async) === 'error'
+    'bg-red-500': (notificationService.type | async) === 'error',
+    'bg-amber-500': (notificationService.type | async) === 'warning'
   }"
 >
   <svg
@@ -35,8 +36,22 @@
       d="M6 18L18 6M6 6l12 12"
     ></path>
   </svg>
+  <svg
+    *ngIf="(notificationService.type | async) === 'warning'"
+    class="w-6 h-6"
+    fill="none"
+    stroke="currentColor"
+    stroke-width="2"
+    viewBox="0 0 24 24"
+  >
+    <path
+      stroke-linecap="round"
+      stroke-linejoin="round"
+      d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"
+    ></path>
+  </svg>
   <span>{{ notificationService.message | async }}</span>
-  <button (click)="notificationService.hide()" class="ml-3 text-xl font-bold">
+  <button (click)="notificationService.hide()" class="ml-3 text-xl font-bold hover:opacity-80 transition-opacity">
     ×
   </button>
 </div>

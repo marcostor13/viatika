@@ -6,10 +6,10 @@ import { BehaviorSubject } from 'rxjs';
 })
 export class NotificationService {
   message = new BehaviorSubject('');
-  type = new BehaviorSubject<'success' | 'error'>('success');
+  type = new BehaviorSubject<'success' | 'error' | 'warning'>('success');
   visible = new BehaviorSubject(false);
 
-  show(message: string, type: 'success' | 'error' = 'success') {
+  show(message: string, type: 'success' | 'error' | 'warning' = 'success') {
     this.message.next(message);
     this.type.next(type);
     this.visible.next(true);

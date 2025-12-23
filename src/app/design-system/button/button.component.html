@@ -1,0 +1,10 @@
+<button
+  [type]="type()"
+  [disabled]="disabled()"
+  [class]="buttonClasses()"
+  (click)="onClick()"
+>
+  <ng-content></ng-content>
+  <span>{{ label() }}</span>
+</button>
+

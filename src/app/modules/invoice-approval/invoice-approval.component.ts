@@ -18,6 +18,8 @@ import { UserStateService } from '../../services/user-state.service';
 import { DataComponent } from '../../components/data/data.component';
 import { AdminUsersService } from '../admin-users/services/admin-users.service';
 import { IUserResponse } from '../../interfaces/user.interface';
+import { ButtonComponent } from '../../design-system/button/button.component';
+import { ExportButtonComponent } from '../../design-system/export-button/export-button.component';
 
 interface IInvoice {
   _id?: string;
@@ -59,7 +61,7 @@ interface IInvoice {
 @Component({
   selector: 'app-invoice-approval',
   standalone: true,
-  imports: [CommonModule, FormsModule, DataComponent, FileDownloadComponent],
+  imports: [CommonModule, FormsModule, DataComponent, FileDownloadComponent, ButtonComponent, ExportButtonComponent],
   templateUrl: './invoice-approval.component.html',
   styleUrl: './invoice-approval.component.scss',
 })
@@ -74,6 +76,7 @@ export class InvoiceApprovalComponent implements OnInit {
   rejectionReason = signal('');
   selectedInvoiceId = signal('');
   showRejectionModal = signal(false);
+  showFilters = signal(false); // Oculto por defecto
   categories: ICategory[] = [];
   projects: IProject[] = [];
   invoices: IInvoice[] = [];
@@ -523,7 +526,7 @@ export class InvoiceApprovalComponent implements OnInit {
     });
   }
 
-  getStatusName(status?: InvoiceStatus): string {
+  getStatusName(status?: InvoiceStatus | string): string {
     if (!status) return 'Pendiente';
 
     switch (status) {
@@ -537,15 +540,67 @@ export class InvoiceApprovalComponent implements OnInit {
       case 'REJECTED':
         return 'Rechazada';
       case 'sunat_valid':
-        return 'Válido SUNAT';
+      case 'VALIDO_ACEPTADO':
+        return 'Válida';
       case 'sunat_valid_not_ours':
-        return 'Válido - No Pertenece';
+      case 'VALIDO_NO_PERTENECE':
+        return 'Válida, Externa';
       case 'sunat_not_found':
+      case 'NO_ENCONTRADO':
         return 'No Encontrado SUNAT';
       case 'sunat_error':
-        return 'Error SUNAT';
+      case 'ERROR_SUNAT':
+        return 'Rechazada';
       default:
         return status; // Mostrar el estado original si no coincide con ningún caso
+    }
+  }
+
+  getStatusColor(status?: InvoiceStatus | string): string {
+    if (!status) return 'bg-yellow-100 text-yellow-800';
+
+    switch (status) {
+      case 'pending':
+      case 'PENDING':
+        return 'bg-yellow-100 text-yellow-800';
+      case 'approved':
+      case 'APPROVED':
+        return 'bg-green-100 text-green-800';
+      case 'rejected':
+      case 'REJECTED':
+        return 'bg-red-100 text-red-800';
+      case 'sunat_valid':
+      case 'VALIDO_ACEPTADO':
+        return 'bg-primary/10 text-primary';
+      case 'sunat_valid_not_ours':
+      case 'VALIDO_NO_PERTENECE':
+        return 'bg-amber-100 text-amber-800';
+      case 'sunat_not_found':
+      case 'NO_ENCONTRADO':
+        return 'bg-gray-100 text-gray-800';
+      case 'sunat_error':
+      case 'ERROR_SUNAT':
+        return 'bg-red-100 text-red-800';
+      default:
+        return 'bg-gray-100 text-gray-800';
+    }
+  }
+
+  getStatusInfo(status?: InvoiceStatus | string): string {
+    if (!status) return '';
+
+    switch (status) {
+      case 'sunat_valid':
+      case 'VALIDO_ACEPTADO':
+        return 'Factura Válida y emitida a la empresa';
+      case 'sunat_valid_not_ours':
+      case 'VALIDO_NO_PERTENECE':
+        return 'Factura válida pero no ha sido emitida a la empresa';
+      case 'sunat_error':
+      case 'ERROR_SUNAT':
+        return 'Error en el servicio de sunat';
+      default:
+        return '';
     }
   }
 
@@ -577,6 +632,10 @@ export class InvoiceApprovalComponent implements OnInit {
     this.filterAmountMax.set('');
     this.filterStatus.set('');
     this.getInvoices();
+  }
+
+  toggleFilters() {
+    this.showFilters.update(value => !value);
   }
 
   formatDateForInputDisplay(dateString: string): string {

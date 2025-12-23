@@ -85,6 +85,12 @@ export class SidebarComponent implements OnDestroy {
     return role === 'Admin' || role === 'Super';
   }
 
+  isSuper(): boolean {
+    const user = this.userStateService.getUser();
+    const role = user?.role?.name;
+    return role === 'Super';
+  }
+
   isColaborador(): boolean {
     const user = this.userStateService.getUser();
     const role = user?.role?.name;
@@ -92,6 +98,7 @@ export class SidebarComponent implements OnDestroy {
   }
 
   logout() {
+    this.toggleSidebar();
     this.authService.logout();
   }
 

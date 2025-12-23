@@ -4,9 +4,13 @@
   >
     <h1 class="text-2xl font-bold">Administración de Usuarios</h1>
 
-    <button
-      (click)="redirectToCreateUser()"
-      class="w-full sm:w-auto bg-color1 text-white px-4 py-3 sm:py-2 rounded-md flex items-center justify-center gap-2 text-sm sm:text-base shadow-sm"
+    <app-button
+      label="Crear Usuario"
+      variant="primary"
+      size="md"
+      [fullWidth]="true"
+      class="sm:w-auto"
+      (clicked)="redirectToCreateUser()"
     >
       <svg
         xmlns="http://www.w3.org/2000/svg"
@@ -22,8 +26,7 @@
           d="M12 4.5v15m7.5-7.5h-15"
         />
       </svg>
-      Crear Usuario
-    </button>
+    </app-button>
   </div>
 
   <app-data

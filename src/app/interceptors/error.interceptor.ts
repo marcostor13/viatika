@@ -13,7 +13,15 @@ export const errorInterceptor: HttpInterceptorFn = (req, next) => {
     catchError((error) => {
       if (error.status === 401) {
         userStateService.clearUser();
-        router.navigate(['/login']);
+        notificationService.show(
+          'Su sesión ha expirado, vuelva a iniciar sesión',
+          'warning'
+        );
+        // Pequeño delay para que se muestre la notificación antes de navegar
+        setTimeout(() => {
+          router.navigate(['/login']);
+        }, 100);
+        return throwError(() => error);
       }
       const message =
         error.error?.message || error.message || 'Ocurrió un error';

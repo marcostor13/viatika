@@ -1,66 +1,89 @@
 <div class="flex min-h-screen">
-  <div class="hidden lg:flex lg:w-64 bg-gray-900 flex-col">
-    <div class="p-6 border-b border-gray-700">
-      <h2 class="text-white text-lg font-semibold">Panel de Control</h2>
-      <p class="text-gray-300 text-sm">Sistema de Facturas</p>
+  <!-- Desktop Sidebar -->
+  <div class="hidden lg:flex lg:w-[290px] bg-quaternary flex-col shadow-soft">
+    <!-- Logo Section -->
+    <div class="p-6 border-b border-tertiary/20">
+      <div class="flex items-center justify-center">
+        <img src="logo.svg" alt="logo" width="160" />
+      </div>
     </div>
 
-    <nav class="flex-1 p-4 space-y-2">
+    <!-- Navigation -->
+    <nav class="flex-1 p-4 space-y-1">
+      @if (isColaborador()) {
       <a
-        *ngIf="isColaborador()"
         [routerLink]="['/invoices']"
-        routerLinkActive="bg-blue-600 text-white"
-        class="flex items-center px-4 py-3 text-gray-300 rounded-lg hover:bg-gray-700 hover:text-white transition-colors"
+        routerLinkActive="bg-primary text-white"
+        [class.bg-primary]="isSelected('/invoices')"
+        [class.text-quaternary]="isSelected('/invoices')"
+        class="flex items-center px-4 py-3 text-secondary rounded-xl hover:bg-background hover:text-primary transition-all duration-200 group"
       >
-        <span class="mr-3 text-xl">📄</span>
         <span class="font-medium">Facturas</span>
       </a>
-
+      } @if (isAdmin()) {
+      @if (!isSuper()) {
       <a
-        *ngIf="isAdmin()"
         [routerLink]="['/invoice-approval']"
-        routerLinkActive="bg-blue-600 text-white"
-        class="flex items-center px-4 py-3 text-gray-300 rounded-lg hover:bg-gray-700 hover:text-white transition-colors"
+        routerLinkActive="bg-primary text-white"
+        [class.bg-primary]="isSelected('/invoice-approval')"
+        [class.text-quaternary]="isSelected('/invoice-approval')"
+        class="flex items-center px-4 py-3 text-secondary rounded-xl hover:bg-background hover:text-primary transition-all duration-200 group"
       >
-        <span class="mr-3 text-xl">✅</span>
         <span class="font-medium">Aprobación de Facturas</span>
       </a>
+      }
+
+      @if (isSuper()) {
+      <a
+        [routerLink]="['/clients-admin']"
+        routerLinkActive="bg-primary text-white"
+        [class.bg-primary]="isSelected('/clients-admin')"
+        [class.text-quaternary]="isSelected('/clients-admin')"
+        class="flex items-center px-4 py-3 text-secondary rounded-xl hover:bg-background hover:text-primary transition-all duration-200 group"
+      >
+        <span class="font-medium">Clientes</span>
+      </a>
+      }
 
       <a
-        *ngIf="isAdmin()"
         [routerLink]="['/admin-users']"
-        routerLinkActive="bg-blue-600 text-white"
-        class="flex items-center px-4 py-3 text-gray-300 rounded-lg hover:bg-gray-700 hover:text-white transition-colors"
+        routerLinkActive="bg-primary text-white"
+        [class.bg-primary]="isSelected('/admin-users')"
+        [class.text-quaternary]="isSelected('/admin-users')"
+        class="flex items-center px-4 py-3 text-secondary rounded-xl hover:bg-background hover:text-primary transition-all duration-200 group"
       >
-        <span class="mr-3 text-xl">👥</span>
         <span class="font-medium">Usuarios Admin</span>
       </a>
 
+      @if (!isSuper()) {
       <a
-        *ngIf="isAdmin()"
         [routerLink]="['/consolidated-invoices']"
-        routerLinkActive="bg-blue-600 text-white"
-        class="flex items-center px-4 py-3 text-gray-300 rounded-lg hover:bg-gray-700 hover:text-white transition-colors"
+        routerLinkActive="bg-primary text-white"
+        [class.bg-primary]="isSelected('/consolidated-invoices')"
+        [class.text-quaternary]="isSelected('/consolidated-invoices')"
+        class="flex items-center px-4 py-3 text-secondary rounded-xl hover:bg-background hover:text-primary transition-all duration-200 group"
       >
-        <span class="mr-3 text-xl">📊</span>
         <span class="font-medium">Consolidado</span>
       </a>
 
       <a
-        *ngIf="isAdmin()"
         [routerLink]="['/configuracion']"
-        routerLinkActive="bg-blue-600 text-white"
-        class="flex items-center px-4 py-3 text-gray-300 rounded-lg hover:bg-gray-700 hover:text-white transition-colors"
+        routerLinkActive="bg-primary text-white"
+        [class.bg-primary]="isSelected('/configuracion')"
+        [class.text-quaternary]="isSelected('/configuracion')"
+        class="flex items-center px-4 py-3 text-secondary rounded-xl hover:bg-background hover:text-primary transition-all duration-200 group"
       >
-        <span class="mr-3 text-xl">⚙️</span>
         <span class="font-medium">Configuración</span>
       </a>
+      }
+      }
     </nav>
 
-    <div class="p-4 border-t border-gray-700">
-      <div class="flex items-center px-4 py-2 text-gray-300 mb-3">
+    <!-- User Section -->
+    <div class="p-4 border-t border-tertiary/20">
+      <div class="flex items-center px-4 py-2 text-secondary mb-3">
         <div
-          class="w-8 h-8 rounded-full mr-3 flex items-center justify-center bg-gray-600"
+          class="w-8 h-8 rounded-full mr-3 flex items-center justify-center bg-background"
         >
           <img
             *ngIf="companyConfig?.logo"
@@ -70,7 +93,7 @@
           />
           <svg
             *ngIf="!companyConfig?.logo"
-            class="w-5 h-5 text-gray-300"
+            class="w-5 h-5 text-tertiary"
             fill="currentColor"
             viewBox="0 0 24 24"
           >
@@ -80,26 +103,26 @@
           </svg>
         </div>
         <div class="text-sm">
-          <div class="font-medium text-white">
+          <div class="font-medium text-secondary">
             {{ user?.name || "Usuario" }}
           </div>
-          <div class="text-xs text-gray-400">
+          <div class="text-xs text-tertiary">
             {{ user?.role?.name }}
           </div>
         </div>
       </div>
       <button
         (click)="confirmation()"
-        class="flex items-center w-full px-4 py-2 text-gray-300 rounded-lg hover:bg-red-600 hover:text-white transition-colors"
+        class="flex items-center w-full px-4 py-2 text-tertiary rounded-xl hover:text-error hover:bg-background transition-all duration-200 group"
       >
-        <span class="mr-3"
-          ><svg
+        <span class="mr-3">
+          <svg
             xmlns="http://www.w3.org/2000/svg"
             fill="none"
             viewBox="0 0 24 24"
             stroke-width="1.5"
             stroke="currentColor"
-            class="size-6"
+            class="size-5"
           >
             <path
               stroke-linecap="round"
@@ -108,35 +131,31 @@
             />
           </svg>
         </span>
-        <span>Cerrar Sesión</span>
+        <span class="font-medium">Cerrar Sesión</span>
       </button>
     </div>
   </div>
 
-  <div
-    *ngIf="sidebarVisible"
-    class="lg:hidden fixed inset-0 z-50 flex animate-in fade-in duration-300"
-    (click)="toggleSidebar()"
-  >
+  <!-- Mobile Sidebar (Drawer) -->
+  @if (sidebarVisible) {
+  <div class="lg:hidden fixed inset-0 z-50 flex" (click)="toggleSidebar()">
     <div
-      class="fixed inset-0 bg-black/50 backdrop-blur-sm transition-all duration-300"
+      class="fixed inset-0 bg-secondary/50 backdrop-blur-sm transition-all duration-300"
     ></div>
 
     <div
-      class="relative flex flex-col w-80 max-w-[85vw] bg-gray-900 shadow-2xl animate-in slide-in-from-left duration-300 ease-out"
+      class="relative flex flex-col w-80 max-w-[85vw] bg-quaternary shadow-2xl"
       (click)="$event.stopPropagation()"
     >
-      <div
-        class="p-6 border-b border-gray-700 bg-gradient-to-r from-gray-900 to-gray-800"
-      >
+      <!-- Mobile Header -->
+      <div class="p-6 border-b border-tertiary/20">
         <div class="flex items-center justify-between">
-          <div>
-            <h2 class="text-white text-xl font-bold">Panel de Control</h2>
-            <p class="text-gray-300 text-sm mt-1">Sistema de Facturas</p>
+          <div class="flex items-center justify-center flex-1">
+            <img src="logo.svg" alt="logo" width="160" />
           </div>
           <button
             (click)="toggleSidebar()"
-            class="p-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg transition-all duration-200 group"
+            class="p-2 text-tertiary hover:text-secondary hover:bg-background rounded-xl transition-all duration-200 group"
           >
             <svg
               class="w-6 h-6 transform group-hover:rotate-90 transition-transform duration-200"
@@ -155,87 +174,70 @@
         </div>
       </div>
 
-      <nav class="flex-1 p-6 space-y-3 overflow-y-auto">
+      <!-- Mobile Navigation -->
+      <nav class="flex-1 p-6 space-y-2 overflow-y-auto">
+        @if (isColaborador()) {
         <a
-          *ngIf="isColaborador()"
           [routerLink]="['/invoices']"
           (click)="toggleSidebar()"
-          routerLinkActive="bg-blue-600 text-white shadow-lg"
-          class="flex items-center px-4 py-4 text-gray-300 rounded-xl hover:bg-gray-700 hover:text-white transition-all duration-200 hover:shadow-lg hover:translate-x-1 group"
+          [class.bg-primary]="isSelected('/invoices')"
+          [class.text-quaternary]="isSelected('/invoices')"
+          class="flex items-center px-4 py-4 text-secondary rounded-xl hover:bg-background hover:text-primary transition-all duration-200 group"
         >
-          <span
-            class="mr-4 text-2xl group-hover:scale-110 transition-transform duration-200"
-            >📄</span
-          >
           <span class="font-medium text-lg">Facturas</span>
         </a>
-
+        } @if (isAdmin()) {
+        @if (!isSuper()) {
         <a
-          *ngIf="isAdmin()"
           [routerLink]="['/invoice-approval']"
           (click)="toggleSidebar()"
-          routerLinkActive="bg-blue-600 text-white shadow-lg"
-          class="flex items-center px-4 py-4 text-gray-300 rounded-xl hover:bg-gray-700 hover:text-white transition-all duration-200 hover:shadow-lg hover:translate-x-1 group"
+          [class.bg-primary]="isSelected('/invoice-approval')"
+          [class.text-quaternary]="isSelected('/invoice-approval')"
+          class="flex items-center px-4 py-4 text-secondary rounded-xl hover:bg-background hover:text-primary transition-all duration-200 group"
         >
-          <span
-            class="mr-4 text-2xl group-hover:scale-110 transition-transform duration-200"
-            >✅</span
-          >
           <span class="font-medium text-lg">Aprobación de Facturas</span>
         </a>
 
         <a
-          *ngIf="isAdmin()"
-          [routerLink]="['/admin-users']"
-          (click)="toggleSidebar()"
-          routerLinkActive="bg-blue-600 text-white shadow-lg"
-          class="flex items-center px-4 py-4 text-gray-300 rounded-xl hover:bg-gray-700 hover:text-white transition-all duration-200 hover:shadow-lg hover:translate-x-1 group"
-        >
-          <span
-            class="mr-4 text-2xl group-hover:scale-110 transition-transform duration-200"
-            >👥</span
-          >
-          <span class="font-medium text-lg">Usuarios Admin</span>
-        </a>
-
-        <a
-          *ngIf="isAdmin()"
           [routerLink]="['/consolidated-invoices']"
           (click)="toggleSidebar()"
-          routerLinkActive="bg-blue-600 text-white shadow-lg"
-          class="flex items-center px-4 py-4 text-gray-300 rounded-xl hover:bg-gray-700 hover:text-white transition-all duration-200 hover:shadow-lg hover:translate-x-1 group"
+          [class.bg-primary]="isSelected('/consolidated-invoices')"
+          [class.text-quaternary]="isSelected('/consolidated-invoices')"
+          class="flex items-center px-4 py-4 text-secondary rounded-xl hover:bg-background hover:text-primary transition-all duration-200 group"
         >
-          <span
-            class="mr-4 text-2xl group-hover:scale-110 transition-transform duration-200"
-            >📊</span
-          >
           <span class="font-medium text-lg">Consolidado</span>
         </a>
 
         <a
-          *ngIf="isAdmin()"
           [routerLink]="['/configuracion']"
           (click)="toggleSidebar()"
-          routerLinkActive="bg-blue-600 text-white shadow-lg"
-          class="flex items-center px-4 py-4 text-gray-300 rounded-xl hover:bg-gray-700 hover:text-white transition-all duration-200 hover:shadow-lg hover:translate-x-1 group"
+          [class.bg-primary]="isSelected('/configuracion')"
+          [class.text-quaternary]="isSelected('/configuracion')"
+          class="flex items-center px-4 py-4 text-secondary rounded-xl hover:bg-background hover:text-primary transition-all duration-200 group"
         >
-          <span
-            class="mr-4 text-2xl group-hover:scale-110 transition-transform duration-200"
-            >⚙️</span
-          >
           <span class="font-medium text-lg">Configuración</span>
         </a>
+        }
+
+        <a
+          [routerLink]="['/admin-users']"
+          (click)="toggleSidebar()"
+          [class.bg-primary]="isSelected('/admin-users')"
+          [class.text-quaternary]="isSelected('/admin-users')"
+          class="flex items-center px-4 py-4 text-secondary rounded-xl hover:bg-background hover:text-primary transition-all duration-200 group"
+        >
+          <span class="font-medium text-lg">Usuarios Admin</span>
+        </a>
+        }
       </nav>
 
-      <div
-        class="p-6 border-t border-gray-700 bg-gradient-to-r from-gray-900 to-gray-800"
-      >
+      <!-- Mobile User Section -->
+      <div class="p-6 border-t border-tertiary/20">
         <div
-          class="flex items-center px-4 py-3 text-gray-300 mb-4 bg-gray-800 rounded-xl"
+          class="flex items-center px-4 py-3 text-secondary mb-4 bg-background rounded-xl"
         >
-          <!-- Avatar/Logo de la empresa -->
           <div
-            class="w-10 h-10 rounded-full mr-3 ring-2 ring-gray-600 flex items-center justify-center bg-gray-600"
+            class="w-10 h-10 rounded-full mr-3 flex items-center justify-center bg-quaternary"
           >
             <img
               *ngIf="companyConfig?.logo"
@@ -245,7 +247,7 @@
             />
             <svg
               *ngIf="!companyConfig?.logo"
-              class="w-6 h-6 text-gray-300"
+              class="w-6 h-6 text-tertiary"
               fill="currentColor"
               viewBox="0 0 24 24"
             >
@@ -255,21 +257,20 @@
             </svg>
           </div>
           <div class="text-sm">
-            <div class="font-semibold text-white">
+            <div class="font-semibold text-secondary">
               {{ user?.name || "Usuario" }}
             </div>
-            <div class="text-xs text-gray-400">
+            <div class="text-xs text-tertiary">
               {{ user?.role?.name }}
             </div>
           </div>
         </div>
         <button
-          (click)="logout()"
-          class="flex items-center w-full px-4 py-3 text-gray-300 rounded-xl hover:bg-red-600 hover:text-white transition-all duration-200 hover:shadow-lg group"
+          (click)="confirmation()"
+          class="flex items-center w-full px-4 py-3 text-tertiary rounded-xl hover:text-error hover:bg-background transition-all duration-200 group"
         >
-          <span
-            class="mr-3 text-xl group-hover:scale-110 transition-transform duration-200"
-            ><svg
+          <span class="mr-3 text-xl">
+            <svg
               xmlns="http://www.w3.org/2000/svg"
               fill="none"
               viewBox="0 0 24 24"
@@ -289,4 +290,5 @@
       </div>
     </div>
   </div>
+  }
 </div>

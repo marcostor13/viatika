@@ -1,0 +1,18 @@
+<div class="flex flex-col gap-4 p-5">
+  <div
+    class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3"
+  >
+    <div>
+      <h1 class="text-2xl font-bold text-secondary">Clientes</h1>
+      <p class="text-sm text-tertiary mt-1">
+        Administración de clientes registrados en la plataforma.
+      </p>
+    </div>
+  </div>
+
+  <app-data
+    [headers]="headers"
+    [data]="clients"
+    (clickOptionsEvent)="clickOptions($event)"
+  ></app-data>
+</div>

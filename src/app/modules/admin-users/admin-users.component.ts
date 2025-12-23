@@ -7,11 +7,12 @@ import { NotificationService } from '../../services/notification.service';
 import { ERoles } from './interfaces/roles.enum';
 import { Router } from '@angular/router';
 import { DataComponent } from '../../components/data/data.component';
+import { ButtonComponent } from '../../design-system/button/button.component';
 
 @Component({
   selector: 'app-admin-users',
   standalone: true,
-  imports: [CommonModule, DataComponent],
+  imports: [CommonModule, DataComponent, ButtonComponent],
   templateUrl: './admin-users.component.html',
   styleUrls: ['./admin-users.component.scss'],
 })
@@ -22,10 +23,11 @@ export default class AdminUsersComponent implements OnInit {
   private notification: NotificationService = inject(NotificationService);
 
   headers: IHeaderList[] = [
-    { header: 'Nombre', value: 'name' },
-    { header: 'Email', value: 'email' },
-    { header: 'Rol', value: 'roleName' },
-    { header: 'Acciones', value: 'actions', options: ['edit', 'delete'] },
+  { header: 'Nombre', value: 'name' },
+  { header: 'Email', value: 'email' },
+  { header: 'Rol', value: 'roleName' },
+  { header: 'Estado', value: 'isActive' },
+  { header: 'Acciones', value: 'actions', options: ['edit', 'delete', 'activate'] },
   ];
   users: IUserResponse[] = [];
   roles: { key: string, value: string }[] = [
@@ -69,11 +71,37 @@ export default class AdminUsersComponent implements OnInit {
   }
 
   clickOptionsEvent(event: { option: string; _id: string }) {
-    if (event.option === 'edit') {
-      this.redirectToCreateUser(event._id);
-    } else if (event.option === 'delete') {
-      this.deleteUser(event._id);
-    }
+  if (event.option === 'edit') {
+    this.redirectToCreateUser(event._id);
+  } else if (event.option === 'delete') {
+    this.deleteUser(event._id);
+  } else if (event.option === 'activate') {
+    this.toggleUserActive(event._id);
+  }
+  }
+
+  toggleUserActive(userId: string) {
+  const user = this.users.find((u) => u._id === userId);
+  if (!user) {
+    return;
+  }
+  const newState = !user.isActive;
+
+  this.adminUsersService.updateUser(userId, { isActive: newState }).subscribe({
+    next: () => {
+    this.notification.show(
+      newState ? 'Usuario activado correctamente' : 'Usuario desactivado correctamente',
+      'success'
+    );
+    this.loadUsers();
+    },
+    error: () => {
+    this.notification.show(
+      'Error al actualizar el estado del usuario',
+      'error'
+    );
+    },
+  });
   }
 
   redirectToCreateUser(userId: string = '') {

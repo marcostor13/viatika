@@ -11,11 +11,13 @@ import {
 import { IHeaderList } from '../../interfaces/header-list.interface';
 import { IProject } from './interfaces/project.interface';
 import { DataComponent } from '../../components/data/data.component';
+import { ButtonComponent } from '../../design-system/button/button.component';
+import { ExportButtonComponent } from '../../design-system/export-button/export-button.component';
 
 @Component({
   selector: 'app-invoices',
   standalone: true,
-  imports: [DataComponent, FileDownloadComponent],
+  imports: [DataComponent, FileDownloadComponent, ButtonComponent, ExportButtonComponent],
   templateUrl: './invoices.component.html',
   styleUrl: './invoices.component.scss',
 })
@@ -275,5 +277,83 @@ export default class InvoicesComponent implements OnInit {
         );
       }
     }, 100);
+  }
+
+  getStatusName(status?: InvoiceStatus | string): string {
+    if (!status) return 'Pendiente';
+
+    switch (status) {
+      case 'pending':
+      case 'PENDING':
+        return 'Pendiente';
+      case 'approved':
+      case 'APPROVED':
+        return 'Aprobada';
+      case 'rejected':
+      case 'REJECTED':
+        return 'Rechazada';
+      case 'sunat_valid':
+      case 'VALIDO_ACEPTADO':
+        return 'Válida';
+      case 'sunat_valid_not_ours':
+      case 'VALIDO_NO_PERTENECE':
+        return 'Válida, Externa';
+      case 'sunat_not_found':
+      case 'NO_ENCONTRADO':
+        return 'No Encontrado SUNAT';
+      case 'sunat_error':
+      case 'ERROR_SUNAT':
+        return 'Rechazada';
+      default:
+        return status;
+    }
+  }
+
+  getStatusColor(status?: InvoiceStatus | string): string {
+    if (!status) return 'bg-yellow-100 text-yellow-800';
+
+    switch (status) {
+      case 'pending':
+      case 'PENDING':
+        return 'bg-yellow-100 text-yellow-800';
+      case 'approved':
+      case 'APPROVED':
+        return 'bg-green-100 text-green-800';
+      case 'rejected':
+      case 'REJECTED':
+        return 'bg-red-100 text-red-800';
+      case 'sunat_valid':
+      case 'VALIDO_ACEPTADO':
+        return 'bg-primary/10 text-primary';
+      case 'sunat_valid_not_ours':
+      case 'VALIDO_NO_PERTENECE':
+        return 'bg-amber-100 text-amber-800';
+      case 'sunat_not_found':
+      case 'NO_ENCONTRADO':
+        return 'bg-gray-100 text-gray-800';
+      case 'sunat_error':
+      case 'ERROR_SUNAT':
+        return 'bg-red-100 text-red-800';
+      default:
+        return 'bg-gray-100 text-gray-800';
+    }
+  }
+
+  getStatusInfo(status?: InvoiceStatus | string): string {
+    if (!status) return '';
+
+    switch (status) {
+      case 'sunat_valid':
+      case 'VALIDO_ACEPTADO':
+        return 'Factura Válida y emitida a la empresa';
+      case 'sunat_valid_not_ours':
+      case 'VALIDO_NO_PERTENECE':
+        return 'Factura válida pero no ha sido emitida a la empresa';
+      case 'sunat_error':
+      case 'ERROR_SUNAT':
+        return 'Error en el servicio de sunat';
+      default:
+        return '';
+    }
   }
 }

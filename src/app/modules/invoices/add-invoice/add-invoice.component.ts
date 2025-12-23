@@ -19,11 +19,12 @@ import {
   InvoiceStatus,
   SunatValidationInfo,
 } from '../interfaces/invoices.interface';
+import { ButtonComponent } from '../../../design-system/button/button.component';
 
 @Component({
   selector: 'app-add-invoice',
   standalone: true,
-  imports: [ReactiveFormsModule, FormsModule, CommonModule],
+  imports: [ReactiveFormsModule, FormsModule, CommonModule, ButtonComponent],
   templateUrl: './add-invoice.component.html',
   styleUrl: './add-invoice.component.scss',
 })
@@ -500,6 +501,24 @@ export default class AddInvoiceComponent implements OnInit {
     return this.form.get('correlativo');
   }
 
+  getButtonLabel(): string {
+    if (this.id) {
+      if (this.isSunatValidating()) {
+        return 'Validando con SUNAT...';
+      } else if (this.isLoading()) {
+        return 'Actualizando...';
+      } else {
+        return 'Actualizar factura';
+      }
+    } else {
+      if (this.isLoading()) {
+        return 'Procesando...';
+      } else {
+        return 'Subir factura';
+      }
+    }
+  }
+
   private shouldValidateWithSunat(formValue: any): boolean {
     return !!(
       formValue.rucEmisor &&
@@ -557,13 +576,11 @@ export default class AddInvoiceComponent implements OnInit {
     if (validation.sunatValidation) {
       switch (validation.sunatValidation.status) {
         case 'VALIDO_ACEPTADO':
-          message =
-            'Factura validada correctamente con SUNAT - Comprobante válido';
+          message = 'Factura Válida y emitida a la empresa';
           type = 'success';
           break;
         case 'VALIDO_NO_PERTENECE':
-          message =
-            'Comprobante válido en SUNAT pero no pertenece a esta empresa';
+          message = 'Factura válida pero no ha sido emitida a la empresa';
           type = 'error';
           break;
         case 'NO_ENCONTRADO':
@@ -571,8 +588,7 @@ export default class AddInvoiceComponent implements OnInit {
           type = 'error';
           break;
         case 'ERROR_SUNAT':
-          message =
-            'Error al validar con SUNAT: ' + validation.sunatValidation.message;
+          message = 'Error en el servicio de sunat';
           type = 'error';
           break;
         default:
@@ -631,13 +647,11 @@ export default class AddInvoiceComponent implements OnInit {
 
           switch (response.status) {
             case 'VALIDO_ACEPTADO':
-              message =
-                'Factura validada correctamente con SUNAT - Comprobante válido';
+              message = 'Factura Válida y emitida a la empresa';
               type = 'success';
               break;
             case 'VALIDO_NO_PERTENECE':
-              message =
-                'Comprobante válido en SUNAT pero no pertenece a esta empresa';
+              message = 'Factura válida pero no ha sido emitida a la empresa';
               type = 'error';
               break;
             case 'NO_ENCONTRADO':
@@ -645,9 +659,7 @@ export default class AddInvoiceComponent implements OnInit {
               type = 'error';
               break;
             case 'ERROR_SUNAT':
-              message =
-                'Error al validar con SUNAT: ' +
-                (response.details?.message || 'Error desconocido');
+              message = 'Error en el servicio de sunat';
               type = 'error';
               break;
             case 'SUNAT_CONFIG_NOT_FOUND':

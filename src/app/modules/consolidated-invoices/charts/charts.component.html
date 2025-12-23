@@ -4,115 +4,142 @@
       Gráficos de Gastos
     </h2>
 
-    <div
-      class="flex flex-col sm:flex-row flex-wrap gap-3 mb-3 sm:mb-4 bg-blue-50 p-3 rounded-lg"
-    >
-      <div class="flex flex-col sm:flex-row gap-3 w-full">
-        <div class="flex flex-col flex-1">
-          <label for="projectFilter" class="text-sm font-medium mb-1"
-            >Proyecto:</label
-          >
-          <select
-            id="projectFilter"
-            class="border border-gray-300 rounded-md p-2 w-full"
-            [(ngModel)]="filterProject"
-            (ngModelChange)="onFilterChange()"
-          >
-            <option value="">Todos los proyectos</option>
-            @for (project of projects; track project._id) {
-            <option [value]="project._id">
-              {{ project.name }}
-            </option>
-            }
-          </select>
-        </div>
-        <div class="flex flex-col flex-1">
-          <label for="categoryFilter" class="text-sm font-medium mb-1"
-            >Categoría:</label
-          >
-          <select
-            id="categoryFilter"
-            class="border border-gray-300 rounded-md p-2 w-full"
-            [(ngModel)]="filterCategory"
-            (ngModelChange)="onFilterChange()"
-          >
-            <option value="">Todas las categorías</option>
-            @for (category of categories; track category._id) {
-            <option [value]="category._id">
-              {{ category.name }}
-            </option>
-            }
-          </select>
-        </div>
-        <div class="flex flex-col flex-1">
-          <label for="collaboratorFilter" class="text-sm font-medium mb-1"
-            >Colaborador:</label
-          >
-          <select
-            id="collaboratorFilter"
-            class="border border-gray-300 rounded-md p-2 w-full"
-            [(ngModel)]="filterCollaborator"
-            (ngModelChange)="onFilterChange()"
-          >
-            <option value="">Todos los colaboradores</option>
-            @for (collaborator of collaborators; track collaborator.id) {
-            <option [value]="collaborator.id">
-              {{ collaborator.name }}
-            </option>
-            }
-          </select>
-        </div>
-        <div class="flex flex-col flex-1">
-          <label for="dateFrom" class="text-sm font-medium mb-1">Desde:</label>
-          <button
-            type="button"
-            id="dateFromButton"
-            class="w-full px-3 py-2 rounded-md border border-gray-300 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-200 text-sm text-left flex items-center justify-between transition-colors"
-            (click)="openDatePicker('dateFrom')"
-          >
-            <span class="text-gray-600">
-              {{
-                dateFrom ? formatDateForInputDisplay(dateFrom) : "Fecha desde"
-              }}
-            </span>
-            <svg
-              class="w-4 h-4 text-gray-500"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
+    <div class="bg-white p-5 rounded-xl shadow-soft border border-gray-100 mb-6">
+      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-5 gap-4">
+        <h3 class="font-bold text-lg text-secondary">Filtros de Búsqueda</h3>
+      </div>
+      
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-5">
+        <!-- Project Filter -->
+        <div class="flex flex-col gap-1.5">
+          <label for="projectFilter" class="text-xs font-bold text-tertiary uppercase tracking-wider">Proyecto</label>
+          <div class="relative">
+            <select
+              id="projectFilter"
+              class="w-full h-[42px] px-3 rounded-lg border border-gray-200 bg-gray-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-sm appearance-none cursor-pointer"
+              [(ngModel)]="filterProject"
+              (ngModelChange)="onFilterChange()"
             >
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
-                d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
-              ></path>
-            </svg>
-          </button>
-          <input
-            type="date"
-            id="dateFromPicker"
-            class="sr-only"
-            style="position: absolute; opacity: 0; pointer-events: none"
-            [value]="dateFrom"
-            (change)="onDatePickerChange($event, 'dateFrom')"
-          />
+              <option value="">Todos los proyectos</option>
+              @for (project of projects; track project._id) {
+              <option [value]="project._id">
+                {{ project.name }}
+              </option>
+              }
+            </select>
+            <div class="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none text-tertiary">
+              <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+              </svg>
+            </div>
+          </div>
         </div>
 
-        <div class="flex flex-col flex-1">
-          <label for="dateTo" class="text-sm font-medium mb-1">Hasta:</label>
+        <!-- Category Filter -->
+        <div class="flex flex-col gap-1.5">
+          <label for="categoryFilter" class="text-xs font-bold text-tertiary uppercase tracking-wider">Categoría</label>
+          <div class="relative">
+            <select
+              id="categoryFilter"
+              class="w-full h-[42px] px-3 rounded-lg border border-gray-200 bg-gray-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-sm appearance-none cursor-pointer"
+              [(ngModel)]="filterCategory"
+              (ngModelChange)="onFilterChange()"
+            >
+              <option value="">Todas las categorías</option>
+              @for (category of categories; track category._id) {
+              <option [value]="category._id">
+                {{ category.name }}
+              </option>
+              }
+            </select>
+            <div class="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none text-tertiary">
+              <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+              </svg>
+            </div>
+          </div>
+        </div>
+
+        <!-- Collaborator Filter -->
+        <div class="flex flex-col gap-1.5">
+          <label for="collaboratorFilter" class="text-xs font-bold text-tertiary uppercase tracking-wider">Colaborador</label>
+          <div class="relative">
+            <select
+              id="collaboratorFilter"
+              class="w-full h-[42px] px-3 rounded-lg border border-gray-200 bg-gray-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-sm appearance-none cursor-pointer"
+              [(ngModel)]="filterCollaborator"
+              (ngModelChange)="onFilterChange()"
+            >
+              <option value="">Todos los colaboradores</option>
+              @for (collaborator of collaborators; track collaborator.id) {
+              <option [value]="collaborator.id">
+                {{ collaborator.name }}
+              </option>
+              }
+            </select>
+             <div class="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none text-tertiary">
+              <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+              </svg>
+            </div>
+          </div>
+        </div>
+
+        <!-- Date From -->
+        <div class="flex flex-col gap-1.5">
+          <label for="dateFrom" class="text-xs font-bold text-tertiary uppercase tracking-wider">Desde</label>
+          <div class="relative">
+            <button
+              type="button"
+              id="dateFromButton"
+              class="w-full h-[42px] px-3 rounded-lg border border-gray-200 bg-gray-50 hover:bg-white focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-sm text-left flex items-center justify-between group"
+              (click)="openDatePicker('dateFrom')"
+            >
+              <span [class.text-tertiary]="!dateFrom" [class.text-secondary]="dateFrom">
+                {{
+                  dateFrom ? formatDateForInputDisplay(dateFrom) : "Fecha desde"
+                }}
+              </span>
+              <svg
+                class="w-4 h-4 text-tertiary group-hover:text-primary transition-colors"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+                ></path>
+              </svg>
+            </button>
+            <input
+              type="date"
+              id="dateFromPicker"
+              class="sr-only"
+              style="position: absolute; opacity: 0; pointer-events: none"
+              [value]="dateFrom"
+              (change)="onDatePickerChange($event, 'dateFrom')"
+            />
+          </div>
+        </div>
+
+        <!-- Date To -->
+        <div class="flex flex-col gap-1.5">
+          <label for="dateTo" class="text-xs font-bold text-tertiary uppercase tracking-wider">Hasta</label>
           <div class="relative">
             <button
               type="button"
               id="dateToButton"
-              class="w-full px-3 py-2 rounded-md border border-gray-300 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-200 text-sm text-left flex items-center justify-between transition-colors"
+              class="w-full h-[42px] px-3 rounded-lg border border-gray-200 bg-gray-50 hover:bg-white focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-sm text-left flex items-center justify-between group"
               (click)="openDatePicker('dateTo')"
             >
-              <span class="text-gray-600">
+              <span [class.text-tertiary]="!dateTo" [class.text-secondary]="dateTo">
                 {{ dateTo ? formatDateForInputDisplay(dateTo) : "Fecha hasta" }}
               </span>
               <svg
-                class="w-4 h-4 text-gray-500"
+                class="w-4 h-4 text-tertiary group-hover:text-primary transition-colors"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"

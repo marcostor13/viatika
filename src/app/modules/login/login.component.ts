@@ -7,11 +7,13 @@ import { NotificationService } from '../../services/notification.service';
 import { AuthService } from '../../services/auth.service';
 import { CompanyConfigService } from '../../services/company-config.service';
 import { finalize } from 'rxjs';
+import { ButtonComponent } from '../../design-system/button/button.component';
+import { InputComponent } from '../../design-system/input/input.component';
 
 @Component({
   selector: 'app-login',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, ButtonComponent, InputComponent],
   templateUrl: './login.component.html',
   styleUrl: './login.component.scss',
 })
@@ -27,7 +29,7 @@ export class LoginComponent {
   private authService = inject(AuthService);
   private companyConfigService = inject(CompanyConfigService);
 
-  constructor(private router: Router) {}
+  constructor(private router: Router) { }
 
   redirect() {
     const user = this.userStateService.getUser();
@@ -59,6 +61,14 @@ export class LoginComponent {
       .login(this.email(), this.password())
       .pipe(finalize(() => this.loading.set(false)))
       .subscribe((res) => {
+        if (res && res.isActive === false) {
+          this.notificationService.show(
+            'Tu usuario aún no ha sido activado. Contacta al administrador.',
+            'error'
+          );
+          return;
+        }
+
         this.userStateService.setUser(res);
         this.companyConfigService.reloadConfigOnAuth();
         this.notificationService.show('Bienvenid@ ' + res.name, 'success');

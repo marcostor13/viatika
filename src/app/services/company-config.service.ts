@@ -58,10 +58,30 @@ export class CompanyConfigService {
       return;
     }
 
+    // Verificar si el usuario es admin antes de hacer la llamada
+    const user = this.userStateService.getUser();
+    const role = user?.role?.name;
+    const isAdmin = role === 'Admin' || role === 'Super';
+
+    // Solo los administradores pueden acceder a la configuración de la compañía
+    if (!isAdmin) {
+      return;
+    }
+
     this.invoicesService
       .getCompanyConfig()
-      .subscribe((config: ICompanyConfig) => {
-        this.companyConfigSubject.next(config);
+      .subscribe({
+        next: (config: ICompanyConfig) => {
+          this.companyConfigSubject.next(config);
+        },
+        error: (error) => {
+          // Manejar error 403 silenciosamente (usuario sin permisos)
+          // o cualquier otro error sin romper la aplicación
+          if (error.status !== 403) {
+            console.error('Error al cargar configuración de compañía:', error);
+          }
+          // Mantener la configuración por defecto si hay error
+        }
       });
   }
 

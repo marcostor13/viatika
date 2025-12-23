@@ -3,11 +3,14 @@ import InvoicesComponent from './modules/invoices/invoices.component';
 import AddInvoiceComponent from './modules/invoices/add-invoice/add-invoice.component';
 import { AuthColaboradorGuard } from './guards/auth-colaborador.guard';
 import { AuthAdmin2Guard } from './guards/auth-admin2.guard';
+import { AuthSuperGuard } from './guards/auth-super.guard';
 import { MainComponent } from './layouts/main/main.component';
 import AdminUsersComponent from './modules/admin-users/admin-users.component';
 import { InvoiceApprovalComponent } from './modules/invoice-approval/invoice-approval.component';
 import { CreateUserComponent } from './modules/admin-users/create-user/create-user.component';
 import { ConfiguracionComponent } from './modules/configuracion/configuracion.component';
+import { ClientOnboardingComponent } from './modules/super-admin/client-onboarding/client-onboarding.component';
+import { ClientsAdminComponent } from './modules/clients-admin/clients-admin.component';
 
 export const routes: Routes = [
   {
@@ -99,7 +102,17 @@ export const routes: Routes = [
         component: ConfiguracionComponent,
         canActivate: [AuthAdmin2Guard],
       },
+      {
+        path: 'clients-admin',
+        component: ClientsAdminComponent,
+        canActivate: [AuthSuperGuard],
+      },
     ],
+  },
+  {
+    path: 'super/client-onboarding',
+    component: ClientOnboardingComponent,
+    canActivate: [AuthSuperGuard],
   },
   {
     path: 'login',
