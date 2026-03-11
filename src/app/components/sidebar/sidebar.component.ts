@@ -2,10 +2,10 @@ import {
   Component,
   inject,
   OnDestroy,
+  OnInit,
   Input,
   Output,
   EventEmitter,
-  effect,
 } from '@angular/core';
 import { Router, NavigationEnd, RouterModule } from '@angular/router';
 import { AuthService } from '../../services/auth.service';
@@ -23,7 +23,7 @@ import { ICompanyConfig } from '../../interfaces/company-config.interface';
   templateUrl: './sidebar.component.html',
   styleUrl: './sidebar.component.scss',
 })
-export class SidebarComponent implements OnDestroy {
+export class SidebarComponent implements OnInit, OnDestroy {
   @Input() sidebarVisible = false;
   @Output() sidebarToggle = new EventEmitter<void>();
 
@@ -33,21 +33,34 @@ export class SidebarComponent implements OnDestroy {
   private userStateService = inject(UserStateService);
   private companyConfigService = inject(CompanyConfigService);
   private routerSubscription!: Subscription;
-  user = this.userStateService.getUser();
-  companyConfig: ICompanyConfig | null = null;
+  private configSubscription!: Subscription;
 
+  companyConfig: ICompanyConfig | null = null;
   currentPath = '';
 
   constructor() {
     this.detectPath();
     this.loadCompanyConfig();
-    this.loadUser();
+  }
+
+  ngOnInit() {
+    this.loadCompanyConfig();
   }
 
   ngOnDestroy() {
     if (this.routerSubscription) {
       this.routerSubscription.unsubscribe();
     }
+    if (this.configSubscription) {
+      this.configSubscription.unsubscribe();
+    }
+  }
+
+  private loadCompanyConfig() {
+    this.configSubscription =
+      this.companyConfigService.companyConfig$.subscribe((config) => {
+        this.companyConfig = config;
+      });
   }
 
   detectPath() {
@@ -80,9 +93,15 @@ export class SidebarComponent implements OnDestroy {
   }
 
   isAdmin(): boolean {
-    const user = this.userStateService.getUser();
-    const role = user?.role?.name;
-    return role === 'Admin' || role === 'Super';
+    return this.userStateService.isAdmin();
+  }
+
+  isAnyAdmin(): boolean {
+    return this.userStateService.isAnyAdmin();
+  }
+
+  isSuperAdmin(): boolean {
+    return this.userStateService.isSuperAdmin();
   }
 
   isSuper(): boolean {
@@ -92,9 +111,7 @@ export class SidebarComponent implements OnDestroy {
   }
 
   isColaborador(): boolean {
-    const user = this.userStateService.getUser();
-    const role = user?.role?.name;
-    return role === 'User';
+    return this.userStateService.isColaborador();
   }
 
   logout() {
@@ -102,15 +119,11 @@ export class SidebarComponent implements OnDestroy {
     this.authService.logout();
   }
 
-  private loadCompanyConfig() {
-    this.companyConfigService.companyConfig$.subscribe((config) => {
-      this.companyConfig = config;
-    });
+  getCompanyName(): string {
+    return this.companyConfig?.name || 'Mi Empresa';
   }
 
-  private loadUser() {
-    effect(() => {
-      this.user = this.userStateService.getUser();
-    });
+  getCompanyLogo(): string {
+    return this.companyConfig?.logo || '';
   }
 }

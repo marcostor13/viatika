@@ -13,12 +13,44 @@ export const httpInterceptor: HttpInterceptorFn = (req, next) => {
   const objectHeaders = Object.fromEntries(
     currentHeaders.keys().map((key) => [key, currentHeaders.get(key)])
   );
-  if (user) {
+  const token = user?.access_token || userStateService.getToken();
+  let url = req.url;
+
+  const excludedEndpoints = ['/auth', '/auth/', '/login'];
+  const skipCompanyIdEndpoints = [
+    '/approve',
+    '/reject',
+    '/user',
+    '/user/',
+    '/client',
+    '/client/',
+    '/sunat-config',
+    '/sunat-config/',
+    '/config',
+    '/logo',
+    '/api/client',
+  ];
+
+  const isExcludedEndpoint = excludedEndpoints.some(
+    (endpoint) => url.includes(endpoint) || url.endsWith('/api')
+  );
+  const shouldSkipCompanyId = skipCompanyIdEndpoints.some((endpoint) =>
+    url.includes(endpoint)
+  );
+
+  if (token) {
+    const headers: any = {
+      ...objectHeaders,
+      Authorization: `Bearer ${token}`,
+    };
+
+    // No establecer Content-Type para FormData (subida de archivos)
+    if (!(req.body instanceof FormData)) {
+      headers['Content-Type'] = 'application/json';
+    }
+
     req = req.clone({
-      setHeaders: {
-        ...objectHeaders,
-        Authorization: `Bearer ${user.access_token}`,
-      },
+      setHeaders: headers,
     });
   }
 
@@ -26,38 +58,42 @@ export const httpInterceptor: HttpInterceptorFn = (req, next) => {
     return next(req).pipe(finalize(() => loaderService.hide()));
   }
 
-  const methods = ['GET'];
-  if (methods.includes(req.method) && user?.client?._id) {
+  const companyId = user?.companyId;
+
+  // Append companyId to GET requests if not superAdmin and not excluded
+  if (req.method === 'GET' && companyId && !userStateService.isSuperAdmin() && !shouldSkipCompanyId) {
     const shouldAddClientId =
       !req.url.includes('/expense/') ||
       req.url.includes('/expense/client/') ||
       req.url.includes('/expense/test-sunat-credentials/');
 
-    if (shouldAddClientId) {
-      req = req.clone({ url: `${req.url}/${user.client._id}` });
+    if (shouldAddClientId && !req.url.endsWith(companyId)) {
+       // Only append if it's not already there
+       req = req.clone({ url: `${req.url}/${companyId}` });
     }
   }
 
-  if (
-    (req.method === 'DELETE' || req.method === 'PATCH') &&
-    user?.client?._id
-  ) {
-    if (req.url.includes('/category/') || req.url.includes('/project/')) {
-      req = req.clone({ url: `${req.url}/${user.client._id}` });
+  // Handle DELETE/PATCH for categories/projects
+  if ((req.method === 'DELETE' || req.method === 'PATCH') && companyId) {
+    if ((req.url.includes('/category/') || req.url.includes('/project/')) && !req.url.endsWith(companyId)) {
+      req = req.clone({ url: `${req.url}/${companyId}` });
     }
   }
-  if (req.method === 'POST' && user?.client?._id) {
+
+  // Add clientId to POST requests
+  if (req.method === 'POST' && companyId && !isExcludedEndpoint && !shouldSkipCompanyId) {
     if (req.body instanceof FormData) {
-      req.body.append('clientId', user.client._id);
+      if (!req.body.has('clientId')) req.body.append('clientId', companyId);
     } else {
       const body = req.body || {};
       req = req.clone({
         body: {
           ...body,
-          clientId: user.client._id,
+          clientId: companyId,
         },
       });
     }
   }
+
   return next(req).pipe(finalize(() => loaderService.hide()));
 };

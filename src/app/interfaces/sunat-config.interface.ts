@@ -1,5 +1,6 @@
 export interface ISunatConfig {
   _id?: string;
+  companyId: string;
   clientId: string;
   clientIdSunat: string;
   clientSecret: string;
@@ -10,7 +11,7 @@ export interface ISunatConfig {
 }
 
 export interface ISunatCredentials {
-
+  clientId: string;
   clientIdSunat: string;
   clientSecret: string;
 }

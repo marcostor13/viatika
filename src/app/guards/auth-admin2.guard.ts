@@ -14,12 +14,7 @@ export class AuthAdmin2Guard implements CanActivate {
       return false;
     }
 
-    const role = user?.role?.name;
-
-    const allowedRoles = ['Admin', 'Super'];
-    const hasValidRole = role ? allowedRoles.includes(role) : false;
-
-    if (!hasValidRole) {
+    if (!this.userState.isAnyAdmin()) {
       this.router.navigate(['/login']);
       return false;
     }

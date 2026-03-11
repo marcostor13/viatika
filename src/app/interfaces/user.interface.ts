@@ -1,12 +1,38 @@
 export interface IUser {
-  name: string;
+  _id?: string;
+  name?: string;
+  firstName?: string;
+  lastName?: string;
   email: string;
-  password: string;
-  roleId: string;
+  password?: string;
+  roleId?: string;
+  role?: string;
   roleName?: string;
   roleKey?: string;
-  clientId: string;
+  clientId?: string | { _id: string };
   isActive?: boolean;
+  userId?: string;
+  companyId?: string;
+  status?: string;
+  phone?: string;
+  createdAt?: Date;
+  updatedAt?: Date;
+  isSelf?: boolean; // Bandera para indicar si es el usuario actual logueado
+}
+
+export type IRole = IRoleResponse;
+export type IClient = IClientResponse;
+
+export interface IUserUpdate {
+  firstName?: string;
+  lastName?: string;
+  email?: string;
+  role?: string;
+  roleId?: string;
+  isActive?: boolean;
+  companyId?: string;
+  clientId?: string;
+  password?: string;
 }
 
 export interface IClientResponse {
@@ -33,14 +59,18 @@ export interface IRoleResponse {
 export interface IUserResponse {
   _id: string;
   name: string;
-  access_token: string;
-  client: IClientResponse;
+  firstName?: string;
+  lastName?: string;
+  access_token?: string;
+  client?: IClientResponse;
+  clientId?: string | { _id: string };
   role: IRoleResponse;
-  roleId: string;
+  roleId?: string;
   roleName?: string;
   roleKey?: string;
   email: string;
   isActive: boolean;
+  companyId?: string;
   createdAt: Date;
   updatedAt: Date;
 }

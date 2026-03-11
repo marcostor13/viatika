@@ -1,11 +1,14 @@
 export interface ICompanyConfig {
-
+  _id?: string;
+  companyId: string;
+  name: string;
+  logo?: string;
+  logoFile?: File;
   businessId?: string;
   businessName?: string;
   comercialName?: string;
   email?: string;
-  logo?: string;
   phone?: string;
-  updatedAt?: string;
-  _id?: string;
+  createdAt?: Date;
+  updatedAt?: Date;
 }

@@ -99,7 +99,18 @@ export const routes: Routes = [
       },
       {
         path: 'configuracion',
-        component: ConfiguracionComponent,
+        loadComponent: () =>
+          import('./modules/configuracion/configuracion.component').then(
+            (m) => m.ConfiguracionComponent
+          ),
+        canActivate: [AuthAdmin2Guard],
+      },
+      {
+        path: 'clients',
+        loadComponent: () =>
+          import('./modules/clients/clients.component').then(
+            (m) => m.ClientsComponent
+          ),
         canActivate: [AuthAdmin2Guard],
       },
       {

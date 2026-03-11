@@ -37,9 +37,18 @@ export class AddProjectComponent implements OnInit {
   }
 
   loadProject(id: string) {
-    this.invoicesService.getProjectById(id).subscribe((project: IProject) => {
-      this.project = project;
-      this.router.navigate(['/consolidated-invoices']);
+    const companyId = this.userStateService.getUser()?.companyId || '';
+    this.invoicesService.getProjectById(id, companyId).subscribe({
+      next: (project: IProject) => {
+        this.project = project;
+      },
+      error: (error: HttpErrorResponse) => {
+        this.notificationService.show(
+          'Error al cargar el proyecto: ' + error.message,
+          'error'
+        );
+        this.router.navigate(['/consolidated-invoices']);
+      },
     });
   }
 
@@ -73,9 +82,20 @@ export class AddProjectComponent implements OnInit {
     const createData: IProject = {
       name: this.project.name,
     };
-    this.invoicesService.createProject(createData).subscribe(() => {
-      this.notificationService.show('Proyecto creado exitosamente', 'success');
-      this.router.navigate(['/consolidated-invoices']);
+    this.invoicesService.createProject(createData).subscribe({
+      next: () => {
+        this.notificationService.show(
+          'Proyecto creado exitosamente',
+          'success'
+        );
+        this.router.navigate(['/consolidated-invoices']);
+      },
+      error: (error: HttpErrorResponse) => {
+        this.notificationService.show(
+          'Error al crear proyecto: ' + error.message,
+          'error'
+        );
+      },
     });
   }
 
@@ -86,9 +106,23 @@ export class AddProjectComponent implements OnInit {
     const updateData: Partial<IProject> = {
       name: this.project.name,
     };
-    this.invoicesService.updateProject(this.projectId!, updateData).subscribe(() => {
-      this.notificationService.show('Proyecto actualizado exitosamente', 'success');
-      this.router.navigate(['/consolidated-invoices']);
-    });
+    const companyId = this.userStateService.getUser()?.companyId || '';
+    this.invoicesService
+      .updateProject(this.projectId!, updateData, companyId)
+      .subscribe({
+        next: () => {
+          this.notificationService.show(
+            'Proyecto actualizado exitosamente',
+            'success'
+          );
+          this.router.navigate(['/consolidated-invoices']);
+        },
+        error: (error: HttpErrorResponse) => {
+          this.notificationService.show(
+            'Error al actualizar proyecto: ' + error.message,
+            'error'
+          );
+        },
+      });
   }
 }

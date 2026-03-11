@@ -285,11 +285,19 @@ export class ConsolidatedInvoicesComponent implements OnInit {
 
   deleteProject(id: string, event: Event) {
     event.stopPropagation();
+    const companyId = this.userStateService.getUser()?.companyId;
+    if (!companyId) {
+      this.notificationService.show(
+        'No se encontró companyId en el usuario',
+        'error'
+      );
+      return;
+    }
     this.confirmationService.confirm({
       title: 'Confirmar eliminación',
       message: '¿Está seguro que desea eliminar este proyecto?',
       accept: () => {
-        this.agentService.deleteProject(id).subscribe({
+        this.agentService.deleteProject(id, companyId).subscribe({
           next: () => {
             this.notificationService.show(
               'Proyecto eliminado correctamente',

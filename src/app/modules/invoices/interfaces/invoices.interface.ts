@@ -79,6 +79,7 @@ export interface InvoiceData {
   direccionEmisor?: string;
 }
 
+// Nuevas interfaces para validación SUNAT
 export interface SunatValidationResult {
   status:
     | 'VALIDO_ACEPTADO'
