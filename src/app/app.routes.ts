@@ -6,6 +6,8 @@ import { AuthAdmin2Guard } from './guards/auth-admin2.guard';
 import { MainComponent } from './layouts/main/main.component';
 import AdminUsersComponent from './modules/admin-users/admin-users.component';
 import { InvoiceApprovalComponent } from './modules/invoice-approval/invoice-approval.component';
+import { CreateUserComponent } from './modules/admin-users/create-user/create-user.component';
+import { ConfiguracionComponent } from './modules/configuracion/configuracion.component';
 
 export const routes: Routes = [
   {
@@ -80,6 +82,16 @@ export const routes: Routes = [
       {
         path: 'admin-users',
         component: AdminUsersComponent,
+        canActivate: [AuthAdmin2Guard],
+      },
+      {
+        path: 'admin-users/create-user',
+        component: CreateUserComponent,
+        canActivate: [AuthAdmin2Guard],
+      },
+      {
+        path: 'admin-users/create-user/:id',
+        component: CreateUserComponent,
         canActivate: [AuthAdmin2Guard],
       },
       {

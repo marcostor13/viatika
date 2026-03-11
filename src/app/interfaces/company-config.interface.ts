@@ -4,6 +4,11 @@ export interface ICompanyConfig {
   name: string;
   logo?: string;
   logoFile?: File;
+  businessId?: string;
+  businessName?: string;
+  comercialName?: string;
+  email?: string;
+  phone?: string;
   createdAt?: Date;
   updatedAt?: Date;
 }

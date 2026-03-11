@@ -7,8 +7,8 @@ import {
 import { Observable, throwError } from 'rxjs';
 import { catchError, tap } from 'rxjs/operators';
 import { IUser, IUserResponse, IRole, IClient } from '../../../interfaces/user.interface';
-import { environment } from '../../../../environments/environment';
 import { UserStateService } from '../../../services/user-state.service';
+import { environment } from '../../../../environments/environment';
 
 @Injectable({ providedIn: 'root' })
 export class AdminUsersService {
@@ -17,7 +17,7 @@ export class AdminUsersService {
   constructor(
     private http: HttpClient,
     private userStateService: UserStateService
-  ) { }
+  ) {}
 
   private getHeaders(): HttpHeaders {
     const token = this.userStateService.getToken();
@@ -32,6 +32,14 @@ export class AdminUsersService {
       Authorization: `Bearer ${token}`,
       'Content-Type': 'application/json',
     });
+  }
+
+  getUser(id: string): Observable<IUserResponse> {
+    return this.http
+      .get<IUserResponse>(`${this.apiUrl}/${id}`, {
+        headers: this.getHeaders(),
+      })
+      .pipe(catchError((error: any) => this.handleError(error)));
   }
 
   getUsers(): Observable<IUserResponse[]> {
@@ -62,13 +70,15 @@ export class AdminUsersService {
     // Ensure we use the proper clientId mapping, either from the user being created or the currentUser.
     let targetClientId = user.companyId;
     if (!targetClientId && currentUser) {
-      if (typeof currentUser.clientId === 'string') {
-        targetClientId = currentUser.clientId;
-      } else if (currentUser.clientId?._id) {
-        targetClientId = currentUser.clientId._id;
+      const uc = currentUser as IUserResponse & { clientId?: string | { _id: string }; client?: { _id: string } };
+      if (typeof uc.clientId === 'string') {
+        targetClientId = uc.clientId;
+      } else if (uc.clientId && typeof uc.clientId === 'object' && '_id' in uc.clientId) {
+        targetClientId = uc.clientId._id;
+      } else if (uc.client?._id) {
+        targetClientId = uc.client._id;
       } else {
-        // Fallback backward compat with frontend's companyId naming
-        targetClientId = currentUser.companyId;
+        targetClientId = uc.companyId;
       }
     }
 
@@ -109,13 +119,8 @@ export class AdminUsersService {
 
   deleteUser(id: string): Observable<void> {
     return this.http
-      .delete<void>(`${this.apiUrl}/${id}`, {
-        headers: this.getHeaders(),
-      })
-      .pipe(
-        tap(() => console.log('Usuario eliminado con éxito')),
-        catchError((error: any) => this.handleError(error))
-      );
+      .delete<void>(`${this.apiUrl}/${id}`, { headers: this.getHeaders() })
+      .pipe(catchError((error: any) => this.handleError(error)));
   }
 
   getRoles(): Observable<IRole[]> {

@@ -24,4 +24,23 @@ export class ListTableComponent {
   clickOptions(option: string, _id: string) {
     this.clickOptionsEvent.emit({ option, _id });
   }
+
+  isDateField(fieldName: string): boolean {
+    const dateFields = [
+      'date',
+      'fecha',
+      'createdAt',
+      'updatedAt',
+      'fechaCreacion',
+      'fechaModificacion',
+      'fechaEmision',
+      'fechaVencimiento',
+    ];
+    return dateFields.some((field) => fieldName.toLowerCase().includes(field));
+  }
+
+  isTotalField(fieldName: string): boolean {
+    const totalFields = ['total', 'monto', 'amount', 'precio', 'price'];
+    return totalFields.some((field) => fieldName.toLowerCase().includes(field));
+  }
 }

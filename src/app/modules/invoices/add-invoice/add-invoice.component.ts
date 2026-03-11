@@ -15,8 +15,10 @@ import { environment } from '../../../../environments/environment';
 import { CommonModule } from '@angular/common';
 import { IProject } from '../interfaces/project.interface';
 import { ICategory } from '../interfaces/category.interface';
-import { InvoiceStatus } from '../interfaces/invoices.interface';
-import { UserStateService } from '../../../services/user-state.service';
+import {
+  InvoiceStatus,
+  SunatValidationInfo,
+} from '../interfaces/invoices.interface';
 
 @Component({
   selector: 'app-add-invoice',
@@ -33,7 +35,6 @@ export default class AddInvoiceComponent implements OnInit {
   private route = inject(ActivatedRoute);
   private sanitizer = inject(DomSanitizer);
   private uploadService = inject(UploadService);
-  private userStateService = inject(UserStateService);
 
   form!: FormGroup;
   id: string = this.route.snapshot.params['id'];
@@ -42,12 +43,21 @@ export default class AddInvoiceComponent implements OnInit {
   previewImage: SafeUrl | null = null;
   selectedFile!: File;
   originalInvoice: any = null;
+  sunatValidation: SunatValidationInfo | null = null;
+  isSunatValidating = signal(false);
 
   percentage = signal(0);
   isLoading = signal(false);
 
   constructor() {
     this.initForm();
+  }
+
+  private isPdfFile(file: File | null | undefined): boolean {
+    if (!file) return false;
+    const mimeType = (file.type || '').toLowerCase();
+    const name = (file.name || '').toLowerCase();
+    return mimeType.includes('pdf') || name.endsWith('.pdf');
   }
 
   private formatDateForInput(dateValue: any): string {
@@ -60,10 +70,12 @@ export default class AddInvoiceComponent implements OnInit {
 
       if (dateStr.match(/^\d{2}[-\/]\d{2}[-\/]\d{4}$/)) {
         const parts = dateStr.split(/[-\/]/);
-        const day = parts[0];
-        const month = parts[1];
-        const year = parts[2];
-        date = new Date(`${year}-${month}-${day}`);
+        const day = parseInt(parts[0], 10);
+        const month = parseInt(parts[1], 10) - 1;
+        const year = parseInt(parts[2], 10);
+        date = new Date(year, month, day);
+      } else if (dateStr.match(/^\d{4}[-\/]\d{2}[-\/]\d{2}$/)) {
+        date = new Date(dateStr);
       } else {
         date = new Date(dateStr);
       }
@@ -76,18 +88,51 @@ export default class AddInvoiceComponent implements OnInit {
       return '';
     }
 
-    return date.toISOString().slice(0, 10);
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+
+    return `${year}-${month}-${day}`;
+  }
+
+  private formatDateForBackend(dateValue: string): string {
+    if (!dateValue) return '';
+
+    if (dateValue.match(/^\d{4}-\d{2}-\d{2}$/)) {
+      const parts = dateValue.split('-');
+      const year = parts[0];
+      const month = parts[1];
+      const day = parts[2];
+      return `${day}-${month}-${year}`;
+    }
+
+    if (dateValue.match(/^\d{2}-\d{2}-\d{4}$/)) {
+      return dateValue;
+    }
+
+    const date = new Date(dateValue);
+    if (isNaN(date.getTime())) {
+      console.warn('Fecha inválida para backend:', dateValue);
+      return dateValue;
+    }
+
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+
+    return `${day}-${month}-${year}`;
   }
 
   ngOnInit() {
     this.loadCategories();
     this.loadProjects();
 
-    const companyId = this.userStateService.getUser()?.companyId;
-    if (this.id && companyId) {
-      this.invoiceService
-        .getInvoiceById(this.id, companyId)
-        .subscribe((res) => {
+    if (this.id) {
+      this.form.get('file')?.clearValidators();
+      this.form.get('file')?.updateValueAndValidity();
+
+      this.invoiceService.getInvoiceById(this.id).subscribe({
+        next: (res) => {
           this.originalInvoice = res;
           let dataObj: any = {};
           if (res.data) {
@@ -107,7 +152,7 @@ export default class AddInvoiceComponent implements OnInit {
             fecha = this.formatDateForInput((res as any).fechaEmision);
           }
 
-          this.form.patchValue({
+          const formValues = {
             ...res,
             fechaEmision: fecha,
             rucEmisor: dataObj.rucEmisor || '',
@@ -115,40 +160,47 @@ export default class AddInvoiceComponent implements OnInit {
             correlativo: dataObj.correlativo || '',
             proyectId: res.proyectId?._id || res.proyectId || '',
             categoryId: res.categoryId?._id || res.categoryId || '',
-          });
-        });
+          };
+
+          this.form.patchValue(formValues);
+        },
+        error: (error) => {
+          console.error('Error al cargar la factura:', error);
+          this.notificationService.show(
+            'Error al cargar la factura: ' +
+              (error.message || 'Intente nuevamente'),
+            'error'
+          );
+        },
+      });
+    } else {
+      this.form.get('file')?.setValidators([Validators.required]);
+      this.form.get('file')?.updateValueAndValidity();
     }
   }
 
   loadCategories() {
-    const companyId = this.userStateService.getUser()?.companyId;
-    if (companyId) {
-      this.invoiceService.getCategories(companyId).subscribe({
-        next: (categories) => {
-          this.categories = categories;
-        },
-        error: (error) => {},
-      });
-    }
+    this.invoiceService.getCategories().subscribe({
+      next: (categories) => {
+        this.categories = categories;
+      },
+      error: (error) => {},
+    });
   }
 
   loadProjects() {
-    const companyId = this.userStateService.getUser()?.companyId;
-    if (companyId) {
-      this.invoiceService.getProjects(companyId).subscribe({
-        next: (projects) => {
-          this.proyects = projects;
-        },
-        error: (error) => {},
-      });
-    }
+    this.invoiceService.getProjects().subscribe({
+      next: (projects) => {
+        this.proyects = projects;
+      },
+    });
   }
 
   initForm() {
     this.form = this.fb.group({
       proyectId: ['', Validators.required],
       categoryId: ['', Validators.required],
-      file: ['', Validators.required],
+      file: [''],
       fechaEmision: [''],
       rucEmisor: [''],
       serie: [''],
@@ -168,13 +220,19 @@ export default class AddInvoiceComponent implements OnInit {
         return;
       }
       this.isLoading.set(true);
-      this.uploadFile();
+      const isPdf = this.isPdfFile(this.selectedFile);
+      if (isPdf) {
+        this.uploadPdfDirectly();
+      } else {
+        this.uploadFile();
+      }
     }
   }
 
   update() {
     if (this.form.valid && this.originalInvoice) {
       const formValue = this.form.value;
+
       let dataObj: any = {};
       const currentData = this.originalInvoice.data || '';
       if (currentData) {
@@ -185,8 +243,9 @@ export default class AddInvoiceComponent implements OnInit {
               : currentData;
         } catch {}
       }
+
       dataObj.rucEmisor = formValue.rucEmisor;
-      dataObj.fechaEmision = formValue.fechaEmision;
+      dataObj.fechaEmision = this.formatDateForBackend(formValue.fechaEmision);
       dataObj.serie = formValue.serie;
       dataObj.correlativo = formValue.correlativo;
       // Solo enviar campos actualizables, excluyendo metadatos de MongoDB
@@ -198,16 +257,25 @@ export default class AddInvoiceComponent implements OnInit {
         fechaEmision: formValue.fechaEmision,
         status: this.originalInvoice.status,
       };
-      const companyId = this.userStateService.getUser()?.companyId || '';
-      this.invoiceService.updateInvoice(this.id, companyId, payload).subscribe({
-        next: () => {
-          this.notificationService.show(
-            'Factura actualizada correctamente',
-            'success'
-          );
-          this.router.navigate(['/invoices']);
+
+      this.isLoading.set(true);
+
+      this.invoiceService.updateInvoice(this.id, payload).subscribe({
+        next: (response) => {
+          if (this.shouldValidateWithSunat(formValue)) {
+            this.validateWithSunatData(formValue);
+          } else {
+            this.isLoading.set(false);
+            this.notificationService.show(
+              'Factura actualizada correctamente',
+              'success'
+            );
+            this.router.navigate(['/invoices']);
+          }
         },
         error: (error: any) => {
+          this.isLoading.set(false);
+          console.error('Error al actualizar:', error);
           this.notificationService.show(
             'Error al actualizar la factura: ' +
               (error.message || 'Intente nuevamente'),
@@ -215,6 +283,10 @@ export default class AddInvoiceComponent implements OnInit {
           );
         },
       });
+    } else {
+      if (!this.form.valid) {
+        // Formulario inválido
+      }
     }
   }
 
@@ -222,9 +294,14 @@ export default class AddInvoiceComponent implements OnInit {
     const input = event.target as HTMLInputElement;
     if (input.files && input.files[0]) {
       this.selectedFile = input.files[0];
-      this.previewImage = this.sanitizer.bypassSecurityTrustUrl(
-        URL.createObjectURL(this.selectedFile)
-      );
+      console.log(this.selectedFile);
+      if (!this.isPdfFile(this.selectedFile)) {
+        this.previewImage = this.sanitizer.bypassSecurityTrustUrl(
+          URL.createObjectURL(this.selectedFile)
+        );
+      } else {
+        this.previewImage = null;
+      }
       this.form.patchValue({ file: this.selectedFile });
     }
   }
@@ -250,6 +327,35 @@ export default class AddInvoiceComponent implements OnInit {
         this.isLoading.set(false);
         this.notificationService.show(
           'Error al subir el archivo: ' + error.message,
+          'error'
+        );
+      },
+    });
+  }
+
+  private uploadPdfDirectly() {
+    const formData = new FormData();
+    formData.append('file', this.selectedFile);
+    formData.append('proyectId', this.form.get('proyectId')?.value);
+    formData.append('categoryId', this.form.get('categoryId')?.value);
+    formData.append('status', 'pending');
+
+    this.percentage.set(10);
+    this.invoiceService.analyzePdf(formData).subscribe({
+      next: (res) => {
+        this.isLoading.set(false);
+        this.notificationService.show(
+          'Factura PDF analizada correctamente',
+          'success'
+        );
+        this.router.navigate(['/invoices']);
+      },
+      error: (error) => {
+        this.isLoading.set(false);
+        const errorMessage =
+          error.error?.message || error.message || 'Intente nuevamente';
+        this.notificationService.show(
+          'Error al analizar PDF: ' + errorMessage,
           'error'
         );
       },
@@ -289,10 +395,8 @@ export default class AddInvoiceComponent implements OnInit {
                 status: res.status,
               };
 
-              const companyId =
-                this.userStateService.getUser()?.companyId || '';
               this.invoiceService
-                .updateInvoice(res._id, companyId, updatePayload)
+                .updateInvoice(res._id, updatePayload)
                 .subscribe({
                   next: () => {
                     this.isLoading.set(false);
@@ -384,5 +488,182 @@ export default class AddInvoiceComponent implements OnInit {
 
   get correlativo() {
     return this.form.get('correlativo');
+  }
+
+  private shouldValidateWithSunat(formValue: any): boolean {
+    return !!(
+      formValue.rucEmisor &&
+      formValue.serie &&
+      formValue.correlativo &&
+      formValue.fechaEmision
+    );
+  }
+
+  private validateWithSunat() {
+    this.isSunatValidating.set(true);
+
+    const clientId =
+      this.originalInvoice?.clientId?._id || this.originalInvoice?.clientId;
+
+    if (!clientId) {
+      this.isSunatValidating.set(false);
+      this.isLoading.set(false);
+      this.notificationService.show(
+        'No se pudo obtener el ID de la empresa para validar con SUNAT',
+        'error'
+      );
+      this.router.navigate(['/invoices']);
+      return;
+    }
+
+    this.invoiceService.getSunatValidation(this.id, clientId).subscribe({
+      next: (validationResult: SunatValidationInfo) => {
+        this.isSunatValidating.set(false);
+        this.isLoading.set(false);
+        this.sunatValidation = validationResult;
+
+        this.showSunatValidationResult(validationResult);
+
+        this.router.navigate(['/invoices']);
+      },
+      error: (error) => {
+        this.isSunatValidating.set(false);
+        this.isLoading.set(false);
+        console.error('Error al validar con SUNAT:', error);
+
+        this.notificationService.show(
+          'Factura actualizada correctamente, pero hubo un error al validar con SUNAT',
+          'error'
+        );
+        this.router.navigate(['/invoices']);
+      },
+    });
+  }
+
+  private showSunatValidationResult(validation: SunatValidationInfo) {
+    let message = '';
+    let type: 'success' | 'error' = 'success';
+
+    if (validation.sunatValidation) {
+      switch (validation.sunatValidation.status) {
+        case 'VALIDO_ACEPTADO':
+          message =
+            'Factura validada correctamente con SUNAT - Comprobante válido';
+          type = 'success';
+          break;
+        case 'VALIDO_NO_PERTENECE':
+          message =
+            'Comprobante válido en SUNAT pero no pertenece a esta empresa';
+          type = 'error';
+          break;
+        case 'NO_ENCONTRADO':
+          message = 'Comprobante no encontrado en SUNAT';
+          type = 'error';
+          break;
+        case 'ERROR_SUNAT':
+          message =
+            'Error al validar con SUNAT: ' + validation.sunatValidation.message;
+          type = 'error';
+          break;
+        default:
+          message =
+            'Resultado de validación SUNAT: ' +
+            validation.sunatValidation.message;
+          type = 'error';
+      }
+    } else {
+      message = 'No se pudo obtener información de validación SUNAT';
+      type = 'error';
+    }
+
+    this.notificationService.show(message, type);
+  }
+
+  private getTipoComprobanteFromData(): string {
+    if (this.originalInvoice?.data) {
+      try {
+        const dataObj =
+          typeof this.originalInvoice.data === 'string'
+            ? JSON.parse(this.originalInvoice.data)
+            : this.originalInvoice.data;
+        return dataObj.tipoComprobante || 'Factura';
+      } catch {
+        return 'Factura';
+      }
+    }
+    return 'Factura';
+  }
+
+  private validateWithSunatData(formValue: any) {
+    this.isSunatValidating.set(true);
+
+    const validationData = {
+      rucEmisor: formValue.rucEmisor,
+      serie: formValue.serie,
+      correlativo: formValue.correlativo,
+      fechaEmision: this.formatDateForBackend(formValue.fechaEmision),
+      montoTotal:
+        this.originalInvoice?.total || this.originalInvoice?.montoTotal || 0,
+      clientId:
+        this.originalInvoice?.clientId || this.originalInvoice?.companyId,
+      tipoComprobante: this.getTipoComprobanteFromData(),
+    };
+
+    this.invoiceService
+      .validateWithSunatData(this.id, validationData)
+      .subscribe({
+        next: (response) => {
+          this.isSunatValidating.set(false);
+          this.isLoading.set(false);
+
+          let message = '';
+          let type: 'success' | 'error' = 'success';
+
+          switch (response.status) {
+            case 'VALIDO_ACEPTADO':
+              message =
+                'Factura validada correctamente con SUNAT - Comprobante válido';
+              type = 'success';
+              break;
+            case 'VALIDO_NO_PERTENECE':
+              message =
+                'Comprobante válido en SUNAT pero no pertenece a esta empresa';
+              type = 'error';
+              break;
+            case 'NO_ENCONTRADO':
+              message = 'Comprobante no encontrado en SUNAT';
+              type = 'error';
+              break;
+            case 'ERROR_SUNAT':
+              message =
+                'Error al validar con SUNAT: ' +
+                (response.details?.message || 'Error desconocido');
+              type = 'error';
+              break;
+            case 'SUNAT_CONFIG_NOT_FOUND':
+              message = 'No se encontró configuración SUNAT para esta empresa';
+              type = 'error';
+              break;
+            default:
+              message =
+                'Resultado de validación SUNAT: ' +
+                (response.details?.message || 'Estado desconocido');
+              type = 'error';
+          }
+
+          this.notificationService.show(message, type);
+          this.router.navigate(['/invoices']);
+        },
+        error: (error) => {
+          this.isSunatValidating.set(false);
+          this.isLoading.set(false);
+          console.error('Error al validar con SUNAT:', error);
+          this.notificationService.show(
+            'Factura actualizada correctamente, pero hubo un error al validar con SUNAT',
+            'error'
+          );
+          this.router.navigate(['/invoices']);
+        },
+      });
   }
 }

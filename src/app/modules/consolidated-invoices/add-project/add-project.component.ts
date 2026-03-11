@@ -56,58 +56,73 @@ export class AddProjectComponent implements OnInit {
     this.router.navigate(['/consolidated-invoices']);
   }
 
-  saveProject() {
+  save() {
+    if (this.isEditing) {
+      this.updateProject();
+    } else {
+      this.saveProject();
+    }
+  }
+
+  validateName() {
     if (!this.project.name) {
       this.notificationService.show(
         'El nombre del proyecto es obligatorio',
         'error'
       );
+      return false;
+    }
+    return true;
+  }
+
+  saveProject() {
+    if (!this.validateName()) {
       return;
     }
+    const createData: IProject = {
+      name: this.project.name,
+    };
+    this.invoicesService.createProject(createData).subscribe({
+      next: () => {
+        this.notificationService.show(
+          'Proyecto creado exitosamente',
+          'success'
+        );
+        this.router.navigate(['/consolidated-invoices']);
+      },
+      error: (error: HttpErrorResponse) => {
+        this.notificationService.show(
+          'Error al crear proyecto: ' + error.message,
+          'error'
+        );
+      },
+    });
+  }
 
-    if (!this.isEditing) {
-      const createData: IProject = {
-        name: this.project.name,
-      };
-
-      this.invoicesService.createProject(createData).subscribe({
+  updateProject() {
+    if (!this.validateName()) {
+      return;
+    }
+    const updateData: Partial<IProject> = {
+      name: this.project.name,
+    };
+    const companyId = this.userStateService.getUser()?.companyId || '';
+    this.invoicesService
+      .updateProject(this.projectId!, updateData, companyId)
+      .subscribe({
         next: () => {
           this.notificationService.show(
-            'Proyecto creado exitosamente',
+            'Proyecto actualizado exitosamente',
             'success'
           );
           this.router.navigate(['/consolidated-invoices']);
         },
         error: (error: HttpErrorResponse) => {
           this.notificationService.show(
-            'Error al crear proyecto: ' + error.message,
+            'Error al actualizar proyecto: ' + error.message,
             'error'
           );
         },
       });
-    } else {
-      const updateData: Partial<IProject> = {
-        name: this.project.name,
-      };
-
-      const companyId = this.userStateService.getUser()?.companyId || '';
-      this.invoicesService
-        .updateProject(this.projectId!, updateData, companyId)
-        .subscribe({
-          next: () => {
-            this.notificationService.show(
-              'Proyecto actualizado exitosamente',
-              'success'
-            );
-            this.router.navigate(['/consolidated-invoices']);
-          },
-          error: (error: HttpErrorResponse) => {
-            this.notificationService.show(
-              'Error al actualizar proyecto: ' + error.message,
-              'error'
-            );
-          },
-        });
-    }
   }
 }

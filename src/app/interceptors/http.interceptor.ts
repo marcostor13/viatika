@@ -8,18 +8,15 @@ export const httpInterceptor: HttpInterceptorFn = (req, next) => {
   const userStateService = inject(UserStateService);
   const loaderService = inject(LoaderService);
   loaderService.show();
-
-  const token = userStateService.getToken();
   const user = userStateService.getUser();
-
   const currentHeaders = req.headers;
   const objectHeaders = Object.fromEntries(
     currentHeaders.keys().map((key) => [key, currentHeaders.get(key)])
   );
-
+  const token = user?.access_token || userStateService.getToken();
   let url = req.url;
 
-  const excludedEndpoints = ['/auth', '/auth/'];
+  const excludedEndpoints = ['/auth', '/auth/', '/login'];
   const skipCompanyIdEndpoints = [
     '/approve',
     '/reject',
@@ -31,7 +28,9 @@ export const httpInterceptor: HttpInterceptorFn = (req, next) => {
     '/sunat-config/',
     '/config',
     '/logo',
+    '/api/client',
   ];
+
   const isExcludedEndpoint = excludedEndpoints.some(
     (endpoint) => url.includes(endpoint) || url.endsWith('/api')
   );
@@ -55,36 +54,42 @@ export const httpInterceptor: HttpInterceptorFn = (req, next) => {
     });
   }
 
-  const methods = ['GET', 'PATCH', 'DELETE'];
-  if (
-    methods.includes(req.method) &&
-    user?.companyId &&
-    !isExcludedEndpoint &&
-    !shouldSkipCompanyId
-  ) {
-    if (!url.endsWith(user.companyId)) {
-      if (!url.endsWith('/')) {
-        url = `${url}/`;
-      }
-      url = `${url}${user.companyId}`;
-      req = req.clone({ url });
+  if (req.url.includes('with-super-admin')) {
+    return next(req).pipe(finalize(() => loaderService.hide()));
+  }
+
+  const companyId = user?.companyId;
+
+  // Append companyId to GET requests if not superAdmin and not excluded
+  if (req.method === 'GET' && companyId && !userStateService.isSuperAdmin() && !shouldSkipCompanyId) {
+    const shouldAddClientId =
+      !req.url.includes('/expense/') ||
+      req.url.includes('/expense/client/') ||
+      req.url.includes('/expense/test-sunat-credentials/');
+
+    if (shouldAddClientId && !req.url.endsWith(companyId)) {
+       // Only append if it's not already there
+       req = req.clone({ url: `${req.url}/${companyId}` });
     }
   }
 
-  if (
-    req.method === 'POST' &&
-    user?.companyId &&
-    !isExcludedEndpoint &&
-    !shouldSkipCompanyId
-  ) {
+  // Handle DELETE/PATCH for categories/projects
+  if ((req.method === 'DELETE' || req.method === 'PATCH') && companyId) {
+    if ((req.url.includes('/category/') || req.url.includes('/project/')) && !req.url.endsWith(companyId)) {
+      req = req.clone({ url: `${req.url}/${companyId}` });
+    }
+  }
+
+  // Add clientId to POST requests
+  if (req.method === 'POST' && companyId && !isExcludedEndpoint && !shouldSkipCompanyId) {
     if (req.body instanceof FormData) {
-      req.body.append('companyId', user.companyId);
+      if (!req.body.has('clientId')) req.body.append('clientId', companyId);
     } else {
       const body = req.body || {};
       req = req.clone({
         body: {
           ...body,
-          companyId: user.companyId,
+          clientId: companyId,
         },
       });
     }

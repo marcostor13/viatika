@@ -36,8 +36,14 @@ export class InvoicesService {
     );
   }
 
+  analyzePdf(formData: FormData): Observable<IInvoiceResponse> {
+    return this.http.post<IInvoiceResponse>(
+      `${this.url}/analize-pdf`,
+      formData
+    );
+  }
+
   getInvoices(
-    companyId: string,
     filters?: any,
     sortBy: string = 'fechaEmision',
     sortOrder: 'asc' | 'desc' = 'desc'
@@ -58,13 +64,13 @@ export class InvoicesService {
         }
       });
     }
-    return this.http.get<IInvoiceResponse[]>(`${this.url}/${companyId}`, {
+    return this.http.get<IInvoiceResponse[]>(`${this.url}`, {
       params,
     });
   }
 
-  getInvoiceById(id: string, companyId: string): Observable<IInvoiceResponse> {
-    return this.http.get<IInvoiceResponse>(`${this.url}/${id}/${companyId}`);
+  getInvoiceById(id: string): Observable<IInvoiceResponse> {
+    return this.http.get<IInvoiceResponse>(`${this.url}/invoice/${id}`);
   }
 
   uploadInvoice(formData: FormData): Observable<IInvoiceResponse> {
@@ -72,37 +78,35 @@ export class InvoicesService {
   }
 
   deleteInvoice(id: string): Observable<any> {
-    return this.http.delete(`${this.url}/${id}`);
+    return this.http.delete(`${this.url}/invoice/${id}`);
   }
 
   approveInvoice(
     id: string,
-    companyId: string,
     payload: ApprovalPayload
   ): Observable<IInvoiceResponse> {
     return this.http.patch<IInvoiceResponse>(
-      `${this.url}/${id}/${companyId}/approve`,
+      `${this.url}/invoice/${id}/approve`,
       payload
     );
   }
 
   rejectInvoice(
     id: string,
-    companyId: string,
     payload: ApprovalPayload
   ): Observable<IInvoiceResponse> {
     return this.http.patch<IInvoiceResponse>(
-      `${this.url}/${id}/${companyId}/reject`,
+      `${this.url}/invoice/${id}/reject`,
       payload
     );
   }
 
-  getCategories(companyId: string): Observable<ICategory[]> {
-    return this.http.get<ICategory[]>(`${this.categoryUrl}/${companyId}`);
+  getCategories(): Observable<ICategory[]> {
+    return this.http.get<ICategory[]>(`${this.categoryUrl}`);
   }
 
-  getCategoryById(id: string, companyId: string): Observable<ICategory> {
-    return this.http.get<ICategory>(`${this.categoryUrl}/${id}/${companyId}`);
+  getCategoryById(id: string): Observable<ICategory> {
+    return this.http.get<ICategory>(`${this.categoryUrl}/${id}`);
   }
 
   createCategory(category: ICategory): Observable<ICategory> {
@@ -120,8 +124,8 @@ export class InvoicesService {
     return this.http.delete(`${this.categoryUrl}/${id}`);
   }
 
-  getProjects(companyId: string): Observable<IProject[]> {
-    return this.http.get<IProject[]>(`${this.projectUrl}/${companyId}`);
+  getProjects(): Observable<IProject[]> {
+    return this.http.get<IProject[]>(`${this.projectUrl}`);
   }
 
   getProjectById(id: string, companyId: string): Observable<IProject> {
@@ -147,8 +151,77 @@ export class InvoicesService {
     return this.http.delete(`${this.projectUrl}/${id}/${companyId}`);
   }
 
-  updateInvoice(id: string, companyId: string, payload: any) {
-    return this.http.patch(`${this.url}/${id}/${companyId}`, payload);
+  updateInvoice(id: string, payload: any) {
+    return this.http.patch(`${this.url}/invoice/${id}`, payload);
+  }
+
+  // Métodos para validación SUNAT
+  getSunatValidation(
+    id: string,
+    companyId: string
+  ): Observable<SunatValidationInfo> {
+    return this.http.get<SunatValidationInfo>(
+      `${this.url}/invoice/${id}/sunat-validation`
+    );
+  }
+
+  // Métodos para configuración de empresa
+  getCompanyConfig(): Observable<ICompanyConfig> {
+    return this.http.get<ICompanyConfig>(`${this.companyConfigUrl}`);
+  }
+
+  updateCompanyConfig(
+    id: string,
+    config: Partial<ICompanyConfig>
+  ): Observable<ICompanyConfig> {
+    return this.http.patch<ICompanyConfig>(
+      `${this.companyConfigUrl}/${id}`,
+      config
+    );
+  }
+
+  getSunatConfig(): Observable<ISunatConfig> {
+    return this.http.get<ISunatConfig>(this.sunatConfigUrl);
+  }
+
+  createSunatConfig(config: Partial<ISunatConfig>): Observable<ISunatConfig> {
+    return this.http.post<ISunatConfig>(this.sunatConfigUrl, config);
+  }
+
+  updateSunatConfig(config: Partial<ISunatConfig>): Observable<ISunatConfig> {
+    return this.http.patch<ISunatConfig>(
+      `${this.sunatConfigUrl}/${config._id}`,
+      config
+    );
+  }
+
+  deleteSunatConfig(): Observable<any> {
+    return this.http.delete(this.sunatConfigUrl);
+  }
+
+  getSunatCredentials(): Observable<ISunatCredentials> {
+    return this.http.get<ISunatCredentials>(
+      `${this.sunatConfigUrl}/credentials`
+    );
+  }
+
+  testSunatCredentials(): Observable<any> {
+    return this.http.get(`${this.url}/test-sunat-credentials`);
+  }
+
+  validateWithSunatData(
+    id: string,
+    data: {
+      rucEmisor: string;
+      serie: string;
+      correlativo: string;
+      fechaEmision: string;
+      montoTotal?: number;
+      clientId?: string;
+      tipoComprobante?: string;
+    }
+  ): Observable<any> {
+    return this.http.post(`${this.url}/invoice/${id}/validate-sunat`, data);
   }
 
   // Métodos para validación SUNAT

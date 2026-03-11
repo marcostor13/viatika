@@ -1,4 +1,6 @@
-@for (item of data; track item; let i = $index) {
+<!-- LIsta ordenada desplegable tipo acordeón para mostrar los datos de una tabla -->
+
+@for (item of data; track item._id; let i = $index) {
 <div
   (click)="toggleDetails(i)"
   class="cursor-pointer flex items-center gap-5 border-b border-slate-200 dark:border-slate-800 py-4 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors px-4 group"
@@ -74,7 +76,8 @@
     >
       <span class="material-symbols-outlined text-xl">download</span>
     </button>
-    } @if (option === 'approve' && item.status === 'pending') {
+    } @if (option === 'approve' && item.status !== 'approved' && item.status !==
+    'APPROVED' && item.status !== 'rejected' && item.status !== 'REJECTED') {
     <button
       class="text-emerald-500 hover:text-emerald-600 transition-colors p-2.5 rounded-lg hover:bg-emerald-50 dark:hover:bg-emerald-500/10 flex items-center justify-center bg-slate-50 dark:bg-slate-800/50"
       title="Aprobar factura"
@@ -82,7 +85,8 @@
     >
       <span class="material-symbols-outlined text-xl">check_circle</span>
     </button>
-    } @if (option === 'reject' && item.status === 'pending') {
+    } @if (option === 'reject' && item.status !== 'approved' && item.status !==
+    'APPROVED' && item.status !== 'rejected' && item.status !== 'REJECTED') {
     <button
       class="text-rose-500 hover:text-rose-600 transition-colors p-2.5 rounded-lg hover:bg-rose-50 dark:hover:bg-rose-500/10 flex items-center justify-center bg-slate-50 dark:bg-slate-800/50"
       title="Rechazar factura"

@@ -1,6 +1,6 @@
 export const environment = {
     production: true,
-    api: 'https://fact-back.marcostorresalarcon.com/api',
+    api: 'https://viatika-back.marcostorresalarcon.com/api',
     storage: 'user-data-ls-gastos',
     storagePath: 'gastos-images',
     firebaseConfig: {

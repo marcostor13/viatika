@@ -1,21 +1,41 @@
 export interface IUser {
   _id?: string;
-  firstName: string;
-  lastName: string;
+  name?: string;
+  firstName?: string;
+  lastName?: string;
   email: string;
-  role: string;
+  password?: string;
+  roleId?: string;
+  role?: string;
+  roleName?: string;
+  roleKey?: string;
+  clientId?: string | { _id: string };
   isActive?: boolean;
   userId?: string;
   companyId?: string;
   status?: string;
   phone?: string;
-  password?: string; // Campo opcional para creación de usuarios
   createdAt?: Date;
   updatedAt?: Date;
   isSelf?: boolean; // Bandera para indicar si es el usuario actual logueado
 }
 
-export interface IClient {
+export type IRole = IRoleResponse;
+export type IClient = IClientResponse;
+
+export interface IUserUpdate {
+  firstName?: string;
+  lastName?: string;
+  email?: string;
+  role?: string;
+  roleId?: string;
+  isActive?: boolean;
+  companyId?: string;
+  clientId?: string;
+  password?: string;
+}
+
+export interface IClientResponse {
   _id: string;
   comercialName: string;
   businessName: string;
@@ -28,7 +48,7 @@ export interface IClient {
   updatedAt: Date;
 }
 
-export interface IRole {
+export interface IRoleResponse {
   _id: string;
   name: string;
   active: boolean;
@@ -36,29 +56,23 @@ export interface IRole {
   updatedAt: Date;
 }
 
-export interface IUserResponse extends IUser {
+export interface IUserResponse {
   _id: string;
-  access_token: string;
-  clientId?: IClient;
-  roleId?: IRole;
-  name?: string; // Campo para compatibilidad
-}
-
-export interface IUserCreate {
-  firstName: string;
-  lastName: string;
-  email: string;
-  password: string;
-  role: string;
-  companyId?: string;
-}
-
-export interface IUserUpdate {
+  name: string;
   firstName?: string;
   lastName?: string;
-  email?: string;
-  role?: string;
-  isActive?: boolean;
+  access_token?: string;
+  client?: IClientResponse;
+  clientId?: string | { _id: string };
+  role: IRoleResponse;
+  roleId?: string;
+  roleName?: string;
+  roleKey?: string;
+  email: string;
+  isActive: boolean;
   companyId?: string;
-  password?: string; // Campo opcional para cambiar contraseña
+  createdAt: Date;
+  updatedAt: Date;
 }
+
+

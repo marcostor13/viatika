@@ -1,13 +1,10 @@
-import { Component, OnInit, signal } from '@angular/core';
+import { Component, inject, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { ListTableComponent } from '../../components/list-table/list-table.component';
-import { TableComponent } from '../../components/table/table.component';
 import { IHeaderList } from '../../interfaces/header-list.interface';
 import { AdminUsersService } from './services/admin-users.service';
 import {
   IUserResponse,
   IUser,
-  IUserCreate,
   IUserUpdate,
   IRole,
   IClient,
@@ -17,15 +14,21 @@ import { NotificationService } from '../../services/notification.service';
 import { UserStateService } from '../../services/user-state.service';
 import { finalize, catchError } from 'rxjs/operators';
 import { EMPTY } from 'rxjs';
+import { TableComponent } from '../../components/table/table.component';
+import { ListTableComponent } from '../../components/list-table/list-table.component';
 
 @Component({
   selector: 'app-admin-users',
   standalone: true,
-  imports: [CommonModule, ListTableComponent, TableComponent, FormsModule],
+  imports: [CommonModule, FormsModule, TableComponent, ListTableComponent],
   templateUrl: './admin-users.component.html',
   styleUrls: ['./admin-users.component.scss'],
 })
 export default class AdminUsersComponent implements OnInit {
+  private adminUsersService = inject(AdminUsersService);
+  private notification = inject(NotificationService);
+  public userStateService = inject(UserStateService);
+
   headers: IHeaderList[] = [
     { header: 'Nombre', value: 'name' },
     { header: 'Email', value: 'email' },
@@ -39,12 +42,6 @@ export default class AdminUsersComponent implements OnInit {
   isLoading = signal(false);
   roles = signal<IRole[]>([]);
   clients = signal<IClient[]>([]);
-
-  constructor(
-    private adminUsersService: AdminUsersService,
-    private notification: NotificationService,
-    public userStateService: UserStateService
-  ) { }
 
   ngOnInit() {
     if (!this.adminUsersService || !this.userStateService) {
@@ -319,29 +316,16 @@ export default class AdminUsersComponent implements OnInit {
 
   deleteUser(userId: string) {
     if (confirm('¿Estás seguro de que deseas eliminar este usuario?')) {
-      this.isLoading.set(true);
 
-      this.adminUsersService
-        .deleteUser(userId)
-        .pipe(
-          catchError((error) => {
-            this.notification.show(
-              'Error al eliminar usuario: ' + error.message,
-              'error'
-            );
-            return EMPTY;
-          }),
-          finalize(() => this.isLoading.set(false))
-        )
-        .subscribe({
-          next: () => {
-            this.notification.show(
-              'Usuario eliminado correctamente',
-              'success'
-            );
-            this.loadUsers();
-          },
-        });
+      this.adminUsersService.deleteUser(userId).subscribe({
+        next: () => {
+          this.notification.show(
+            'Usuario eliminado correctamente',
+            'success'
+          );
+          this.loadUsers();
+        },
+      });
     }
   }
 

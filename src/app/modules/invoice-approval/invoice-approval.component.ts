@@ -1,8 +1,6 @@
 import { Component, inject, signal, OnInit, computed } from '@angular/core';
-import { ListTableComponent } from '../../components/list-table/list-table.component';
-import { TableComponent } from '../../components/table/table.component';
-import { FileDownloadComponent } from '../../components/file-download/file-download.component';
 import { Router } from '@angular/router';
+import { FileDownloadComponent } from '../../components/file-download/file-download.component';
 import { NotificationService } from '../../services/notification.service';
 import { ConfirmationService } from '../../services/confirmation.service';
 import { IHeaderList } from '../../interfaces/header-list.interface';
@@ -16,8 +14,10 @@ import { ICategory } from '../invoices/interfaces/category.interface';
 import { IProject } from '../invoices/interfaces/project.interface';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { tap } from 'rxjs/operators';
 import { UserStateService } from '../../services/user-state.service';
+import { DataComponent } from '../../components/data/data.component';
+import { AdminUsersService } from '../admin-users/services/admin-users.service';
+import { IUserResponse } from '../../interfaces/user.interface';
 
 interface IInvoice {
   _id?: string;
@@ -30,6 +30,8 @@ interface IInvoice {
   updatedAt: string;
   total: string | number;
   userId?: string;
+  createdBy?: string;
+  uploadedBy?: string;
 
   ruc?: string;
   tipo?: string;
@@ -57,13 +59,7 @@ interface IInvoice {
 @Component({
   selector: 'app-invoice-approval',
   standalone: true,
-  imports: [
-    CommonModule,
-    FormsModule,
-    TableComponent,
-    ListTableComponent,
-    FileDownloadComponent,
-  ],
+  imports: [CommonModule, FormsModule, DataComponent, FileDownloadComponent],
   templateUrl: './invoice-approval.component.html',
   styleUrl: './invoice-approval.component.scss',
 })
@@ -73,6 +69,7 @@ export class InvoiceApprovalComponent implements OnInit {
   private notificationService = inject(NotificationService);
   private confirmationService = inject(ConfirmationService);
   private userStateService = inject(UserStateService);
+  private adminUsersService = inject(AdminUsersService);
 
   rejectionReason = signal('');
   selectedInvoiceId = signal('');
@@ -80,7 +77,8 @@ export class InvoiceApprovalComponent implements OnInit {
   categories: ICategory[] = [];
   projects: IProject[] = [];
   invoices: IInvoice[] = [];
-  allInvoices = signal<IInvoice[]>([]); // Para estadísticas sin filtrar - ahora es un signal
+  allInvoices = signal<IInvoice[]>([]);
+  users: IUserResponse[] = [];
   loading = false;
 
   headers: IHeaderList[] = [
@@ -117,6 +115,10 @@ export class InvoiceApprovalComponent implements OnInit {
       value: 'total',
     },
     {
+      header: 'Subido por',
+      value: 'uploadedBy',
+    },
+    {
       header: 'Estado',
       value: 'status',
     },
@@ -133,7 +135,7 @@ export class InvoiceApprovalComponent implements OnInit {
   filterCategory = signal('');
   filterAmountMin = signal('');
   filterAmountMax = signal('');
-  filterStatus = signal('pending'); // Por defecto mostrar solo pendientes
+  filterStatus = signal(''); // Por defecto mostrar todas las facturas
 
   exportFileType: 'excel' | 'pdf' = 'excel';
   exportColumns = [
@@ -145,6 +147,7 @@ export class InvoiceApprovalComponent implements OnInit {
     { header: 'Serie', field: 'serie' },
     { header: 'Correlativo', field: 'correlativo' },
     { header: 'Total', field: 'total' },
+    { header: 'Subido por', field: 'uploadedBy' },
     { header: 'Estado', field: 'status' },
   ];
 
@@ -161,26 +164,14 @@ export class InvoiceApprovalComponent implements OnInit {
   // Estadísticas calculadas (siempre sobre todas las facturas, no filtradas)
   stats = computed(() => {
     const invoices = this.allInvoices();
-    const pending = invoices.filter(
-      (inv) =>
-        inv.status === 'pending' || inv.status === 'PENDING' || !inv.status
-    ).length;
     const approved = invoices.filter(
       (inv) => inv.status === 'approved' || inv.status === 'APPROVED'
     ).length;
     const rejected = invoices.filter(
       (inv) => inv.status === 'rejected' || inv.status === 'REJECTED'
     ).length;
+    const pending = invoices.length - approved - rejected; // Todas las demás son pendientes
     const total = invoices.length;
-
-    console.log('Calculando estadísticas:', {
-      total,
-      pending,
-      approved,
-      rejected,
-      allInvoicesLength: invoices.length,
-      statuses: invoices.map((inv) => inv.status),
-    });
 
     return { pending, approved, rejected, total };
   });
@@ -192,57 +183,50 @@ export class InvoiceApprovalComponent implements OnInit {
   loadData() {
     this.getProjects();
     this.getCategories();
+    this.getUsers();
     this.getInvoices();
+  }
+
+  getUsers() {
+    this.adminUsersService.getUsers().subscribe({
+      next: (users) => {
+        this.users = users;
+      },
+      error: (error) => {
+        console.warn('Error al cargar usuarios:', error);
+      },
+    });
   }
 
   getInvoices() {
     this.loading = true;
     const user = this.userStateService.getUser();
-    const companyId = user?.companyId;
-    if (!companyId) {
-      this.notificationService.show(
-        'No se encontró companyId en el usuario',
-        'error'
-      );
-      this.loading = false;
-      return;
-    }
 
     // Cargar todas las facturas sin filtros para estadísticas
-    this.agentService.getInvoices(companyId, {}).subscribe({
+    this.agentService.getInvoices().subscribe({
       next: (res) => {
         if (res && res.length > 0) {
           const firstItem = res[0];
           if ('categoryId' in firstItem && 'data' in firstItem) {
             const formattedInvoices = this.formatResponse(res);
             this.allInvoices.set(formattedInvoices);
-            console.log(
-              'Facturas cargadas para estadísticas:',
-              formattedInvoices.length
-            );
-            console.log(
-              'Estados encontrados:',
-              formattedInvoices.map((inv) => inv.status)
-            );
-            this.debugStats();
           }
         } else {
           this.allInvoices.set([]);
         }
 
         // Después de cargar todas las facturas, cargar las filtradas
-        this.loadFilteredInvoices(companyId);
+        this.loadFilteredInvoices();
       },
       error: (error) => {
-        console.error('Error cargando todas las facturas:', error);
         this.allInvoices.set([]);
-        this.loadFilteredInvoices(companyId);
+        this.loadFilteredInvoices();
       },
     });
   }
 
-  private loadFilteredInvoices(companyId: string) {
-    this.agentService.getInvoices(companyId, this.filters()).subscribe({
+  private loadFilteredInvoices() {
+    this.agentService.getInvoices(this.filters()).subscribe({
       next: (res) => {
         if (res && res.length > 0) {
           const firstItem = res[0];
@@ -273,8 +257,20 @@ export class InvoiceApprovalComponent implements OnInit {
     });
   }
 
+  getUserName(userId?: string): string {
+    if (!userId) {
+      return 'No disponible';
+    }
+
+    const user = this.users.find((u) => u._id === userId);
+    return user ? user.name : 'Usuario no encontrado';
+  }
+
   formatResponse(res: IInvoiceResponse[]) {
-    return res.map((invoice) => {
+    if (!res || !Array.isArray(res)) {
+      return [];
+    }
+    return res.map((invoice, index) => {
       let invoiceData: any = {};
 
       try {
@@ -282,15 +278,15 @@ export class InvoiceApprovalComponent implements OnInit {
           if (typeof invoice.data === 'string') {
             try {
               invoiceData = JSON.parse(invoice.data);
-            } catch (parseError) {}
+            } catch (parseError) { }
           } else if (typeof invoice.data === 'object') {
             invoiceData = invoice.data;
           }
         }
-      } catch (error) {}
+      } catch (error) { }
 
-      const categoryName = invoice.categoryId.name || 'No disponible';
-      const projectName = invoice.proyectId.name || 'No disponible';
+      const categoryName = invoice.categoryId?.name || 'No disponible';
+      const projectName = invoice.proyectId?.name || 'No disponible';
       const razonSocial = invoiceData.razonSocial || 'No disponible';
       const direccionEmisor = invoiceData.direccionEmisor || 'No disponible';
       const rucEmisor = invoiceData.rucEmisor || 'No disponible';
@@ -313,11 +309,13 @@ export class InvoiceApprovalComponent implements OnInit {
         categoryKey: invoice.category,
         file: invoice.file,
         data: invoice.data,
-        createdAt: new Date(invoice.createdAt).toLocaleDateString('es-ES', {
-          day: '2-digit',
-          month: '2-digit',
-          year: 'numeric',
-        }),
+        createdAt: invoice.createdAt
+          ? new Date(invoice.createdAt).toLocaleDateString('es-ES', {
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric',
+          })
+          : 'No disponible',
         updatedAt: invoice.updatedAt,
         total: formattedTotal,
 
@@ -341,13 +339,15 @@ export class InvoiceApprovalComponent implements OnInit {
         montoTotal: montoTotal,
         serie: serie,
         correlativo: correlativo,
+        uploadedBy: this.getUserName(invoice.createdBy),
       };
 
       return processedInvoice;
     });
   }
 
-  clickOptions(option: string, _id: string) {
+  clickOptions(event: { option: string; _id: string }) {
+    const { option, _id } = event;
     switch (option) {
       case 'download':
         this.downloadInvoice(_id);
@@ -371,6 +371,28 @@ export class InvoiceApprovalComponent implements OnInit {
   }
 
   confirmApproveInvoice(id: string) {
+    const invoice = this.invoices.find((inv) => inv._id === id);
+    if (!invoice) {
+      this.notificationService.show('Factura no encontrada', 'error');
+      return;
+    }
+
+    if (invoice.status === 'approved' || invoice.status === 'APPROVED') {
+      this.notificationService.show(
+        'Esta factura ya ha sido aprobada',
+        'error'
+      );
+      return;
+    }
+
+    if (invoice.status === 'rejected' || invoice.status === 'REJECTED') {
+      this.notificationService.show(
+        'Esta factura ya ha sido rechazada',
+        'error'
+      );
+      return;
+    }
+
     this.confirmationService.confirm({
       title: 'Confirmar aprobación',
       message: '¿Está seguro que desea aprobar esta factura?',
@@ -381,12 +403,11 @@ export class InvoiceApprovalComponent implements OnInit {
   }
 
   approveInvoice(id: string) {
-    const companyId = this.userStateService.getUser()?.companyId || '';
     const payload: ApprovalPayload = {
       status: 'approved',
     };
 
-    this.agentService.approveInvoice(id, companyId, payload).subscribe({
+    this.agentService.approveInvoice(id, payload).subscribe({
       next: () => {
         this.notificationService.show(
           'Factura aprobada correctamente',
@@ -405,6 +426,28 @@ export class InvoiceApprovalComponent implements OnInit {
   }
 
   openRejectionModal(id: string) {
+    const invoice = this.invoices.find((inv) => inv._id === id);
+    if (!invoice) {
+      this.notificationService.show('Factura no encontrada', 'error');
+      return;
+    }
+
+    if (invoice.status === 'approved' || invoice.status === 'APPROVED') {
+      this.notificationService.show(
+        'Esta factura ya ha sido aprobada',
+        'error'
+      );
+      return;
+    }
+
+    if (invoice.status === 'rejected' || invoice.status === 'REJECTED') {
+      this.notificationService.show(
+        'Esta factura ya ha sido rechazada',
+        'error'
+      );
+      return;
+    }
+
     this.selectedInvoiceId.set(id);
     this.rejectionReason.set('');
     this.showRejectionModal.set(true);
@@ -429,29 +472,23 @@ export class InvoiceApprovalComponent implements OnInit {
       reason: this.rejectionReason(),
     };
 
-    this.agentService
-      .rejectInvoice(
-        id,
-        this.userStateService.getUser()?.companyId || '',
-        payload
-      )
-      .subscribe({
-        next: () => {
-          this.notificationService.show(
-            'Factura rechazada correctamente',
-            'success'
-          );
-          this.closeRejectionModal();
-          // Recargar datos para actualizar estadísticas
-          this.getInvoices();
-        },
-        error: (error) => {
-          this.notificationService.show(
-            'Error al rechazar la factura: ' + error.message,
-            'error'
-          );
-        },
-      });
+    this.agentService.rejectInvoice(id, payload).subscribe({
+      next: () => {
+        this.notificationService.show(
+          'Factura rechazada correctamente',
+          'success'
+        );
+        this.closeRejectionModal();
+        // Recargar datos para actualizar estadísticas
+        this.getInvoices();
+      },
+      error: (error) => {
+        this.notificationService.show(
+          'Error al rechazar la factura: ' + error.message,
+          'error'
+        );
+      },
+    });
   }
 
   get filteredInvoices() {
@@ -459,15 +496,7 @@ export class InvoiceApprovalComponent implements OnInit {
   }
 
   getCategories() {
-    const companyId = this.userStateService.getUser()?.companyId;
-    if (!companyId) {
-      this.notificationService.show(
-        'No se encontró companyId en el usuario',
-        'error'
-      );
-      return;
-    }
-    this.agentService.getCategories(companyId).subscribe({
+    this.agentService.getCategories().subscribe({
       next: (categories) => {
         this.categories = categories;
       },
@@ -481,15 +510,7 @@ export class InvoiceApprovalComponent implements OnInit {
   }
 
   getProjects() {
-    const companyId = this.userStateService.getUser()?.companyId;
-    if (!companyId) {
-      this.notificationService.show(
-        'No se encontró companyId en el usuario',
-        'error'
-      );
-      return;
-    }
-    this.agentService.getProjects(companyId).subscribe({
+    this.agentService.getProjects().subscribe({
       next: (projects) => {
         this.projects = projects;
       },
@@ -515,8 +536,16 @@ export class InvoiceApprovalComponent implements OnInit {
       case 'rejected':
       case 'REJECTED':
         return 'Rechazada';
+      case 'sunat_valid':
+        return 'Válido SUNAT';
+      case 'sunat_valid_not_ours':
+        return 'Válido - No Pertenece';
+      case 'sunat_not_found':
+        return 'No Encontrado SUNAT';
+      case 'sunat_error':
+        return 'Error SUNAT';
       default:
-        return 'Desconocido';
+        return status; // Mostrar el estado original si no coincide con ningún caso
     }
   }
 
@@ -546,23 +575,115 @@ export class InvoiceApprovalComponent implements OnInit {
     this.filterCategory.set('');
     this.filterAmountMin.set('');
     this.filterAmountMax.set('');
-    this.filterStatus.set('pending');
+    this.filterStatus.set('');
     this.getInvoices();
   }
 
-  private debugStats() {
-    console.log('=== DEBUG STATS ===');
-    const invoices = this.allInvoices();
-    console.log('Total facturas:', invoices.length);
+  formatDateForInputDisplay(dateString: string): string {
+    if (!dateString) return '';
 
-    const statusCounts = invoices.reduce((acc, inv) => {
-      const status = inv.status || 'undefined';
-      acc[status] = (acc[status] || 0) + 1;
-      return acc;
-    }, {} as Record<string, number>);
+    if (dateString.includes('-')) {
+      const [year, month, day] = dateString.split('-').map(Number);
+      return `${String(day).padStart(2, '0')}/${String(month).padStart(
+        2,
+        '0'
+      )}/${year}`;
+    }
 
-    console.log('Conteo por estado:', statusCounts);
-    console.log('Stats calculados:', this.stats());
-    console.log('==================');
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return '';
+
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const year = date.getFullYear();
+
+    return `${day}/${month}/${year}`;
+  }
+
+  onDateInputChange(event: any, field: 'dateFrom' | 'dateTo') {
+    const value = event.target.value;
+
+    const dateRegex = /^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/;
+    const match = value.match(dateRegex);
+
+    if (match) {
+      const day = parseInt(match[1]);
+      const month = parseInt(match[2]);
+      const year = parseInt(match[3]);
+
+      const date = new Date(year, month - 1, day);
+      if (
+        date.getDate() === day &&
+        date.getMonth() === month - 1 &&
+        date.getFullYear() === year
+      ) {
+        const isoDate = `${year}-${String(month).padStart(2, '0')}-${String(
+          day
+        ).padStart(2, '0')}`;
+        if (field === 'dateFrom') {
+          this.filterDateFrom.set(isoDate);
+        } else {
+          this.filterDateTo.set(isoDate);
+        }
+        this.getInvoices();
+      }
+    }
+  }
+
+  onDateBlur(event: any, field: 'dateFrom' | 'dateTo') {
+    const value = event.target.value;
+    if (
+      value &&
+      (field === 'dateFrom' ? this.filterDateFrom() : this.filterDateTo())
+    ) {
+      event.target.value = this.formatDateForInputDisplay(
+        field === 'dateFrom' ? this.filterDateFrom() : this.filterDateTo()
+      );
+    }
+  }
+
+  openDatePicker(field: 'dateFrom' | 'dateTo') {
+    const pickerId = field === 'dateFrom' ? 'dateFromPicker' : 'dateToPicker';
+    const picker = document.getElementById(pickerId) as HTMLInputElement;
+
+    if (picker) {
+      if (!picker.value) {
+        const currentValue =
+          field === 'dateFrom' ? this.filterDateFrom() : this.filterDateTo();
+        picker.value = currentValue || new Date().toISOString().split('T')[0];
+      }
+
+      if (picker.showPicker && typeof picker.showPicker === 'function') {
+        try {
+          picker.showPicker();
+        } catch (error) {
+          picker.click();
+        }
+      } else {
+        picker.click();
+      }
+    }
+  }
+
+  onDatePickerChange(event: any, field: 'dateFrom' | 'dateTo') {
+    const value = event.target.value;
+
+    if (value) {
+      if (field === 'dateFrom') {
+        this.filterDateFrom.set(value);
+      } else {
+        this.filterDateTo.set(value);
+      }
+
+      this.getInvoices();
+    }
+  }
+
+  getCurrentDate(): string {
+    return new Date().toISOString().split('T')[0];
+  }
+
+  navigateToAddInvoice() {
+    this.router.navigate(['/invoices/add']);
   }
 }

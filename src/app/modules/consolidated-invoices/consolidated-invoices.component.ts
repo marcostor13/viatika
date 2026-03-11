@@ -1,6 +1,4 @@
 import { Component, inject, signal, OnInit, computed } from '@angular/core';
-import { ListTableComponent } from '../../components/list-table/list-table.component';
-import { TableComponent } from '../../components/table/table.component';
 import { FileDownloadComponent } from '../../components/file-download/file-download.component';
 import { ChartsComponent } from './charts/charts.component';
 import { Router } from '@angular/router';
@@ -18,7 +16,9 @@ import { IProject } from '../invoices/interfaces/project.interface';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { tap } from 'rxjs/operators';
-import { UserStateService } from '../../services/user-state.service';
+import { DataComponent } from '../../components/data/data.component';
+import { AdminUsersService } from '../admin-users/services/admin-users.service';
+import { IUserResponse } from '../../interfaces/user.interface';
 
 interface IInvoice {
   _id?: string;
@@ -31,6 +31,8 @@ interface IInvoice {
   updatedAt: string;
   total: string | number;
   userId?: string;
+  createdBy?: string;
+  uploadedBy?: string;
 
   ruc?: string;
   tipo?: string;
@@ -61,8 +63,7 @@ interface IInvoice {
   imports: [
     CommonModule,
     FormsModule,
-    TableComponent,
-    ListTableComponent,
+    DataComponent,
     FileDownloadComponent,
     ChartsComponent,
   ],
@@ -74,7 +75,7 @@ export class ConsolidatedInvoicesComponent implements OnInit {
   private router = inject(Router);
   private notificationService = inject(NotificationService);
   private confirmationService = inject(ConfirmationService);
-  private userStateService = inject(UserStateService);
+  private adminUsersService = inject(AdminUsersService);
 
   rejectionReason = signal('');
   selectedInvoiceId = signal('');
@@ -85,6 +86,7 @@ export class ConsolidatedInvoicesComponent implements OnInit {
   projects: IProject[] = [];
   invoices: IInvoice[] = [];
   userInvoices: IInvoice[] = [];
+  users: IUserResponse[] = [];
   loading = false;
 
   projectsWithInvoiceCount: { id: string; name: string; count: number }[] = [];
@@ -131,6 +133,10 @@ export class ConsolidatedInvoicesComponent implements OnInit {
       value: 'date',
     },
     {
+      header: 'Subido por',
+      value: 'uploadedBy',
+    },
+    {
       header: 'Estado',
       value: 'status',
     },
@@ -161,6 +167,7 @@ export class ConsolidatedInvoicesComponent implements OnInit {
     { header: 'Correlativo', field: 'correlativo' },
     { header: 'Total', field: 'total' },
     { header: 'Fecha', field: 'date' },
+    { header: 'Subido por', field: 'uploadedBy' },
     { header: 'Estado', field: 'status' },
   ];
 
@@ -176,6 +183,7 @@ export class ConsolidatedInvoicesComponent implements OnInit {
 
   ngOnInit() {
     this.getProjects();
+    this.getUsers();
     const categories$ = this.getCategories();
     if (categories$) {
       categories$.subscribe({
@@ -190,6 +198,26 @@ export class ConsolidatedInvoicesComponent implements OnInit {
         },
       });
     }
+  }
+
+  getUsers() {
+    this.adminUsersService.getUsers().subscribe({
+      next: (users) => {
+        this.users = users;
+      },
+      error: (error) => {
+        console.warn('Error al cargar usuarios:', error);
+      },
+    });
+  }
+
+  getUserName(userId?: string): string {
+    if (!userId) {
+      return 'No disponible';
+    }
+
+    const user = this.users.find((u) => u._id === userId);
+    return user ? user.name : 'Usuario no encontrado';
   }
 
   toggleCategoriesSection() {
@@ -286,17 +314,10 @@ export class ConsolidatedInvoicesComponent implements OnInit {
 
   getInvoices() {
     this.loading = true;
-    const user = this.userStateService.getUser();
-    const companyId = user?.companyId;
-    if (!companyId) {
-      this.notificationService.show(
-        'No se encontró companyId en el usuario',
-        'error'
-      );
-      this.loading = false;
-      return;
-    }
-    this.agentService.getInvoices(companyId, this.filters()).subscribe({
+
+    const currentFilters = this.filters();
+
+    this.agentService.getInvoices(currentFilters).subscribe({
       next: (res) => {
         if (res && res.length > 0) {
           const firstItem = res[0];
@@ -317,8 +338,6 @@ export class ConsolidatedInvoicesComponent implements OnInit {
           this.calculateProjectsWithInvoiceCount();
         }
         this.loading = false;
-
-        // Las facturas del usuario se obtienen automáticamente según la empresa
         this.userInvoices = this.invoices;
       },
       error: (error) => {
@@ -333,7 +352,11 @@ export class ConsolidatedInvoicesComponent implements OnInit {
   }
 
   formatResponse(res: IInvoiceResponse[]) {
-    return res.map((invoice) => {
+    if (!res || !Array.isArray(res)) {
+      return [];
+    }
+
+    return res.map((invoice, index) => {
       let invoiceData: any = {};
 
       try {
@@ -348,9 +371,9 @@ export class ConsolidatedInvoicesComponent implements OnInit {
         }
       } catch (error) {}
 
-      const categoryName = invoice.categoryId.name || 'No disponible';
+      const categoryName = invoice.categoryId?.name || 'No disponible';
 
-      const projectName = invoice.proyectId.name || 'No disponible';
+      const projectName = invoice.proyectId?.name || 'No disponible';
       const razonSocial = invoiceData.razonSocial || 'No disponible';
       const direccionEmisor = invoiceData.direccionEmisor || 'No disponible';
       const rucEmisor = invoiceData.rucEmisor || 'No disponible';
@@ -373,11 +396,13 @@ export class ConsolidatedInvoicesComponent implements OnInit {
         categoryKey: invoice.category,
         file: invoice.file,
         data: invoice.data,
-        createdAt: new Date(invoice.createdAt).toLocaleDateString('es-ES', {
-          day: '2-digit',
-          month: '2-digit',
-          year: 'numeric',
-        }),
+        createdAt: invoice.createdAt
+          ? new Date(invoice.createdAt).toLocaleDateString('es-ES', {
+              day: '2-digit',
+              month: '2-digit',
+              year: 'numeric',
+            })
+          : 'No disponible',
         updatedAt: invoice.updatedAt,
         total: formattedTotal,
 
@@ -401,6 +426,7 @@ export class ConsolidatedInvoicesComponent implements OnInit {
         montoTotal: montoTotal,
         serie: serie,
         correlativo: correlativo,
+        uploadedBy: this.getUserName(invoice.createdBy),
       };
 
       return processedInvoice;
@@ -420,7 +446,8 @@ export class ConsolidatedInvoicesComponent implements OnInit {
     this.router.navigate(['/invoices/add']);
   }
 
-  clickOptions(option: string, _id: string) {
+  clickOptions(event: { option: string; _id: string }) {
+    const { option, _id } = event;
     switch (option) {
       case 'download':
         this.downloadInvoice(_id);
@@ -469,12 +496,11 @@ export class ConsolidatedInvoicesComponent implements OnInit {
   }
 
   approveInvoice(id: string) {
-    const companyId = this.userStateService.getUser()?.companyId || '';
     const payload: ApprovalPayload = {
       status: 'approved',
     };
 
-    this.agentService.approveInvoice(id, companyId, payload).subscribe({
+    this.agentService.approveInvoice(id, payload).subscribe({
       next: () => {
         this.notificationService.show(
           'Factura aprobada correctamente',
@@ -516,28 +542,22 @@ export class ConsolidatedInvoicesComponent implements OnInit {
       reason: this.rejectionReason(),
     };
 
-    this.agentService
-      .rejectInvoice(
-        id,
-        this.userStateService.getUser()?.companyId || '',
-        payload
-      )
-      .subscribe({
-        next: () => {
-          this.notificationService.show(
-            'Factura rechazada correctamente',
-            'success'
-          );
-          this.closeRejectionModal();
-          this.getInvoices();
-        },
-        error: (error) => {
-          this.notificationService.show(
-            'Error al rechazar la factura: ' + error.message,
-            'error'
-          );
-        },
-      });
+    this.agentService.rejectInvoice(id, payload).subscribe({
+      next: () => {
+        this.notificationService.show(
+          'Factura rechazada correctamente',
+          'success'
+        );
+        this.closeRejectionModal();
+        this.getInvoices();
+      },
+      error: (error) => {
+        this.notificationService.show(
+          'Error al rechazar la factura: ' + error.message,
+          'error'
+        );
+      },
+    });
   }
 
   get filteredInvoices() {
@@ -545,15 +565,7 @@ export class ConsolidatedInvoicesComponent implements OnInit {
   }
 
   getCategories() {
-    const companyId = this.userStateService.getUser()?.companyId;
-    if (!companyId) {
-      this.notificationService.show(
-        'No se encontró companyId en el usuario',
-        'error'
-      );
-      return;
-    }
-    return this.agentService.getCategories(companyId).pipe(
+    return this.agentService.getCategories().pipe(
       tap({
         next: (categories) => {
           this.categories = categories;
@@ -569,15 +581,7 @@ export class ConsolidatedInvoicesComponent implements OnInit {
   }
 
   getProjects() {
-    const companyId = this.userStateService.getUser()?.companyId;
-    if (!companyId) {
-      this.notificationService.show(
-        'No se encontró companyId en el usuario',
-        'error'
-      );
-      return;
-    }
-    this.agentService.getProjects(companyId).subscribe({
+    this.agentService.getProjects().subscribe({
       next: (projects) => {
         this.projects = projects;
         this.calculateProjectsWithInvoiceCount();
@@ -598,7 +602,7 @@ export class ConsolidatedInvoicesComponent implements OnInit {
     >();
 
     this.projects.forEach((project) => {
-      if (project._id) {
+      if (project?._id && project?.name) {
         projectCountMap.set(project._id, {
           id: project._id,
           name: project.name,
@@ -667,5 +671,59 @@ export class ConsolidatedInvoicesComponent implements OnInit {
         );
       }
     }, 100);
+  }
+
+  formatDateForInputDisplay(dateString: string): string {
+    if (!dateString) return '';
+
+    const [year, month, day] = dateString.split('-').map(Number);
+    return `${String(day).padStart(2, '0')}/${String(month).padStart(
+      2,
+      '0'
+    )}/${year}`;
+  }
+
+  openDatePicker(field: 'dateFrom' | 'dateTo') {
+    const pickerId =
+      field === 'dateFrom'
+        ? 'consolidated-dateFromPicker'
+        : 'consolidated-dateToPicker';
+    const picker = document.getElementById(pickerId) as HTMLInputElement;
+
+    if (picker) {
+      if (!picker.value) {
+        const currentValue =
+          field === 'dateFrom' ? this.filterDateFrom() : this.filterDateTo();
+        picker.value = currentValue || new Date().toISOString().split('T')[0];
+      }
+
+      if (picker.showPicker && typeof picker.showPicker === 'function') {
+        try {
+          picker.showPicker();
+        } catch (error) {
+          picker.click();
+        }
+      } else {
+        picker.click();
+      }
+    }
+  }
+
+  onDatePickerChange(event: any, field: 'dateFrom' | 'dateTo') {
+    const value = event.target.value;
+
+    if (value) {
+      if (field === 'dateFrom') {
+        this.filterDateFrom.set(value);
+      } else {
+        this.filterDateTo.set(value);
+      }
+
+      this.getInvoices();
+    }
+  }
+
+  getCurrentDate(): string {
+    return new Date().toISOString().split('T')[0];
   }
 }

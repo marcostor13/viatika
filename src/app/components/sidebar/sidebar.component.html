@@ -24,7 +24,6 @@
     </div>
 
     <nav class="flex-1 p-4 space-y-2">
-      <!-- Facturas - Disponible para COLABORADORES -->
       <a
         *ngIf="isColaborador()"
         [routerLink]="['/invoices']"
@@ -35,7 +34,6 @@
         <span class="font-medium text-sm">Facturas</span>
       </a>
 
-      <!-- Aprobación de Facturas - Solo para ADMINISTRADORES (No Super) -->
       <a
         *ngIf="isAdmin()"
         [routerLink]="['/invoice-approval']"
@@ -46,7 +44,6 @@
         <span class="font-medium text-sm">Aprobación</span>
       </a>
 
-      <!-- Usuarios Admin - Solo para CUALQUIER ADMINISTRADOR -->
       <a
         *ngIf="isAnyAdmin()"
         [routerLink]="['/admin-users']"
@@ -57,7 +54,6 @@
         <span class="font-medium text-sm">Usuarios</span>
       </a>
 
-      <!-- Consolidado de Facturas - Solo para ADMINISTRADORES (No Super) -->
       <a
         *ngIf="isAdmin()"
         [routerLink]="['/consolidated-invoices']"
@@ -95,10 +91,10 @@
     <div class="p-4 border-t border-slate-800">
       <div class="flex items-center px-4 py-2 text-slate-300 mb-3">
         <div class="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center text-primary font-bold mr-3 border border-slate-700">
-          U
+          <span class="material-symbols-outlined text-sm">person</span>
         </div>
         <div class="text-sm">
-          <div class="font-bold text-white tracking-tight">Usuario</div>
+          <div class="font-bold text-white tracking-tight">Mi Perfil</div>
           <div class="text-xs text-slate-400 font-medium">
             {{ isSuperAdmin() ? "Super Admin" : (isAdmin() ? "Administrador" : "Colaborador") }}
           </div>
@@ -114,18 +110,15 @@
     </div>
   </div>
 
-  <!-- Sidebar móvil overlay con animaciones mejoradas -->
   <div
     *ngIf="sidebarVisible"
     class="lg:hidden fixed inset-0 z-50 flex animate-in fade-in duration-300"
     (click)="toggleSidebar()"
   >
-    <!-- Overlay con blur -->
     <div
       class="fixed inset-0 bg-black/50 backdrop-blur-sm transition-all duration-300"
     ></div>
 
-    <!-- Sidebar móvil con animación de deslizamiento -->
     <div
       class="relative flex flex-col w-80 max-w-[85vw] bg-slate-900 shadow-2xl animate-in slide-in-from-left duration-300 ease-out border-r border-slate-800"
       (click)="$event.stopPropagation()"
@@ -160,9 +153,7 @@
         </div>
       </div>
 
-      <!-- Navegación móvil con mejor espaciado -->
       <nav class="flex-1 p-6 space-y-3 overflow-y-auto">
-        <!-- Facturas - Disponible para COLABORADORES -->
         <a
           *ngIf="isColaborador()"
           [routerLink]="['/invoices']"
@@ -174,7 +165,6 @@
           <span class="font-medium text-base">Facturas</span>
         </a>
 
-        <!-- Aprobación de Facturas - Solo para ADMINISTRADORES (No Super) -->
         <a
           *ngIf="isAdmin()"
           [routerLink]="['/invoice-approval']"
@@ -186,7 +176,6 @@
           <span class="font-medium text-base">Aprobación</span>
         </a>
 
-        <!-- Usuarios Admin - Solo para CUALQUIER ADMINISTRADOR -->
         <a
           *ngIf="isAnyAdmin()"
           [routerLink]="['/admin-users']"
@@ -198,7 +187,6 @@
           <span class="font-medium text-base">Usuarios</span>
         </a>
 
-        <!-- Consolidado de Facturas - Solo para ADMINISTRADORES (No Super) -->
         <a
           *ngIf="isAdmin()"
           [routerLink]="['/consolidated-invoices']"
@@ -210,7 +198,7 @@
           <span class="font-medium text-base">Consolidado</span>
         </a>
 
-        <!-- Configuración - Solo para ADMINISTRADORES (Móvil) -->
+        <!-- Configuración - Solo para ADMINISTRADORES -->
         <a
           *ngIf="isAdmin()"
           [routerLink]="['/configuracion']"
@@ -222,7 +210,7 @@
           <span class="font-medium text-base">Configuración</span>
         </a>
 
-        <!-- Empresas - Solo para SUPERADMINS (Móvil) -->
+        <!-- Empresas - Solo para SUPERADMINS -->
         <a
           *ngIf="isSuperAdmin()"
           [routerLink]="['/clients']"
@@ -239,10 +227,10 @@
       <div class="p-6 border-t border-slate-800 bg-slate-900">
         <div class="flex items-center px-4 py-3 text-slate-300 mb-4 bg-slate-800/50 border border-slate-800 rounded-xl">
           <div class="w-10 h-10 rounded-full bg-slate-800 flex items-center justify-center text-primary font-bold mr-3 border border-slate-700">
-            U
+            <span class="material-symbols-outlined text-base">person</span>
           </div>
           <div class="text-sm">
-            <div class="font-bold text-white tracking-tight">Usuario</div>
+            <div class="font-bold text-white tracking-tight">Mi Perfil</div>
             <div class="text-xs text-slate-400">
               {{ isSuperAdmin() ? "Super Admin" : (isAdmin() ? "Administrador" : "Colaborador") }}
             </div>
@@ -258,31 +246,4 @@
       </div>
     </div>
   </div>
-</div>
-
-<!-- Botón hamburguesa mejorado para mobile -->
-<div class="lg:hidden fixed top-4 left-4 z-40">
-  <button
-    (click)="toggleSidebar()"
-    class="p-3 rounded-xl bg-white shadow-xl text-gray-700 hover:text-gray-900 hover:bg-gray-50 transition-all duration-300 hover:shadow-2xl hover:scale-105 group border border-gray-200"
-  >
-    <!-- Animación del icono hamburguesa -->
-    <div class="relative w-6 h-6">
-      <!-- Líneas del hamburguesa que se transforman en X -->
-      <span
-        class="absolute top-1.5 left-0 w-6 h-0.5 bg-current transform transition-all duration-300 group-hover:rotate-45 group-hover:top-2.5"
-        [class.rotate-45]="sidebarVisible"
-        [class.top-2.5]="sidebarVisible"
-      ></span>
-      <span
-        class="absolute top-3 left-0 w-6 h-0.5 bg-current transition-all duration-300"
-        [class.opacity-0]="sidebarVisible"
-      ></span>
-      <span
-        class="absolute top-4.5 left-0 w-6 h-0.5 bg-current transform transition-all duration-300 group-hover:-rotate-45 group-hover:top-2.5"
-        [class.-rotate-45]="sidebarVisible"
-        [class.top-2.5]="sidebarVisible"
-      ></span>
-    </div>
-  </button>
 </div>

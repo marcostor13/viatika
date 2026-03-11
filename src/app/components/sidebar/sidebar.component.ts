@@ -1,4 +1,12 @@
-import { Component, inject, OnDestroy, OnInit } from '@angular/core';
+import {
+  Component,
+  inject,
+  OnDestroy,
+  OnInit,
+  Input,
+  Output,
+  EventEmitter,
+} from '@angular/core';
 import { Router, NavigationEnd, RouterModule } from '@angular/router';
 import { AuthService } from '../../services/auth.service';
 import { ConfirmationService } from '../../services/confirmation.service';
@@ -16,6 +24,9 @@ import { ICompanyConfig } from '../../interfaces/company-config.interface';
   styleUrl: './sidebar.component.scss',
 })
 export class SidebarComponent implements OnInit, OnDestroy {
+  @Input() sidebarVisible = false;
+  @Output() sidebarToggle = new EventEmitter<void>();
+
   private router = inject(Router);
   private authService = inject(AuthService);
   private confirmationService = inject(ConfirmationService);
@@ -24,12 +35,12 @@ export class SidebarComponent implements OnInit, OnDestroy {
   private routerSubscription!: Subscription;
   private configSubscription!: Subscription;
 
-  currentPath = '';
-  sidebarVisible = false;
   companyConfig: ICompanyConfig | null = null;
+  currentPath = '';
 
   constructor() {
     this.detectPath();
+    this.loadCompanyConfig();
   }
 
   ngOnInit() {
@@ -69,10 +80,18 @@ export class SidebarComponent implements OnInit, OnDestroy {
   }
 
   toggleSidebar() {
-    this.sidebarVisible = !this.sidebarVisible;
+    this.sidebarToggle.emit();
   }
 
-  // Verificar si el usuario es administrador
+  confirmation() {
+    this.confirmationService.show(
+      '¿Estás seguro de querer cerrar sesión?',
+      () => {
+        this.logout();
+      }
+    );
+  }
+
   isAdmin(): boolean {
     return this.userStateService.isAdmin();
   }
@@ -85,30 +104,18 @@ export class SidebarComponent implements OnInit, OnDestroy {
     return this.userStateService.isSuperAdmin();
   }
 
-  // Verificar si el usuario es colaborador
   isColaborador(): boolean {
     return this.userStateService.isColaborador();
-  }
-
-  confirmation() {
-    this.confirmationService.show(
-      '¿Estás seguro de querer cerrar sesión?',
-      () => {
-        this.logout();
-      }
-    );
   }
 
   logout() {
     this.authService.logout();
   }
 
-  // Obtener el nombre de la empresa
   getCompanyName(): string {
     return this.companyConfig?.name || 'Mi Empresa';
   }
 
-  // Obtener el logo de la empresa
   getCompanyLogo(): string {
     return this.companyConfig?.logo || '';
   }

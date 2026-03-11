@@ -109,13 +109,10 @@ export class ChartsComponent implements OnInit, AfterViewInit {
 
   get collaborators() {
     return this.users
-      .filter((user) => user.isActive !== false)
+      .filter((user) => user.role?.name === 'User')
       .map((user) => ({
         id: user._id || '',
-        name:
-          user.firstName && user.lastName
-            ? `${user.firstName} ${user.lastName}`
-            : user.email || 'Usuario sin nombre',
+        name: user.name || user.email || 'Usuario sin nombre',
       }));
   }
 
@@ -143,8 +140,7 @@ export class ChartsComponent implements OnInit, AfterViewInit {
 
   getDefaultStartDate(): string {
     const date = new Date();
-    date.setMonth(date.getMonth() - 5);
-    date.setDate(1);
+    date.setMonth(date.getMonth() - 6);
     return this.formatDateForInput(date);
   }
 
@@ -157,6 +153,121 @@ export class ChartsComponent implements OnInit, AfterViewInit {
     const month = String(date.getMonth() + 1).padStart(2, '0');
     const day = String(date.getDate()).padStart(2, '0');
     return `${year}-${month}-${day}`;
+  }
+
+  formatDateForDisplay(dateString: string): string {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return '';
+
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const year = date.getFullYear();
+
+    return `${day}/${month}/${year}`;
+  }
+
+  formatDateForInputDisplay(dateString: string): string {
+    if (!dateString) return '';
+
+    if (dateString.includes('-')) {
+      const [year, month, day] = dateString.split('-').map(Number);
+      return `${String(day).padStart(2, '0')}/${String(month).padStart(
+        2,
+        '0'
+      )}/${year}`;
+    }
+
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return '';
+
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const year = date.getFullYear();
+
+    return `${day}/${month}/${year}`;
+  }
+
+  onDateInputChange(event: any, field: 'dateFrom' | 'dateTo') {
+    const value = event.target.value;
+
+    const dateRegex = /^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/;
+    const match = value.match(dateRegex);
+
+    if (match) {
+      const day = parseInt(match[1]);
+      const month = parseInt(match[2]);
+      const year = parseInt(match[3]);
+
+      const date = new Date(year, month - 1, day);
+      if (
+        date.getDate() === day &&
+        date.getMonth() === month - 1 &&
+        date.getFullYear() === year
+      ) {
+        const isoDate = `${year}-${String(month).padStart(2, '0')}-${String(
+          day
+        ).padStart(2, '0')}`;
+        this[field] = isoDate;
+        this.onFilterChange();
+      }
+    }
+  }
+
+  onDateBlur(event: any, field: 'dateFrom' | 'dateTo') {
+    const value = event.target.value;
+    if (value && this[field]) {
+      event.target.value = this.formatDateForInputDisplay(this[field]);
+    }
+  }
+
+  openDatePicker(field: 'dateFrom' | 'dateTo') {
+    const pickerId = field === 'dateFrom' ? 'dateFromPicker' : 'dateToPicker';
+    const buttonId = field === 'dateFrom' ? 'dateFromButton' : 'dateToButton';
+
+    const picker = document.getElementById(pickerId) as HTMLInputElement;
+    const button = document.getElementById(buttonId) as HTMLButtonElement;
+
+    if (picker && button) {
+      // Obtener la posición del botón
+      const buttonRect = button.getBoundingClientRect();
+
+      // Posicionar el input de fecha en la misma posición que el botón
+      picker.style.position = 'fixed';
+      picker.style.top = buttonRect.top + 'px';
+      picker.style.left = buttonRect.left + 'px';
+      picker.style.width = buttonRect.width + 'px';
+      picker.style.height = buttonRect.height + 'px';
+      picker.style.opacity = '0';
+      picker.style.pointerEvents = 'auto';
+
+      if (!picker.value) {
+        picker.value = this[field] || new Date().toISOString().split('T')[0];
+      }
+
+      picker.focus();
+      picker.showPicker ? picker.showPicker() : picker.click();
+    }
+  }
+
+  onDatePickerChange(event: any, field: 'dateFrom' | 'dateTo') {
+    const value = event.target.value;
+    if (value) {
+      const [year, month, day] = value.split('-').map(Number);
+      const date = new Date(year, month - 1, day);
+      const isoDate = date.toISOString().split('T')[0];
+
+      this[field] = isoDate;
+
+      const textInputId = field;
+      const textInput = document.getElementById(
+        textInputId
+      ) as HTMLInputElement;
+      if (textInput) {
+        textInput.value = this.formatDateForInputDisplay(isoDate);
+      }
+      this.onFilterChange();
+    }
   }
 
   loadChartLibrary() {
@@ -176,12 +287,6 @@ export class ChartsComponent implements OnInit, AfterViewInit {
   }
 
   loadData() {
-    const companyId = this.userStateService.getUser()?.companyId;
-    if (!companyId) {
-      console.error('No se encontró companyId en el usuario');
-      this.dataLoaded = true;
-      return;
-    }
     this.dataLoaded = false;
 
     const filters = {
@@ -193,48 +298,93 @@ export class ChartsComponent implements OnInit, AfterViewInit {
     };
 
     forkJoin([
-      this.invoicesService.getProjects(companyId),
-      this.invoicesService.getCategories(companyId),
-      this.expenseService.getExpenses(companyId, filters),
+      this.invoicesService.getProjects(),
+      this.invoicesService.getCategories(),
+      this.invoicesService.getInvoices(filters),
       this.adminUsersService.getUsers().pipe(
         catchError((error) => {
           console.warn(
             'Error al cargar usuarios, continuando sin filtro de colaboradores:',
             error
           );
-          return of([]); // Retorna array vacío si falla
+          return of([]);
         })
       ),
-    ]).subscribe({
-      next: ([projects, categories, expenses, users]) => {
-        this.projects = projects;
-        this.categories = categories;
-        this.expenses = expenses;
-        this.users = Array.isArray(users) ? users : [];
+    ]).subscribe(([projects, categories, expenses, users]) => {
+      this.projects = projects;
+      this.categories = categories;
 
-        this.projectMap.clear();
-        this.projects.forEach((project) => {
-          if (project._id) {
-            this.projectMap.set(project._id, project.name);
+      if (Array.isArray(expenses)) {
+        this.expenses = expenses.map((invoice, index) => {
+          let invoiceData: any = {};
+
+          try {
+            if (invoice.data) {
+              if (typeof invoice.data === 'string') {
+                try {
+                  invoiceData = JSON.parse(invoice.data);
+                } catch (parseError) {}
+              } else if (typeof invoice.data === 'object') {
+                invoiceData = invoice.data;
+              }
+            }
+          } catch (error) {}
+
+          let normalizedDate = null;
+          if (invoiceData.fechaEmision) {
+            const fechaStr = invoiceData.fechaEmision;
+            if (fechaStr.match(/^\d{2}-\d{2}-\d{4}$/)) {
+              const [day, month, year] = fechaStr.split('-');
+              normalizedDate = `${year}-${month}-${day}`;
+            } else {
+              normalizedDate = fechaStr;
+            }
+          } else if (invoice.date) {
+            normalizedDate = invoice.date;
+          } else if (invoice.createdAt) {
+            normalizedDate = invoice.createdAt;
+          } else {
+            normalizedDate = new Date().toISOString();
           }
-        });
 
-        this.categoryMap.clear();
-        this.categories.forEach((category) => {
-          if (category._id) {
-            this.categoryMap.set(category._id, category.name);
-          }
-        });
+          const normalizedTotal =
+            typeof invoice.total === 'string'
+              ? parseFloat(invoice.total as any)
+              : (invoice as any).total || 0;
 
-        this.updateFilteredExpenses();
-        this.dataLoaded = true;
-        this.cdr.detectChanges();
-        this.tryRenderCharts();
-      },
-      error: (error) => {
-        console.error('Error al cargar datos', error);
-        this.dataLoaded = true;
-      },
+          const transformedInvoice = {
+            ...invoice,
+            fechaEmision: normalizedDate,
+            total: normalizedTotal,
+            createdBy: (invoice as any).createdBy || (invoice as any).userId,
+          };
+
+          return transformedInvoice;
+        });
+      } else {
+        this.expenses = [];
+      }
+
+      this.users = Array.isArray(users) ? users : [];
+
+      this.projectMap.clear();
+      this.projects.forEach((project) => {
+        if (project._id) {
+          this.projectMap.set(project._id, project.name);
+        }
+      });
+
+      this.categoryMap.clear();
+      this.categories.forEach((category) => {
+        if (category._id) {
+          this.categoryMap.set(category._id, category.name);
+        }
+      });
+
+      this.updateFilteredExpenses();
+      this.dataLoaded = true;
+      this.cdr.detectChanges();
+      this.tryRenderCharts();
     });
   }
 
@@ -266,23 +416,27 @@ export class ChartsComponent implements OnInit, AfterViewInit {
     if (dateTo) dateTo.setHours(23, 59, 59, 999);
 
     this.filteredExpenses = this.expenses.filter((expense) => {
-      if (!expense.fechaEmision) return false;
+      if (!expense.fechaEmision) {
+        return false;
+      }
 
       const expenseDate = new Date(expense.fechaEmision);
+
+      if (isNaN(expenseDate.getTime())) {
+        return false;
+      }
+
       const isAfterFrom = dateFrom ? expenseDate >= dateFrom : true;
       const isBeforeTo = dateTo ? expenseDate <= dateTo : true;
 
-      // Aplicar filtro de proyecto
       const projectMatches =
         !this.filterProject ||
         this.getProjectId(expense) === this.filterProject;
 
-      // Aplicar filtro de categoría
       const categoryMatches =
         !this.filterCategory ||
         this.getCategoryId(expense) === this.filterCategory;
 
-      // Aplicar filtro de colaborador
       const collaboratorMatches =
         !this.filterCollaborator ||
         expense.createdBy === this.filterCollaborator;
@@ -1052,12 +1206,16 @@ export class ChartsComponent implements OnInit, AfterViewInit {
   getCollaboratorIdsWithExpenses(): string[] {
     const filteredExpenses = this.getFilteredInvoices();
     const collaboratorIdsWithExpenses = new Set<string>();
+
     filteredExpenses.forEach((expense) => {
       const collaboratorId = this.getCollaboratorId(expense);
-      if (collaboratorId && this.getTotalByCollaborator(collaboratorId) > 0) {
+      const total = this.getTotalByCollaborator(collaboratorId);
+
+      if (collaboratorId && total > 0) {
         collaboratorIdsWithExpenses.add(collaboratorId);
       }
     });
+
     return Array.from(collaboratorIdsWithExpenses);
   }
 
@@ -1072,9 +1230,7 @@ export class ChartsComponent implements OnInit, AfterViewInit {
 
     const user = this.users.find((u) => u._id === collaboratorId);
     if (user) {
-      return user.firstName && user.lastName
-        ? `${user.firstName} ${user.lastName}`
-        : user.email || 'Colaborador desconocido';
+      return user.name || user.email || 'Colaborador desconocido';
     }
     return 'Colaborador desconocido';
   }
@@ -1085,15 +1241,19 @@ export class ChartsComponent implements OnInit, AfterViewInit {
     }
 
     const filteredExpenses = this.getFilteredInvoices();
-    return filteredExpenses
-      .filter((expense) => this.getCollaboratorId(expense) === collaboratorId)
-      .reduce((total, expense) => {
-        const expenseTotal =
-          typeof expense.total === 'string'
-            ? parseFloat(expense.total)
-            : expense.total || 0;
-        return total + expenseTotal;
-      }, 0);
+    const expensesForCollaborator = filteredExpenses.filter(
+      (expense) => this.getCollaboratorId(expense) === collaboratorId
+    );
+
+    const total = expensesForCollaborator.reduce((total, expense) => {
+      const expenseTotal =
+        typeof expense.total === 'string'
+          ? parseFloat(expense.total as any)
+          : expense.total || 0;
+      return total + expenseTotal;
+    }, 0);
+
+    return total;
   }
 
   getTotalExpenses(): number {
@@ -1211,5 +1371,9 @@ export class ChartsComponent implements OnInit, AfterViewInit {
         }
         break;
     }
+  }
+
+  getCurrentDate(): string {
+    return new Date().toISOString().split('T')[0];
   }
 }
