@@ -1,40 +1,23 @@
-<div class="admin-users">
+<div class="p-6 lg:p-8">
   <ng-container *ngIf="panelMode === 'none'; else panel">
-    <div
-      class="p-5 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3"
-    >
-      <h1 class="text-2xl font-bold">Administración de Usuarios</h1>
+    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
+      <h1 class="text-2xl font-extrabold tracking-tight text-slate-900 dark:text-white">Administración de Usuarios</h1>
 
       <button
         (click)="showCreatePanel()"
-        class="w-full sm:w-auto bg-color1 text-white px-4 py-3 sm:py-2 rounded-md flex items-center justify-center gap-2 text-sm sm:text-base shadow-sm"
+        class="w-full sm:w-auto bg-primary text-white hover:bg-primary/90 px-5 py-2.5 rounded-lg font-semibold text-sm transition-colors shadow-sm flex items-center justify-center gap-2"
       >
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke-width="1.5"
-          stroke="currentColor"
-          class="size-5 sm:size-6"
-        >
-          <path
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            d="M12 4.5v15m7.5-7.5h-15"
-          />
-        </svg>
+        <span class="material-symbols-outlined text-xl">add</span>
         Crear Usuario
       </button>
     </div>
 
-    <div *ngIf="isLoading()" class="flex justify-center my-8">
-      <div
-        class="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-color1"
-      ></div>
+    <div *ngIf="isLoading()" class="flex justify-center p-12">
+      <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
     </div>
 
     <ng-container *ngIf="!isLoading()">
-      <div class="px-5 lg:block hidden">
+      <div class="lg:block hidden">
         <app-table
           [headers]="headers"
           [data]="data"
@@ -42,7 +25,7 @@
         ></app-table>
       </div>
 
-      <div class="px-5 block lg:hidden">
+      <div class="block lg:hidden">
         <app-list-table
           [headers]="headers"
           [data]="data"
@@ -52,190 +35,183 @@
 
       <div
         *ngIf="data.length === 0 && !isLoading()"
-        class="mx-5 mt-4 text-center p-6 bg-gray-50 rounded-lg shadow-sm"
+        class="mt-4 text-center p-12 bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800"
       >
-        <p class="text-gray-500">No hay usuarios para mostrar.</p>
+        <p class="text-slate-500 dark:text-slate-400 font-medium">No hay usuarios para mostrar.</p>
       </div>
     </ng-container>
   </ng-container>
 
   <ng-template #panel>
-    <div class="p-5">
-      <div class="bg-white rounded-lg shadow-md p-6">
-        <div class="flex items-center justify-between mb-6">
-          <button
-            (click)="closePanel()"
-            class="bg-color1 hover:bg-opacity-90 text-white px-4 py-2 flex items-center gap-2 rounded-md shadow-sm"
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke-width="1.5"
-              stroke="currentColor"
-              class="w-5 h-5"
+    <div class="p-6 lg:p-8 max-w-4xl mx-auto">
+      <div class="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 overflow-hidden">
+        <div class="p-6 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-slate-50 dark:bg-slate-800/50">
+          <div class="flex items-center gap-3">
+            <button
+              (click)="closePanel()"
+              class="text-slate-500 hover:bg-slate-200 dark:hover:bg-slate-700 p-2 rounded-lg transition-colors flex items-center justify-center"
+              title="Volver"
             >
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                d="M6.75 15.75 3 12m0 0 3.75-3.75M3 12h18"
-              />
-            </svg>
-            Volver
-          </button>
-          <h2 class="text-xl font-bold">
-            {{ panelMode === "edit" ? "Editar Usuario" : "Crear Usuario" }}
-          </h2>
+              <span class="material-symbols-outlined text-xl">arrow_back</span>
+            </button>
+            <h2 class="text-xl font-bold text-slate-800 dark:text-slate-100">
+              {{ panelMode === "edit" ? "Editar Usuario" : "Crear Usuario" }}
+            </h2>
+          </div>
         </div>
 
-        <form class="flex flex-col gap-5" (ngSubmit)="saveUser()">
-          <div class="flex flex-col md:flex-row gap-3">
-            <div class="flex flex-col gap-2 flex-1">
-              <label class="font-medium text-gray-700"
-                >Nombre <span class="text-color1">*</span></label
+        <form class="p-6 flex flex-col gap-6" (ngSubmit)="saveUser()">
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div class="flex flex-col gap-1.5">
+              <label class="text-xs uppercase tracking-wider font-bold text-slate-500 dark:text-slate-400"
+                >Nombre <span class="text-rose-500">*</span></label
               >
               <input
                 type="text"
                 [(ngModel)]="tempUser.firstName"
                 name="firstName"
-                class="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-color1"
+                class="w-full bg-slate-100 dark:bg-slate-800 border-none rounded-lg px-4 py-3 text-sm focus:ring-2 focus:ring-primary placeholder:text-slate-400 text-slate-900 dark:text-slate-100 transition-shadow disabled:opacity-50"
                 placeholder="Ingrese el nombre"
                 required
                 maxlength="50"
               />
             </div>
 
-            <div class="flex flex-col gap-2 flex-1">
-              <label class="font-medium text-gray-700">Apellido</label>
+            <div class="flex flex-col gap-1.5">
+              <label class="text-xs uppercase tracking-wider font-bold text-slate-500 dark:text-slate-400">Apellido</label>
               <input
                 type="text"
                 [(ngModel)]="tempUser.lastName"
                 name="lastName"
-                class="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-color1"
+                class="w-full bg-slate-100 dark:bg-slate-800 border-none rounded-lg px-4 py-3 text-sm focus:ring-2 focus:ring-primary placeholder:text-slate-400 text-slate-900 dark:text-slate-100 transition-shadow disabled:opacity-50"
                 placeholder="Ingrese el apellido"
                 maxlength="50"
               />
             </div>
           </div>
 
-          <div class="flex flex-col gap-2">
-            <label class="font-medium text-gray-700"
-              >Email <span class="text-color1">*</span></label
+          <div class="flex flex-col gap-1.5">
+            <label class="text-xs uppercase tracking-wider font-bold text-slate-500 dark:text-slate-400"
+              >Email <span class="text-rose-500">*</span></label
             >
             <input
               type="email"
               [(ngModel)]="tempUser.email"
               name="email"
-              class="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-color1"
+              class="w-full bg-slate-100 dark:bg-slate-800 border-none rounded-lg px-4 py-3 text-sm focus:ring-2 focus:ring-primary placeholder:text-slate-400 text-slate-900 dark:text-slate-100 transition-shadow disabled:opacity-50 disabled:cursor-not-allowed"
               placeholder="ejemplo@correo.com"
               required
               maxlength="100"
+              [disabled]="panelMode === 'edit'"
             />
           </div>
 
-          <div class="flex flex-col gap-2" *ngIf="panelMode === 'create'">
-            <label class="font-medium text-gray-700"
-              >Contraseña <span class="text-color1">*</span></label
+          <div class="flex flex-col gap-1.5" *ngIf="panelMode === 'create'">
+            <label class="text-xs uppercase tracking-wider font-bold text-slate-500 dark:text-slate-400"
+              >Contraseña <span class="text-rose-500">*</span></label
             >
             <input
               type="password"
               [(ngModel)]="tempUser.password"
               name="password"
-              class="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-color1"
+              class="w-full bg-slate-100 dark:bg-slate-800 border-none rounded-lg px-4 py-3 text-sm focus:ring-2 focus:ring-primary placeholder:text-slate-400 text-slate-900 dark:text-slate-100 transition-shadow disabled:opacity-50"
               placeholder="Mínimo 6 caracteres"
               required
               minlength="6"
               maxlength="50"
             />
-            <small class="text-gray-500 text-sm">
+            <small class="text-slate-500 dark:text-slate-400 text-xs mt-1">
               La contraseña debe tener al menos 6 caracteres
             </small>
           </div>
 
-          <div class="flex flex-col gap-2">
-            <label class="font-medium text-gray-700"
-              >Rol <span class="text-color1">*</span></label
+          <div class="flex flex-col gap-1.5">
+            <label class="text-xs uppercase tracking-wider font-bold text-slate-500 dark:text-slate-400"
+              >Rol <span class="text-rose-500">*</span></label
             >
             <select
               [(ngModel)]="tempUser.role"
               name="role"
-              class="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-color1"
+              class="w-full bg-slate-100 dark:bg-slate-800 border-none rounded-lg px-4 py-3 text-sm focus:ring-2 focus:ring-primary placeholder:text-slate-400 text-slate-900 dark:text-slate-100 transition-shadow disabled:opacity-50 disabled:cursor-not-allowed appearance-none"
               required
+              [disabled]="!!tempUser.isSelf"
             >
               <option value="" disabled>Selecciona un rol</option>
-              <option value="ADMIN2">Administrador</option>
-              <option value="COLABORADOR">Colaborador</option>
+              <option *ngFor="let role of roles()" [value]="role._id">
+                {{ role.name }}
+              </option>
+            </select>
+            <small *ngIf="tempUser.isSelf" class="text-amber-500 dark:text-amber-400 text-xs mt-1 font-medium">
+              No puedes cambiar tu propio rol por seguridad.
+            </small>
+          </div>
+
+          <div class="flex flex-col gap-1.5" *ngIf="userStateService.isSuperAdmin()">
+            <label class="text-xs uppercase tracking-wider font-bold text-slate-500 dark:text-slate-400"
+              >Empresa <span class="text-rose-500">*</span></label
+            >
+            <select
+              [(ngModel)]="tempUser.companyId"
+              name="companyId"
+              class="w-full bg-slate-100 dark:bg-slate-800 border-none rounded-lg px-4 py-3 text-sm focus:ring-2 focus:ring-primary placeholder:text-slate-400 text-slate-900 dark:text-slate-100 transition-shadow disabled:opacity-50 disabled:cursor-not-allowed appearance-none"
+              required
+              [disabled]="!!tempUser.isSelf"
+            >
+              <option value="" disabled>Selecciona una empresa</option>
+              <option *ngFor="let client of clients()" [value]="client._id">
+                {{ client.businessName || client.comercialName }}
+              </option>
             </select>
           </div>
 
-          <div class="flex flex-col gap-2" *ngIf="panelMode === 'edit'">
-            <label class="font-medium text-gray-700">Estado</label>
-            <div class="flex items-center">
+          <div class="flex flex-col gap-1.5" *ngIf="panelMode === 'edit'">
+            <label class="text-xs uppercase tracking-wider font-bold text-slate-500 dark:text-slate-400">Estado</label>
+            <label class="flex items-center gap-3 cursor-pointer p-3 bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-200 dark:border-slate-800 transition-colors" [class.opacity-60]="!!tempUser.isSelf">
               <input
                 type="checkbox"
                 [(ngModel)]="tempUser.isActive"
                 name="isActive"
-                class="w-5 h-5 text-color1 border-gray-300 rounded"
+                class="w-5 h-5 text-primary border-slate-300 dark:border-slate-600 rounded bg-slate-100 dark:bg-slate-800 focus:ring-primary disabled:opacity-50"
+                [disabled]="!!tempUser.isSelf"
               />
-              <span class="ml-2">{{
-                tempUser.isActive ? "Activo" : "Inactivo"
+              <span class="text-sm font-semibold text-slate-800 dark:text-slate-200 select-none">{{
+                tempUser.isActive ? "Usuario Activo" : "Usuario Inactivo"
               }}</span>
-            </div>
+            </label>
           </div>
 
-          <div class="flex flex-col gap-2" *ngIf="panelMode === 'edit'">
-            <label class="font-medium text-gray-700">
+          <div class="flex flex-col gap-1.5" *ngIf="panelMode === 'edit'">
+            <label class="text-xs uppercase tracking-wider font-bold text-slate-500 dark:text-slate-400">
               Cambiar Contraseña
-              <span class="text-gray-500">(opcional)</span>
+              <span class="text-slate-400 font-normal lowercase">(opcional)</span>
             </label>
             <input
               type="password"
               [(ngModel)]="tempUser.password"
               name="passwordEdit"
-              class="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-color1"
-              placeholder="Nueva contraseña (dejar vacío para no cambiar)"
+              class="w-full bg-slate-100 dark:bg-slate-800 border-none rounded-lg px-4 py-3 text-sm focus:ring-2 focus:ring-primary placeholder:text-slate-400 text-slate-900 dark:text-slate-100 transition-shadow disabled:opacity-50"
+              placeholder="Nueva contraseña"
               minlength="6"
               maxlength="50"
             />
-            <small class="text-gray-500 text-sm">
+            <small class="text-slate-500 dark:text-slate-400 text-xs mt-1">
               Dejar vacío si no deseas cambiar la contraseña
             </small>
           </div>
 
-          <div class="flex justify-end mt-6">
+          <div class="flex justify-end mt-6 pt-6 border-t border-slate-200 dark:border-slate-800">
             <button
               type="submit"
-              class="bg-color1 hover:bg-opacity-90 text-white px-6 py-3 rounded-md shadow-md flex items-center justify-center gap-2 min-w-32"
+              class="bg-primary text-white hover:bg-primary/90 px-6 py-2.5 rounded-lg font-semibold text-sm transition-all shadow-sm disabled:opacity-50 flex items-center justify-center gap-2 min-w-[140px]"
               [disabled]="isLoading()"
             >
-              <svg
-                *ngIf="isLoading()"
-                class="animate-spin h-5 w-5 text-white"
-                xmlns="http://www.w3.org/2000/svg"
-                fill="none"
-                viewBox="0 0 24 24"
-              >
-                <circle
-                  class="opacity-25"
-                  cx="12"
-                  cy="12"
-                  r="10"
-                  stroke="currentColor"
-                  stroke-width="4"
-                ></circle>
-                <path
-                  class="opacity-75"
-                  fill="currentColor"
-                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                ></path>
-              </svg>
-              {{
-                isLoading()
-                  ? "Procesando..."
-                  : panelMode === "edit"
-                  ? "Actualizar"
-                  : "Guardar"
-              }}
+              @if (isLoading()) {
+              <span class="material-symbols-outlined animate-spin text-lg">sync</span>
+              <span>Procesando...</span>
+              } @else {
+              <span class="material-symbols-outlined text-lg">save</span>
+              <span>{{ panelMode === "edit" ? "Actualizar" : "Guardar" }}</span>
+              }
             </button>
           </div>
         </form>

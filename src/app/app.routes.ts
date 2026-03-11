@@ -90,6 +90,14 @@ export const routes: Routes = [
           ),
         canActivate: [AuthAdmin2Guard],
       },
+      {
+        path: 'clients',
+        loadComponent: () =>
+          import('./modules/clients/clients.component').then(
+            (m) => m.ClientsComponent
+          ),
+        canActivate: [AuthAdmin2Guard],
+      },
     ],
   },
   {

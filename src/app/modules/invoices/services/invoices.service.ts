@@ -7,6 +7,7 @@ import {
   SunatValidationInfo,
 } from '../interfaces/invoices.interface';
 import { Observable } from 'rxjs';
+import { map } from 'rxjs/operators';
 import { environment } from '../../../../environments/environment';
 import { ICategory } from '../interfaces/category.interface';
 import { IProject } from '../interfaces/project.interface';
@@ -21,9 +22,9 @@ import {
 })
 export class InvoicesService {
   url: string = `${environment.api}/expense`;
-  categoryUrl: string = `${environment.api}/categories`;
-  projectUrl: string = `${environment.api}/projects`;
-  companyConfigUrl: string = `${environment.api}/users/config`;
+  categoryUrl: string = `${environment.api}/category`;
+  projectUrl: string = `${environment.api}/project`;
+  companyConfigUrl: string = `${environment.api}/client`;
   sunatConfigUrl: string = `${environment.api}/sunat-config`;
 
   private http = inject(HttpClient);
@@ -162,8 +163,15 @@ export class InvoicesService {
 
   // Métodos para configuración de empresa
   getCompanyConfig(companyId: string): Observable<ICompanyConfig> {
-    return this.http.get<ICompanyConfig>(
+    return this.http.get<any>(
       `${this.companyConfigUrl}/${companyId}`
+    ).pipe(
+      map(client => ({
+        _id: client._id,
+        companyId: client._id,
+        name: client.comercialName || client.businessName,
+        logo: client.logo
+      }))
     );
   }
 
@@ -171,9 +179,20 @@ export class InvoicesService {
     companyId: string,
     config: Partial<ICompanyConfig>
   ): Observable<ICompanyConfig> {
-    return this.http.patch<ICompanyConfig>(
+    const payload: any = {};
+    if (config.name) payload.comercialName = config.name;
+    if (config.logo) payload.logo = config.logo;
+
+    return this.http.patch<any>(
       `${this.companyConfigUrl}/${companyId}`,
-      config
+      payload
+    ).pipe(
+      map(client => ({
+        _id: client._id,
+        companyId: client._id,
+        name: client.comercialName || client.businessName,
+        logo: client.logo
+      }))
     );
   }
 

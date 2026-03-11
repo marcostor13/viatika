@@ -9,6 +9,8 @@ import {
   IUser,
   IUserCreate,
   IUserUpdate,
+  IRole,
+  IClient,
 } from '../../interfaces/user.interface';
 import { FormsModule } from '@angular/forms';
 import { NotificationService } from '../../services/notification.service';
@@ -27,7 +29,7 @@ export default class AdminUsersComponent implements OnInit {
   headers: IHeaderList[] = [
     { header: 'Nombre', value: 'name' },
     { header: 'Email', value: 'email' },
-    { header: 'Rol', value: 'role' },
+    { header: 'Rol', value: 'roleName' },
     { header: 'Acciones', value: 'actions', options: ['edit', 'delete'] },
   ];
   data: IUserResponse[] = [];
@@ -35,12 +37,14 @@ export default class AdminUsersComponent implements OnInit {
   panelMode: 'none' | 'create' | 'edit' = 'none';
   tempUser: Partial<IUser> = {};
   isLoading = signal(false);
+  roles = signal<IRole[]>([]);
+  clients = signal<IClient[]>([]);
 
   constructor(
     private adminUsersService: AdminUsersService,
     private notification: NotificationService,
-    private userStateService: UserStateService
-  ) {}
+    public userStateService: UserStateService
+  ) { }
 
   ngOnInit() {
     if (!this.adminUsersService || !this.userStateService) {
@@ -51,7 +55,33 @@ export default class AdminUsersComponent implements OnInit {
     this.data = [];
     this.tempUser = {};
 
+    this.loadRoles();
     this.loadUsers();
+    this.loadClients();
+  }
+
+  loadClients() {
+    if (this.userStateService.isSuperAdmin()) {
+      this.adminUsersService.getClients().subscribe({
+        next: (clients) => {
+          this.clients.set(clients);
+        },
+        error: (err) => {
+          console.error('Error al cargar empresas:', err);
+        }
+      });
+    }
+  }
+
+  loadRoles() {
+    this.adminUsersService.getRoles().subscribe({
+      next: (roles) => {
+        this.roles.set(roles);
+      },
+      error: (err) => {
+        console.error('Error al cargar roles:', err);
+      }
+    });
   }
 
   loadUsers() {
@@ -63,7 +93,7 @@ export default class AdminUsersComponent implements OnInit {
         catchError((error) => {
           this.notification.show(
             'Error al cargar usuarios: ' +
-              (error?.message || 'Error desconocido'),
+            (error?.message || 'Error desconocido'),
             'error'
           );
           return EMPTY;
@@ -71,6 +101,7 @@ export default class AdminUsersComponent implements OnInit {
         finalize(() => this.isLoading.set(false))
       )
       .subscribe((users) => {
+        const currentUser = this.userStateService.getUser();
         if (users && Array.isArray(users)) {
           this.data = users.map((user) => {
             const displayUser = {
@@ -79,7 +110,9 @@ export default class AdminUsersComponent implements OnInit {
                 user.name ||
                 `${user.firstName || ''} ${user.lastName || ''}`.trim() ||
                 'Sin nombre',
+              roleName: (user as any).role?.name || (user as any).roleId?.name || user.role || 'Sin rol',
               isVisible: false,
+              isSelf: currentUser?._id === user._id,
             };
             return displayUser;
           });
@@ -126,8 +159,9 @@ export default class AdminUsersComponent implements OnInit {
       lastName: user.lastName || nameParts.slice(1).join(' ') || '',
       password: '',
       isActive: user.isActive ?? true,
-      role: user.role || '',
+      role: (user as any).role?._id || user.role || '',
       email: user.email || '',
+      companyId: user.companyId || (user as any).client?._id || (user as any).clientId?._id || (user as any).clientId || '',
     };
   }
 
@@ -152,6 +186,14 @@ export default class AdminUsersComponent implements OnInit {
     ) {
       this.notification.show(
         'Por favor completa todos los campos obligatorios',
+        'error'
+      );
+      return;
+    }
+
+    if (this.userStateService.isSuperAdmin() && !this.tempUser?.companyId) {
+      this.notification.show(
+        'Por favor selecciona una empresa',
         'error'
       );
       return;
@@ -189,19 +231,22 @@ export default class AdminUsersComponent implements OnInit {
     this.isLoading.set(true);
 
     if (this.panelMode === 'create') {
-      const newUser: IUserCreate = {
+      const newUser: any = {
         firstName: this.tempUser.firstName.trim(),
         lastName: this.tempUser.lastName?.trim() || '',
+        name: `${this.tempUser.firstName.trim()} ${this.tempUser.lastName?.trim() || ''
+          }`.trim(),
         email: this.tempUser.email.trim().toLowerCase(),
         password: this.tempUser.password || 'Temporal123',
-        role: this.tempUser.role,
+        roleId: this.tempUser.role,
         companyId: this.tempUser.companyId,
+        clientId: this.tempUser.companyId,
       };
 
       console.log('Creando usuario con datos:', newUser);
 
       this.adminUsersService
-        .createUser(newUser as IUser)
+        .createUser(newUser)
         .pipe(
           catchError((error) => {
             console.error('Error al crear usuario:', error);
@@ -231,15 +276,22 @@ export default class AdminUsersComponent implements OnInit {
         companyId: this.tempUser.companyId,
       };
 
+      // Corregir para el backend: el backend espera roleId en el create, pero en el update
+      // el DTO de UpdateUserDto tiene 'role'. Vamos a asegurar que enviamos el ID.
+      const payload: any = { ...updatedUser, clientId: this.tempUser.companyId };
+      if (this.tempUser.role) {
+        payload.roleId = this.tempUser.role;
+      }
+
       // Solo agregar password si se proporcionó una nueva
       if (this.tempUser.password && this.tempUser.password.trim()) {
         (updatedUser as any).password = this.tempUser.password.trim();
       }
 
-      console.log('Actualizando usuario con datos:', updatedUser);
+      console.log('Actualizando usuario con datos:', payload);
 
       this.adminUsersService
-        .updateUser(this.tempUser._id, updatedUser as Partial<IUser>)
+        .updateUser(this.tempUser._id, payload)
         .pipe(
           catchError((error) => {
             console.error('Error al actualizar usuario:', error);

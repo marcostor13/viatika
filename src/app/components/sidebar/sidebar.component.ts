@@ -74,17 +74,20 @@ export class SidebarComponent implements OnInit, OnDestroy {
 
   // Verificar si el usuario es administrador
   isAdmin(): boolean {
-    const user = this.userStateService.getUser();
-    const role = user?.role || user?.roleId?.name;
-    const allowedRoles = ['ADMIN2', 'admin2', 'Admin2', 'admin 2', 'ADMIN'];
-    return role ? allowedRoles.includes(role) : false;
+    return this.userStateService.isAdmin();
+  }
+
+  isAnyAdmin(): boolean {
+    return this.userStateService.isAnyAdmin();
+  }
+
+  isSuperAdmin(): boolean {
+    return this.userStateService.isSuperAdmin();
   }
 
   // Verificar si el usuario es colaborador
   isColaborador(): boolean {
-    const user = this.userStateService.getUser();
-    const role = user?.role || user?.roleId?.name;
-    return role === 'COLABORADOR' || role === 'PROVIDER';
+    return this.userStateService.isColaborador();
   }
 
   confirmation() {

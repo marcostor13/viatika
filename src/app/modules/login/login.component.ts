@@ -24,10 +24,12 @@ export class LoginComponent {
   private notificationService = inject(NotificationService);
   private authService = inject(AuthService);
 
-  constructor(private router: Router) {}
+  constructor(private router: Router) { }
 
-  redirect(role: string) {
-    if (role === 'ADMIN2') {
+  redirect() {
+    if (this.userStateService.isSuperAdmin()) {
+      this.router.navigate(['/clients']);
+    } else if (this.userStateService.isAdmin()) {
       this.router.navigate(['/invoice-approval']);
     } else {
       this.router.navigate(['/invoices']);
@@ -39,7 +41,7 @@ export class LoginComponent {
       this.authService.login(this.email(), this.password()).subscribe((res) => {
         this.userStateService.setUser(res);
         this.notificationService.show('Bienvenid@ ' + res.firstName, 'success');
-        this.redirect(res.role);
+        this.redirect();
       });
     }
   }

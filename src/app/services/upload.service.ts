@@ -17,7 +17,7 @@ export class UploadService {
   baseUrl = environment.api;
   private readonly storage: Storage = inject(Storage);
 
-  constructor(private http: HttpClient) {}
+  constructor(private http: HttpClient) { }
 
   upload(file: File, resourceType: string = 'image'): Observable<any> {
     const formData = new FormData();
@@ -33,7 +33,7 @@ export class UploadService {
     const filePath = `${path}/${file.name}_${Date.now()}`;
     const storageRef: StorageReference = ref(this.storage, filePath);
     const uploadTask: any = uploadBytesResumable(storageRef, file);
-    const uploadProgress$ = new Observable<number>((observer) => {
+    const uploadProgress$ = new Observable<number>((observer: any) => {
       uploadTask.on(
         'state_changed',
         (snapshot: any) => {
@@ -45,7 +45,7 @@ export class UploadService {
           console.error('Error durante la subida:', error);
           observer.error(error);
         },
-        () => {}
+        () => { }
       );
     });
 

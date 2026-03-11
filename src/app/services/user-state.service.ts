@@ -10,13 +10,30 @@ export class UserStateService {
   constructor() {
     const user = localStorage.getItem(USER_LOCALSTORAGE_KEY);
     if (user) {
-      this._user.set(JSON.parse(user));
+      const parsedUser = JSON.parse(user);
+      if (!parsedUser.companyId) {
+        parsedUser.companyId = parsedUser.client?._id || 
+                               parsedUser.clientId?._id || 
+                               parsedUser.clientId || 
+                               '';
+      }
+      this._user.set(parsedUser);
     }
   }
 
   setUser(user: IUserResponse) {
-    this._user.set(user);
-    localStorage.setItem(USER_LOCALSTORAGE_KEY, JSON.stringify(user));
+    const userToSave = { ...user };
+    
+    // Mapear compatibilidad de companyId desde client o clientId si no existe
+    if (!userToSave.companyId) {
+      userToSave.companyId = (userToSave as any).client?._id || 
+                             (userToSave as any).clientId?._id || 
+                             (userToSave as any).clientId || 
+                             '';
+    }
+
+    this._user.set(userToSave);
+    localStorage.setItem(USER_LOCALSTORAGE_KEY, JSON.stringify(userToSave));
     if (user.access_token) {
       localStorage.setItem('token', user.access_token);
     }
@@ -66,7 +83,47 @@ export class UserStateService {
     return !!this._user();
   }
 
+  getRole(): string {
+    const user = this._user();
+    if (!user) return '';
+
+    // Handle both string and object role formats
+    if (typeof user.role === 'string') {
+      return user.role;
+    }
+
+    // In many backend responses 'role' is an object with a 'name' property
+    const roleObj = user.role as any;
+    if (roleObj && roleObj.name) {
+      return roleObj.name;
+    }
+
+    // Fallback to roleId name if present
+    if (user.roleId && user.roleId.name) {
+      return user.roleId.name;
+    }
+
+    return '';
+  }
+
   isColaborador() {
-    return this._user()?.role === 'COLABORADOR' || 'PROVIDER';
+    const role = this.getRole();
+    return role === 'COLABORADOR' || role === 'PROVIDER' || role === 'User';
+  }
+
+  isAdmin() {
+    const role = this.getRole();
+    const adminRoles = ['ADMIN2', 'admin2', 'Admin2', 'admin 2', 'ADMIN', 'Admin'];
+    return adminRoles.includes(role);
+  }
+
+  isSuperAdmin() {
+    const role = this.getRole();
+    return role === 'Super' || role === 'SUPER_ADMIN';
+  }
+
+  // Helper for both types of admins (used in Guards)
+  isAnyAdmin() {
+    return this.isAdmin() || this.isSuperAdmin();
   }
 }

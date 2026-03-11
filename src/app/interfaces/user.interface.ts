@@ -12,6 +12,7 @@ export interface IUser {
   password?: string; // Campo opcional para creación de usuarios
   createdAt?: Date;
   updatedAt?: Date;
+  isSelf?: boolean; // Bandera para indicar si es el usuario actual logueado
 }
 
 export interface IClient {

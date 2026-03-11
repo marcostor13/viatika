@@ -1,100 +1,87 @@
-<div class="flex h-screen flex-col lg:flex-row items-center">
-  <div class="w-full lg:w-1/2 p-7 flex items-center justify-center">
-    <div class="flex flex-col items-center justify-center gap-4">
-      <div class="flex w-full justify-center">
-        <img src="/logo.svg" alt="logo" width="160" />
+<div class="flex h-screen flex-col lg:flex-row items-center bg-background-light dark:bg-background-dark">
+  <!-- Left Side (Video & Branding) -->
+  <div class="w-full lg:w-1/2 p-8 lg:p-12 flex flex-col items-center justify-center h-full bg-slate-900 relative hidden lg:flex">
+    <div class="absolute inset-0 bg-primary/10 mix-blend-multiply z-10"></div>
+    <div class="flex flex-col items-center justify-center gap-8 relative z-20 w-full max-w-lg">
+      <div class="w-full flex justify-center bg-white/10 backdrop-blur-md p-6 rounded-2xl border border-white/20 shadow-2xl">
+        <img src="/logo.svg" alt="Viatika Logo" class="h-12 drop-shadow-lg filter brightness-0 invert" />
       </div>
-      <div class="overflow-hidden rounded-lg">
-        <video src="/viatika.mp4" [autoplay]="true" [loop]="true"></video>
+      <div class="overflow-hidden rounded-2xl shadow-2xl border border-white/10 w-full">
+        <video src="/viatika.mp4" [autoplay]="true" [loop]="true" class="w-full object-cover"></video>
       </div>
     </div>
   </div>
 
-  <div
-    class="w-full lg:w-1/2 h-screen p-7 flex item lg:items-center justify-center"
-  >
-    <div class="w-full max-w-md">
-      <h1 class="text-2xl font-bold text-center">Ingresar</h1>
-      <form (ngSubmit)="login()" autocomplete="off" class="space-y-6 mt-5">
-        <div>
+  <!-- Right Side (Login Form) -->
+  <div class="w-full lg:w-1/2 h-screen p-6 sm:p-10 lg:p-16 flex items-center justify-center bg-white dark:bg-slate-900">
+    <div class="w-full max-w-md flex flex-col gap-8">
+      
+      <!-- Mobile Logo Fallback -->
+      <div class="flex lg:hidden w-full justify-center mb-4">
+        <img src="/logo.svg" alt="Viatika Logo" class="h-10" />
+      </div>
+
+      <div class="text-center space-y-2">
+        <h1 class="text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white">Bienvenido de nuevo</h1>
+        <p class="text-slate-500 dark:text-slate-400 text-sm">Ingresa tus credenciales para acceder a tu cuenta.</p>
+      </div>
+
+      <form (ngSubmit)="login()" autocomplete="off" class="space-y-6">
+        <div class="space-y-2">
+          <label class="text-xs uppercase tracking-wider font-bold text-slate-500 dark:text-slate-400">Email</label>
           <input
             type="email"
             [ngModel]="email()"
             (ngModelChange)="email.set($event)"
             name="email"
-            class="w-full px-4 py-2 bg-blue-50 border border-transparent rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-200 text-sm placeholder:text-gray-400 transition"
-            placeholder="Correo electrónico"
+            class="w-full bg-slate-100 dark:bg-slate-800 border-none rounded-lg px-4 py-3 text-sm focus:ring-2 focus:ring-primary placeholder:text-slate-400 text-slate-900 dark:text-slate-100 transition-shadow"
+            placeholder="ejemplo@correo.com"
             required
           />
         </div>
-        <div class="relative">
-          <input
-            [type]="showPassword() ? 'text' : 'password'"
-            [ngModel]="password()"
-            (ngModelChange)="password.set($event)"
-            name="password"
-            class="w-full px-4 py-2 bg-blue-50 border border-transparent rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-200 text-sm placeholder:text-gray-400 pr-10 transition"
-            placeholder="Contraseña"
-            required
-          />
-          <button
-            type="button"
-            (click)="showPassword.set(!showPassword())"
-            class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-blue-600 focus:outline-none"
-          >
-            <svg
-              *ngIf="!showPassword()"
-              xmlns="http://www.w3.org/2000/svg"
-              class="h-5 w-5"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
+
+        <div class="space-y-2 relative">
+          <label class="text-xs uppercase tracking-wider font-bold text-slate-500 dark:text-slate-400">Contraseña</label>
+          <div class="relative">
+            <input
+              [type]="showPassword() ? 'text' : 'password'"
+              [ngModel]="password()"
+              (ngModelChange)="password.set($event)"
+              name="password"
+              class="w-full bg-slate-100 dark:bg-slate-800 border-none rounded-lg px-4 py-3 text-sm focus:ring-2 focus:ring-primary placeholder:text-slate-400 text-slate-900 dark:text-slate-100 transition-shadow pr-12"
+              placeholder="••••••••"
+              required
+            />
+            <button
+              type="button"
+              (click)="showPassword.set(!showPassword())"
+              class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-primary transition-colors focus:outline-none flex items-center justify-center"
             >
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
-                d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
-              />
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
-                d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
-              />
-            </svg>
-            <svg
-              *ngIf="showPassword()"
-              xmlns="http://www.w3.org/2000/svg"
-              class="h-5 w-5"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
-                d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.542-7a9.956 9.956 0 012.293-3.95m3.25-2.568A9.956 9.956 0 0112 5c4.478 0 8.268 2.943 9.542 7a9.973 9.973 0 01-4.293 5.03M15 12a3 3 0 11-6 0 3 3 0 016 0z"
-              />
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
-                d="M3 3l18 18"
-              />
-            </svg>
-          </button>
+              <span class="material-symbols-outlined text-xl">
+                {{ showPassword() ? 'visibility_off' : 'visibility' }}
+              </span>
+            </button>
+          </div>
         </div>
+
         <button
           type="submit"
           [disabled]="loading()"
-          class="w-full bg-blue-600 text-white py-2 rounded-lg font-semibold hover:bg-blue-700 transition disabled:opacity-50"
+          class="w-full bg-primary text-white hover:bg-primary/90 px-4 py-3 rounded-lg font-semibold text-sm transition-all shadow-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 mt-4"
         >
-          @if (!loading()) { Entrar } @if (loading()) { Entrando... }
+          @if (!loading()) { 
+            <span>Ingresar al sistema</span>
+            <span class="material-symbols-outlined text-sm">arrow_forward</span>
+          } @if (loading()) { 
+            <span class="material-symbols-outlined animate-spin text-sm">sync</span>
+            <span>Verificando...</span> 
+          }
         </button>
+
         @if (error()) {
-        <div class="text-red-500 text-xs text-center mt-2">{{ error() }}</div>
+        <div class="bg-rose-100 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400 text-xs p-3 rounded-lg text-center font-medium shadow-sm animate-in fade-in duration-300">
+          {{ error() }}
+        </div>
         }
       </form>
     </div>

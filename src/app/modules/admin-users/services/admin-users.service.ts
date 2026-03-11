@@ -6,18 +6,18 @@ import {
 } from '@angular/common/http';
 import { Observable, throwError } from 'rxjs';
 import { catchError, tap } from 'rxjs/operators';
-import { IUser, IUserResponse } from '../../../interfaces/user.interface';
+import { IUser, IUserResponse, IRole, IClient } from '../../../interfaces/user.interface';
 import { environment } from '../../../../environments/environment';
 import { UserStateService } from '../../../services/user-state.service';
 
 @Injectable({ providedIn: 'root' })
 export class AdminUsersService {
-  private apiUrl = `${environment.api}/users`;
+  private apiUrl = `${environment.api}/user`;
 
   constructor(
     private http: HttpClient,
     private userStateService: UserStateService
-  ) {}
+  ) { }
 
   private getHeaders(): HttpHeaders {
     const token = this.userStateService.getToken();
@@ -36,9 +36,16 @@ export class AdminUsersService {
 
   getUsers(): Observable<IUserResponse[]> {
     const headers = this.getHeaders();
+    let url = this.apiUrl;
+    
+    if (!this.userStateService.isSuperAdmin()) {
+      const companyId = this.userStateService.getUser()?.companyId;
+      if (!companyId) throw new Error('No se encontró companyId');
+      url = `${this.apiUrl}/${companyId}`;
+    }
 
     return this.http
-      .get<IUserResponse[]>(this.apiUrl, {
+      .get<IUserResponse[]>(url, {
         headers: headers,
       })
       .pipe(
@@ -52,10 +59,24 @@ export class AdminUsersService {
   createUser(user: IUser): Observable<IUserResponse> {
     const currentUser = this.userStateService.getUser();
 
-    // Asegurar que se envíe el companyId del usuario actual
+    // Ensure we use the proper clientId mapping, either from the user being created or the currentUser.
+    let targetClientId = user.companyId;
+    if (!targetClientId && currentUser) {
+      if (typeof currentUser.clientId === 'string') {
+        targetClientId = currentUser.clientId;
+      } else if (currentUser.clientId?._id) {
+        targetClientId = currentUser.clientId._id;
+      } else {
+        // Fallback backward compat with frontend's companyId naming
+        targetClientId = currentUser.companyId;
+      }
+    }
+
     const userData = {
       ...user,
-      companyId: user.companyId || currentUser?.companyId,
+      clientId: targetClientId,
+      // Fallback in case backend logic needs it
+      companyId: targetClientId,
       // Agregar password por defecto si no existe
       password: (user as any).password || 'Temporal123',
     };
@@ -75,7 +96,7 @@ export class AdminUsersService {
 
   updateUser(id: string, user: Partial<IUser>): Observable<IUserResponse> {
     return this.http
-      .put<IUserResponse>(`${this.apiUrl}/${id}`, user, {
+      .patch<IUserResponse>(`${this.apiUrl}/${id}`, user, {
         headers: this.getHeaders(),
       })
       .pipe(
@@ -93,6 +114,28 @@ export class AdminUsersService {
       })
       .pipe(
         tap(() => console.log('Usuario eliminado con éxito')),
+        catchError((error: any) => this.handleError(error))
+      );
+  }
+
+  getRoles(): Observable<IRole[]> {
+    return this.http
+      .get<IRole[]>(`${environment.api}/role`, {
+        headers: this.getHeaders(),
+      })
+      .pipe(
+        tap((response) => console.log('Roles cargados:', response)),
+        catchError((error: any) => this.handleError(error))
+      );
+  }
+
+  getClients(): Observable<IClient[]> {
+    return this.http
+      .get<IClient[]>(`${environment.api}/client`, {
+        headers: this.getHeaders(),
+      })
+      .pipe(
+        tap((response) => console.log('Empresas cargadas:', response)),
         catchError((error: any) => this.handleError(error))
       );
   }
@@ -117,9 +160,8 @@ export class AdminUsersService {
       } else if (error.status === 403) {
         errorMessage = 'No tienes permisos para realizar esta acción.';
       } else {
-        errorMessage = `Código: ${error.status}, Mensaje: ${
-          error.error?.message || error.statusText
-        }`;
+        errorMessage = `Código: ${error.status}, Mensaje: ${error.error?.message || error.statusText
+          }`;
       }
 
       console.error('Detalles del error:', {

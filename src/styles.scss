@@ -52,9 +52,7 @@
 input,
 select,
 textarea {
-  border: 1px solid vars.$color1;
-  border-radius: 0.5rem !important;
-  padding: 0.5rem;
+  /* Removed global borders to allow Tailwind utility styling according to the new Design System */
 }
 
 .sidebar-shadow {
@@ -63,4 +61,8 @@ textarea {
 
 .transition-smooth {
   transition: all 0.3s ease-in-out;
+}
+
+.material-symbols-outlined {
+  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
 }

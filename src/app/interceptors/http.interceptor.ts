@@ -23,8 +23,10 @@ export const httpInterceptor: HttpInterceptorFn = (req, next) => {
   const skipCompanyIdEndpoints = [
     '/approve',
     '/reject',
-    '/users',
-    '/users/',
+    '/user',
+    '/user/',
+    '/client',
+    '/client/',
     '/sunat-config',
     '/sunat-config/',
     '/config',

@@ -1,105 +1,115 @@
 <div class="flex min-h-screen">
   <!-- Sidebar Desktop -->
-  <div class="hidden lg:flex lg:w-64 bg-gray-900 flex-col">
+  <div class="hidden lg:flex lg:w-64 bg-slate-900 flex-col border-r border-slate-800">
     <!-- Header del sidebar -->
-    <div class="p-6 border-b border-gray-700">
+    <div class="p-6 border-b border-slate-800">
       <div class="flex items-center mb-3">
         @if (getCompanyLogo()) {
         <img
           [src]="getCompanyLogo()"
           alt="Logo de la empresa"
-          class="w-10 h-10 rounded-lg object-cover mr-3"
+          class="w-10 h-10 rounded-lg object-cover mr-3 bg-white p-1"
           onerror="this.style.display='none'"
         />
+        } @else {
+          <!-- Viatika Logo for SuperAdmins / Default -->
+          <img src="/logo.svg" alt="Viatika Logo" class="h-8 max-w-full" />
         }
-        <div>
-          <h2 class="text-white text-lg font-semibold">
+        <div *ngIf="getCompanyLogo()">
+          <h2 class="text-white text-lg font-bold tracking-tight">
             {{ getCompanyName() }}
           </h2>
-          <p class="text-gray-300 text-sm">Sistema de Facturas</p>
         </div>
       </div>
     </div>
 
-    <!-- Navegación -->
     <nav class="flex-1 p-4 space-y-2">
       <!-- Facturas - Disponible para COLABORADORES -->
       <a
         *ngIf="isColaborador()"
         [routerLink]="['/invoices']"
-        routerLinkActive="bg-blue-600 text-white"
-        class="flex items-center px-4 py-3 text-gray-300 rounded-lg hover:bg-gray-700 hover:text-white transition-colors"
+        routerLinkActive="bg-primary/10 text-primary font-bold"
+        class="flex items-center px-4 py-3 text-slate-400 rounded-lg hover:bg-slate-800 hover:text-white transition-colors group"
       >
-        <span class="mr-3 text-xl">📄</span>
-        <span class="font-medium">Facturas</span>
+        <span class="material-symbols-outlined mr-3 text-xl group-[.bg-primary\/10]:text-primary group-hover:text-primary transition-colors">receipt_long</span>
+        <span class="font-medium text-sm">Facturas</span>
       </a>
 
-      <!-- Aprobación de Facturas - Solo para ADMINISTRADORES -->
+      <!-- Aprobación de Facturas - Solo para ADMINISTRADORES (No Super) -->
       <a
         *ngIf="isAdmin()"
         [routerLink]="['/invoice-approval']"
-        routerLinkActive="bg-blue-600 text-white"
-        class="flex items-center px-4 py-3 text-gray-300 rounded-lg hover:bg-gray-700 hover:text-white transition-colors"
+        routerLinkActive="bg-primary/10 text-primary font-bold"
+        class="flex items-center px-4 py-3 text-slate-400 rounded-lg hover:bg-slate-800 hover:text-white transition-colors group"
       >
-        <span class="mr-3 text-xl">✅</span>
-        <span class="font-medium">Aprobación de Facturas</span>
+        <span class="material-symbols-outlined mr-3 text-xl group-[.bg-primary\/10]:text-primary group-hover:text-primary transition-colors">fact_check</span>
+        <span class="font-medium text-sm">Aprobación</span>
       </a>
 
-      <!-- Usuarios Admin - Solo para ADMINISTRADORES -->
+      <!-- Usuarios Admin - Solo para CUALQUIER ADMINISTRADOR -->
       <a
-        *ngIf="isAdmin()"
+        *ngIf="isAnyAdmin()"
         [routerLink]="['/admin-users']"
-        routerLinkActive="bg-blue-600 text-white"
-        class="flex items-center px-4 py-3 text-gray-300 rounded-lg hover:bg-gray-700 hover:text-white transition-colors"
+        routerLinkActive="bg-primary/10 text-primary font-bold"
+        class="flex items-center px-4 py-3 text-slate-400 rounded-lg hover:bg-slate-800 hover:text-white transition-colors group"
       >
-        <span class="mr-3 text-xl">👥</span>
-        <span class="font-medium">Usuarios Admin</span>
+        <span class="material-symbols-outlined mr-3 text-xl group-[.bg-primary\/10]:text-primary group-hover:text-primary transition-colors">group</span>
+        <span class="font-medium text-sm">Usuarios</span>
       </a>
 
-      <!-- Consolidado de Facturas - Solo para ADMINISTRADORES -->
+      <!-- Consolidado de Facturas - Solo para ADMINISTRADORES (No Super) -->
       <a
         *ngIf="isAdmin()"
         [routerLink]="['/consolidated-invoices']"
-        routerLinkActive="bg-blue-600 text-white"
-        class="flex items-center px-4 py-3 text-gray-300 rounded-lg hover:bg-gray-700 hover:text-white transition-colors"
+        routerLinkActive="bg-primary/10 text-primary font-bold"
+        class="flex items-center px-4 py-3 text-slate-400 rounded-lg hover:bg-slate-800 hover:text-white transition-colors group"
       >
-        <span class="mr-3 text-xl">📊</span>
-        <span class="font-medium">Consolidado</span>
+        <span class="material-symbols-outlined mr-3 text-xl group-[.bg-primary\/10]:text-primary group-hover:text-primary transition-colors">bar_chart</span>
+        <span class="font-medium text-sm">Consolidado</span>
       </a>
 
       <!-- Configuración - Solo para ADMINISTRADORES -->
       <a
         *ngIf="isAdmin()"
         [routerLink]="['/configuracion']"
-        routerLinkActive="bg-blue-600 text-white"
-        class="flex items-center px-4 py-3 text-gray-300 rounded-lg hover:bg-gray-700 hover:text-white transition-colors"
+        routerLinkActive="bg-primary/10 text-primary font-bold"
+        class="flex items-center px-4 py-3 text-slate-400 rounded-lg hover:bg-slate-800 hover:text-white transition-colors group"
       >
-        <span class="mr-3 text-xl">⚙️</span>
-        <span class="font-medium">Configuración</span>
+        <span class="material-symbols-outlined mr-3 text-xl group-[.bg-primary\/10]:text-primary group-hover:text-primary transition-colors">settings</span>
+        <span class="font-medium text-sm">Configuración</span>
+      </a>
+
+      <!-- Empresas - Solo para SUPERADMINS -->
+      <a
+        *ngIf="isSuperAdmin()"
+        [routerLink]="['/clients']"
+        routerLinkActive="bg-primary/10 text-primary font-bold"
+        class="flex items-center px-4 py-3 text-slate-400 rounded-lg hover:bg-slate-800 hover:text-white transition-colors group"
+      >
+        <span class="material-symbols-outlined mr-3 text-xl group-[.bg-primary\/10]:text-primary group-hover:text-primary transition-colors">domain</span>
+        <span class="font-medium text-sm">Empresas</span>
       </a>
     </nav>
 
     <!-- Footer del sidebar -->
-    <div class="p-4 border-t border-gray-700">
-      <div class="flex items-center px-4 py-2 text-gray-300 mb-3">
-        <img
-          class="w-8 h-8 rounded-full object-cover mr-3"
-          src="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=40&h=40&fit=crop&crop=face"
-          alt="Avatar del usuario"
-        />
+    <div class="p-4 border-t border-slate-800">
+      <div class="flex items-center px-4 py-2 text-slate-300 mb-3">
+        <div class="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center text-primary font-bold mr-3 border border-slate-700">
+          U
+        </div>
         <div class="text-sm">
-          <div class="font-medium text-white">Usuario</div>
-          <div class="text-xs text-gray-400">
-            {{ isAdmin() ? "Administrador" : "Colaborador" }}
+          <div class="font-bold text-white tracking-tight">Usuario</div>
+          <div class="text-xs text-slate-400 font-medium">
+            {{ isSuperAdmin() ? "Super Admin" : (isAdmin() ? "Administrador" : "Colaborador") }}
           </div>
         </div>
       </div>
       <button
         (click)="confirmation()"
-        class="flex items-center w-full px-4 py-2 text-gray-300 rounded-lg hover:bg-red-600 hover:text-white transition-colors"
+        class="flex items-center w-full px-4 py-2 text-slate-400 rounded-lg hover:bg-rose-500/10 hover:text-rose-500 transition-colors group"
       >
-        <span class="mr-3">🚪</span>
-        <span>Cerrar Sesión</span>
+        <span class="material-symbols-outlined mr-3 text-xl group-hover:text-rose-500 transition-colors">logout</span>
+        <span class="font-medium text-sm">Cerrar Sesión</span>
       </button>
     </div>
   </div>
@@ -117,47 +127,35 @@
 
     <!-- Sidebar móvil con animación de deslizamiento -->
     <div
-      class="relative flex flex-col w-80 max-w-[85vw] bg-gray-900 shadow-2xl animate-in slide-in-from-left duration-300 ease-out"
+      class="relative flex flex-col w-80 max-w-[85vw] bg-slate-900 shadow-2xl animate-in slide-in-from-left duration-300 ease-out border-r border-slate-800"
       (click)="$event.stopPropagation()"
     >
       <!-- Header del sidebar móvil mejorado -->
-      <div
-        class="p-6 border-b border-gray-700 bg-gradient-to-r from-gray-900 to-gray-800"
-      >
+      <div class="p-6 border-b border-slate-800 bg-slate-900">
         <div class="flex items-center justify-between">
           <div class="flex items-center">
             @if (getCompanyLogo()) {
             <img
               [src]="getCompanyLogo()"
               alt="Logo de la empresa"
-              class="w-12 h-12 rounded-lg object-cover mr-3"
+              class="w-10 h-10 rounded-lg object-cover mr-3 bg-white p-1"
               onerror="this.style.display='none'"
             />
+            } @else {
+              <!-- Viatika Logo for SuperAdmins / Default -->
+              <img src="/logo.svg" alt="Viatika Logo" class="h-8 max-w-full" />
             }
-            <div>
-              <h2 class="text-white text-xl font-bold">
+            <div *ngIf="getCompanyLogo()">
+              <h2 class="text-white text-lg font-bold tracking-tight">
                 {{ getCompanyName() }}
               </h2>
-              <p class="text-gray-300 text-sm mt-1">Sistema de Facturas</p>
             </div>
           </div>
           <button
             (click)="toggleSidebar()"
-            class="p-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg transition-all duration-200 group"
+            class="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-all duration-200 group"
           >
-            <svg
-              class="w-6 h-6 transform group-hover:rotate-90 transition-transform duration-200"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
-                d="M6 18L18 6M6 6l12 12"
-              ></path>
-            </svg>
+            <span class="material-symbols-outlined group-hover:rotate-90 transition-transform duration-200">close</span>
           </button>
         </div>
       </div>
@@ -169,59 +167,47 @@
           *ngIf="isColaborador()"
           [routerLink]="['/invoices']"
           (click)="toggleSidebar()"
-          routerLinkActive="bg-blue-600 text-white shadow-lg"
-          class="flex items-center px-4 py-4 text-gray-300 rounded-xl hover:bg-gray-700 hover:text-white transition-all duration-200 hover:shadow-lg hover:translate-x-1 group"
+          routerLinkActive="bg-primary/10 text-primary font-bold shadow-sm"
+          class="flex items-center px-4 py-4 text-slate-400 rounded-xl hover:bg-slate-800 hover:text-white transition-all duration-200 group"
         >
-          <span
-            class="mr-4 text-2xl group-hover:scale-110 transition-transform duration-200"
-            >📄</span
-          >
-          <span class="font-medium text-lg">Facturas</span>
+          <span class="material-symbols-outlined mr-4 text-2xl group-[.bg-primary\/10]:text-primary group-hover:text-primary transition-colors">receipt_long</span>
+          <span class="font-medium text-base">Facturas</span>
         </a>
 
-        <!-- Aprobación de Facturas - Solo para ADMINISTRADORES -->
+        <!-- Aprobación de Facturas - Solo para ADMINISTRADORES (No Super) -->
         <a
           *ngIf="isAdmin()"
           [routerLink]="['/invoice-approval']"
           (click)="toggleSidebar()"
-          routerLinkActive="bg-blue-600 text-white shadow-lg"
-          class="flex items-center px-4 py-4 text-gray-300 rounded-xl hover:bg-gray-700 hover:text-white transition-all duration-200 hover:shadow-lg hover:translate-x-1 group"
+          routerLinkActive="bg-primary/10 text-primary font-bold shadow-sm"
+          class="flex items-center px-4 py-4 text-slate-400 rounded-xl hover:bg-slate-800 hover:text-white transition-all duration-200 group"
         >
-          <span
-            class="mr-4 text-2xl group-hover:scale-110 transition-transform duration-200"
-            >✅</span
-          >
-          <span class="font-medium text-lg">Aprobación de Facturas</span>
+          <span class="material-symbols-outlined mr-4 text-2xl group-[.bg-primary\/10]:text-primary group-hover:text-primary transition-colors">fact_check</span>
+          <span class="font-medium text-base">Aprobación</span>
         </a>
 
-        <!-- Usuarios Admin - Solo para ADMINISTRADORES -->
+        <!-- Usuarios Admin - Solo para CUALQUIER ADMINISTRADOR -->
         <a
-          *ngIf="isAdmin()"
+          *ngIf="isAnyAdmin()"
           [routerLink]="['/admin-users']"
           (click)="toggleSidebar()"
-          routerLinkActive="bg-blue-600 text-white shadow-lg"
-          class="flex items-center px-4 py-4 text-gray-300 rounded-xl hover:bg-gray-700 hover:text-white transition-all duration-200 hover:shadow-lg hover:translate-x-1 group"
+          routerLinkActive="bg-primary/10 text-primary font-bold shadow-sm"
+          class="flex items-center px-4 py-4 text-slate-400 rounded-xl hover:bg-slate-800 hover:text-white transition-all duration-200 group"
         >
-          <span
-            class="mr-4 text-2xl group-hover:scale-110 transition-transform duration-200"
-            >👥</span
-          >
-          <span class="font-medium text-lg">Usuarios Admin</span>
+          <span class="material-symbols-outlined mr-4 text-2xl group-[.bg-primary\/10]:text-primary group-hover:text-primary transition-colors">group</span>
+          <span class="font-medium text-base">Usuarios</span>
         </a>
 
-        <!-- Consolidado de Facturas - Solo para ADMINISTRADORES -->
+        <!-- Consolidado de Facturas - Solo para ADMINISTRADORES (No Super) -->
         <a
           *ngIf="isAdmin()"
           [routerLink]="['/consolidated-invoices']"
           (click)="toggleSidebar()"
-          routerLinkActive="bg-blue-600 text-white shadow-lg"
-          class="flex items-center px-4 py-4 text-gray-300 rounded-xl hover:bg-gray-700 hover:text-white transition-all duration-200 hover:shadow-lg hover:translate-x-1 group"
+          routerLinkActive="bg-primary/10 text-primary font-bold shadow-sm"
+          class="flex items-center px-4 py-4 text-slate-400 rounded-xl hover:bg-slate-800 hover:text-white transition-all duration-200 group"
         >
-          <span
-            class="mr-4 text-2xl group-hover:scale-110 transition-transform duration-200"
-            >📊</span
-          >
-          <span class="font-medium text-lg">Consolidado</span>
+          <span class="material-symbols-outlined mr-4 text-2xl group-[.bg-primary\/10]:text-primary group-hover:text-primary transition-colors">bar_chart</span>
+          <span class="font-medium text-base">Consolidado</span>
         </a>
 
         <!-- Configuración - Solo para ADMINISTRADORES (Móvil) -->
@@ -229,44 +215,44 @@
           *ngIf="isAdmin()"
           [routerLink]="['/configuracion']"
           (click)="toggleSidebar()"
-          routerLinkActive="bg-blue-600 text-white shadow-lg"
-          class="flex items-center px-4 py-4 text-gray-300 rounded-xl hover:bg-gray-700 hover:text-white transition-all duration-200 hover:shadow-lg hover:translate-x-1 group"
+          routerLinkActive="bg-primary/10 text-primary font-bold shadow-sm"
+          class="flex items-center px-4 py-4 text-slate-400 rounded-xl hover:bg-slate-800 hover:text-white transition-all duration-200 group"
         >
-          <span
-            class="mr-4 text-2xl group-hover:scale-110 transition-transform duration-200"
-            >⚙️</span
-          >
-          <span class="font-medium text-lg">Configuración</span>
+          <span class="material-symbols-outlined mr-4 text-2xl group-[.bg-primary\/10]:text-primary group-hover:text-primary transition-colors">settings</span>
+          <span class="font-medium text-base">Configuración</span>
+        </a>
+
+        <!-- Empresas - Solo para SUPERADMINS (Móvil) -->
+        <a
+          *ngIf="isSuperAdmin()"
+          [routerLink]="['/clients']"
+          (click)="toggleSidebar()"
+          routerLinkActive="bg-primary/10 text-primary font-bold shadow-sm"
+          class="flex items-center px-4 py-4 text-slate-400 rounded-xl hover:bg-slate-800 hover:text-white transition-all duration-200 group"
+        >
+          <span class="material-symbols-outlined mr-4 text-2xl group-[.bg-primary\/10]:text-primary group-hover:text-primary transition-colors">domain</span>
+          <span class="font-medium text-base">Empresas</span>
         </a>
       </nav>
 
       <!-- Footer del sidebar móvil mejorado -->
-      <div
-        class="p-6 border-t border-gray-700 bg-gradient-to-r from-gray-900 to-gray-800"
-      >
-        <div
-          class="flex items-center px-4 py-3 text-gray-300 mb-4 bg-gray-800 rounded-xl"
-        >
-          <img
-            class="w-10 h-10 rounded-full object-cover mr-3 ring-2 ring-gray-600"
-            src="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=40&h=40&fit=crop&crop=face"
-            alt="Avatar del usuario"
-          />
+      <div class="p-6 border-t border-slate-800 bg-slate-900">
+        <div class="flex items-center px-4 py-3 text-slate-300 mb-4 bg-slate-800/50 border border-slate-800 rounded-xl">
+          <div class="w-10 h-10 rounded-full bg-slate-800 flex items-center justify-center text-primary font-bold mr-3 border border-slate-700">
+            U
+          </div>
           <div class="text-sm">
-            <div class="font-semibold text-white">Usuario</div>
-            <div class="text-xs text-gray-400">
-              {{ isAdmin() ? "Administrador" : "Colaborador" }}
+            <div class="font-bold text-white tracking-tight">Usuario</div>
+            <div class="text-xs text-slate-400">
+              {{ isSuperAdmin() ? "Super Admin" : (isAdmin() ? "Administrador" : "Colaborador") }}
             </div>
           </div>
         </div>
         <button
           (click)="logout()"
-          class="flex items-center w-full px-4 py-3 text-gray-300 rounded-xl hover:bg-red-600 hover:text-white transition-all duration-200 hover:shadow-lg group"
+          class="flex items-center w-full px-4 py-3 text-slate-400 rounded-xl hover:bg-rose-500/10 hover:text-rose-500 transition-colors group"
         >
-          <span
-            class="mr-3 text-xl group-hover:scale-110 transition-transform duration-200"
-            >🚪</span
-          >
+          <span class="material-symbols-outlined mr-3 text-xl group-hover:text-rose-500 transition-colors">logout</span>
           <span class="font-medium">Cerrar Sesión</span>
         </button>
       </div>
