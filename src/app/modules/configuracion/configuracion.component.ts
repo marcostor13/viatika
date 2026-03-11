@@ -327,8 +327,20 @@ export class ConfiguracionComponent implements OnInit {
     }
   }
 
+  private getClientId(): string {
+    const user = this.userStateService.getUser();
+    return (
+      (user as { companyId?: string })?.companyId ||
+      (user as { client?: { _id: string } })?.client?._id ||
+      ''
+    );
+  }
+
   loadSunatConfig() {
-    this.invoicesService.getSunatConfig().subscribe({
+    const clientId = this.getClientId();
+    if (!clientId) return;
+
+    this.invoicesService.getSunatConfig(clientId).subscribe({
       next: (config) => {
         this.sunatConfig = config;
       },
@@ -385,7 +397,9 @@ export class ConfiguracionComponent implements OnInit {
     }
 
     if (this.sunatConfig) {
-      this.invoicesService.updateSunatConfig(this.sunatForm).subscribe({
+      this.invoicesService
+        .updateSunatConfig({ ...this.sunatForm, _id: this.sunatConfig._id })
+        .subscribe({
         next: (config) => {
           this.sunatConfig = config;
           this.notificationService.show(
@@ -402,7 +416,15 @@ export class ConfiguracionComponent implements OnInit {
         },
       });
     } else {
-      this.invoicesService.createSunatConfig(this.sunatForm).subscribe({
+      const clientId = this.getClientId();
+      if (!clientId) {
+        this.notificationService.show(
+          'No se encontró companyId. Inicia sesión nuevamente.',
+          'error'
+        );
+        return;
+      }
+      this.invoicesService.createSunatConfig(clientId, this.sunatForm).subscribe({
         next: (config) => {
           this.sunatConfig = config;
           this.notificationService.show(
@@ -427,7 +449,10 @@ export class ConfiguracionComponent implements OnInit {
         '¿Estás seguro de que quieres eliminar la configuración de SUNAT?'
       )
     ) {
-      this.invoicesService.deleteSunatConfig().subscribe({
+      const configId = this.sunatConfig?._id;
+      if (!configId) return;
+
+      this.invoicesService.deleteSunatConfig(configId).subscribe({
         next: () => {
           this.sunatConfig = null;
           this.notificationService.show(
@@ -446,7 +471,15 @@ export class ConfiguracionComponent implements OnInit {
   }
 
   testSunatConnection() {
-    this.invoicesService.testSunatCredentials().subscribe({
+    const clientId = this.getClientId();
+    if (!clientId) {
+      this.notificationService.show(
+        'No se encontró companyId. Inicia sesión nuevamente.',
+        'error'
+      );
+      return;
+    }
+    this.invoicesService.testSunatCredentials(clientId).subscribe({
       next: (result) => {
         this.loadSunatConfig();
         if (result.success) {

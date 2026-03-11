@@ -202,33 +202,42 @@ export class InvoicesService {
     );
   }
 
-  getSunatConfig(): Observable<ISunatConfig> {
-    return this.http.get<ISunatConfig>(this.sunatConfigUrl);
+  getSunatConfig(clientId: string): Observable<ISunatConfig> {
+    return this.http.get<ISunatConfig>(`${this.sunatConfigUrl}/${clientId}`);
   }
 
-  createSunatConfig(config: Partial<ISunatConfig>): Observable<ISunatConfig> {
-    return this.http.post<ISunatConfig>(this.sunatConfigUrl, config);
+  createSunatConfig(
+    clientId: string,
+    config: Partial<ISunatConfig>
+  ): Observable<ISunatConfig> {
+    return this.http.post<ISunatConfig>(this.sunatConfigUrl, {
+      ...config,
+      clientId,
+    });
   }
 
   updateSunatConfig(config: Partial<ISunatConfig>): Observable<ISunatConfig> {
+    if (!config._id) {
+      throw new Error('Se requiere _id para actualizar la configuración SUNAT');
+    }
     return this.http.patch<ISunatConfig>(
       `${this.sunatConfigUrl}/${config._id}`,
       config
     );
   }
 
-  deleteSunatConfig(): Observable<any> {
-    return this.http.delete(this.sunatConfigUrl);
+  deleteSunatConfig(id: string): Observable<any> {
+    return this.http.delete(`${this.sunatConfigUrl}/${id}`);
   }
 
-  getSunatCredentials(): Observable<ISunatCredentials> {
+  getSunatCredentials(clientId: string): Observable<ISunatCredentials> {
     return this.http.get<ISunatCredentials>(
-      `${this.sunatConfigUrl}/credentials`
+      `${this.sunatConfigUrl}/credentials/${clientId}`
     );
   }
 
-  testSunatCredentials(): Observable<any> {
-    return this.http.get(`${this.url}/test-sunat-credentials`);
+  testSunatCredentials(clientId: string): Observable<any> {
+    return this.http.get(`${this.url}/test-sunat-credentials/${clientId}`);
   }
 
   validateWithSunatData(
