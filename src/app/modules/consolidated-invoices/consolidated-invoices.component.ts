@@ -19,6 +19,7 @@ import { tap } from 'rxjs/operators';
 import { DataComponent } from '../../components/data/data.component';
 import { AdminUsersService } from '../admin-users/services/admin-users.service';
 import { IUserResponse } from '../../interfaces/user.interface';
+import { UserStateService } from '../../services/user-state.service';
 import { ButtonComponent } from '../../design-system/button/button.component';
 import { ExportButtonComponent } from '../../design-system/export-button/export-button.component';
 
@@ -80,6 +81,7 @@ export class ConsolidatedInvoicesComponent implements OnInit {
   private notificationService = inject(NotificationService);
   private confirmationService = inject(ConfirmationService);
   private adminUsersService = inject(AdminUsersService);
+  private userStateService = inject(UserStateService);
 
   rejectionReason = signal('');
   selectedInvoiceId = signal('');

@@ -10,6 +10,7 @@ import { MaskPipe } from '../../pipes/mask.pipe';
 import { ICompanyConfig } from '../../interfaces/company-config.interface';
 import { ISunatConfig } from '../../interfaces/sunat-config.interface';
 import { CompanyConfigService } from '../../services/company-config.service';
+import { UserStateService } from '../../services/user-state.service';
 import { ButtonComponent } from '../../design-system/button/button.component';
 
 @Component({
@@ -23,6 +24,7 @@ export class ConfiguracionComponent implements OnInit {
   private invoicesService = inject(InvoicesService);
   private notificationService = inject(NotificationService);
   private companyConfigService = inject(CompanyConfigService);
+  private userStateService = inject(UserStateService);
   categories: ICategory[] = [];
   newCategory: ICategory = { name: '' };
   editingCategory: ICategory | null = null;
@@ -158,7 +160,8 @@ export class ConfiguracionComponent implements OnInit {
   }
 
   loadCategories() {
-    this.invoicesService.getCategories().subscribe((categories) => {
+    const companyId = this.userStateService.getUser()?.companyId;
+    this.invoicesService.getCategories(companyId).subscribe((categories) => {
       this.categories = categories;
     });
   }
@@ -243,7 +246,8 @@ export class ConfiguracionComponent implements OnInit {
   }
 
   loadProjects() {
-    this.invoicesService.getProjects().subscribe((projects) => {
+    const companyId = this.userStateService.getUser()?.companyId;
+    this.invoicesService.getProjects(companyId).subscribe((projects) => {
       this.projects = projects;
     });
   }
@@ -283,8 +287,9 @@ export class ConfiguracionComponent implements OnInit {
     }
 
     if (this.editingProject) {
+      const companyId = this.userStateService.getUser()?.companyId || '';
       this.invoicesService
-        .updateProject(this.editingProject._id!, { name: this.newProject.name })
+        .updateProject(this.editingProject._id!, { name: this.newProject.name }, companyId)
         .subscribe(() => {
           this.notificationService.show(
             'Proyecto actualizado exitosamente',
@@ -311,7 +316,8 @@ export class ConfiguracionComponent implements OnInit {
         `¿Estás seguro de que quieres eliminar el proyecto "${project.name}"?`
       )
     ) {
-      this.invoicesService.deleteProject(project._id!).subscribe(() => {
+      const companyId = this.userStateService.getUser()?.companyId || '';
+      this.invoicesService.deleteProject(project._id!, companyId).subscribe(() => {
         this.notificationService.show(
           'Proyecto eliminado exitosamente',
           'success'

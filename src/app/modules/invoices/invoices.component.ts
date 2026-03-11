@@ -12,6 +12,7 @@ import {
 import { IHeaderList } from '../../interfaces/header-list.interface';
 import { IProject } from './interfaces/project.interface';
 import { DataComponent } from '../../components/data/data.component';
+import { UserStateService } from '../../services/user-state.service';
 import { ButtonComponent } from '../../design-system/button/button.component';
 import { ExportButtonComponent } from '../../design-system/export-button/export-button.component';
 
@@ -27,6 +28,7 @@ export default class InvoicesComponent implements OnInit {
   private router = inject(Router);
   private notificationService = inject(NotificationService);
   private confirmationService = inject(ConfirmationService);
+  private userStateService = inject(UserStateService);
 
   invoices: IInvoiceResponse[] = [];
   projects: IProject[] = [];
@@ -242,7 +244,7 @@ export default class InvoicesComponent implements OnInit {
         this.downloadInvoice(_id);
         break;
       case 'sunat-info':
-        this.showSunatInfo(id);
+        this.showSunatInfo(_id);
         break;
     }
   }

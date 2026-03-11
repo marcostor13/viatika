@@ -42,6 +42,8 @@ export class CompanyConfigService {
 
     const defaultConfig: ICompanyConfig = {
       _id: clientId,
+      companyId: clientId,
+      name: 'Mi Empresa',
       businessName: 'Mi Empresa',
       logo: '',
     };
@@ -68,8 +70,11 @@ export class CompanyConfigService {
       return;
     }
 
+    const companyId = user?.companyId || user?.client?._id || '';
+    if (!companyId) return;
+
     this.invoicesService
-      .getCompanyConfig()
+      .getCompanyConfig(companyId)
       .subscribe({
         next: (config: ICompanyConfig) => {
           this.companyConfigSubject.next(config);
@@ -90,9 +95,13 @@ export class CompanyConfigService {
   }
 
   updateCompanyName(name: string): Observable<ICompanyConfig> {
+    const companyId = this.companyConfigSubject.value?._id || this.companyConfigSubject.value?.companyId;
+    if (!companyId) throw new Error('No se encontró companyId');
+
     return new Observable((observer) => {
       this.invoicesService
-        .updateCompanyConfig(this.companyConfigSubject.value?._id!, {
+        .updateCompanyConfig(companyId, {
+          name,
           businessName: name,
         })
         .subscribe((config) => {
@@ -130,8 +139,14 @@ export class CompanyConfigService {
             const downloadURL = await getDownloadURL(storageRef);
 
             // Actualizar configuración de empresa con la nueva URL
+            const cid = this.companyConfigSubject.value?._id || this.companyConfigSubject.value?.companyId;
+            if (!cid) {
+              observer.next({ type: 'error' });
+              observer.error(new Error('No companyId'));
+              return;
+            }
             this.invoicesService
-              .updateCompanyConfig(this.companyConfigSubject.value?._id!, {
+              .updateCompanyConfig(cid, {
                 logo: downloadURL,
               })
               .subscribe((config) => {

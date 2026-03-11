@@ -126,4 +126,8 @@ export class SidebarComponent implements OnInit, OnDestroy {
   getCompanyLogo(): string {
     return this.companyConfig?.logo || '';
   }
+
+  get user() {
+    return this.userStateService.getUser();
+  }
 }

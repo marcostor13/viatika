@@ -101,8 +101,9 @@ export class InvoicesService {
     );
   }
 
-  getCategories(): Observable<ICategory[]> {
-    return this.http.get<ICategory[]>(`${this.categoryUrl}`);
+  getCategories(companyId?: string): Observable<ICategory[]> {
+    const url = companyId ? `${this.categoryUrl}/${companyId}` : this.categoryUrl;
+    return this.http.get<ICategory[]>(url);
   }
 
   getCategoryById(id: string): Observable<ICategory> {
@@ -124,8 +125,9 @@ export class InvoicesService {
     return this.http.delete(`${this.categoryUrl}/${id}`);
   }
 
-  getProjects(): Observable<IProject[]> {
-    return this.http.get<IProject[]>(`${this.projectUrl}`);
+  getProjects(companyId?: string): Observable<IProject[]> {
+    const url = companyId ? `${this.projectUrl}/${companyId}` : this.projectUrl;
+    return this.http.get<IProject[]>(url);
   }
 
   getProjectById(id: string, companyId: string): Observable<IProject> {
@@ -161,22 +163,42 @@ export class InvoicesService {
     companyId: string
   ): Observable<SunatValidationInfo> {
     return this.http.get<SunatValidationInfo>(
-      `${this.url}/invoice/${id}/sunat-validation`
+      `${this.url}/${id}/${companyId}/sunat-validation`
     );
   }
 
   // Métodos para configuración de empresa
-  getCompanyConfig(): Observable<ICompanyConfig> {
-    return this.http.get<ICompanyConfig>(`${this.companyConfigUrl}`);
+  getCompanyConfig(companyId: string): Observable<ICompanyConfig> {
+    return this.http.get<any>(
+      `${this.companyConfigUrl}/${companyId}`
+    ).pipe(
+      map(client => ({
+        _id: client._id,
+        companyId: client._id,
+        name: client.comercialName || client.businessName,
+        logo: client.logo
+      }))
+    );
   }
 
   updateCompanyConfig(
-    id: string,
+    companyId: string,
     config: Partial<ICompanyConfig>
   ): Observable<ICompanyConfig> {
-    return this.http.patch<ICompanyConfig>(
-      `${this.companyConfigUrl}/${id}`,
-      config
+    const payload: Record<string, unknown> = {};
+    if (config.name) payload['comercialName'] = config.name;
+    if (config.logo) payload['logo'] = config.logo;
+
+    return this.http.patch<any>(
+      `${this.companyConfigUrl}/${companyId}`,
+      payload
+    ).pipe(
+      map(client => ({
+        _id: client._id,
+        companyId: client._id,
+        name: client.comercialName || client.businessName,
+        logo: client.logo
+      }))
     );
   }
 
@@ -222,77 +244,5 @@ export class InvoicesService {
     }
   ): Observable<any> {
     return this.http.post(`${this.url}/invoice/${id}/validate-sunat`, data);
-  }
-
-  // Métodos para validación SUNAT
-  getSunatValidation(
-    id: string,
-    companyId: string
-  ): Observable<SunatValidationInfo> {
-    return this.http.get<SunatValidationInfo>(
-      `${this.url}/${id}/${companyId}/sunat-validation`
-    );
-  }
-
-  // Métodos para configuración de empresa
-  getCompanyConfig(companyId: string): Observable<ICompanyConfig> {
-    return this.http.get<any>(
-      `${this.companyConfigUrl}/${companyId}`
-    ).pipe(
-      map(client => ({
-        _id: client._id,
-        companyId: client._id,
-        name: client.comercialName || client.businessName,
-        logo: client.logo
-      }))
-    );
-  }
-
-  updateCompanyConfig(
-    companyId: string,
-    config: Partial<ICompanyConfig>
-  ): Observable<ICompanyConfig> {
-    const payload: any = {};
-    if (config.name) payload.comercialName = config.name;
-    if (config.logo) payload.logo = config.logo;
-
-    return this.http.patch<any>(
-      `${this.companyConfigUrl}/${companyId}`,
-      payload
-    ).pipe(
-      map(client => ({
-        _id: client._id,
-        companyId: client._id,
-        name: client.comercialName || client.businessName,
-        logo: client.logo
-      }))
-    );
-  }
-
-  // Métodos para configuración de SUNAT
-  getSunatConfig(): Observable<ISunatConfig> {
-    return this.http.get<ISunatConfig>(this.sunatConfigUrl);
-  }
-
-  createSunatConfig(config: Partial<ISunatConfig>): Observable<ISunatConfig> {
-    return this.http.post<ISunatConfig>(this.sunatConfigUrl, config);
-  }
-
-  updateSunatConfig(config: Partial<ISunatConfig>): Observable<ISunatConfig> {
-    return this.http.patch<ISunatConfig>(this.sunatConfigUrl, config);
-  }
-
-  deleteSunatConfig(): Observable<any> {
-    return this.http.delete(this.sunatConfigUrl);
-  }
-
-  getSunatCredentials(): Observable<ISunatCredentials> {
-    return this.http.get<ISunatCredentials>(
-      `${this.sunatConfigUrl}/credentials`
-    );
-  }
-
-  testSunatCredentials(): Observable<any> {
-    return this.http.get(`${this.url}/test-sunat-credentials`);
   }
 }
