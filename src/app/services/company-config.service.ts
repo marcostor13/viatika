@@ -1,14 +1,9 @@
 import { Injectable, inject } from '@angular/core';
-import { BehaviorSubject, Observable } from 'rxjs';
+import { BehaviorSubject, Observable, Subscription } from 'rxjs';
 import { ICompanyConfig } from '../interfaces/company-config.interface';
 import { InvoicesService } from '../modules/invoices/services/invoices.service';
 import { UserStateService } from './user-state.service';
-import {
-  Storage,
-  ref,
-  uploadBytesResumable,
-  getDownloadURL,
-} from '@angular/fire/storage';
+import { UploadService } from './upload.service';
 
 interface UploadProgress {
   config?: ICompanyConfig;
@@ -22,7 +17,7 @@ interface UploadProgress {
 export class CompanyConfigService {
   private invoicesService = inject(InvoicesService);
   private userStateService = inject(UserStateService);
-  private readonly storage: Storage = inject(Storage);
+  private uploadService = inject(UploadService);
 
   private companyConfigSubject = new BehaviorSubject<ICompanyConfig | null>(
     null
@@ -113,53 +108,52 @@ export class CompanyConfigService {
   }
 
   uploadCompanyLogo(file: File, _id: string): Observable<UploadProgress> {
-    const clientId = this.companyConfigSubject.value?._id!;
+    const clientId = this.companyConfigSubject.value?._id;
+    const cid = this.companyConfigSubject.value?._id || this.companyConfigSubject.value?.companyId;
 
-    return new Observable((observer) => {
-      // Subir archivo a Firebase Storage
-      const filePath = `company-logos/${clientId}/${Date.now()}_${file.name}`;
-      const storageRef = ref(this.storage, filePath);
-      const uploadTask = uploadBytesResumable(storageRef, file);
+    if (!cid) {
+      return new Observable((observer) => {
+        observer.next({ type: 'error' });
+        observer.error(new Error('No companyId'));
+      });
+    }
 
-      uploadTask.on(
-        'state_changed',
-        (snapshot) => {
-          const progress =
-            (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-          observer.next({ progress, type: 'progress' });
-        },
-        (error) => {
-          console.error('Error al subir logo:', error);
-          observer.next({ type: 'error' });
-          observer.error(error);
-        },
-        async () => {
-          try {
-            // Obtener URL de descarga
-            const downloadURL = await getDownloadURL(storageRef);
+    const path = `company-logos/${clientId ?? cid}`;
+    const { uploadProgress$, downloadUrl$ } = this.uploadService.uploadFile(file, path);
 
-            // Actualizar configuración de empresa con la nueva URL
-            const cid = this.companyConfigSubject.value?._id || this.companyConfigSubject.value?.companyId;
-            if (!cid) {
-              observer.next({ type: 'error' });
-              observer.error(new Error('No companyId'));
-              return;
-            }
-            this.invoicesService
-              .updateCompanyConfig(cid, {
-                logo: downloadURL,
-              })
-              .subscribe((config) => {
+    return new Observable<UploadProgress>((observer) => {
+      const subs: Subscription[] = [];
+      const progressSub = uploadProgress$.subscribe((progress) => {
+        observer.next({ progress, type: 'progress' });
+      });
+      subs.push(progressSub);
+
+      const urlSub = downloadUrl$.subscribe({
+        next: (url) => {
+          subs.forEach((s) => s.unsubscribe());
+          this.invoicesService
+            .updateCompanyConfig(cid, { logo: url })
+            .subscribe({
+              next: (config) => {
                 this.companyConfigSubject.next(config);
                 observer.next({ config, progress: 100, type: 'complete' });
                 observer.complete();
-              });
-          } catch (error) {
-            observer.next({ type: 'error' });
-            observer.error(error);
-          }
-        }
-      );
+              },
+              error: (err) => {
+                observer.next({ type: 'error' });
+                observer.error(err);
+              },
+            });
+        },
+        error: (err) => {
+          subs.forEach((s) => s.unsubscribe());
+          observer.next({ type: 'error' });
+          observer.error(err);
+        },
+      });
+      subs.push(urlSub);
+
+      return () => subs.forEach((s) => s.unsubscribe());
     });
   }
 

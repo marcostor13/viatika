@@ -1,56 +1,63 @@
-import { inject, Injectable } from '@angular/core';
-import { from, Observable, switchMap } from 'rxjs';
-import { HttpClient } from '@angular/common/http';
+import { Injectable } from '@angular/core';
+import { Observable, map, filter, share } from 'rxjs';
+import { HttpClient, HttpEventType } from '@angular/common/http';
 import { environment } from '../../environments/environment';
-import {
-  Storage,
-  ref,
-  uploadBytesResumable,
-  getDownloadURL,
-  StorageReference,
-} from '@angular/fire/storage';
+
+interface UploadResponse {
+  url: string;
+}
 
 @Injectable({
   providedIn: 'root',
 })
 export class UploadService {
-  baseUrl = environment.api;
-  private readonly storage: Storage = inject(Storage);
+  private readonly baseUrl = environment.api;
 
-  constructor(private http: HttpClient) { }
+  constructor(private readonly http: HttpClient) {}
 
-  upload(file: File, resourceType: string = 'image'): Observable<any> {
+  upload(file: File, resourceType: string = 'image'): Observable<UploadResponse> {
     const formData = new FormData();
     formData.append('file', file);
     formData.append('resourceType', resourceType);
-    return this.http.post<any>(`${this.baseUrl}/upload`, formData);
+    return this.http.post<UploadResponse>(`${this.baseUrl}/upload`, formData);
   }
 
+  /**
+   * Sube un archivo al backend (S3) con reporte de progreso.
+   * Retorna observables de progreso y URL final.
+   */
   uploadFile(
     file: File,
-    path: string
+    _path: string
   ): { uploadProgress$: Observable<number>; downloadUrl$: Observable<string> } {
-    const filePath = `${path}/${file.name}_${Date.now()}`;
-    const storageRef: StorageReference = ref(this.storage, filePath);
-    const uploadTask: any = uploadBytesResumable(storageRef, file);
-    const uploadProgress$ = new Observable<number>((observer: any) => {
-      uploadTask.on(
-        'state_changed',
-        (snapshot: any) => {
-          const progress =
-            (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-          observer.next(progress);
-        },
-        (error: any) => {
-          console.error('Error durante la subida:', error);
-          observer.error(error);
-        },
-        () => { }
-      );
-    });
+    const formData = new FormData();
+    formData.append('file', file);
 
-    const downloadUrl$ = from(uploadTask).pipe(
-      switchMap(() => from(getDownloadURL(storageRef)))
+    const upload$ = this.http.post<UploadResponse>(
+      `${this.baseUrl}/upload`,
+      formData,
+      {
+        reportProgress: true,
+        observe: 'events',
+      }
+    ).pipe(share());
+
+    const uploadProgress$ = upload$.pipe(
+      filter((event) => event.type === HttpEventType.UploadProgress),
+      map((event) => {
+        if (event.type === HttpEventType.UploadProgress && event.total) {
+          return Math.round((100 * event.loaded) / event.total);
+        }
+        return 0;
+      })
+    );
+
+    const downloadUrl$ = upload$.pipe(
+      filter(
+        (event) =>
+          event.type === HttpEventType.Response && !!event.body
+      ),
+      map((event) => (event as { body: UploadResponse }).body.url)
     );
 
     return { uploadProgress$, downloadUrl$ };
