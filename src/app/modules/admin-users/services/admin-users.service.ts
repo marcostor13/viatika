@@ -6,7 +6,7 @@ import {
 } from '@angular/common/http';
 import { Observable, throwError } from 'rxjs';
 import { catchError, tap } from 'rxjs/operators';
-import { IUser, IUserResponse, IRole, IClient } from '../../../interfaces/user.interface';
+import { IUser, IUserResponse, IRole, IClient, IUserPermissions } from '../../../interfaces/user.interface';
 import { UserStateService } from '../../../services/user-state.service';
 import { environment } from '../../../../environments/environment';
 
@@ -36,7 +36,7 @@ export class AdminUsersService {
 
   getUser(id: string): Observable<IUserResponse> {
     return this.http
-      .get<IUserResponse>(`${this.apiUrl}/${id}`, {
+      .get<IUserResponse>(`${this.apiUrl}/details/${id}`, {
         headers: this.getHeaders(),
       })
       .pipe(catchError((error: any) => this.handleError(error)));
@@ -49,7 +49,7 @@ export class AdminUsersService {
     if (!this.userStateService.isSuperAdmin()) {
       const companyId = this.userStateService.getUser()?.companyId;
       if (!companyId) throw new Error('No se encontró companyId');
-      url = `${this.apiUrl}/${companyId}`;
+      url = `${this.apiUrl}/client/${companyId}`;
     }
 
     return this.http
@@ -117,6 +117,14 @@ export class AdminUsersService {
       );
   }
 
+  updatePermissions(id: string, permissions: IUserPermissions): Observable<IUserResponse> {
+    return this.http
+      .patch<IUserResponse>(`${this.apiUrl}/${id}/permissions`, permissions, {
+        headers: this.getHeaders(),
+      })
+      .pipe(catchError((error: any) => this.handleError(error)));
+  }
+
   deleteUser(id: string): Observable<void> {
     return this.http
       .delete<void>(`${this.apiUrl}/${id}`, { headers: this.getHeaders() })
@@ -124,8 +132,11 @@ export class AdminUsersService {
   }
 
   getRoles(): Observable<IRole[]> {
+    const endpoint = this.userStateService.isSuperAdmin()
+      ? `${environment.api}/role`
+      : `${environment.api}/role/for-admin`;
     return this.http
-      .get<IRole[]>(`${environment.api}/role`, {
+      .get<IRole[]>(endpoint, {
         headers: this.getHeaders(),
       })
       .pipe(

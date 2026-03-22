@@ -20,6 +20,8 @@ import { AdminUsersService } from '../admin-users/services/admin-users.service';
 import { IUserResponse } from '../../interfaces/user.interface';
 import { ButtonComponent } from '../../design-system/button/button.component';
 import { ExportButtonComponent } from '../../design-system/export-button/export-button.component';
+import { ExpenseReportsService } from '../../services/expense-reports.service';
+import { IExpenseReport } from '../../interfaces/expense-report.interface';
 
 interface IInvoice {
   _id?: string;
@@ -67,11 +69,22 @@ interface IInvoice {
 })
 export class InvoiceApprovalComponent implements OnInit {
   private agentService = inject(InvoicesService);
-  private router = inject(Router);
+  readonly router = inject(Router);
   private notificationService = inject(NotificationService);
   private confirmationService = inject(ConfirmationService);
   private userStateService = inject(UserStateService);
   private adminUsersService = inject(AdminUsersService);
+  private expenseReportsService = inject(ExpenseReportsService);
+
+  // Tabs
+  activeTab = signal<'facturas' | 'rendiciones'>('rendiciones');
+
+  // Rendiciones pendientes
+  submittedReports = signal<IExpenseReport[]>([]);
+  loadingReports = signal(false);
+  showRejectReportModal = signal(false);
+  selectedReportId = signal('');
+  reportRejectionReason = signal('');
 
   rejectionReason = signal('');
   selectedInvoiceId = signal('');
@@ -181,6 +194,7 @@ export class InvoiceApprovalComponent implements OnInit {
 
   ngOnInit() {
     this.loadData();
+    this.loadSubmittedReports();
   }
 
   loadData() {
@@ -188,6 +202,70 @@ export class InvoiceApprovalComponent implements OnInit {
     this.getCategories();
     this.getUsers();
     this.getInvoices();
+  }
+
+  loadSubmittedReports() {
+    const user = this.userStateService.getUser();
+    const clientId = user?.companyId || (user as any)?.client?._id || (user as any)?.clientId;
+    if (!clientId) return;
+    this.loadingReports.set(true);
+    this.expenseReportsService.findAllByClient(clientId).subscribe({
+      next: (reports) => {
+        this.submittedReports.set(reports.filter(r => r.status === 'submitted'));
+        this.loadingReports.set(false);
+      },
+      error: () => this.loadingReports.set(false),
+    });
+  }
+
+  approveReport(id: string) {
+    this.confirmationService.confirm({
+      title: 'Aprobar rendición',
+      message: '¿Confirma la aprobación de esta rendición?',
+      accept: () => {
+        this.expenseReportsService.update(id, { status: 'approved' }).subscribe({
+          next: () => {
+            this.notificationService.show('Rendición aprobada correctamente', 'success');
+            this.loadSubmittedReports();
+          },
+          error: () => this.notificationService.show('Error al aprobar la rendición', 'error'),
+        });
+      },
+    });
+  }
+
+  openRejectReportModal(id: string) {
+    this.selectedReportId.set(id);
+    this.reportRejectionReason.set('');
+    this.showRejectReportModal.set(true);
+  }
+
+  closeRejectReportModal() {
+    this.showRejectReportModal.set(false);
+  }
+
+  submitReportRejection() {
+    if (!this.reportRejectionReason()) {
+      this.notificationService.show('Debe ingresar un motivo de rechazo', 'error');
+      return;
+    }
+    this.expenseReportsService.update(this.selectedReportId(), { status: 'rejected' }).subscribe({
+      next: () => {
+        this.notificationService.show('Rendición rechazada', 'success');
+        this.closeRejectReportModal();
+        this.loadSubmittedReports();
+      },
+      error: () => this.notificationService.show('Error al rechazar la rendición', 'error'),
+    });
+  }
+
+  getReportTotalGastado(report: IExpenseReport): number {
+    if (!report.expenseIds?.length) return 0;
+    return report.expenseIds.reduce((sum: number, exp: any) => sum + (exp.total || 0), 0);
+  }
+
+  getReportExpenseCount(report: IExpenseReport): number {
+    return report.expenseIds?.length || 0;
   }
 
   getUsers() {

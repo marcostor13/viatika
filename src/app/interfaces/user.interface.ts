@@ -56,6 +56,12 @@ export interface IRoleResponse {
   updatedAt: Date;
 }
 
+export interface IUserPermissions {
+  modules: string[];
+  canApproveL1: boolean;
+  canApproveL2: boolean;
+}
+
 export interface IUserResponse {
   _id: string;
   name: string;
@@ -73,6 +79,11 @@ export interface IUserResponse {
   companyId?: string;
   createdAt: Date;
   updatedAt: Date;
+  permissions?: IUserPermissions;
+  dni?: string;
+  employeeCode?: string;
+  address?: string;
+  phone?: string;
 }
 
 

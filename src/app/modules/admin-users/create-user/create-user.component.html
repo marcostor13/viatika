@@ -1,7 +1,7 @@
 <div class="create-user xl:w-1/2 w-full">
   <div class="flex items-center gap-2 w-full justify-between">
     <button
-      class="bg-color1 text-white px-4 py-3 sm:py-2 rounded-md flex items-center justify-center gap-2 text-sm sm:text-base shadow-sm"
+      class="bg-secondary text-white px-4 py-3 sm:py-2 rounded-md flex items-center justify-center gap-2 text-sm sm:text-base shadow-sm"
       (click)="back()"
     >
       <svg
@@ -55,8 +55,9 @@
         formControlName="roleId"
         [ngClass]="{ 'border-red-500': roleId?.invalid && roleId?.touched }"
       >
+        <option value="" disabled>Selecciona un rol</option>
         @for(role of roles; track role._id) {
-        <option [value]="role._id">{{ getRoleName(role._id) }}</option>
+        <option [value]="role._id">{{ role.name }}</option>
         }
       </select>
     </div>
@@ -69,9 +70,45 @@
       }
     </div>
     }
+    <div class="flex flex-col gap-2">
+      <label>DNI <span class="text-tertiary text-xs">(opcional)</span></label>
+      <input
+        type="text"
+        name="dni"
+        formControlName="dni"
+        placeholder="Ej: 12345678"
+      />
+    </div>
+    <div class="flex flex-col gap-2">
+      <label>Código de Empleado <span class="text-tertiary text-xs">(opcional)</span></label>
+      <input
+        type="text"
+        name="employeeCode"
+        formControlName="employeeCode"
+        placeholder="Ej: EMP-001"
+      />
+    </div>
+    <div class="flex flex-col gap-2">
+      <label>Dirección <span class="text-tertiary text-xs">(opcional)</span></label>
+      <input
+        type="text"
+        name="address"
+        formControlName="address"
+        placeholder="Ej: Av. Lima 123, Lima"
+      />
+    </div>
+    <div class="flex flex-col gap-2">
+      <label>Teléfono <span class="text-tertiary text-xs">(opcional)</span></label>
+      <input
+        type="text"
+        name="phone"
+        formControlName="phone"
+        placeholder="Ej: 987654321"
+      />
+    </div>
     <button
       type="submit"
-      class="bg-color2 text-white px-4 py-3 sm:py-2 rounded-md flex items-center justify-center gap-2 text-sm sm:text-base shadow-sm mt-5"
+      class="bg-primary text-white px-4 py-3 sm:py-2 rounded-md flex items-center justify-center gap-2 text-sm sm:text-base shadow-sm mt-5"
       (click)="id ? updateUser() : createUser()"
     >
       {{ id ? "Actualizar" : "Crear" }}

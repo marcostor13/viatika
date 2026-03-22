@@ -3,12 +3,15 @@ import { Router, ActivatedRoute } from '@angular/router';
 import {
   FormBuilder,
   FormGroup,
+  FormArray,
   Validators,
   ReactiveFormsModule,
   FormsModule,
 } from '@angular/forms';
 import { NotificationService } from '../../../services/notification.service';
 import { InvoicesService } from '../services/invoices.service';
+import { ExpenseReportsService } from '../../../services/expense-reports.service';
+import { UserStateService } from '../../../services/user-state.service';
 import { DomSanitizer, SafeUrl } from '@angular/platform-browser';
 import { UploadService } from '../../../services/upload.service';
 import { environment } from '../../../../environments/environment';
@@ -18,13 +21,17 @@ import { ICategory } from '../interfaces/category.interface';
 import {
   InvoiceStatus,
   SunatValidationInfo,
+  ExpenseType,
 } from '../interfaces/invoices.interface';
 import { ButtonComponent } from '../../../design-system/button/button.component';
+import { PlacesAutocompleteDirective, PlaceResult } from '../../../directives/places-autocomplete.directive';
+
+declare const google: any;
 
 @Component({
   selector: 'app-add-invoice',
   standalone: true,
-  imports: [ReactiveFormsModule, FormsModule, CommonModule, ButtonComponent],
+  imports: [ReactiveFormsModule, FormsModule, CommonModule, ButtonComponent, PlacesAutocompleteDirective],
   templateUrl: './add-invoice.component.html',
   styleUrl: './add-invoice.component.scss',
 })
@@ -33,6 +40,8 @@ export default class AddInvoiceComponent implements OnInit {
   private router = inject(Router);
   private fb = inject(FormBuilder);
   private notificationService = inject(NotificationService);
+  private expenseReportsService = inject(ExpenseReportsService);
+  private userStateService = inject(UserStateService);
   private route = inject(ActivatedRoute);
   private sanitizer = inject(DomSanitizer);
   private uploadService = inject(UploadService);
@@ -46,9 +55,33 @@ export default class AddInvoiceComponent implements OnInit {
   originalInvoice: any = null;
   sunatValidation: SunatValidationInfo | null = null;
   isSunatValidating = signal(false);
+  rendicionId: string | null = null;
 
+  expenseType = signal<ExpenseType>('factura');
   percentage = signal(0);
   isLoading = signal(false);
+
+  private guardRendiciones() {
+    if (this.id) return; // edición: siempre permitida
+    if (!this.userStateService.isColaborador()) return;
+
+    const user = this.userStateService.getUser();
+    const userId = user?._id;
+    const clientId = user?.companyId;
+    if (!userId || !clientId) return;
+
+    this.expenseReportsService.findAllByUser(userId, clientId).subscribe({
+      next: (reports) => {
+        if (reports.length === 0) {
+          this.notificationService.show(
+            'Necesitas tener una rendición asignada para subir facturas.',
+            'error'
+          );
+          this.router.navigate(['/invoices']);
+        }
+      },
+    });
+  }
 
   constructor() {
     this.initForm();
@@ -125,8 +158,19 @@ export default class AddInvoiceComponent implements OnInit {
   }
 
   ngOnInit() {
+    this.guardRendiciones();
     this.loadCategories();
     this.loadProjects();
+    this.route.queryParamMap.subscribe(params => {
+      this.rendicionId = params.get('rendicionId');
+      const tipo = params.get('tipo') as ExpenseType | null;
+      if (tipo) {
+        this.setExpenseType(tipo);
+      }
+      if (this.rendicionId) {
+        this.loadRendicionProject();
+      }
+    });
 
     if (this.id) {
       this.form.get('file')?.clearValidators();
@@ -180,6 +224,19 @@ export default class AddInvoiceComponent implements OnInit {
     }
   }
 
+  loadRendicionProject() {
+    if (!this.rendicionId) return;
+    this.expenseReportsService.findOne(this.rendicionId).subscribe({
+      next: (report) => {
+        if (report && report.projectId) {
+          const pId = typeof report.projectId === 'string' ? report.projectId : report.projectId._id;
+          this.form.patchValue({ proyectId: pId });
+        }
+      },
+      error: (err) => console.error('Error loading report project', err)
+    });
+  }
+
   loadCategories() {
     this.invoiceService.getCategories().subscribe({
       next: (categories) => {
@@ -206,27 +263,278 @@ export default class AddInvoiceComponent implements OnInit {
       rucEmisor: [''],
       serie: [''],
       correlativo: [''],
+      // Otros gastos
+      totalOtros: [null],
+      description: [''],
+      declaracionJurada: [false],
+      declaracionJuradaFirmante: [''],
+      // Planilla de movilidad
+      mobilityRows: this.fb.array([]),
     });
+  }
+
+  get mobilityRowsArray(): FormArray {
+    return this.form.get('mobilityRows') as FormArray;
+  }
+
+  setExpenseType(type: ExpenseType) {
+    this.expenseType.set(type);
+    // Limpiar archivo al cambiar de tipo para evitar adjuntos cruzados
+    this.selectedFile = undefined as any;
+    this.previewImage = null;
+    if (type === 'factura') {
+      this.form.get('file')?.setValidators([Validators.required]);
+    } else {
+      this.form.get('file')?.clearValidators();
+    }
+    this.form.get('file')?.updateValueAndValidity();
+  }
+
+  addMobilityRow() {
+    this.mobilityRowsArray.push(this.fb.group({
+      fecha: ['', Validators.required],
+      concepto: ['', Validators.required],
+      total: [null, [Validators.required, Validators.min(0)]],
+      clienteProveedor: [''],
+      origen: ['', Validators.required],
+      origenLat: [null],
+      origenLng: [null],
+      destino: ['', Validators.required],
+      destinoLat: [null],
+      destinoLng: [null],
+      distanciaKm: [null],
+      gestion: [''],
+    }));
+  }
+
+  onOrigenSelected(result: PlaceResult, index: number) {
+    this.mobilityRowsArray.at(index).patchValue({
+      origen: result.address,
+      origenLat: result.lat,
+      origenLng: result.lng,
+    });
+    this.calculateDistance(index);
+  }
+
+  onDestinoSelected(result: PlaceResult, index: number) {
+    this.mobilityRowsArray.at(index).patchValue({
+      destino: result.address,
+      destinoLat: result.lat,
+      destinoLng: result.lng,
+    });
+    this.calculateDistance(index);
+  }
+
+  private calculateDistance(index: number) {
+    const row = this.mobilityRowsArray.at(index);
+    const oLat = row.get('origenLat')?.value;
+    const oLng = row.get('origenLng')?.value;
+    const dLat = row.get('destinoLat')?.value;
+    const dLng = row.get('destinoLng')?.value;
+
+    if (oLat != null && oLng != null && dLat != null && dLng != null && typeof google !== 'undefined') {
+      const from = new google.maps.LatLng(oLat, oLng);
+      const to = new google.maps.LatLng(dLat, dLng);
+      const meters = google.maps.geometry.spherical.computeDistanceBetween(from, to);
+      row.patchValue({ distanciaKm: Math.round(meters / 100) / 10 });
+    }
+  }
+
+  removeMobilityRow(index: number) {
+    this.mobilityRowsArray.removeAt(index);
+  }
+
+  getMobilityTotal(): number {
+    return this.mobilityRowsArray.controls.reduce((sum, ctrl) => {
+      return sum + (ctrl.get('total')?.value || 0);
+    }, 0);
+  }
+
+  isFormValid(): boolean {
+    switch (this.expenseType()) {
+      case 'planilla_movilidad':
+        return (
+          this.form.get('proyectId')?.valid === true &&
+          this.form.get('categoryId')?.valid === true &&
+          this.mobilityRowsArray.length > 0 &&
+          this.mobilityRowsArray.valid
+        );
+      case 'otros_gastos':
+        return (
+          this.form.get('proyectId')?.valid === true &&
+          this.form.get('categoryId')?.valid === true &&
+          !!this.form.get('declaracionJurada')?.value &&
+          !!(this.form.get('declaracionJuradaFirmante')?.value || '').trim() &&
+          (this.form.get('totalOtros')?.value > 0)
+        );
+      default:
+        return this.form.valid;
+    }
+  }
+
+  saveMobilitySheet() {
+    if (this.mobilityRowsArray.length === 0) {
+      this.notificationService.show('Debes agregar al menos una fila', 'error');
+      return;
+    }
+    if (!this.form.get('proyectId')?.valid || !this.form.get('categoryId')?.valid) {
+      this.notificationService.show('Completa los campos requeridos', 'error');
+      return;
+    }
+    this.isLoading.set(true);
+
+    const doSave = (imageUrl?: string) => {
+      const rows = this.mobilityRowsArray.value.map((r: any) => ({
+        fecha: r.fecha,
+        concepto: r.concepto,
+        total: r.total,
+        clienteProveedor: r.clienteProveedor,
+        origen: r.origen,
+        ...(r.origenLat != null && r.origenLng != null
+          ? { origenCoords: { lat: r.origenLat, lng: r.origenLng } }
+          : {}),
+        destino: r.destino,
+        ...(r.destinoLat != null && r.destinoLng != null
+          ? { destinoCoords: { lat: r.destinoLat, lng: r.destinoLng } }
+          : {}),
+        ...(r.distanciaKm != null ? { distanciaKm: r.distanciaKm } : {}),
+        gestion: r.gestion,
+      }));
+      const payload = {
+        proyectId: this.form.get('proyectId')?.value,
+        categoryId: this.form.get('categoryId')?.value,
+        expenseReportId: this.rendicionId || undefined,
+        mobilityRows: rows,
+        imageUrl,
+      };
+      this.invoiceService.createMobilitySheet(payload).subscribe({
+        next: () => {
+          this.isLoading.set(false);
+          this.notificationService.show('Planilla guardada correctamente', 'success');
+          if (this.rendicionId) {
+            this.router.navigate(['/mis-rendiciones', this.rendicionId, 'detalle']);
+          } else {
+            this.router.navigate(['/invoices']);
+          }
+        },
+        error: (error) => {
+          this.isLoading.set(false);
+          this.notificationService.show(
+            'Error al guardar la planilla: ' + (error.error?.message || error.message),
+            'error'
+          );
+        },
+      });
+    };
+
+    if (this.selectedFile) {
+      const { downloadUrl$ } = this.uploadService.uploadFile(this.selectedFile, environment.storagePath);
+      downloadUrl$.subscribe({
+        next: (url) => doSave(url),
+        error: (err) => {
+          this.isLoading.set(false);
+          this.notificationService.show('Error al subir el adjunto: ' + err.message, 'error');
+        },
+      });
+    } else {
+      doSave();
+    }
+  }
+
+  saveOtherExpense() {
+    const declaracionJurada = this.form.get('declaracionJurada')?.value;
+    const firmante = (this.form.get('declaracionJuradaFirmante')?.value || '').trim();
+    const total = this.form.get('totalOtros')?.value;
+    const description = this.form.get('description')?.value;
+
+    if (!this.form.get('proyectId')?.valid || !this.form.get('categoryId')?.valid) {
+      this.notificationService.show('Completa los campos requeridos', 'error');
+      return;
+    }
+    if (!declaracionJurada) {
+      this.notificationService.show('Debes aceptar y firmar la declaración jurada', 'error');
+      return;
+    }
+    if (!firmante) {
+      this.notificationService.show('Ingresa el nombre del firmante', 'error');
+      return;
+    }
+    if (!total || total <= 0) {
+      this.notificationService.show('Ingresa un monto válido', 'error');
+      return;
+    }
+
+    this.isLoading.set(true);
+
+    const proceed = (imageUrl?: string) => {
+      const payload = {
+        proyectId: this.form.get('proyectId')?.value,
+        categoryId: this.form.get('categoryId')?.value,
+        expenseReportId: this.rendicionId || undefined,
+        total,
+        data: description,
+        declaracionJurada: true as const,
+        declaracionJuradaFirmante: firmante,
+        imageUrl,
+      };
+      this.invoiceService.createOtherExpense(payload).subscribe({
+        next: () => {
+          this.isLoading.set(false);
+          this.notificationService.show('Gasto guardado correctamente', 'success');
+          if (this.rendicionId) {
+            this.router.navigate(['/mis-rendiciones', this.rendicionId, 'detalle']);
+          } else {
+            this.router.navigate(['/invoices']);
+          }
+        },
+        error: (error) => {
+          this.isLoading.set(false);
+          this.notificationService.show(
+            'Error al guardar el gasto: ' + (error.error?.message || error.message),
+            'error'
+          );
+        },
+      });
+    };
+
+    if (this.selectedFile) {
+      const { downloadUrl$ } = this.uploadService.uploadFile(this.selectedFile, environment.storagePath);
+      downloadUrl$.subscribe({
+        next: (url) => proceed(url),
+        error: (err) => {
+          this.isLoading.set(false);
+          this.notificationService.show('Error al subir el adjunto: ' + err.message, 'error');
+        },
+      });
+    } else {
+      proceed();
+    }
   }
 
   saveOrUpdate() {
     if (this.id) {
       this.update();
-    } else {
-      if (!this.selectedFile) {
-        this.notificationService.show(
-          'Debes seleccionar un archivo de factura',
-          'error'
-        );
-        return;
-      }
-      this.isLoading.set(true);
-      const isPdf = this.isPdfFile(this.selectedFile);
-      if (isPdf) {
-        this.uploadPdfDirectly();
-      } else {
-        this.uploadFile();
-      }
+      return;
+    }
+    switch (this.expenseType()) {
+      case 'planilla_movilidad':
+        this.saveMobilitySheet();
+        break;
+      case 'otros_gastos':
+        this.saveOtherExpense();
+        break;
+      default:
+        if (!this.selectedFile) {
+          this.notificationService.show('Debes seleccionar un archivo de factura', 'error');
+          return;
+        }
+        this.isLoading.set(true);
+        const isPdf = this.isPdfFile(this.selectedFile);
+        if (isPdf) {
+          this.uploadPdfDirectly();
+        } else {
+          this.uploadFile();
+        }
     }
   }
 
@@ -271,7 +579,11 @@ export default class AddInvoiceComponent implements OnInit {
               'Factura actualizada correctamente',
               'success'
             );
-            this.router.navigate(['/invoices']);
+            if (this.rendicionId) {
+              this.router.navigate(['/mis-rendiciones', this.rendicionId, 'detalle']);
+            } else {
+              this.router.navigate(['/invoices']);
+            }
           }
         },
         error: (error: any) => {
@@ -340,6 +652,9 @@ export default class AddInvoiceComponent implements OnInit {
     formData.append('proyectId', this.form.get('proyectId')?.value);
     formData.append('categoryId', this.form.get('categoryId')?.value);
     formData.append('status', 'pending');
+    if (this.rendicionId) {
+      formData.append('expenseReportId', this.rendicionId);
+    }
 
     this.percentage.set(10);
     this.invoiceService.analyzePdf(formData).subscribe({
@@ -349,7 +664,11 @@ export default class AddInvoiceComponent implements OnInit {
           'Factura PDF analizada correctamente',
           'success'
         );
-        this.router.navigate(['/invoices']);
+        if (this.rendicionId) {
+          this.router.navigate(['/mis-rendiciones', this.rendicionId, 'detalle']);
+        } else {
+          this.router.navigate(['/invoices']);
+        }
       },
       error: (error) => {
         this.isLoading.set(false);
@@ -370,6 +689,7 @@ export default class AddInvoiceComponent implements OnInit {
         proyectId: this.form.get('proyectId')?.value,
         imageUrl: this.form.get('file')?.value,
         status: 'pending' as InvoiceStatus,
+        expenseReportId: this.rendicionId
       };
 
       this.invoiceService.analyzeInvoice(payload).subscribe({
@@ -426,7 +746,11 @@ export default class AddInvoiceComponent implements OnInit {
                 'Factura subida correctamente',
                 'success'
               );
-              this.router.navigate(['/invoices']);
+              if (this.rendicionId) {
+                this.router.navigate(['/mis-rendiciones', this.rendicionId, 'detalle']);
+              } else {
+                this.router.navigate(['/invoices']);
+              }
             }
           } else {
             this.isLoading.set(false);
@@ -434,7 +758,11 @@ export default class AddInvoiceComponent implements OnInit {
               'Factura subida correctamente',
               'success'
             );
-            this.router.navigate(['/invoices']);
+            if (this.rendicionId) {
+              this.router.navigate(['/mis-rendiciones', this.rendicionId, 'detalle']);
+            } else {
+              this.router.navigate(['/invoices']);
+            }
           }
         },
         error: (error) => {
@@ -493,19 +821,15 @@ export default class AddInvoiceComponent implements OnInit {
 
   getButtonLabel(): string {
     if (this.id) {
-      if (this.isSunatValidating()) {
-        return 'Validando con SUNAT...';
-      } else if (this.isLoading()) {
-        return 'Actualizando...';
-      } else {
-        return 'Actualizar factura';
-      }
-    } else {
-      if (this.isLoading()) {
-        return 'Procesando...';
-      } else {
-        return 'Subir factura';
-      }
+      if (this.isSunatValidating()) return 'Validando con SUNAT...';
+      if (this.isLoading()) return 'Actualizando...';
+      return 'Actualizar factura';
+    }
+    if (this.isLoading()) return 'Guardando...';
+    switch (this.expenseType()) {
+      case 'planilla_movilidad': return 'Guardar Planilla';
+      case 'otros_gastos': return 'Guardar Gasto';
+      default: return 'Subir factura';
     }
   }
 

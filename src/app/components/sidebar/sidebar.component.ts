@@ -105,13 +105,19 @@ export class SidebarComponent implements OnInit, OnDestroy {
   }
 
   isSuper(): boolean {
-    const user = this.userStateService.getUser();
-    const role = user?.role?.name;
-    return role === 'Super';
+    return this.userStateService.isSuperAdmin();
   }
 
   isColaborador(): boolean {
     return this.userStateService.isColaborador();
+  }
+
+  canAccessTesoreria(): boolean {
+    return this.userStateService.canAccessTesoreria();
+  }
+
+  hasModulePermission(module: string): boolean {
+    return this.userStateService.hasModulePermission(module);
   }
 
   logout() {

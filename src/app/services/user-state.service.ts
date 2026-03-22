@@ -90,22 +90,47 @@ export class UserStateService {
 
   isColaborador() {
     const role = this.getRole();
-    return role === 'COLABORADOR' || role === 'PROVIDER' || role === 'User';
+    return role === 'Colaborador';
   }
 
   isAdmin() {
     const role = this.getRole();
-    const adminRoles = ['ADMIN2', 'admin2', 'Admin2', 'admin 2', 'ADMIN', 'Admin'];
-    return adminRoles.includes(role);
+    return role === 'Administrador';
   }
 
   isSuperAdmin() {
     const role = this.getRole();
-    return role === 'Super' || role === 'SUPER_ADMIN';
+    return role === 'Superadministrador';
   }
 
   // Helper for both types of admins (used in Guards)
   isAnyAdmin() {
     return this.isAdmin() || this.isSuperAdmin();
+  }
+
+  getPermissions() {
+    const user = this._user();
+    return user?.permissions ?? { modules: [], canApproveL1: false, canApproveL2: false };
+  }
+
+  hasModulePermission(module: string): boolean {
+    if (this.isSuperAdmin()) return true;
+    const perms = this.getPermissions();
+    return perms.modules?.includes(module) ?? false;
+  }
+
+  canApproveL1(): boolean {
+    if (this.isSuperAdmin()) return true;
+    return this.getPermissions().canApproveL1 === true;
+  }
+
+  canApproveL2(): boolean {
+    return this.isSuperAdmin() || this.getPermissions().canApproveL2 === true;
+  }
+
+  canAccessTesoreria(): boolean {
+    if (this.isSuperAdmin()) return true;
+    const perms = this.getPermissions();
+    return perms.modules?.includes('tesoreria') ?? false;
   }
 }

@@ -5,6 +5,8 @@ import {
   InvoicePayload,
   ApprovalPayload,
   SunatValidationInfo,
+  ICreateMobilitySheetPayload,
+  ICreateOtherExpensePayload,
 } from '../interfaces/invoices.interface';
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
@@ -155,6 +157,14 @@ export class InvoicesService {
 
   updateInvoice(id: string, payload: any) {
     return this.http.patch(`${this.url}/invoice/${id}`, payload);
+  }
+
+  createMobilitySheet(payload: ICreateMobilitySheetPayload): Observable<IInvoiceResponse> {
+    return this.http.post<IInvoiceResponse>(`${this.url}/mobility-sheet`, payload);
+  }
+
+  createOtherExpense(payload: ICreateOtherExpensePayload): Observable<IInvoiceResponse> {
+    return this.http.post<IInvoiceResponse>(`${this.url}/other-expense`, payload);
   }
 
   // Métodos para validación SUNAT

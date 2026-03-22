@@ -1,11 +1,11 @@
 <div class="relative">
   <div
-    class="overflow-x-auto mb-2 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100"
+    class="overflow-hidden mb-2 scrollbar-hide"
   >
     <div class="h-2"></div>
   </div>
 
-  <div class="relative overflow-x-auto rounded-xl shadow-lg table-container">
+  <div class="relative overflow-hidden rounded-xl shadow-lg table-container">
     <table class="min-w-full border border-gray-200 bg-white rounded-xl">
       <thead class="bg-color4 text-color2 sticky top-0 z-10">
         <tr>
@@ -27,13 +27,13 @@
       </thead>
       <tbody>
         @for (item of data; track item) {
-        <tr class="border-t hover:bg-gray-50 group">
+        <tr class="border-t hover:bg-gray-50 group cursor-pointer" (click)="rowClick.emit(item._id)">
           @for (header of headers; track header) { @if (header.value !==
           'actions') { @if(header.value === 'appSecret') {
           <td class="px-4 py-3 text-sm">
             <span class="text-gray-500">********</span>
           </td>
-          } @else if(header.value === 'status' || header.value === 'isActive') {
+          } @else if(header.value === 'status' || header.value === 'isActive' || header.value === 'sunatStatus') {
           <td class="px-4 py-3 text-sm">
             @if(header.value === 'isActive') {
             <span
@@ -45,6 +45,18 @@
               "
             >
               {{ item.isActive ? 'Activo' : 'Inactivo' }}
+            </span>
+            } @else if(header.value === 'sunatStatus') {
+            <span
+              class="inline-flex px-2 py-1 rounded-full text-xs font-medium"
+              [ngClass]="{
+                'bg-green-100 text-green-800': item.sunatStatus?.color === 'green',
+                'bg-yellow-100 text-yellow-800': item.sunatStatus?.color === 'yellow',
+                'bg-red-100 text-red-800': item.sunatStatus?.color === 'red',
+                'bg-gray-100 text-gray-600': item.sunatStatus?.color === 'gray'
+              }"
+            >
+              {{ item.sunatStatus?.text || item.sunatStatus }}
             </span>
             } @else if(item.status === 'pending' || item.status === 'PENDING') {
             <span
@@ -119,6 +131,7 @@
           } } @else {
           <td
             class="px-4 py-3 w-32 sticky right-0 bg-white group-hover:bg-gray-50 z-10 border-l border-gray-300"
+            (click)="$event.stopPropagation()"
           >
             <div class="flex items-center justify-center space-x-1">
               @for (option of header.options; track option) { @if (option ===
@@ -254,7 +267,7 @@
               </button>
               } @else if (option === 'view') {
               <button
-                class="p-1 text-primary hover:bg-primary/10 rounded transition-colors duration-200"
+                class="p-1.5 text-primary hover:bg-primary/10 rounded-lg transition-colors duration-200"
                 (click)="options(option, item._id)"
                 title="Ver detalle"
               >
@@ -269,12 +282,28 @@
                   <path
                     stroke-linecap="round"
                     stroke-linejoin="round"
-                    d="M2.25 12s3.75-6.75 9.75-6.75S21.75 12 21.75 12 18 18.75 12 18.75 2.25 12 2.25 12Z"
+                    d="M13.5 6H5.25A2.25 2.25 0 0 0 3 8.25v10.5A2.25 2.25 0 0 0 5.25 21h10.5A2.25 2.25 0 0 0 18 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25"
                   />
+                </svg>
+              </button>
+              } @else if (option === 'activate') {
+              <button
+                class="p-1 text-orange-600 hover:bg-orange-50 rounded transition-colors duration-200"
+                (click)="options(option, item._id)"
+                [title]="item.isActive ? 'Desactivar' : 'Activar'"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke-width="1.5"
+                  stroke="currentColor"
+                  class="w-5 h-5"
+                >
                   <path
                     stroke-linecap="round"
                     stroke-linejoin="round"
-                    d="M12 15.75a3.75 3.75 0 1 0 0-7.5 3.75 3.75 0 0 0 0 7.5Z"
+                    d="M5.636 5.636a9 9 0 1 0 12.728 0M12 3v9"
                   />
                 </svg>
               </button>

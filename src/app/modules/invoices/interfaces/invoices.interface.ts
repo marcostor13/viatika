@@ -1,5 +1,45 @@
 import { IProject } from './project.interface';
 import { ICategory } from './category.interface';
+
+export type ExpenseType = 'factura' | 'planilla_movilidad' | 'otros_gastos';
+
+export interface IMobilityRowCoords {
+  lat: number;
+  lng: number;
+}
+
+export interface IMobilityRow {
+  fecha: string;
+  concepto: string;
+  total: number;
+  clienteProveedor: string;
+  origen: string;
+  origenCoords?: IMobilityRowCoords;
+  destino: string;
+  destinoCoords?: IMobilityRowCoords;
+  distanciaKm?: number;
+  gestion: string;
+}
+
+export interface ICreateMobilitySheetPayload {
+  proyectId: string;
+  categoryId: string;
+  expenseReportId?: string;
+  mobilityRows: IMobilityRow[];
+  imageUrl?: string;
+}
+
+export interface ICreateOtherExpensePayload {
+  proyectId: string;
+  categoryId: string;
+  expenseReportId?: string;
+  total: number;
+  data?: string;
+  declaracionJurada: true;
+  declaracionJuradaFirmante: string;
+  imageUrl?: string;
+}
+
 export interface IInvoice {
   proyect: string;
   category: string;
@@ -26,6 +66,10 @@ export interface IInvoiceResponse {
   proyect: string;
   proyectId: IProject;
   categoryId: ICategory;
+  expenseType?: ExpenseType;
+  mobilityRows?: IMobilityRow[];
+  declaracionJurada?: boolean;
+  declaracionJuradaFirmante?: string;
   projectName?: string;
   category: string;
   file: string;
@@ -59,6 +103,7 @@ export interface InvoicePayload {
   categoryId: string;
   imageUrl: string;
   status?: InvoiceStatus;
+  expenseReportId?: string | null;
 }
 
 export interface ApprovalPayload {

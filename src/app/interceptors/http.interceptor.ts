@@ -29,6 +29,11 @@ export const httpInterceptor: HttpInterceptorFn = (req, next) => {
     '/config',
     '/logo',
     '/api/client',
+    '/expense-report',
+    '/advance',
+    '/role',
+    '/role/',
+    '/audit-log',
   ];
 
   const isExcludedEndpoint = excludedEndpoints.some(

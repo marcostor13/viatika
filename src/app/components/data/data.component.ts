@@ -17,6 +17,7 @@ export class DataComponent {
     option: string;
     _id: string;
   }>();
+  @Output() rowClick = new EventEmitter<string>();
 
   clickOptions(event: { option: string; _id: string }) {
     this.clickOptionsEvent.emit(event);

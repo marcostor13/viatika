@@ -57,8 +57,7 @@ export class CompanyConfigService {
 
     // Verificar si el usuario es admin antes de hacer la llamada
     const user = this.userStateService.getUser();
-    const role = user?.role?.name;
-    const isAdmin = role === 'Admin' || role === 'Super';
+    const isAdmin = this.userStateService.isAdmin() || this.userStateService.isSuperAdmin();
 
     // Solo los administradores pueden acceder a la configuración de la compañía
     if (!isAdmin) {

@@ -3,6 +3,7 @@
     [headers]="headers"
     [data]="data"
     (clickOptionsEvent)="clickOptions($event)"
+    (rowClick)="rowClick.emit($event)"
   ></app-table>
 </div>
 
@@ -11,6 +12,7 @@
     [headers]="headers"
     [data]="data"
     (clickOptionsEvent)="clickOptions($event)"
+    (rowClick)="rowClick.emit($event)"
   ></app-list-table>
 </div>
 

@@ -16,7 +16,7 @@ export class AuthSuperGuard implements CanActivate {
 
         const role = user?.role?.name;
 
-        if (role !== 'Super') {
+        if (role !== 'Superadministrador') {
             this.router.navigate(['/login']);
             return false;
         }

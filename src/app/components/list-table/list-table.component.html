@@ -6,7 +6,7 @@
   >
     <!-- Card Header (Always Visible) -->
     <div
-      (click)="toggleDetails($index)"
+      (click)="rowClick.emit(item._id)"
       class="flex items-center justify-between cursor-pointer"
     >
       <div class="flex items-center gap-4">
@@ -146,6 +146,19 @@
                 </span>
               }
             }
+            @else if(header.value === 'sunatStatus') {
+              <span
+                class="inline-flex px-2 py-1 rounded-full text-xs font-medium"
+                [ngClass]="{
+                  'bg-green-100 text-green-800': item.sunatStatus?.color === 'green',
+                  'bg-yellow-100 text-yellow-800': item.sunatStatus?.color === 'yellow',
+                  'bg-red-100 text-red-800': item.sunatStatus?.color === 'red',
+                  'bg-gray-100 text-gray-600': item.sunatStatus?.color === 'gray'
+                }"
+              >
+                {{ item.sunatStatus?.text || item.sunatStatus }}
+              </span>
+            }
             @else if(isDateField(header.value) && isValidDate(item[header.value])) {
             {{ formatDate(item[header.value]) }}
             } @else if(isTotalField(header.value) && isNumber(item[header.value])) {
@@ -266,17 +279,20 @@
         <button
           (click)="clickOptions('activate', item._id)"
           class="flex-1 min-w-[120px] flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-amber-50 text-amber-700 font-medium text-sm hover:bg-amber-100 transition-colors"
+          [title]="item.isActive ? 'Desactivar' : 'Activar'"
         >
           <svg
             xmlns="http://www.w3.org/2000/svg"
-            class="w-4 h-4"
-            viewBox="0 0 20 20"
-            fill="currentColor"
+            class="w-5 h-5"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.5"
           >
             <path
-              fill-rule="evenodd"
-              d="M10 18a8 8 0 100-16 8 8 0 000 16zm-1-5.414V7a1 1 0 112 0v5.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 111.414-1.414L9 12.586z"
-              clip-rule="evenodd"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              d="M5.636 5.636a9 9 0 1 0 12.728 0M12 3v9"
             />
           </svg>
           {{ item.isActive ? 'Desactivar' : 'Activar' }}
@@ -285,21 +301,19 @@
         <button
           (click)="clickOptions('view', item._id)"
           class="flex-1 min-w-[100px] flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-primary/5 text-primary font-medium text-sm hover:bg-primary/10 transition-colors"
+          title="Ver detalle"
         >
           <svg
             xmlns="http://www.w3.org/2000/svg"
             class="w-4 h-4"
             viewBox="0 0 24 24"
-            fill="currentColor"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.5"
           >
-            <path
-              d="M12 5c-7.633 0-10 7-10 7s2.367 7 10 7 10-7 10-7-2.367-7-10-7Zm0 11.25A4.25 4.25 0 1 1 12 8.75a4.25 4.25 0 0 1 0 8.5Z"
-            />
-            <path
-              d="M12 10.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5Z"
-            />
+            <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 6H5.25A2.25 2.25 0 0 0 3 8.25v10.5A2.25 2.25 0 0 0 5.25 21h10.5A2.25 2.25 0 0 0 18 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
           </svg>
-          Ver
+          Ver Detalle
         </button>
         } }
       </div>

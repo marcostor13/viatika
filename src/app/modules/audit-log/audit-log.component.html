@@ -1,0 +1,72 @@
+<div class="p-5">
+  <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-6">
+    <h1 class="text-2xl font-bold">Actividad del Sistema</h1>
+    <button
+      (click)="loadLogs()"
+      class="px-4 py-2 text-sm font-medium bg-primary/10 text-primary rounded-lg hover:bg-primary/20 transition-colors"
+    >
+      Actualizar
+    </button>
+  </div>
+
+  <!-- Filters -->
+  <div class="flex flex-col sm:flex-row gap-3 mb-6">
+    <input
+      type="text"
+      [(ngModel)]="searchText"
+      (ngModelChange)="applyFilters()"
+      placeholder="Buscar por usuario, acción o detalle..."
+      class="flex-1 border border-tertiary/30 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+    />
+    <select
+      [(ngModel)]="filterModule"
+      (ngModelChange)="applyFilters()"
+      class="border border-tertiary/30 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+    >
+      <option value="">Todos los módulos</option>
+      @for (m of modules; track m) {
+      <option [value]="m">{{ MODULE_LABELS[m] }}</option>
+      }
+    </select>
+  </div>
+
+  @if (isLoading()) {
+  <div class="flex justify-center items-center py-16">
+    <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+  </div>
+  } @else if (filteredLogs.length === 0) {
+  <div class="text-center py-16 text-tertiary">No hay registros de actividad.</div>
+  } @else {
+  <div class="overflow-x-auto rounded-xl border border-tertiary/20">
+    <table class="w-full text-sm">
+      <thead class="bg-background text-secondary">
+        <tr>
+          <th class="px-4 py-3 text-left font-semibold">Fecha</th>
+          <th class="px-4 py-3 text-left font-semibold">Usuario</th>
+          <th class="px-4 py-3 text-left font-semibold">Módulo</th>
+          <th class="px-4 py-3 text-left font-semibold">Acción</th>
+          <th class="px-4 py-3 text-left font-semibold">Detalle</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-tertiary/10">
+        @for (log of filteredLogs; track log._id) {
+        <tr class="hover:bg-background/50 transition-colors">
+          <td class="px-4 py-3 text-tertiary whitespace-nowrap">
+            {{ log.createdAt | date:'dd/MM/yyyy HH:mm' }}
+          </td>
+          <td class="px-4 py-3 font-medium text-secondary">{{ log.userName }}</td>
+          <td class="px-4 py-3 text-tertiary">{{ getModuleLabel(log.module) }}</td>
+          <td class="px-4 py-3">
+            <span class="px-2 py-1 rounded-full text-xs font-medium" [ngClass]="getActionColor(log.action)">
+              {{ getActionLabel(log.action) }}
+            </span>
+          </td>
+          <td class="px-4 py-3 text-tertiary max-w-xs truncate">{{ log.details || '—' }}</td>
+        </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+  <p class="text-xs text-tertiary mt-3 text-right">Mostrando {{ filteredLogs.length }} de {{ logs.length }} registros</p>
+  }
+</div>

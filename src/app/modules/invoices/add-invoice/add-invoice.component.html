@@ -1,6 +1,9 @@
 <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between w-full gap-4 p-5">
   <h1 class="text-2xl font-bold text-secondary">
-    @if (id) { Editar factura } @else { Agregar factura }
+    @if (id) { Editar factura }
+    @else if (expenseType() === 'planilla_movilidad') { Nueva Planilla de Movilidad }
+    @else if (expenseType() === 'otros_gastos') { Nuevo Gasto }
+    @else { Agregar factura }
   </h1>
   <app-button
     label="Volver"
@@ -26,6 +29,49 @@
 </div>
 
 <form [formGroup]="form" class="flex flex-col gap-6 p-5">
+
+  @if(!id) {
+  <!-- Selector de tipo de gasto -->
+  <div class="bg-quaternary rounded-xl shadow-soft border border-gray-100 p-6">
+    <p class="text-sm font-medium text-secondary mb-3">Tipo de gasto</p>
+    <div class="flex flex-wrap gap-3">
+      <button type="button"
+        (click)="setExpenseType('factura')"
+        [class]="expenseType() === 'factura'
+          ? 'flex items-center gap-2 px-4 py-2 rounded-lg border-2 border-primary bg-primary/10 text-primary text-sm font-medium'
+          : 'flex items-center gap-2 px-4 py-2 rounded-lg border-2 border-gray-200 bg-white text-secondary text-sm font-medium hover:border-primary/50 transition-colors'"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
+        </svg>
+        Factura / Documento
+      </button>
+      <button type="button"
+        (click)="setExpenseType('planilla_movilidad')"
+        [class]="expenseType() === 'planilla_movilidad'
+          ? 'flex items-center gap-2 px-4 py-2 rounded-lg border-2 border-primary bg-primary/10 text-primary text-sm font-medium'
+          : 'flex items-center gap-2 px-4 py-2 rounded-lg border-2 border-gray-200 bg-white text-secondary text-sm font-medium hover:border-primary/50 transition-colors'"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 18.75a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 0 1-1.125-1.125V14.25m17.25 4.5a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m3 0h1.125c.621 0 1.129-.504 1.09-1.124a17.902 17.902 0 0 0-3.213-9.193 2.056 2.056 0 0 0-1.58-.86H14.25M16.5 18.75h-2.25m0-11.177v-.958c0-.568-.422-1.048-.987-1.106a48.554 48.554 0 0 0-10.026 0 1.106 1.106 0 0 0-.987 1.106v7.635m12-6.677v6.677m0 4.5v-4.5m0 0h-12" />
+        </svg>
+        Planilla de Movilidad
+      </button>
+      <button type="button"
+        (click)="setExpenseType('otros_gastos')"
+        [class]="expenseType() === 'otros_gastos'
+          ? 'flex items-center gap-2 px-4 py-2 rounded-lg border-2 border-primary bg-primary/10 text-primary text-sm font-medium'
+          : 'flex items-center gap-2 px-4 py-2 rounded-lg border-2 border-gray-200 bg-white text-secondary text-sm font-medium hover:border-primary/50 transition-colors'"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 0 0 2.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 0 0-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 0 0 .75-.75 2.25 2.25 0 0 0-.1-.664m-5.8 0A2.251 2.251 0 0 1 13.5 2.25H15c1.012 0 1.867.668 2.15 1.586m-5.8 0c-.376.023-.75.05-1.124.08C9.095 4.01 8.25 4.973 8.25 6.108V8.25m0 0H4.875c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V9.375c0-.621-.504-1.125-1.125-1.125H8.25ZM6.75 12h.008v.008H6.75V12Zm0 3h.008v.008H6.75V15Zm0 3h.008v.008H6.75V18Z" />
+        </svg>
+        Otros Gastos (DJ)
+      </button>
+    </div>
+  </div>
+  }
+
   <div class="bg-quaternary rounded-xl shadow-soft border border-gray-100 p-6 space-y-6">
     <div class="flex flex-col gap-2">
       <label for="proyectId" class="text-sm font-medium text-secondary">
@@ -82,7 +128,7 @@
     </div>
   </div>
 
-  @if(!id) {
+  @if(!id && expenseType() === 'factura') {
   <div class="bg-quaternary rounded-xl shadow-soft border border-gray-100 p-6">
     <div class="flex flex-col gap-2">
       <label for="file" class="text-sm font-medium text-secondary">
@@ -205,6 +251,241 @@
   </div>
   }
 
+  <!-- ===== PLANILLA DE MOVILIDAD ===== -->
+  @if(!id && expenseType() === 'planilla_movilidad') {
+  <div class="bg-quaternary rounded-xl shadow-soft border border-gray-100 p-6">
+    <div class="flex items-center justify-between mb-4">
+      <h3 class="text-sm font-semibold text-secondary">Filas de la planilla</h3>
+      <button type="button"
+        (click)="addMobilityRow()"
+        class="flex items-center gap-1 text-sm text-primary font-medium hover:text-primary/80 transition-colors"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+        </svg>
+        Agregar fila
+      </button>
+    </div>
+
+    @if(mobilityRowsArray.length === 0) {
+    <div class="text-center py-8 text-tertiary text-sm">
+      No hay filas aún. Haz clic en "Agregar fila" para empezar.
+    </div>
+    }
+
+    <div formArrayName="mobilityRows" class="flex flex-col gap-3">
+      @for(row of mobilityRowsArray.controls; track $index; let i = $index) {
+      <div [formGroupName]="i" class="border border-gray-200 rounded-lg p-4 bg-white">
+        <div class="flex justify-between items-center mb-3">
+          <span class="text-xs font-semibold text-tertiary uppercase tracking-wide">Fila {{ i + 1 }}</span>
+          <button type="button" (click)="removeMobilityRow(i)" class="text-red-400 hover:text-red-600 transition-colors">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+        <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+          <!-- Fecha -->
+          <div class="flex flex-col gap-1">
+            <label class="text-xs font-medium text-secondary">Fecha <span class="text-error">*</span></label>
+            <input type="date" formControlName="fecha"
+              class="w-full h-[38px] px-3 rounded-lg border border-tertiary/40 bg-background focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm" />
+          </div>
+          <!-- Concepto -->
+          <div class="flex flex-col gap-1 sm:col-span-2">
+            <label class="text-xs font-medium text-secondary">Concepto <span class="text-error">*</span></label>
+            <input type="text" formControlName="concepto" placeholder="Descripción del traslado"
+              class="w-full h-[38px] px-3 rounded-lg border border-tertiary/40 bg-background focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm" />
+          </div>
+          <!-- Origen con autocomplete -->
+          <div class="flex flex-col gap-1 sm:col-span-3">
+            <label class="text-xs font-medium text-secondary">
+              Origen <span class="text-error">*</span>
+              <span class="text-tertiary font-normal ml-1">(busca y selecciona)</span>
+            </label>
+            <div class="relative">
+              <span class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-tertiary">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1 1 15 0Z" />
+                </svg>
+              </span>
+              <input type="text" formControlName="origen"
+                appPlacesAutocomplete
+                (placeSelected)="onOrigenSelected($event, i)"
+                placeholder="Ej: Av. Javier Prado 123, Lima"
+                autocomplete="off"
+                class="w-full h-[38px] pl-9 pr-3 rounded-lg border border-tertiary/40 bg-background focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm" />
+            </div>
+            @if (row.get('origenLat')?.value) {
+            <span class="text-xs text-green-600 flex items-center gap-1 mt-0.5">
+              <svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M16.704 4.153a.75.75 0 0 1 .143 1.052l-8 10.5a.75.75 0 0 1-1.127.075l-4.5-4.5a.75.75 0 0 1 1.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 0 1 1.05-.143Z" clip-rule="evenodd"/>
+              </svg>
+              Ubicación confirmada
+            </span>
+            }
+          </div>
+          <!-- Destino con autocomplete -->
+          <div class="flex flex-col gap-1 sm:col-span-3">
+            <label class="text-xs font-medium text-secondary">
+              Destino <span class="text-error">*</span>
+              <span class="text-tertiary font-normal ml-1">(busca y selecciona)</span>
+            </label>
+            <div class="relative">
+              <span class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-tertiary">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M3 3l1.664 9.143M3 3h18l-4.5 9.857-4.5-3L9 12.857l1.664-9.143M3 3l6 17.143 3-5.143 3 5.143L21 3" />
+                </svg>
+              </span>
+              <input type="text" formControlName="destino"
+                appPlacesAutocomplete
+                (placeSelected)="onDestinoSelected($event, i)"
+                placeholder="Ej: Aeropuerto Jorge Chávez, Callao"
+                autocomplete="off"
+                class="w-full h-[38px] pl-9 pr-3 rounded-lg border border-tertiary/40 bg-background focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm" />
+            </div>
+            @if (row.get('destinoLat')?.value) {
+            <span class="text-xs text-green-600 flex items-center gap-1 mt-0.5">
+              <svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M16.704 4.153a.75.75 0 0 1 .143 1.052l-8 10.5a.75.75 0 0 1-1.127.075l-4.5-4.5a.75.75 0 0 1 1.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 0 1 1.05-.143Z" clip-rule="evenodd"/>
+              </svg>
+              Ubicación confirmada
+            </span>
+            }
+          </div>
+          <!-- Distancia calculada (solo si hay coords) -->
+          @if (row.get('distanciaKm')?.value) {
+          <div class="sm:col-span-3 flex items-center gap-2 bg-primary/5 border border-primary/20 rounded-lg px-3 py-2">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 text-primary flex-shrink-0">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M9 6.75V15m6-6v8.25m.503 3.498 4.875-2.437c.381-.19.622-.58.622-1.006V4.82c0-.836-.88-1.38-1.628-1.006l-3.869 1.934c-.317.159-.69.159-1.006 0L9.503 3.252a1.125 1.125 0 0 0-1.006 0L3.622 5.689C3.24 5.88 3 6.27 3 6.695V19.18c0 .836.88 1.38 1.628 1.006l3.869-1.934c.317-.159.69-.159 1.006 0l4.994 2.497c.317.158.69.158 1.006 0Z" />
+            </svg>
+            <span class="text-xs text-primary font-medium">
+              Distancia aproximada: <strong>{{ row.get('distanciaKm')?.value | number:'1.1-1' }} km</strong>
+            </span>
+            <span class="text-xs text-tertiary">(línea recta)</span>
+          </div>
+          }
+          <!-- Total, Cliente/Proveedor -->
+          <div class="flex flex-col gap-1">
+            <label class="text-xs font-medium text-secondary">Total S/. <span class="text-error">*</span></label>
+            <input type="number" formControlName="total" placeholder="0.00" min="0" step="0.01"
+              class="w-full h-[38px] px-3 rounded-lg border border-tertiary/40 bg-background focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm" />
+          </div>
+          <div class="flex flex-col gap-1">
+            <label class="text-xs font-medium text-secondary">Cliente / Proveedor</label>
+            <input type="text" formControlName="clienteProveedor" placeholder="Nombre"
+              class="w-full h-[38px] px-3 rounded-lg border border-tertiary/40 bg-background focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm" />
+          </div>
+          <!-- Gestión -->
+          <div class="flex flex-col gap-1 sm:col-span-3">
+            <label class="text-xs font-medium text-secondary">Gestión (Motivo)</label>
+            <input type="text" formControlName="gestion" placeholder="Motivo del traslado"
+              class="w-full h-[38px] px-3 rounded-lg border border-tertiary/40 bg-background focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm" />
+          </div>
+        </div>
+      </div>
+      }
+    </div>
+
+    @if(mobilityRowsArray.length > 0) {
+    <div class="flex justify-end mt-4 pt-4 border-t border-tertiary/20">
+      <div class="flex items-center gap-3">
+        <span class="text-sm text-secondary font-medium">TOTAL S/.</span>
+        <span class="text-xl font-bold text-secondary">{{ getMobilityTotal() | number:'1.2-2' }}</span>
+      </div>
+    </div>
+    }
+  </div>
+
+  <!-- Adjunto opcional para la planilla -->
+  <div class="bg-quaternary rounded-xl shadow-soft border border-tertiary/20 p-6">
+    <div class="flex items-center gap-2 mb-4">
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 text-tertiary">
+        <path stroke-linecap="round" stroke-linejoin="round" d="m18.375 12.739-7.693 7.693a4.5 4.5 0 0 1-6.364-6.364l10.94-10.94A3 3 0 1 1 19.5 7.372L8.552 18.32m.009-.01-.01.01m5.699-9.941-7.81 7.81a1.5 1.5 0 0 0 2.112 2.13" />
+      </svg>
+      <p class="text-sm font-medium text-secondary">Adjunto de respaldo <span class="text-tertiary font-normal">(opcional)</span></p>
+    </div>
+
+    <div
+      class="bg-background border-2 border-dashed border-tertiary/40 rounded-xl p-6 text-center cursor-pointer hover:border-primary hover:bg-primary/5 transition-all duration-200 group"
+      (click)="fileInputMobility.click()"
+    >
+      @if (selectedFile) {
+      <div class="flex items-center justify-center gap-3">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-8 h-8 text-primary">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
+        </svg>
+        <div class="text-left">
+          <p class="text-sm font-medium text-secondary">{{ selectedFile.name }}</p>
+          <p class="text-xs text-tertiary">Haz clic para cambiar el archivo</p>
+        </div>
+      </div>
+      } @else {
+      <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 mx-auto text-tertiary group-hover:text-primary transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+      </svg>
+      <p class="mt-2 text-sm text-secondary font-medium">Haz clic para adjuntar un comprobante</p>
+      <p class="mt-1 text-xs text-tertiary">PDF, JPG, PNG</p>
+      }
+      <input type="file" accept="image/*,application/pdf" (change)="onFileSelected($event)" class="hidden" #fileInputMobility />
+    </div>
+  </div>
+  }
+
+  <!-- ===== OTROS GASTOS ===== -->
+  @if(!id && expenseType() === 'otros_gastos') {
+  <div class="bg-quaternary rounded-xl shadow-soft border border-gray-100 p-6 space-y-5">
+    <div class="flex flex-col gap-2">
+      <label class="text-sm font-medium text-secondary">Descripción del gasto</label>
+      <input type="text" formControlName="description" placeholder="Ej: Refrigerio de trabajo, útiles de escritorio..."
+        class="w-full h-[42px] px-4 rounded-lg border border-gray-200 bg-background focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-sm" />
+    </div>
+    <div class="flex flex-col gap-2">
+      <label class="text-sm font-medium text-secondary">Monto Total S/. <span class="text-error">*</span></label>
+      <input type="number" formControlName="totalOtros" placeholder="0.00" min="0" step="0.01"
+        class="w-full h-[42px] px-4 rounded-lg border border-gray-200 bg-background focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-sm" />
+    </div>
+    <div class="flex flex-col gap-2">
+      <label class="text-sm font-medium text-secondary">Adjunto (opcional)</label>
+      <div class="bg-background border-2 border-dashed border-tertiary rounded-xl p-6 text-center cursor-pointer hover:border-primary hover:bg-primary/5 transition-all duration-200 group"
+        (click)="fileInputOtros.click()">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 mx-auto text-tertiary group-hover:text-primary transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+        </svg>
+        <p class="mt-2 text-sm text-secondary font-medium">
+          {{ selectedFile ? selectedFile.name : 'Haz clic para adjuntar un comprobante (opcional)' }}
+        </p>
+        <p class="mt-1 text-xs text-tertiary">PDF, JPG, PNG</p>
+        <input type="file" accept="image/*,application/pdf" (change)="onFileSelected($event)" class="hidden" #fileInputOtros />
+      </div>
+    </div>
+  </div>
+
+  <!-- Declaración Jurada -->
+  <div class="bg-amber-50 rounded-xl border border-amber-200 p-6 space-y-4">
+    <div class="flex items-center gap-2 mb-1">
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 text-amber-600 flex-shrink-0">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75m-3-7.036A11.959 11.959 0 0 1 3.598 6 11.99 11.99 0 0 0 3 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285Z" />
+      </svg>
+      <h3 class="text-sm font-semibold text-amber-800">Declaración Jurada</h3>
+    </div>
+    <p class="text-sm text-amber-700 leading-relaxed">
+      "Declaro bajo juramento que los gastos detallados son verídicos, fueron realizados en cumplimiento de mis funciones y no cuentan con comprobante de pago emitido por proveedor."
+    </p>
+    <div class="flex flex-col gap-2">
+      <label class="text-sm font-medium text-secondary">Nombre completo del firmante <span class="text-error">*</span></label>
+      <input type="text" formControlName="declaracionJuradaFirmante" placeholder="Escribe tu nombre completo"
+        class="w-full h-[42px] px-4 rounded-lg border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-sm" />
+    </div>
+    <label class="flex items-start gap-3 cursor-pointer">
+      <input type="checkbox" formControlName="declaracionJurada"
+        class="mt-0.5 w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary/20 cursor-pointer flex-shrink-0" />
+      <span class="text-sm text-amber-800 font-medium">Acepto y firmo la declaración jurada declarando que la información es verdadera.</span>
+    </label>
+  </div>
+  }
+
   <div class="flex flex-col sm:flex-row gap-3 justify-end pt-4">
     <app-button
       label="Cancelar"
@@ -217,7 +498,7 @@
       [label]="getButtonLabel()"
       variant="primary"
       size="md"
-      [disabled]="form.invalid || isLoading() || isSunatValidating()"
+      [disabled]="!isFormValid() || isLoading() || isSunatValidating()"
       (clicked)="saveOrUpdate()"
     >
       @if (isLoading() || isSunatValidating()) {

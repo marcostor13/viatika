@@ -42,13 +42,17 @@ export class MainComponent implements OnDestroy {
     } else if (path.includes('/invoice-approval')) {
       return 'Aprobación de Facturas';
     } else if (path.includes('/admin-users')) {
-      return 'Usuarios Admin';
+      return 'Colaboradores';
     } else if (path.includes('/consolidated-invoices')) {
       return 'Consolidado de Facturas';
     } else if (path.includes('/categories')) {
       return 'Categorías';
     } else if (path.includes('/projects')) {
       return 'Proyectos';
+    } else if (path.includes('/mis-rendiciones')) {
+      return 'Mis Rendiciones';
+    } else if (path.includes('/tesoreria')) {
+      return 'Tesorería';
     }
 
     return 'Panel de Control';

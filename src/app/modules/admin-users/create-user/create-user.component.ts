@@ -33,6 +33,10 @@ export class CreateUserComponent {
     email: ['', [Validators.required, Validators.email]],
     roleId: ['', Validators.required],
     password: [''],
+    dni: [''],
+    employeeCode: [''],
+    address: [''],
+    phone: [''],
   });
   roles: IRoleResponse[] = [];
   enumRoles = ERoles;
@@ -51,9 +55,11 @@ export class CreateUserComponent {
     ];
   }
 
+  readonly allowedRoles = ['Administrador', 'Colaborador'];
+
   getRoles() {
     this.adminUsersService.getRoles().subscribe((roles) => {
-      this.roles = roles;
+      this.roles = roles.filter((r) => this.allowedRoles.includes(r.name));
     });
   }
 
@@ -66,6 +72,10 @@ export class CreateUserComponent {
       name: user.name,
       email: user.email,
       roleId: user.role._id,
+      dni: user.dni || '',
+      employeeCode: user.employeeCode || '',
+      address: user.address || '',
+      phone: user.phone || '',
     });
   }
 

@@ -13,6 +13,7 @@
       size="md"
       [fullWidth]="true"
       class="sm:w-auto"
+      [title]="!hasRendiciones ? 'Necesitas una rendición asignada para subir facturas' : ''"
       (clicked)="gotToAddInvoice()"
     >
       <svg

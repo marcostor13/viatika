@@ -109,7 +109,7 @@ export class ChartsComponent implements OnInit, AfterViewInit {
 
   get collaborators() {
     return this.users
-      .filter((user) => user.role?.name === 'User')
+      .filter((user) => user.role?.name === 'Colaborador')
       .map((user) => ({
         id: user._id || '',
         name: user.name || user.email || 'Usuario sin nombre',

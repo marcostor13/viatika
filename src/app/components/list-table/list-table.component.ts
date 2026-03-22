@@ -16,6 +16,7 @@ export class ListTableComponent {
     option: string;
     _id: string;
   }>();
+  @Output() rowClick = new EventEmitter<string>();
 
   toggleDetails(index: number) {
     this.data[index].isVisible = !this.data[index].isVisible;

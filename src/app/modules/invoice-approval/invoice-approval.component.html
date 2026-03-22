@@ -2,7 +2,7 @@
   <div
     class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3"
   >
-    <h1 class="text-2xl font-bold">Aprobación de Facturas</h1>
+    <h1 class="text-2xl font-bold">Aprobación</h1>
     <div class="flex flex-wrap gap-2 w-full sm:w-auto">
       <app-button
         label="Agregar Factura"
@@ -33,6 +33,140 @@
       ></app-export-button>
     </div>
   </div>
+
+  <!-- Tab switcher -->
+  <div class="flex gap-1 bg-gray-100 p-1 rounded-xl w-fit">
+    <button type="button"
+      [class.bg-white]="activeTab() === 'rendiciones'"
+      [class.shadow-sm]="activeTab() === 'rendiciones'"
+      [class.text-gray-900]="activeTab() === 'rendiciones'"
+      [class.text-gray-500]="activeTab() !== 'rendiciones'"
+      class="px-5 py-2 rounded-lg text-sm font-medium transition-all"
+      (click)="activeTab.set('rendiciones')">
+      Rendiciones
+      @if(submittedReports().length > 0) {
+        <span class="ml-1.5 bg-primary text-white text-xs font-bold px-1.5 py-0.5 rounded-full">{{ submittedReports().length }}</span>
+      }
+    </button>
+    <button type="button"
+      [class.bg-white]="activeTab() === 'facturas'"
+      [class.shadow-sm]="activeTab() === 'facturas'"
+      [class.text-gray-900]="activeTab() === 'facturas'"
+      [class.text-gray-500]="activeTab() !== 'facturas'"
+      class="px-5 py-2 rounded-lg text-sm font-medium transition-all"
+      (click)="activeTab.set('facturas')">
+      Facturas
+    </button>
+  </div>
+
+  <!-- ===================== TAB: RENDICIONES ===================== -->
+  @if(activeTab() === 'rendiciones') {
+    @if(loadingReports()) {
+      <div class="flex justify-center py-12">
+        <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
+    } @else if(submittedReports().length === 0) {
+      <div class="bg-white rounded-xl border border-gray-200 p-12 text-center text-gray-400">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-12 h-12 mx-auto mb-3 text-gray-300">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 0 0 2.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 0 0-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 0 0 .75-.75 2.25 2.25 0 0 0-.1-.664m-5.8 0A2.251 2.251 0 0 1 13.5 2.25H15c1.012 0 1.867.668 2.15 1.586m-5.8 0c-.376.023-.75.05-1.124.08C9.095 4.01 8.25 4.973 8.25 6.108V8.25m0 0H4.875c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V9.375c0-.621-.504-1.125-1.125-1.125H8.25ZM6.75 12h.008v.008H6.75V12Zm0 3h.008v.008H6.75V15Zm0 3h.008v.008H6.75V18Z" />
+        </svg>
+        <p class="font-medium">No hay rendiciones pendientes de aprobación</p>
+        <p class="text-sm mt-1">Las rendiciones enviadas por los colaboradores aparecerán aquí.</p>
+      </div>
+    } @else {
+      <div class="flex flex-col gap-4">
+        @for(report of submittedReports(); track report._id) {
+        <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+          <!-- Report header -->
+          <div class="px-6 py-4 border-b border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <div class="flex items-center gap-2">
+                <span class="bg-yellow-100 text-yellow-700 text-xs font-semibold px-2.5 py-1 rounded-full">Pendiente de aprobación</span>
+              </div>
+              <h3 class="text-base font-bold text-gray-900 mt-1">{{ report.title }}</h3>
+              <p class="text-xs text-gray-400 mt-0.5">Enviada el {{ report.updatedAt | date:'dd/MM/yyyy HH:mm' }}</p>
+            </div>
+            <div class="flex gap-2 shrink-0">
+              <button type="button" (click)="approveReport(report._id)"
+                class="inline-flex items-center gap-1.5 px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 transition-colors">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5" />
+                </svg>
+                Aprobar
+              </button>
+              <button type="button" (click)="openRejectReportModal(report._id)"
+                class="inline-flex items-center gap-1.5 px-4 py-2 bg-white border border-red-300 text-red-600 text-sm font-medium rounded-lg hover:bg-red-50 transition-colors">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" />
+                </svg>
+                Rechazar
+              </button>
+            </div>
+          </div>
+
+          <!-- Report summary -->
+          <div class="px-6 py-4 grid grid-cols-2 sm:grid-cols-4 gap-4 bg-gray-50">
+            <div>
+              <p class="text-xs text-gray-400">Presupuesto</p>
+              <p class="text-sm font-bold text-gray-900">S/ {{ report.budget | number:'1.2-2' }}</p>
+            </div>
+            <div>
+              <p class="text-xs text-gray-400">Total gastado</p>
+              <p class="text-sm font-bold" [class.text-red-600]="getReportTotalGastado(report) > report.budget" [class.text-gray-900]="getReportTotalGastado(report) <= report.budget">
+                S/ {{ getReportTotalGastado(report) | number:'1.2-2' }}
+              </p>
+            </div>
+            <div>
+              <p class="text-xs text-gray-400">Comprobantes</p>
+              <p class="text-sm font-bold text-gray-900">{{ getReportExpenseCount(report) }}</p>
+            </div>
+            <div>
+              <p class="text-xs text-gray-400">Saldo</p>
+              <p class="text-sm font-bold" [class.text-green-600]="report.budget - getReportTotalGastado(report) >= 0" [class.text-red-600]="report.budget - getReportTotalGastado(report) < 0">
+                S/ {{ (report.budget - getReportTotalGastado(report)) | number:'1.2-2' }}
+              </p>
+            </div>
+          </div>
+
+          <!-- Expenses list -->
+          @if(report.expenseIds && report.expenseIds.length > 0) {
+          <div class="px-6 py-3">
+            <table class="w-full text-sm">
+              <thead>
+                <tr class="text-xs text-gray-400 uppercase border-b border-gray-100">
+                  <th class="pb-2 text-left font-medium">Tipo</th>
+                  <th class="pb-2 text-left font-medium">Descripción</th>
+                  <th class="pb-2 text-right font-medium">Monto</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-gray-50">
+                @for(exp of report.expenseIds; track exp._id || $index) {
+                <tr>
+                  <td class="py-2 pr-4">
+                    <span [ngClass]="{
+                      'bg-blue-100 text-blue-700': exp['expenseType'] === 'factura' || !exp['expenseType'],
+                      'bg-yellow-100 text-yellow-700': exp['expenseType'] === 'planilla_movilidad',
+                      'bg-purple-100 text-purple-700': exp['expenseType'] === 'otros_gastos'
+                    }" class="text-xs font-medium px-2 py-0.5 rounded-full">
+                      {{ exp['expenseType'] === 'planilla_movilidad' ? 'Movilidad' : exp['expenseType'] === 'otros_gastos' ? 'Otros' : 'Factura' }}
+                    </span>
+                  </td>
+                  <td class="py-2 pr-4 text-gray-600 text-xs">{{ exp['description'] || '—' }}</td>
+                  <td class="py-2 text-right font-semibold text-gray-900">S/ {{ exp['total'] | number:'1.2-2' }}</td>
+                </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+          }
+        </div>
+        }
+      </div>
+    }
+  }
+
+  <!-- ===================== TAB: FACTURAS ===================== -->
+  @if(activeTab() === 'facturas') {
 
   <!-- Estadísticas principales -->
   <div class="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
@@ -457,13 +591,17 @@
       </div>
     </form>
   </div>
-</div>
 
-<app-data
-  [headers]="headers"
-  [data]="filteredInvoices"
-  (clickOptionsEvent)="clickOptions($event)"
-></app-data>
+  <app-data
+    [headers]="headers"
+    [data]="filteredInvoices"
+    (clickOptionsEvent)="clickOptions($event)"
+    (rowClick)="router.navigate(['/invoices', $event, 'details'])"
+  ></app-data>
+
+  } <!-- end @if(activeTab() === 'facturas') -->
+
+</div>
 
 @if (showRejectionModal()) {
 <div
@@ -497,6 +635,27 @@
       >
         Rechazar Factura
       </button>
+    </div>
+  </div>
+</div>
+}
+
+@if(showRejectReportModal()) {
+<div class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+  <div class="bg-white rounded-2xl p-6 w-full max-w-md shadow-xl">
+    <h2 class="text-lg font-bold mb-1">Rechazar Rendición</h2>
+    <p class="text-sm text-gray-500 mb-4">Indica el motivo del rechazo para que el colaborador pueda corregirla.</p>
+    <textarea
+      class="w-full border border-gray-300 rounded-xl p-3 mb-4 min-h-[100px] focus:outline-none focus:ring-2 focus:ring-red-300 resize-none text-sm"
+      placeholder="Describe el motivo del rechazo..."
+      [ngModel]="reportRejectionReason()"
+      (ngModelChange)="reportRejectionReason.set($event)"
+    ></textarea>
+    <div class="flex gap-3">
+      <button class="flex-1 px-4 py-2 bg-gray-100 text-gray-700 rounded-xl text-sm font-medium hover:bg-gray-200 transition-colors"
+        (click)="closeRejectReportModal()">Cancelar</button>
+      <button class="flex-1 px-4 py-2 bg-red-500 text-white rounded-xl text-sm font-medium hover:bg-red-600 transition-colors disabled:opacity-50"
+        (click)="submitReportRejection()" [disabled]="!reportRejectionReason()">Rechazar</button>
     </div>
   </div>
 </div>

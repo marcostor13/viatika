@@ -4,6 +4,9 @@ import AddInvoiceComponent from './modules/invoices/add-invoice/add-invoice.comp
 import { AuthColaboradorGuard } from './guards/auth-colaborador.guard';
 import { AuthAdmin2Guard } from './guards/auth-admin2.guard';
 import { AuthSuperGuard } from './guards/auth-super.guard';
+import { AuthTesoreroGuard } from './guards/auth-tesorero.guard';
+import { defaultRedirectGuard } from './guards/default-redirect.guard';
+import { authModuleGuard } from './guards/auth-module.guard';
 import { MainComponent } from './layouts/main/main.component';
 import AdminUsersComponent from './modules/admin-users/admin-users.component';
 import { InvoiceApprovalComponent } from './modules/invoice-approval/invoice-approval.component';
@@ -19,8 +22,10 @@ export const routes: Routes = [
     children: [
       {
         path: '',
-        redirectTo: '/invoices', // Por defecto redirige a facturas para colaboradores
         pathMatch: 'full',
+        canActivate: [defaultRedirectGuard],
+        loadComponent: () =>
+          import('./layouts/main/main.component').then((m) => m.MainComponent),
       },
       {
         path: 'invoices',
@@ -38,9 +43,17 @@ export const routes: Routes = [
         canActivate: [AuthColaboradorGuard],
       },
       {
+        path: 'invoices/:id/details',
+        loadComponent: () =>
+          import('./modules/invoices/invoice-detail/invoice-detail.component').then(
+            (m) => m.InvoiceDetailComponent
+          ),
+        canActivate: [AuthColaboradorGuard],
+      },
+      {
         path: 'invoice-approval',
         component: InvoiceApprovalComponent,
-        canActivate: [AuthAdmin2Guard],
+        canActivate: [authModuleGuard('invoice-approval')],
       },
       {
         path: 'consolidated-invoices',
@@ -48,7 +61,7 @@ export const routes: Routes = [
           import(
             './modules/consolidated-invoices/consolidated-invoices.component'
           ).then((m) => m.ConsolidatedInvoicesComponent),
-        canActivate: [AuthAdmin2Guard],
+        canActivate: [authModuleGuard('consolidated-invoices', true)],
       },
       {
         path: 'consolidated-invoices/add-category',
@@ -56,7 +69,7 @@ export const routes: Routes = [
           import(
             './modules/consolidated-invoices/add-category/add-category.component'
           ).then((m) => m.AddCategoryComponent),
-        canActivate: [AuthAdmin2Guard],
+        canActivate: [authModuleGuard('consolidated-invoices', true)],
       },
       {
         path: 'consolidated-invoices/edit-category/:id',
@@ -64,7 +77,7 @@ export const routes: Routes = [
           import(
             './modules/consolidated-invoices/add-category/add-category.component'
           ).then((m) => m.AddCategoryComponent),
-        canActivate: [AuthAdmin2Guard],
+        canActivate: [authModuleGuard('consolidated-invoices', true)],
       },
       {
         path: 'consolidated-invoices/add-project',
@@ -72,7 +85,7 @@ export const routes: Routes = [
           import(
             './modules/consolidated-invoices/add-project/add-project.component'
           ).then((m) => m.AddProjectComponent),
-        canActivate: [AuthAdmin2Guard],
+        canActivate: [authModuleGuard('consolidated-invoices', true)],
       },
       {
         path: 'consolidated-invoices/edit-project/:id',
@@ -80,7 +93,7 @@ export const routes: Routes = [
           import(
             './modules/consolidated-invoices/add-project/add-project.component'
           ).then((m) => m.AddProjectComponent),
-        canActivate: [AuthAdmin2Guard],
+        canActivate: [authModuleGuard('consolidated-invoices', true)],
       },
       {
         path: 'admin-users',
@@ -98,12 +111,28 @@ export const routes: Routes = [
         canActivate: [AuthAdmin2Guard],
       },
       {
+        path: 'admin-users/:id/details',
+        loadComponent: () =>
+          import('./modules/admin-users/user-details/user-details.component').then(
+            (m) => m.UserDetailsComponent
+          ),
+        canActivate: [AuthAdmin2Guard],
+      },
+      {
+        path: 'admin-users/:id/permisos',
+        loadComponent: () =>
+          import('./modules/admin-users/user-permissions/user-permissions.component').then(
+            (m) => m.UserPermissionsComponent
+          ),
+        canActivate: [AuthAdmin2Guard],
+      },
+      {
         path: 'configuracion',
         loadComponent: () =>
           import('./modules/configuracion/configuracion.component').then(
             (m) => m.ConfiguracionComponent
           ),
-        canActivate: [AuthAdmin2Guard],
+        canActivate: [authModuleGuard('configuracion')],
       },
       {
         path: 'clients',
@@ -117,6 +146,44 @@ export const routes: Routes = [
         path: 'clients-admin',
         component: ClientsAdminComponent,
         canActivate: [AuthSuperGuard],
+      },
+      {
+        path: 'inicio',
+        loadComponent: () =>
+          import('./modules/inicio/inicio.component').then(
+            (m) => m.InicioComponent
+          ),
+        canActivate: [AuthColaboradorGuard],
+      },
+      {
+        path: 'mis-rendiciones',
+        loadComponent: () =>
+          import('./modules/mis-rendiciones/mis-rendiciones.component').then(
+            (m) => m.MisRendicionesComponent
+          ),
+      },
+      {
+        path: 'mis-rendiciones/:id/detalle',
+        loadComponent: () =>
+          import('./modules/mis-rendiciones/rendicion-detail/rendicion-detail.component').then(
+            (m) => m.RendicionDetailComponent
+          ),
+      },
+      {
+        path: 'tesoreria',
+        loadComponent: () =>
+          import('./modules/tesoreria/tesoreria.component').then(
+            (m) => m.TesoreriaComponent
+          ),
+        canActivate: [AuthTesoreroGuard],
+      },
+      {
+        path: 'audit-log',
+        loadComponent: () =>
+          import('./modules/audit-log/audit-log.component').then(
+            (m) => m.AuditLogComponent
+          ),
+        canActivate: [authModuleGuard('audit-log', true)],
       },
     ],
   },

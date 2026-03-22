@@ -16,6 +16,7 @@ export class TableComponent {
     option: string;
     _id: string;
   }>();
+  @Output() rowClick = new EventEmitter<string>();
 
   options(option: string, _id: string) {
     this.clickOptionsEvent.emit({ option, _id });

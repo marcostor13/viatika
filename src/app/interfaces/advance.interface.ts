@@ -1,0 +1,115 @@
+export type AdvanceStatus =
+  | 'draft'
+  | 'pending_l1'
+  | 'pending_l2'
+  | 'approved'
+  | 'paid'
+  | 'settled'
+  | 'rejected'
+  | 'returned';
+
+export interface IApprovalEntry {
+  level: number;
+  approvedBy: string;
+  action: 'approved' | 'rejected';
+  notes?: string;
+  date: string;
+}
+
+export interface IPaymentInfo {
+  method: 'transferencia_bancaria' | 'efectivo' | 'cheque';
+  bankName?: string;
+  accountNumber?: string;
+  cci?: string;
+  transferDate: string;
+  reference?: string;
+}
+
+export interface IAdvanceSettlement {
+  expenseTotal: number;
+  advanceAmount: number;
+  difference: number;
+  type: 'reembolso' | 'devolucion' | 'equilibrado';
+  settledAt: string;
+}
+
+export interface IAdvance {
+  _id: string;
+  userId: { _id: string; name: string; email: string; bankAccount?: IBankAccount } | string;
+  clientId: string;
+  expenseReportId?: { _id: string; title: string; status: string } | string;
+  amount: number;
+  description: string;
+  status: AdvanceStatus;
+  approvalLevel: number;
+  requiredLevels: number;
+  approvalHistory: IApprovalEntry[];
+  paymentInfo?: IPaymentInfo;
+  settlement?: IAdvanceSettlement;
+  rejectedBy?: string;
+  rejectionReason?: string;
+  returnedAmount?: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface IBankAccount {
+  bankName: string;
+  accountNumber: string;
+  cci: string;
+  accountType: 'ahorros' | 'corriente';
+}
+
+export interface IAdvanceStats {
+  pending_l1: number;
+  pending_l2: number;
+  approved: number;
+  paid: number;
+  settled: number;
+  totalApprovedAmount: number;
+}
+
+export interface ICreateAdvancePayload {
+  amount: number;
+  description: string;
+  expenseReportId?: string;
+}
+
+export interface IApproveAdvancePayload {
+  notes?: string;
+}
+
+export interface IRejectAdvancePayload {
+  rejectionReason: string;
+}
+
+export interface IPayAdvancePayload {
+  method: 'transferencia_bancaria' | 'efectivo' | 'cheque';
+  bankName?: string;
+  accountNumber?: string;
+  cci?: string;
+  transferDate: string;
+  reference?: string;
+}
+
+export const ADVANCE_STATUS_LABELS: Record<AdvanceStatus, string> = {
+  draft: 'Borrador',
+  pending_l1: 'Pendiente Aprobación',
+  pending_l2: 'Pendiente Tesorería',
+  approved: 'Aprobado',
+  paid: 'Pagado',
+  settled: 'Liquidado',
+  rejected: 'Rechazado',
+  returned: 'Devuelto',
+};
+
+export const ADVANCE_STATUS_COLORS: Record<AdvanceStatus, string> = {
+  draft: 'bg-gray-100 text-gray-600',
+  pending_l1: 'bg-yellow-100 text-yellow-700',
+  pending_l2: 'bg-orange-100 text-orange-700',
+  approved: 'bg-blue-100 text-blue-700',
+  paid: 'bg-green-100 text-green-700',
+  settled: 'bg-emerald-100 text-emerald-700',
+  rejected: 'bg-red-100 text-red-700',
+  returned: 'bg-purple-100 text-purple-700',
+};

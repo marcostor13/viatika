@@ -77,7 +77,7 @@ interface IInvoice {
 })
 export class ConsolidatedInvoicesComponent implements OnInit {
   private agentService = inject(InvoicesService);
-  private router = inject(Router);
+  readonly router = inject(Router);
   private notificationService = inject(NotificationService);
   private confirmationService = inject(ConfirmationService);
   private adminUsersService = inject(AdminUsersService);
@@ -568,6 +568,18 @@ export class ConsolidatedInvoicesComponent implements OnInit {
 
   get filteredInvoices() {
     return this.invoices;
+  }
+
+  get approvedCount(): number {
+    return this.invoices.filter(i => i.status === 'approved' || (i.status as string) === 'APPROVED').length;
+  }
+
+  get rejectedCount(): number {
+    return this.invoices.filter(i => i.status === 'rejected' || (i.status as string) === 'REJECTED').length;
+  }
+
+  get pendingCount(): number {
+    return this.invoices.length - this.approvedCount - this.rejectedCount;
   }
 
   getCategories() {

@@ -1,0 +1,99 @@
+<div class="max-w-3xl mx-auto p-5">
+  <!-- Header -->
+  <div class="flex items-center gap-4 mb-6">
+    <button (click)="goBack()" class="text-gray-500 hover:text-gray-700">
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5 3 12m0 0 7.5-7.5M3 12h18" />
+      </svg>
+    </button>
+    <div>
+      <h1 class="text-2xl font-bold text-gray-900">Permisos del Usuario</h1>
+      @if (user) {
+        <p class="text-sm text-gray-500 mt-0.5">{{ user.name }} — {{ user.role.name }}</p>
+      }
+    </div>
+  </div>
+
+  @if (user) {
+    <!-- Módulos -->
+    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
+      <h2 class="text-base font-semibold text-gray-800 mb-1">Acceso a Módulos</h2>
+      <p class="text-sm text-gray-500 mb-5">Selecciona los módulos a los que este usuario tendrá acceso en la plataforma.</p>
+
+      <div class="space-y-3">
+        @for (mod of availableModules; track mod.key) {
+          <label class="flex items-start gap-4 p-3 rounded-lg border border-gray-100 hover:bg-gray-50 cursor-pointer transition-colors">
+            <input
+              type="checkbox"
+              class="mt-0.5 h-4 w-4 rounded border-gray-300 text-primary accent-primary cursor-pointer"
+              [checked]="hasModule(mod.key)"
+              (change)="toggleModule(mod.key, $any($event.target).checked)"
+            />
+            <div>
+              <p class="text-sm font-medium text-gray-800">{{ mod.label }}</p>
+              <p class="text-xs text-gray-500 mt-0.5">{{ mod.description }}</p>
+            </div>
+          </label>
+        }
+      </div>
+    </div>
+
+    <!-- Aprobaciones -->
+    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
+      <h2 class="text-base font-semibold text-gray-800 mb-1">Permisos de Aprobación de Anticipos</h2>
+      <p class="text-sm text-gray-500 mb-5">Define en qué niveles puede este usuario aprobar o rechazar anticipos.</p>
+
+      <div class="space-y-3">
+        <label class="flex items-start gap-4 p-3 rounded-lg border border-gray-100 hover:bg-gray-50 cursor-pointer transition-colors">
+          <input
+            type="checkbox"
+            class="mt-0.5 h-4 w-4 rounded border-gray-300 text-primary accent-primary cursor-pointer"
+            [(ngModel)]="permissions.canApproveL1"
+          />
+          <div>
+            <p class="text-sm font-medium text-gray-800">Aprobación Nivel 1</p>
+            <p class="text-xs text-gray-500 mt-0.5">Puede aprobar o rechazar anticipos en primera instancia (montos ≤ S/ 500 o como primer aprobador).</p>
+          </div>
+        </label>
+
+        <label class="flex items-start gap-4 p-3 rounded-lg border border-gray-100 hover:bg-gray-50 cursor-pointer transition-colors">
+          <input
+            type="checkbox"
+            class="mt-0.5 h-4 w-4 rounded border-gray-300 text-primary accent-primary cursor-pointer"
+            [(ngModel)]="permissions.canApproveL2"
+          />
+          <div>
+            <p class="text-sm font-medium text-gray-800">Aprobación Nivel 2 (Tesorería)</p>
+            <p class="text-xs text-gray-500 mt-0.5">Puede aprobar anticipos de montos superiores a S/ 500 en segunda instancia, registrar pagos y liquidaciones.</p>
+          </div>
+        </label>
+      </div>
+    </div>
+
+    <!-- Nota informativa -->
+    <div class="rounded-lg bg-blue-50 border border-blue-100 p-4 mb-6 text-sm text-blue-700">
+      <strong>Nota:</strong> Los Administradores siempre tienen acceso completo por su rol. Estos permisos aplican principalmente a Colaboradores.
+    </div>
+
+    <!-- Acciones -->
+    <div class="flex items-center justify-end gap-3">
+      <button
+        (click)="goBack()"
+        class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+      >
+        Cancelar
+      </button>
+      <button
+        (click)="save()"
+        [disabled]="saving"
+        class="px-5 py-2 text-sm font-medium text-white bg-primary rounded-lg hover:bg-primary/90 disabled:opacity-60 transition-colors"
+      >
+        {{ saving ? 'Guardando...' : 'Guardar Permisos' }}
+      </button>
+    </div>
+  } @else {
+    <div class="flex justify-center py-16">
+      <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+    </div>
+  }
+</div>

@@ -1,0 +1,485 @@
+<div class="px-5 py-6 max-w-7xl mx-auto">
+  <!-- Header with actions -->
+  <div class="flex items-center justify-between mb-8">
+    <div class="flex items-center gap-4">
+      <button (click)="goBack()" class="text-gray-500 hover:text-gray-700">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5 3 12m0 0 7.5-7.5M3 12h18" />
+        </svg>
+      </button>
+      <div>
+        <div class="flex items-center gap-3 mb-0.5">
+          <h1 class="text-2xl font-bold text-gray-900">
+            {{ report?.title || 'Detalle de Rendición' }}
+          </h1>
+          @if (report) {
+          <span class="px-2.5 py-1 rounded-full text-xs font-semibold" [ngClass]="{
+            'bg-blue-100 text-blue-700': report.status === 'open',
+            'bg-yellow-100 text-yellow-700': report.status === 'submitted',
+            'bg-green-100 text-green-700': report.status === 'approved',
+            'bg-red-100 text-red-700': report.status === 'rejected',
+            'bg-gray-100 text-gray-700': report.status === 'closed'
+          }">
+            {{ report.status === 'open' ? 'Abierta' : report.status === 'submitted' ? 'Enviada' : report.status === 'approved' ? 'Aprobada' : report.status === 'rejected' ? 'Rechazada' : 'Cerrada' }}
+          </span>
+          }
+        </div>
+        <p class="text-sm text-gray-500">Gasto total vs Presupuesto asignado</p>
+      </div>
+    </div>
+    
+    <!-- Collaborator actions (only when report is open) -->
+    @if (report && report.status === 'open' && !isAdminView) {
+    <div class="flex gap-3">
+      <app-button
+        label="Solicitar Anticipo"
+        variant="secondary"
+        size="sm"
+        (clicked)="openAdvanceModal()"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 mr-1 -ml-1">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 18.75a60.07 60.07 0 0 1 15.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 0 1 3 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25M2.25 6v9m18-10.5v.75c0 .414.336.75.75.75h.75m-1.5-1.5h.375c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125h-.375m1.5-1.5H21a.75.75 0 0 0-.75.75v.75m0 0H3.75m0 0h-.375a1.125 1.125 0 0 1-1.125-1.125V15m1.5 1.5v-.75A.75.75 0 0 0 3 15h-.75M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Zm3 0h.008v.008H18V10.5Zm-12 0h.008v.008H6V10.5Z" />
+        </svg>
+      </app-button>
+      <app-button
+        label="Añadir Gasto"
+        variant="primary"
+        size="sm"
+        (clicked)="openAddExpenseModal()"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 mr-1 -ml-1">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+        </svg>
+      </app-button>
+      <button
+        type="button"
+        class="inline-flex items-center justify-center rounded-md text-sm font-medium border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 h-9 px-4 py-2 transition-colors"
+        (click)="openSubmitModal()"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 mr-1 -ml-1">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M6 12 3.269 3.125A59.769 59.769 0 0 1 21.485 12 59.768 59.768 0 0 1 3.27 20.875L5.999 12Zm0 0h7.5" />
+        </svg>
+        Enviar Rendición
+      </button>
+    </div>
+    }
+
+    <!-- Admin actions (only when report is submitted) -->
+    @if (report && report.status === 'submitted' && isAdminView) {
+    <div class="flex gap-3">
+      <app-button
+        label="Aprobar"
+        variant="primary"
+        size="sm"
+        (clicked)="approveReport()"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 mr-1 -ml-1">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+        </svg>
+      </app-button>
+      <app-button
+        label="Rechazar"
+        variant="danger"
+        size="sm"
+        (clicked)="openAdminRejectModal()"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 mr-1 -ml-1">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M18.364 18.364A9 9 0 0 0 5.636 5.636m12.728 12.728A9 9 0 0 1 5.636 5.636m12.728 12.728L5.636 5.636" />
+        </svg>
+      </app-button>
+    </div>
+    }
+  </div>
+
+  @if(isLoading) {
+    <div class="flex justify-center p-12">
+      <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+    </div>
+  } @else {
+    @if(report) {
+      <!-- Progress and Summary Cards -->
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <!-- Budget assigned -->
+        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+          <div class="flex items-center gap-3 mb-2">
+            <div class="p-2 bg-blue-50 text-blue-600 rounded-lg">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 18.75a60.07 60.07 0 0 1 15.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 0 1 3 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25M2.25 6v9m18-10.5v.75c0 .414.336.75.75.75h.75m-1.5-1.5h.375c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125h-.375m1.5-1.5H21a.75.75 0 0 0-.75.75v.75m0 0H3.75m0 0h-.375a1.125 1.125 0 0 1-1.125-1.125V15m1.5 1.5v-.75A.75.75 0 0 0 3 15h-.75M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Zm3 0h.008v.008H18V10.5Zm-12 0h.008v.008H6V10.5Z" />
+              </svg>
+            </div>
+            <p class="font-medium text-gray-500">Presupuesto</p>
+          </div>
+          <p class="text-3xl font-bold text-gray-900">S/ {{ report.budget | number:'1.2-2' }}</p>
+        </div>
+
+        <!-- Total spent -->
+        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+          <div class="flex items-center gap-3 mb-2">
+            <div class="p-2 bg-red-50 text-red-600 rounded-lg">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v12m-3-2.818.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+              </svg>
+            </div>
+            <p class="font-medium text-gray-500">Total Gastado</p>
+          </div>
+          <p class="text-3xl font-bold text-gray-900">S/ {{ totalGastado | number:'1.2-2' }}</p>
+        </div>
+
+        <!-- Remaining balance -->
+        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+          <div class="flex items-center gap-3 mb-2">
+            <div class="p-2 bg-green-50 text-green-600 rounded-lg">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+              </svg>
+            </div>
+            <p class="font-medium text-gray-500">Saldo Disponible</p>
+          </div>
+          <p class="text-3xl font-bold" [ngClass]="{'text-green-600': saldoLibre >= 0, 'text-red-600': saldoLibre < 0}">
+            S/ {{ saldoLibre | number:'1.2-2' }}
+          </p>
+        </div>
+      </div>
+
+      <!-- Anticipos -->
+      @if(advances.length > 0) {
+      <div class="bg-white rounded-xl shadow-sm border border-gray-200 mb-6">
+        <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+          <h2 class="text-base font-bold text-gray-900">Anticipos Solicitados</h2>
+          <span class="text-sm font-semibold text-blue-700 bg-blue-50 px-3 py-1 rounded-full">
+            Total aprobado: S/ {{ totalAnticipado | number:'1.2-2' }}
+          </span>
+        </div>
+        <div class="divide-y divide-gray-100">
+          @for(adv of advances; track adv._id) {
+          <div class="px-6 py-3 flex items-center justify-between">
+            <div>
+              <p class="text-sm font-medium text-gray-900">{{ adv.description }}</p>
+              <p class="text-xs text-gray-500 mt-0.5">Solicitado: {{ adv.createdAt | date:'dd/MM/yyyy' }}</p>
+            </div>
+            <div class="flex items-center gap-3">
+              <span class="text-sm font-bold text-gray-900">S/ {{ adv.amount | number:'1.2-2' }}</span>
+              <span [class]="ADVANCE_STATUS_COLORS[adv.status]" class="inline-flex px-2 py-0.5 rounded text-xs font-medium">
+                {{ ADVANCE_STATUS_LABELS[adv.status] }}
+              </span>
+            </div>
+          </div>
+          }
+        </div>
+      </div>
+      }
+
+      <!-- Liquidación -->
+      @if(settlement) {
+      <div [class]="settlement.type === 'devolucion' ? 'bg-red-50 border-red-200' : settlement.type === 'reembolso' ? 'bg-green-50 border-green-200' : 'bg-gray-50 border-gray-200'"
+           class="rounded-xl border p-5 mb-6">
+        <div class="flex items-center gap-2 mb-3">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+          </svg>
+          <h3 class="font-bold text-gray-900">Liquidación de Rendición</h3>
+        </div>
+        <div class="grid grid-cols-3 gap-4 text-center">
+          <div>
+            <p class="text-xs text-gray-500">Anticipo entregado</p>
+            <p class="text-lg font-bold text-gray-900">S/ {{ settlement.advanceTotal | number:'1.2-2' }}</p>
+          </div>
+          <div>
+            <p class="text-xs text-gray-500">Gastos reales</p>
+            <p class="text-lg font-bold text-gray-900">S/ {{ settlement.expenseTotal | number:'1.2-2' }}</p>
+          </div>
+          <div>
+            <p class="text-xs text-gray-500">
+              @if(settlement.type === 'devolucion') { A devolver }
+              @else if(settlement.type === 'reembolso') { A reembolsar }
+              @else { Diferencia }
+            </p>
+            <p [class]="settlement.type === 'devolucion' ? 'text-red-600' : settlement.type === 'reembolso' ? 'text-green-600' : 'text-gray-600'"
+               class="text-lg font-bold">
+              S/ {{ (settlement.type === 'reembolso' ? settlement.difference * -1 : settlement.difference) | number:'1.2-2' }}
+            </p>
+          </div>
+        </div>
+      </div>
+      }
+
+      <!-- Expenses List -->
+      <div class="bg-white rounded-xl shadow-sm border border-gray-200">
+        <div class="px-6 py-5 border-b border-gray-200">
+          <h2 class="text-lg font-bold text-gray-900">Comprobantes Asociados</h2>
+        </div>
+        
+        @if(!report.expenseIds || report.expenseIds.length === 0) {
+          <div class="p-12 text-center text-gray-500">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-12 h-12 mx-auto text-gray-300 mb-3">
+              <path stroke-linecap="round" stroke-linejoin="round" d="m9 13.5 3 2.25 3-2.25m0-6v6h-6v-6h6Z" />
+            </svg>
+            <p>No has subido ningún comprobante para esta rendición aún.</p>
+          </div>
+        } @else {
+          <!-- We will implement the table of individual invoices here in the next step -->
+          <div class="p-6">
+            <table class="min-w-full divide-y divide-gray-200">
+              <thead class="bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <tr>
+                  <th class="px-6 py-3">Tipo</th>
+                  <th class="px-6 py-3">Fecha</th>
+                  <th class="px-6 py-3">Descripción</th>
+                  <th class="px-6 py-3 text-right">Monto (S/)</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-gray-200">
+                <tr *ngFor="let expense of report.expenseIds" class="hover:bg-gray-50 border-b">
+                  <td class="px-6 py-3">
+                    <span [ngClass]="{
+                      'bg-blue-100 text-blue-700': expense['expenseType'] === 'factura' || !expense['expenseType'],
+                      'bg-yellow-100 text-yellow-700': expense['expenseType'] === 'planilla_movilidad',
+                      'bg-purple-100 text-purple-700': expense['expenseType'] === 'otros_gastos'
+                    }" class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium">
+                      {{ getExpenseTypeLabel(expense) }}
+                    </span>
+                  </td>
+                  <td class="px-6 py-3 text-sm text-gray-900">{{ getExpenseDate(expense) }}</td>
+                  <td class="px-6 py-3 text-sm text-gray-900">{{ getExpenseDescription(expense) }}</td>
+                  <td class="px-6 py-3 text-sm font-medium text-gray-900 text-right">
+                    {{ expense.total | currency:'S/.' }}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        }
+      </div>
+
+    } @else {
+      <div class="text-center p-12 bg-white rounded-xl shadow-sm border border-gray-200 text-gray-500">
+        Rendición no encontrada.
+      </div>
+    }
+  }
+</div>
+
+<!-- Modal: Solicitar Anticipo -->
+@if(showAdvanceModal) {
+<div class="fixed inset-0 z-50 flex items-center justify-center p-4" (click)="showAdvanceModal=false">
+  <div class="absolute inset-0 bg-black/40 backdrop-blur-sm"></div>
+  <div class="relative bg-white rounded-2xl shadow-xl p-6 w-full max-w-sm" (click)="$event.stopPropagation()">
+    <h3 class="text-lg font-bold text-gray-900 mb-1">Solicitar Anticipo</h3>
+    <p class="text-sm text-gray-500 mb-4">
+      Los anticipos ≤ S/. 500 requieren 1 aprobación. Los mayores requieren aprobación de Tesorería.
+    </p>
+    <form [formGroup]="advanceForm" class="space-y-4">
+      <div class="flex flex-col gap-1">
+        <label class="text-sm font-medium text-gray-700">Monto solicitado S/. <span class="text-red-500">*</span></label>
+        <input type="number" formControlName="amount" min="1" step="0.01" placeholder="0.00"
+          class="w-full h-[42px] px-4 rounded-lg border border-gray-200 bg-gray-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm" />
+        @if(advanceForm.get('amount')?.value > 500) {
+        <p class="text-xs text-orange-600">⚠ Monto mayor a S/. 500 — requiere aprobación de Tesorería (2 niveles)</p>
+        }
+      </div>
+      <div class="flex flex-col gap-1">
+        <label class="text-sm font-medium text-gray-700">Descripción / Motivo <span class="text-red-500">*</span></label>
+        <textarea formControlName="description" rows="3" placeholder="¿Para qué necesitas el anticipo?"
+          class="w-full px-4 py-2 rounded-lg border border-gray-200 bg-gray-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm resize-none"></textarea>
+      </div>
+    </form>
+    <div class="flex gap-3 mt-5">
+      <button type="button" (click)="showAdvanceModal=false"
+        class="flex-1 py-2 border border-gray-200 rounded-xl text-sm text-gray-600 hover:bg-gray-50 transition-colors">
+        Cancelar
+      </button>
+      <button type="button" (click)="submitAdvance()" [disabled]="advanceForm.invalid || isRequestingAdvance()"
+        class="flex-1 py-2 bg-primary text-white rounded-xl text-sm font-medium hover:bg-primary/90 disabled:opacity-50 transition-colors">
+        {{ isRequestingAdvance() ? 'Enviando...' : 'Solicitar' }}
+      </button>
+    </div>
+  </div>
+</div>
+}
+
+<!-- Modal: Confirmación de envío de rendición -->
+@if(showSubmitModal && report) {
+<div class="fixed inset-0 z-50 flex items-center justify-center p-4" (click)="closeSubmitModal()">
+  <div class="absolute inset-0 bg-black/50 backdrop-blur-sm"></div>
+  <div class="relative bg-white rounded-2xl shadow-xl w-full max-w-lg max-h-[90vh] flex flex-col" (click)="$event.stopPropagation()">
+
+    <!-- Header -->
+    <div class="px-6 pt-6 pb-4 border-b border-gray-100">
+      <div class="flex items-center gap-3 mb-1">
+        <div class="p-2 bg-blue-50 rounded-xl">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 text-blue-600">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M6 12 3.269 3.125A59.769 59.769 0 0 1 21.485 12 59.768 59.768 0 0 1 3.27 20.875L5.999 12Zm0 0h7.5" />
+          </svg>
+        </div>
+        <h3 class="text-lg font-bold text-gray-900">Confirmar envío de rendición</h3>
+      </div>
+      <p class="text-sm text-gray-500 ml-11">Una vez enviada no podrás editar ni agregar gastos.</p>
+    </div>
+
+    <!-- Resumen -->
+    <div class="px-6 py-4 overflow-y-auto flex-1">
+      <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Resumen</p>
+
+      <div class="bg-gray-50 rounded-xl p-4 mb-4 space-y-2">
+        <div class="flex justify-between text-sm">
+          <span class="text-gray-500">Título</span>
+          <span class="font-semibold text-gray-900">{{ report.title }}</span>
+        </div>
+        <div class="flex justify-between text-sm">
+          <span class="text-gray-500">Presupuesto asignado</span>
+          <span class="font-semibold text-gray-900">S/ {{ report.budget | number:'1.2-2' }}</span>
+        </div>
+        <div class="flex justify-between text-sm">
+          <span class="text-gray-500">Total gastado</span>
+          <span class="font-semibold" [class.text-red-600]="totalGastado > report.budget" [class.text-gray-900]="totalGastado <= report.budget">
+            S/ {{ totalGastado | number:'1.2-2' }}
+          </span>
+        </div>
+        <div class="flex justify-between text-sm border-t border-gray-200 pt-2 mt-2">
+          <span class="text-gray-500">Saldo</span>
+          <span class="font-bold" [class.text-green-600]="saldoLibre >= 0" [class.text-red-600]="saldoLibre < 0">
+            S/ {{ saldoLibre | number:'1.2-2' }}
+          </span>
+        </div>
+      </div>
+
+      @if(saldoLibre < 0) {
+      <div class="flex items-start gap-2 bg-red-50 border border-red-200 rounded-xl p-3 mb-4">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 text-red-600 mt-0.5 shrink-0">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" />
+        </svg>
+        <p class="text-xs text-red-700">El gasto supera el presupuesto asignado. El administrador lo revisará.</p>
+      </div>
+      }
+
+      @if(report.expenseIds && report.expenseIds.length > 0) {
+      <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">
+        Comprobantes ({{ report.expenseIds.length }})
+      </p>
+      <div class="space-y-1.5 max-h-48 overflow-y-auto pr-1">
+        @for(expense of report.expenseIds; track expense._id || $index) {
+        <div class="flex items-center justify-between bg-white border border-gray-100 rounded-lg px-3 py-2">
+          <div class="flex items-center gap-2 min-w-0">
+            <span [ngClass]="{
+              'bg-blue-100 text-blue-700': expense['expenseType'] === 'factura' || !expense['expenseType'],
+              'bg-yellow-100 text-yellow-700': expense['expenseType'] === 'planilla_movilidad',
+              'bg-purple-100 text-purple-700': expense['expenseType'] === 'otros_gastos'
+            }" class="text-xs font-medium px-1.5 py-0.5 rounded shrink-0">
+              {{ getExpenseTypeLabel(expense) }}
+            </span>
+            <span class="text-xs text-gray-500 truncate">{{ getExpenseDescription(expense) }}</span>
+          </div>
+          <span class="text-xs font-semibold text-gray-900 ml-3 shrink-0">S/ {{ expense['total'] | number:'1.2-2' }}</span>
+        </div>
+        }
+      </div>
+      } @else {
+      <div class="bg-yellow-50 border border-yellow-200 rounded-xl p-3">
+        <p class="text-xs text-yellow-700">No hay comprobantes adjuntos a esta rendición.</p>
+      </div>
+      }
+    </div>
+
+    <!-- Actions -->
+    <div class="px-6 pb-6 pt-4 border-t border-gray-100 flex gap-3">
+      <button type="button" (click)="closeSubmitModal()"
+        class="flex-1 py-2.5 border border-gray-200 rounded-xl text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors">
+        Cancelar
+      </button>
+      <button type="button" (click)="confirmSubmitReport()" [disabled]="isSubmitting()"
+        class="flex-1 py-2.5 bg-primary text-white rounded-xl text-sm font-medium hover:bg-primary/90 disabled:opacity-50 transition-colors flex items-center justify-center gap-2">
+        @if(isSubmitting()) {
+          <span class="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
+          Enviando...
+        } @else {
+          Confirmar envío
+        }
+      </button>
+    </div>
+  </div>
+</div>
+}
+
+<!-- Modal: Admin rejection reason -->
+@if(showAdminRejectModal()) {
+<div class="fixed inset-0 z-50 flex items-center justify-center p-4" (click)="showAdminRejectModal.set(false)">
+  <div class="absolute inset-0 bg-black/40 backdrop-blur-sm"></div>
+  <div class="relative bg-white rounded-2xl shadow-xl p-6 w-full max-w-md" (click)="$event.stopPropagation()">
+    <h3 class="text-lg font-bold text-gray-900 mb-1">Rechazar Rendición</h3>
+    <p class="text-sm text-gray-500 mb-4">Indica el motivo del rechazo para notificar al colaborador.</p>
+    <textarea
+      class="w-full border border-gray-200 rounded-xl p-3 text-sm text-gray-900 min-h-[100px] focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none"
+      placeholder="Motivo del rechazo..."
+      [ngModel]="adminRejectionReason()"
+      (ngModelChange)="adminRejectionReason.set($event)"
+    ></textarea>
+    <div class="flex gap-3 mt-4">
+      <button type="button" (click)="showAdminRejectModal.set(false)"
+        class="flex-1 py-2.5 border border-gray-200 rounded-xl text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors">
+        Cancelar
+      </button>
+      <button type="button" (click)="submitAdminRejection()"
+        class="flex-1 py-2.5 bg-red-600 text-white rounded-xl text-sm font-medium hover:bg-red-700 transition-colors">
+        Rechazar
+      </button>
+    </div>
+  </div>
+</div>
+}
+
+<!-- Modal: Selección de tipo de gasto -->
+@if(showTypeModal) {
+<div class="fixed inset-0 z-50 flex items-center justify-center p-4" (click)="closeTypeModal()">
+  <div class="absolute inset-0 bg-black/40 backdrop-blur-sm"></div>
+  <div class="relative bg-white rounded-2xl shadow-xl p-6 w-full max-w-sm" (click)="$event.stopPropagation()">
+    <h3 class="text-lg font-bold text-gray-900 mb-1">¿Qué tipo de gasto deseas agregar?</h3>
+    <p class="text-sm text-gray-500 mb-5">Selecciona el tipo de comprobante</p>
+
+    <div class="flex flex-col gap-3">
+      <button type="button" (click)="selectExpenseType('factura')"
+        class="flex items-center gap-4 p-4 rounded-xl border-2 border-gray-200 hover:border-primary hover:bg-primary/5 transition-all text-left group">
+        <div class="p-2 rounded-lg bg-blue-50 text-blue-600 group-hover:bg-blue-100 transition-colors">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
+          </svg>
+        </div>
+        <div>
+          <p class="font-semibold text-gray-900 text-sm">Factura / Documento escaneado</p>
+          <p class="text-xs text-gray-500">Sube un PDF o imagen de la factura</p>
+        </div>
+      </button>
+
+      <button type="button" (click)="selectExpenseType('planilla_movilidad')"
+        class="flex items-center gap-4 p-4 rounded-xl border-2 border-gray-200 hover:border-primary hover:bg-primary/5 transition-all text-left group">
+        <div class="p-2 rounded-lg bg-yellow-50 text-yellow-600 group-hover:bg-yellow-100 transition-colors">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 18.75a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 0 1-1.125-1.125V14.25m17.25 4.5a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m3 0h1.125c.621 0 1.129-.504 1.09-1.124a17.902 17.902 0 0 0-3.213-9.193 2.056 2.056 0 0 0-1.58-.86H14.25M16.5 18.75h-2.25m0-11.177v-.958c0-.568-.422-1.048-.987-1.106a48.554 48.554 0 0 0-10.026 0 1.106 1.106 0 0 0-.987 1.106v7.635m12-6.677v6.677m0 4.5v-4.5m0 0h-12" />
+          </svg>
+        </div>
+        <div>
+          <p class="font-semibold text-gray-900 text-sm">Planilla de Movilidad</p>
+          <p class="text-xs text-gray-500">Fecha, Concepto, Total, Lugar, Gestión</p>
+        </div>
+      </button>
+
+      <button type="button" (click)="selectExpenseType('otros_gastos')"
+        class="flex items-center gap-4 p-4 rounded-xl border-2 border-gray-200 hover:border-primary hover:bg-primary/5 transition-all text-left group">
+        <div class="p-2 rounded-lg bg-purple-50 text-purple-600 group-hover:bg-purple-100 transition-colors">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75m-3-7.036A11.959 11.959 0 0 1 3.598 6 11.99 11.99 0 0 0 3 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285Z" />
+          </svg>
+        </div>
+        <div>
+          <p class="font-semibold text-gray-900 text-sm">Otros Gastos</p>
+          <p class="text-xs text-gray-500">Requiere firma de Declaración Jurada</p>
+        </div>
+      </button>
+    </div>
+
+    <button type="button" (click)="closeTypeModal()"
+      class="mt-4 w-full py-2 text-sm text-gray-500 hover:text-gray-700 transition-colors">
+      Cancelar
+    </button>
+  </div>
+</div>
+}

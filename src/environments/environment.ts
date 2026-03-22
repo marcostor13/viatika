@@ -4,6 +4,7 @@ export const environment = {
   // api: 'https://viatika-back.marcostorresalarcon.com/api',
   storage: 'user-data-ls-gastos',
   storagePath: 'gastos-images',
+  googleMapsApiKey: 'AIzaSyAvrXNy1gUBO_kyYtOmAmgRB8IP2zl-OgM',
   firebaseConfig: {
     apiKey: 'AIzaSyCXHI5wUyaQflg_4wqvLvpV71W6S4cFP9Y',
     authDomain: 'eventuz-5d8bd.firebaseapp.com',

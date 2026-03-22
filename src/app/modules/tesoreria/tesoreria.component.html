@@ -1,0 +1,266 @@
+<div class="px-5 py-6 max-w-7xl mx-auto">
+
+  <!-- Header -->
+  <div class="flex items-center justify-between mb-8">
+    <div>
+      <h1 class="text-2xl font-bold text-gray-900">Tesorería — Gestión de Anticipos</h1>
+      <p class="text-sm text-gray-500 mt-1">Aprobación, pago y liquidación de anticipos</p>
+    </div>
+  </div>
+
+  <!-- Stats Cards -->
+  @if(stats) {
+  <div class="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
+    <div class="bg-white rounded-xl border border-gray-200 p-4 text-center">
+      <p class="text-2xl font-bold text-yellow-600">{{ stats.pending_l1 }}</p>
+      <p class="text-xs text-gray-500 mt-1">Pendiente L1</p>
+    </div>
+    <div class="bg-white rounded-xl border border-gray-200 p-4 text-center">
+      <p class="text-2xl font-bold text-orange-600">{{ stats.pending_l2 }}</p>
+      <p class="text-xs text-gray-500 mt-1">Pendiente Tesorería</p>
+    </div>
+    <div class="bg-white rounded-xl border border-gray-200 p-4 text-center">
+      <p class="text-2xl font-bold text-blue-600">{{ stats.approved }}</p>
+      <p class="text-xs text-gray-500 mt-1">Aprobados</p>
+    </div>
+    <div class="bg-white rounded-xl border border-gray-200 p-4 text-center">
+      <p class="text-2xl font-bold text-green-600">{{ stats.paid }}</p>
+      <p class="text-xs text-gray-500 mt-1">Pagados</p>
+    </div>
+    <div class="bg-white rounded-xl border border-gray-200 p-4 text-center">
+      <p class="text-2xl font-bold text-gray-900">S/ {{ stats.totalApprovedAmount | number:'1.2-2' }}</p>
+      <p class="text-xs text-gray-500 mt-1">Total Desembolsado</p>
+    </div>
+  </div>
+  }
+
+  <!-- Tabs -->
+  <div class="flex gap-1 bg-gray-100 rounded-xl p-1 mb-6 w-fit">
+    <button type="button" (click)="activeTab.set('pendientes')"
+      [class]="activeTab() === 'pendientes' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'"
+      class="px-4 py-2 rounded-lg text-sm font-medium transition-all">
+      Pendientes
+    </button>
+    <button type="button" (click)="activeTab.set('aprobados')"
+      [class]="activeTab() === 'aprobados' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'"
+      class="px-4 py-2 rounded-lg text-sm font-medium transition-all">
+      Aprobados / En pago
+    </button>
+    <button type="button" (click)="activeTab.set('historial')"
+      [class]="activeTab() === 'historial' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'"
+      class="px-4 py-2 rounded-lg text-sm font-medium transition-all">
+      Historial
+    </button>
+  </div>
+
+  <!-- Table -->
+  <div class="bg-white rounded-xl border border-gray-200 overflow-hidden">
+    @if(isLoading()) {
+    <div class="flex justify-center p-12">
+      <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+    </div>
+    } @else if(filteredAdvances.length === 0) {
+    <div class="p-12 text-center text-gray-400 text-sm">No hay anticipos en esta sección.</div>
+    } @else {
+    <table class="min-w-full divide-y divide-gray-200">
+      <thead class="bg-gray-50 text-xs font-medium text-gray-500 uppercase tracking-wider">
+        <tr>
+          <th class="px-4 py-3 text-left">Colaborador</th>
+          <th class="px-4 py-3 text-left">Rendición</th>
+          <th class="px-4 py-3 text-left">Descripción</th>
+          <th class="px-4 py-3 text-right">Monto S/.</th>
+          <th class="px-4 py-3 text-center">Niveles</th>
+          <th class="px-4 py-3 text-center">Estado</th>
+          <th class="px-4 py-3 text-right">Acciones</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-gray-200">
+        @for(adv of filteredAdvances; track adv._id) {
+        <tr class="hover:bg-gray-50">
+          <td class="px-4 py-3 text-sm font-medium text-gray-900">{{ getUserName(adv) }}</td>
+          <td class="px-4 py-3 text-sm text-gray-500">{{ getReportTitle(adv) }}</td>
+          <td class="px-4 py-3 text-sm text-gray-700 max-w-[200px] truncate">{{ adv.description }}</td>
+          <td class="px-4 py-3 text-sm font-bold text-gray-900 text-right">{{ adv.amount | number:'1.2-2' }}</td>
+          <td class="px-4 py-3 text-center">
+            <span class="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded font-medium">{{ getLevelsBadge(adv) }}</span>
+          </td>
+          <td class="px-4 py-3 text-center">
+            <span [class]="STATUS_COLORS[adv.status]" class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium">
+              {{ STATUS_LABELS[adv.status] }}
+            </span>
+          </td>
+          <td class="px-4 py-3 text-right">
+            <div class="flex items-center justify-end gap-2">
+              @if(adv.status === 'pending_l1') {
+              <button type="button" (click)="approveL1(adv)" [disabled]="isActing()"
+                class="text-xs px-3 py-1 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 transition-colors">
+                Aprobar L1
+              </button>
+              <button type="button" (click)="openRejectModal(adv)" [disabled]="isActing()"
+                class="text-xs px-3 py-1 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 disabled:opacity-50 transition-colors">
+                Rechazar
+              </button>
+              }
+              @if(adv.status === 'pending_l2' && canPayAndSettle) {
+              <button type="button" (click)="approveL2(adv)" [disabled]="isActing()"
+                class="text-xs px-3 py-1 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 transition-colors">
+                Aprobar L2
+              </button>
+              <button type="button" (click)="openRejectModal(adv)" [disabled]="isActing()"
+                class="text-xs px-3 py-1 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 disabled:opacity-50 transition-colors">
+                Rechazar
+              </button>
+              }
+              @if(adv.status === 'approved' && canPayAndSettle) {
+              <button type="button" (click)="openPaymentModal(adv)" [disabled]="isActing()"
+                class="text-xs px-3 py-1 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors">
+                Registrar Pago
+              </button>
+              }
+              @if(adv.status === 'paid' && canPayAndSettle) {
+              <button type="button" (click)="settle(adv)" [disabled]="isActing()"
+                class="text-xs px-3 py-1 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-50 transition-colors">
+                Liquidar
+              </button>
+              }
+              @if(adv.status === 'settled' && adv.settlement?.type === 'devolucion' && canPayAndSettle) {
+              <button type="button" (click)="openReturnModal(adv)" [disabled]="isActing()"
+                class="text-xs px-3 py-1 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 transition-colors">
+                Registrar Devolución
+              </button>
+              }
+              @if(adv.status === 'settled') {
+              <div class="text-xs text-gray-500">
+                @if(adv.settlement?.type === 'devolucion') {
+                <span class="text-red-600 font-medium">Dev. S/ {{ adv.settlement?.difference | number:'1.2-2' }}</span>
+                } @else if(adv.settlement?.type === 'reembolso') {
+                <span class="text-green-600 font-medium">Reimb. S/ {{ (adv.settlement?.difference! * -1) | number:'1.2-2' }}</span>
+                } @else {
+                <span class="text-gray-500">Equilibrado</span>
+                }
+              </div>
+              }
+            </div>
+          </td>
+        </tr>
+        }
+      </tbody>
+    </table>
+    }
+  </div>
+</div>
+
+<!-- Modal: Registrar Pago -->
+@if(showPaymentModal && selectedAdvance) {
+<div class="fixed inset-0 z-50 flex items-center justify-center p-4" (click)="showPaymentModal=false">
+  <div class="absolute inset-0 bg-black/40 backdrop-blur-sm"></div>
+  <div class="relative bg-white rounded-2xl shadow-xl p-6 w-full max-w-md" (click)="$event.stopPropagation()">
+    <h3 class="text-lg font-bold text-gray-900 mb-1">Registrar Transferencia Bancaria</h3>
+    <p class="text-sm text-gray-500 mb-4">Anticipo: <strong>S/ {{ selectedAdvance.amount | number:'1.2-2' }}</strong> — {{ getUserName(selectedAdvance) }}</p>
+
+    <form [formGroup]="paymentForm" class="space-y-3">
+      <div class="flex flex-col gap-1">
+        <label class="text-xs font-medium text-gray-600">Método de pago</label>
+        <select formControlName="method" class="w-full h-[38px] px-3 rounded-lg border border-gray-200 text-sm bg-white">
+          <option value="transferencia_bancaria">Transferencia Bancaria</option>
+          <option value="efectivo">Efectivo</option>
+          <option value="cheque">Cheque</option>
+        </select>
+      </div>
+      @if(paymentForm.get('method')?.value === 'transferencia_bancaria') {
+      <div class="grid grid-cols-2 gap-3">
+        <div class="flex flex-col gap-1">
+          <label class="text-xs font-medium text-gray-600">Banco</label>
+          <input type="text" formControlName="bankName" placeholder="BCP, Interbank..."
+            class="w-full h-[38px] px-3 rounded-lg border border-gray-200 text-sm" />
+        </div>
+        <div class="flex flex-col gap-1">
+          <label class="text-xs font-medium text-gray-600">N° Cuenta</label>
+          <input type="text" formControlName="accountNumber"
+            class="w-full h-[38px] px-3 rounded-lg border border-gray-200 text-sm" />
+        </div>
+        <div class="flex flex-col gap-1 col-span-2">
+          <label class="text-xs font-medium text-gray-600">CCI (Código de Cuenta Interbancario)</label>
+          <input type="text" formControlName="cci" placeholder="00320000000000000000"
+            class="w-full h-[38px] px-3 rounded-lg border border-gray-200 text-sm font-mono" />
+        </div>
+      </div>
+      }
+      <div class="grid grid-cols-2 gap-3">
+        <div class="flex flex-col gap-1">
+          <label class="text-xs font-medium text-gray-600">Fecha de transferencia <span class="text-red-500">*</span></label>
+          <input type="date" formControlName="transferDate"
+            class="w-full h-[38px] px-3 rounded-lg border border-gray-200 text-sm" />
+        </div>
+        <div class="flex flex-col gap-1">
+          <label class="text-xs font-medium text-gray-600">N° de Operación / Referencia</label>
+          <input type="text" formControlName="reference"
+            class="w-full h-[38px] px-3 rounded-lg border border-gray-200 text-sm" />
+        </div>
+      </div>
+    </form>
+
+    <div class="flex gap-3 mt-5">
+      <button type="button" (click)="showPaymentModal=false"
+        class="flex-1 py-2 border border-gray-200 rounded-xl text-sm text-gray-600 hover:bg-gray-50 transition-colors">
+        Cancelar
+      </button>
+      <button type="button" (click)="confirmPayment()" [disabled]="paymentForm.invalid || isActing()"
+        class="flex-1 py-2 bg-blue-600 text-white rounded-xl text-sm font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors">
+        {{ isActing() ? 'Registrando...' : 'Confirmar Pago' }}
+      </button>
+    </div>
+  </div>
+</div>
+}
+
+<!-- Modal: Rechazar -->
+@if(showRejectModal && selectedAdvance) {
+<div class="fixed inset-0 z-50 flex items-center justify-center p-4" (click)="showRejectModal=false">
+  <div class="absolute inset-0 bg-black/40 backdrop-blur-sm"></div>
+  <div class="relative bg-white rounded-2xl shadow-xl p-6 w-full max-w-sm" (click)="$event.stopPropagation()">
+    <h3 class="text-lg font-bold text-gray-900 mb-4">Rechazar anticipo</h3>
+    <form [formGroup]="rejectForm" class="space-y-3">
+      <div class="flex flex-col gap-1">
+        <label class="text-xs font-medium text-gray-600">Motivo de rechazo <span class="text-red-500">*</span></label>
+        <textarea formControlName="rejectionReason" rows="3" placeholder="Explica el motivo..."
+          class="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm resize-none"></textarea>
+      </div>
+    </form>
+    <div class="flex gap-3 mt-4">
+      <button type="button" (click)="showRejectModal=false"
+        class="flex-1 py-2 border border-gray-200 rounded-xl text-sm text-gray-600 hover:bg-gray-50">Cancelar</button>
+      <button type="button" (click)="confirmReject()" [disabled]="rejectForm.invalid || isActing()"
+        class="flex-1 py-2 bg-red-600 text-white rounded-xl text-sm font-medium hover:bg-red-700 disabled:opacity-50">
+        {{ isActing() ? 'Rechazando...' : 'Rechazar' }}
+      </button>
+    </div>
+  </div>
+</div>
+}
+
+<!-- Modal: Registrar Devolución -->
+@if(showReturnModal && selectedAdvance) {
+<div class="fixed inset-0 z-50 flex items-center justify-center p-4" (click)="showReturnModal=false">
+  <div class="absolute inset-0 bg-black/40 backdrop-blur-sm"></div>
+  <div class="relative bg-white rounded-2xl shadow-xl p-6 w-full max-w-sm" (click)="$event.stopPropagation()">
+    <h3 class="text-lg font-bold text-gray-900 mb-1">Registrar Devolución</h3>
+    <p class="text-sm text-gray-500 mb-4">El colaborador devuelve el excedente del anticipo.</p>
+    <form [formGroup]="returnForm" class="space-y-3">
+      <div class="flex flex-col gap-1">
+        <label class="text-xs font-medium text-gray-600">Monto devuelto S/. <span class="text-red-500">*</span></label>
+        <input type="number" formControlName="returnedAmount" min="0" step="0.01"
+          class="w-full h-[38px] px-3 rounded-lg border border-gray-200 text-sm" />
+      </div>
+    </form>
+    <div class="flex gap-3 mt-4">
+      <button type="button" (click)="showReturnModal=false"
+        class="flex-1 py-2 border border-gray-200 rounded-xl text-sm text-gray-600 hover:bg-gray-50">Cancelar</button>
+      <button type="button" (click)="confirmReturn()" [disabled]="returnForm.invalid || isActing()"
+        class="flex-1 py-2 bg-purple-600 text-white rounded-xl text-sm font-medium hover:bg-purple-700 disabled:opacity-50">
+        {{ isActing() ? 'Guardando...' : 'Confirmar Devolución' }}
+      </button>
+    </div>
+  </div>
+</div>
+}

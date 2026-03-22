@@ -1,0 +1,252 @@
+<div class="max-w-4xl mx-auto p-5">
+
+  <!-- Header -->
+  <div class="flex items-center justify-between gap-4 mb-6">
+    <div class="flex items-center gap-3">
+      <button
+        (click)="goBack()"
+        class="p-2 text-tertiary rounded-xl hover:bg-background hover:text-secondary transition-colors"
+        title="Volver"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5 3 12m0 0 7.5-7.5M3 12h18" />
+        </svg>
+      </button>
+      <h1 class="text-2xl font-bold text-secondary">Detalles del Colaborador</h1>
+    </div>
+    <div class="flex gap-2">
+      <button
+        (click)="goToEdit()"
+        class="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-tertiary border border-tertiary/30 rounded-xl hover:bg-background hover:text-secondary transition-colors"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
+          <path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125" />
+        </svg>
+        Editar
+      </button>
+      <button
+        (click)="goToPermisos()"
+        class="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-primary border border-primary/40 rounded-xl hover:bg-primary/5 transition-colors"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75m-3-7.036A11.959 11.959 0 0 1 3.598 6 11.99 11.99 0 0 0 3 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285Z" />
+        </svg>
+        Permisos
+      </button>
+    </div>
+  </div>
+
+  @if (!user) {
+  <div class="flex justify-center py-16">
+    <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+  </div>
+  } @else {
+
+  <!-- User Card -->
+  <div class="bg-quaternary rounded-2xl border border-tertiary/20 shadow-soft p-6 mb-6">
+    <div class="flex flex-col sm:flex-row gap-6">
+      <!-- Avatar -->
+      <div class="flex-shrink-0 flex items-start">
+        <div class="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center text-primary font-bold text-2xl">
+          {{ user.name.charAt(0).toUpperCase() }}
+        </div>
+      </div>
+      <!-- Info -->
+      <div class="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div>
+          <p class="text-xs text-tertiary mb-0.5">Nombre</p>
+          <p class="font-semibold text-secondary">{{ user.name }}</p>
+        </div>
+        <div>
+          <p class="text-xs text-tertiary mb-0.5">Email</p>
+          <p class="font-medium text-secondary">{{ user.email }}</p>
+        </div>
+        <div>
+          <p class="text-xs text-tertiary mb-0.5">Rol</p>
+          <span class="inline-flex px-2.5 py-1 rounded-full bg-primary/10 text-primary text-xs font-semibold">
+            {{ roleName }}
+          </span>
+        </div>
+        <div>
+          <p class="text-xs text-tertiary mb-0.5">Estado</p>
+          @if (user.isActive) {
+          <span class="inline-flex px-2.5 py-1 rounded-full bg-green-100 text-green-800 text-xs font-semibold">Activo</span>
+          } @else {
+          <span class="inline-flex px-2.5 py-1 rounded-full bg-red-100 text-red-800 text-xs font-semibold">Inactivo</span>
+          }
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Rendiciones Section -->
+  <div class="bg-quaternary rounded-2xl border border-tertiary/20 shadow-soft">
+    <!-- Section header -->
+    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 px-6 py-4 border-b border-tertiary/20">
+      <div>
+        <h2 class="text-lg font-bold text-secondary">Rendiciones</h2>
+        <p class="text-xs text-tertiary mt-0.5">
+          {{ expenseReports.length }} rendición{{ expenseReports.length !== 1 ? 'es' : '' }} asignada{{ expenseReports.length !== 1 ? 's' : '' }}
+        </p>
+      </div>
+      <button
+        (click)="createRendicion()"
+        class="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium bg-primary text-white rounded-xl hover:bg-primary/90 transition-colors"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+        </svg>
+        Nueva Rendición
+      </button>
+    </div>
+
+    <!-- Loading -->
+    @if (isLoadingReports()) {
+    <div class="flex justify-center py-12">
+      <div class="animate-spin rounded-full h-7 w-7 border-b-2 border-primary"></div>
+    </div>
+    }
+
+    <!-- Empty state -->
+    @else if (expenseReports.length === 0) {
+    <div class="flex flex-col items-center py-14 px-6 text-center">
+      <div class="w-14 h-14 rounded-2xl bg-background flex items-center justify-center mb-4">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-7 h-7 text-tertiary">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
+        </svg>
+      </div>
+      <p class="font-semibold text-secondary">Sin rendiciones asignadas</p>
+      <p class="text-sm text-tertiary mt-1">Crea una rendición para asignarle un presupuesto a este colaborador.</p>
+    </div>
+    }
+
+    <!-- Table -->
+    @else {
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead class="bg-background text-tertiary">
+          <tr>
+            <th class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider">Título</th>
+            <th class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider">Proyecto</th>
+            <th class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider">Presupuesto</th>
+            <th class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider">Fecha</th>
+            <th class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider">Estado</th>
+            <th class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider">Acciones</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-tertiary/10">
+          @for (report of expenseReports; track report._id) {
+          <tr class="hover:bg-background/60 transition-colors">
+            <!-- Título + descripción -->
+            <td class="px-6 py-4">
+              <p class="font-medium text-secondary">{{ report.title }}</p>
+              @if (report.description) {
+              <p class="text-xs text-tertiary mt-0.5 truncate max-w-[180px]">{{ report.description }}</p>
+              }
+            </td>
+            <!-- Proyecto -->
+            <td class="px-6 py-4 text-tertiary">
+              {{ report.projectId?.name || '—' }}
+            </td>
+            <!-- Presupuesto -->
+            <td class="px-6 py-4 font-medium text-secondary whitespace-nowrap">
+              S/. {{ report.budget | number:'1.2-2' }}
+            </td>
+            <!-- Fecha -->
+            <td class="px-6 py-4 text-tertiary whitespace-nowrap">
+              {{ report.createdAt | date:'dd/MM/yyyy' }}
+            </td>
+            <!-- Estado -->
+            <td class="px-6 py-4">
+              <span class="px-2.5 py-1 rounded-full text-xs font-semibold" [ngClass]="getStatusColor(report.status)">
+                {{ getStatusLabel(report.status) }}
+              </span>
+            </td>
+            <!-- Acciones -->
+            <td class="px-6 py-4">
+              <div class="flex items-center gap-1">
+                <button
+                  (click)="goToRendicionDetail(report._id)"
+                  class="p-1.5 rounded-lg text-tertiary hover:bg-primary/10 hover:text-primary transition-colors"
+                  title="Ver detalle"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z" />
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+                  </svg>
+                </button>
+                <button
+                  (click)="openStatusModal(report)"
+                  class="p-1.5 rounded-lg text-tertiary hover:bg-primary/10 hover:text-primary transition-colors"
+                  title="Cambiar estado"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" />
+                  </svg>
+                </button>
+                <button
+                  (click)="deleteReport(report)"
+                  class="p-1.5 rounded-lg text-tertiary hover:bg-error/10 hover:text-error transition-colors"
+                  title="Eliminar rendición"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
+                  </svg>
+                </button>
+              </div>
+            </td>
+          </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+    }
+  </div>
+
+  } <!-- end @if user -->
+</div>
+
+<!-- Create Rendicion Modal -->
+<app-create-rendicion-modal
+  [isOpen]="isCreateModalOpen"
+  [collaboratorId]="id"
+  (close)="onModalClose($event)"
+></app-create-rendicion-modal>
+
+<!-- Change Status Modal -->
+@if (showStatusModal()) {
+<div class="fixed inset-0 z-50 flex items-center justify-center bg-secondary/50 backdrop-blur-sm">
+  <div class="bg-quaternary rounded-2xl shadow-2xl w-full max-w-sm mx-4 p-6">
+    <h2 class="text-lg font-bold text-secondary mb-1">Cambiar Estado</h2>
+    <p class="text-sm text-tertiary mb-5">
+      Rendición: <span class="font-medium text-secondary">{{ selectedReport()?.title }}</span>
+    </p>
+    <div class="flex flex-col gap-2 mb-6">
+      <label class="text-sm font-medium text-secondary">Nuevo estado</label>
+      <select
+        [ngModel]="newStatus()"
+        (ngModelChange)="newStatus.set($any($event))"
+        class="border border-tertiary/30 rounded-xl px-3 py-2.5 text-sm bg-background focus:outline-none focus:ring-2 focus:ring-primary/30 text-secondary"
+      >
+        @for (s of statuses; track s) {
+        <option [value]="s">{{ STATUS_LABELS[s] }}</option>
+        }
+      </select>
+    </div>
+    <div class="flex gap-3 justify-end">
+      <button
+        (click)="showStatusModal.set(false)"
+        class="px-4 py-2 text-sm font-medium text-tertiary rounded-xl hover:bg-background transition-colors"
+      >
+        Cancelar
+      </button>
+      <button
+        (click)="confirmStatusChange()"
+        class="px-4 py-2 text-sm font-medium bg-primary text-white rounded-xl hover:bg-primary/90 transition-colors"
+      >
+        Guardar
+      </button>
+    </div>
+  </div>
+</div>
+}

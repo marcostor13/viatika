@@ -15,11 +15,13 @@ import { DataComponent } from '../../components/data/data.component';
 import { UserStateService } from '../../services/user-state.service';
 import { ButtonComponent } from '../../design-system/button/button.component';
 import { ExportButtonComponent } from '../../design-system/export-button/export-button.component';
+import { ExpenseReportsService } from '../../services/expense-reports.service';
+import { CommonModule } from '@angular/common';
 
 @Component({
   selector: 'app-invoices',
   standalone: true,
-  imports: [DataComponent, FileDownloadComponent, ButtonComponent, ExportButtonComponent],
+  imports: [DataComponent, FileDownloadComponent, ButtonComponent, ExportButtonComponent, CommonModule],
   templateUrl: './invoices.component.html',
   styleUrl: './invoices.component.scss',
 })
@@ -29,6 +31,9 @@ export default class InvoicesComponent implements OnInit {
   private notificationService = inject(NotificationService);
   private confirmationService = inject(ConfirmationService);
   private userStateService = inject(UserStateService);
+  private expenseReportsService = inject(ExpenseReportsService);
+
+  hasRendiciones = true;
 
   invoices: IInvoiceResponse[] = [];
   projects: IProject[] = [];
@@ -39,32 +44,8 @@ export default class InvoicesComponent implements OnInit {
       value: 'proyect',
     },
     {
-      header: 'Categoría',
-      value: 'category',
-    },
-    {
-      header: 'Razón Social',
+      header: 'Proveedor',
       value: 'provider',
-    },
-    {
-      header: 'RUC',
-      value: 'ruc',
-    },
-    {
-      header: 'Dirección',
-      value: 'address',
-    },
-    {
-      header: 'Tipo',
-      value: 'tipo',
-    },
-    {
-      header: 'Serie',
-      value: 'serie',
-    },
-    {
-      header: 'Correlativo',
-      value: 'correlativo',
     },
     {
       header: 'Total',
@@ -75,17 +56,13 @@ export default class InvoicesComponent implements OnInit {
       value: 'date',
     },
     {
-      header: 'Estado Sunat',
+      header: 'Estado',
       value: 'status',
-    },
-    {
-      header: 'SUNAT',
-      value: 'sunatStatus',
     },
     {
       header: 'Acciones',
       value: 'actions',
-      options: ['download', 'edit', 'delete', 'sunat-info'],
+      options: ['view', 'download', 'edit', 'delete'],
     },
   ];
 
@@ -100,11 +77,25 @@ export default class InvoicesComponent implements OnInit {
     { header: 'Total', field: 'total' },
     { header: 'Fecha', field: 'date' },
     { header: 'Estado', field: 'status' },
-    { header: 'SUNAT', field: 'sunatStatus' },
   ];
 
   ngOnInit() {
+    this.checkRendiciones();
     this.loadProjects();
+  }
+
+  checkRendiciones() {
+    if (!this.userStateService.isColaborador()) return;
+    const user = this.userStateService.getUser();
+    const userId = user?._id;
+    const clientId = user?.companyId;
+    if (!userId || !clientId) return;
+
+    this.expenseReportsService.findAllByUser(userId, clientId).subscribe({
+      next: (reports) => {
+        this.hasRendiciones = reports.length > 0;
+      },
+    });
   }
 
   loadProjects() {
@@ -119,8 +110,13 @@ export default class InvoicesComponent implements OnInit {
   }
 
   getInvoices() {
+    const user = this.userStateService.getUser();
+    const filters = this.userStateService.isColaborador() && user?._id
+      ? { createdBy: user._id }
+      : undefined;
+
     this.agentService
-      .getInvoices(undefined, 'createdAt', 'desc')
+      .getInvoices(filters, 'createdAt', 'desc')
       .subscribe((res) => {
         this.invoices = this.formatResponse(res || []);
       });
@@ -226,12 +222,22 @@ export default class InvoicesComponent implements OnInit {
   }
 
   gotToAddInvoice() {
+    if (!this.hasRendiciones) {
+      this.notificationService.show(
+        'Necesitas tener una rendición asignada para subir facturas.',
+        'error'
+      );
+      return;
+    }
     this.router.navigate(['/invoices/add']);
   }
 
   clickOptions(event: { option: string; _id: string }) {
     const { option, _id } = event;
     switch (option) {
+      case 'view':
+        this.router.navigate(['/invoices', _id, 'details']);
+        break;
       case 'edit':
         this.router.navigate(['/invoices/edit', _id]);
         break;
