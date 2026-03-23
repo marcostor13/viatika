@@ -602,7 +602,7 @@
                 <tr class="hover:bg-gray-50/80">
                   <td class="px-3 py-2 whitespace-nowrap">{{ row['fecha'] || '—' }}</td>
                   <td class="px-3 py-2 max-w-[200px] break-words">{{ row['concepto'] || '—' }}</td>
-                  <td class="px-3 py-2 text-right tabular-nums font-medium">{{ row['total'] | number:'1.2-2' }}</td>
+                  <td class="px-3 py-2 text-right tabular-nums font-medium">{{ mobilityRowTotal(row) | number:'1.2-2' }}</td>
                   <td class="px-3 py-2 hidden lg:table-cell break-words">{{ row['clienteProveedor'] || '—' }}</td>
                   <td class="px-3 py-2 hidden xl:table-cell text-gray-600">
                     {{ row['origen'] || '—' }} → {{ row['destino'] || '—' }}

@@ -433,6 +433,13 @@ export class RendicionDetailComponent implements OnInit {
     return Number.isNaN(n) ? 0 : n;
   }
 
+  mobilityRowTotal(row: Record<string, unknown>): number {
+    const t = row['total'];
+    if (typeof t === 'number' && !Number.isNaN(t)) return t;
+    const n = Number(t);
+    return Number.isNaN(n) ? 0 : n;
+  }
+
   trackByExpenseId(_index: number, expense: { _id?: string }): string {
     return expense._id ?? `idx-${_index}`;
   }
