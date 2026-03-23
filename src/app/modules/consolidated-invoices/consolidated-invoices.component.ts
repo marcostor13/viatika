@@ -1,7 +1,7 @@
 import { Component, inject, signal, OnInit, computed } from '@angular/core';
 import { FileDownloadComponent } from '../../components/file-download/file-download.component';
 import { ChartsComponent } from './charts/charts.component';
-import { Router } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { NotificationService } from '../../services/notification.service';
 import { ConfirmationService } from '../../services/confirmation.service';
 import { IHeaderList } from '../../interfaces/header-list.interface';
@@ -19,7 +19,6 @@ import { tap } from 'rxjs/operators';
 import { DataComponent } from '../../components/data/data.component';
 import { AdminUsersService } from '../admin-users/services/admin-users.service';
 import { IUserResponse } from '../../interfaces/user.interface';
-import { UserStateService } from '../../services/user-state.service';
 import { ButtonComponent } from '../../design-system/button/button.component';
 import { ExportButtonComponent } from '../../design-system/export-button/export-button.component';
 
@@ -66,6 +65,7 @@ interface IInvoice {
   imports: [
     CommonModule,
     FormsModule,
+    RouterLink,
     DataComponent,
     FileDownloadComponent,
     ChartsComponent,
@@ -81,13 +81,10 @@ export class ConsolidatedInvoicesComponent implements OnInit {
   private notificationService = inject(NotificationService);
   private confirmationService = inject(ConfirmationService);
   private adminUsersService = inject(AdminUsersService);
-  private userStateService = inject(UserStateService);
 
   rejectionReason = signal('');
   selectedInvoiceId = signal('');
   showRejectionModal = signal(false);
-  showCategories = signal(true);
-  showProjects = signal(true);
   categories: ICategory[] = [];
   projects: IProject[] = [];
   invoices: IInvoice[] = [];
@@ -224,98 +221,6 @@ export class ConsolidatedInvoicesComponent implements OnInit {
 
     const user = this.users.find((u) => u._id === userId);
     return user ? user.name : 'Usuario no encontrado';
-  }
-
-  toggleCategoriesSection() {
-    this.showCategories.update((value) => !value);
-  }
-
-  toggleProjectsSection() {
-    this.showProjects.update((value) => !value);
-  }
-
-  goToAddCategory(event: Event) {
-    event.stopPropagation();
-    this.router.navigate(['/consolidated-invoices/add-category']);
-  }
-
-  goToAddProject(event: Event) {
-    event.stopPropagation();
-    this.router.navigate(['/consolidated-invoices/add-project']);
-  }
-
-  editCategory(id: string, event: Event) {
-    event.stopPropagation();
-    this.router.navigate(['/consolidated-invoices/edit-category', id]);
-  }
-
-  deleteCategory(id: string, event: Event) {
-    event.stopPropagation();
-    this.confirmationService.confirm({
-      title: 'Confirmar eliminación',
-      message: '¿Está seguro que desea eliminar esta categoría?',
-      accept: () => {
-        this.agentService.deleteCategory(id).subscribe({
-          next: () => {
-            this.categories = this.categories?.filter(
-              (category) => category._id !== id
-            );
-            const categories$ = this.getCategories();
-            if (categories$) {
-              categories$.subscribe();
-            }
-            this.notificationService.show(
-              'Categoría eliminada correctamente',
-              'success'
-            );
-          },
-          error: (error) => {
-            this.notificationService.show(
-              'Error al eliminar la categoría: ' + error.message,
-              'error'
-            );
-          },
-        });
-      },
-    });
-  }
-
-  editProject(id: string, event: Event) {
-    event.stopPropagation();
-    this.router.navigate(['/consolidated-invoices/edit-project', id]);
-  }
-
-  deleteProject(id: string, event: Event) {
-    event.stopPropagation();
-    const companyId = this.userStateService.getUser()?.companyId;
-    if (!companyId) {
-      this.notificationService.show(
-        'No se encontró companyId en el usuario',
-        'error'
-      );
-      return;
-    }
-    this.confirmationService.confirm({
-      title: 'Confirmar eliminación',
-      message: '¿Está seguro que desea eliminar este proyecto?',
-      accept: () => {
-        this.agentService.deleteProject(id, companyId).subscribe({
-          next: () => {
-            this.notificationService.show(
-              'Proyecto eliminado correctamente',
-              'success'
-            );
-            this.getProjects();
-          },
-          error: (error) => {
-            this.notificationService.show(
-              'Error al eliminar el proyecto: ' + error.message,
-              'error'
-            );
-          },
-        });
-      },
-    });
   }
 
   getInvoices() {

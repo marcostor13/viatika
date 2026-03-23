@@ -6,6 +6,8 @@ export interface IExpenseReport {
   userId: any; // Ideally IUserResponse or string ID
   clientId: string;
   status: 'open' | 'submitted' | 'approved' | 'rejected' | 'closed';
+  /** Motivo indicado por el administrador al rechazar */
+  rejectionReason?: string;
   expenseIds: any[];
   createdBy: any; // User who created it
   projectId?: any;
@@ -27,5 +29,6 @@ export interface IUpdateExpenseReport {
   description?: string;
   budget?: number;
   status?: 'open' | 'submitted' | 'approved' | 'rejected' | 'closed';
+  rejectionReason?: string;
   expenseIds?: string[];
 }

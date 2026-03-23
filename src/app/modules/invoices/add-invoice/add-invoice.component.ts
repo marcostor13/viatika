@@ -61,9 +61,20 @@ export default class AddInvoiceComponent implements OnInit {
   percentage = signal(0);
   isLoading = signal(false);
 
+  /** Tras crear/actualizar gasto: vuelve al detalle de rendición o al listado de facturas. */
+  private navigateAfterExpenseSave(): void {
+    if (this.rendicionId) {
+      this.router.navigate(['/mis-rendiciones', this.rendicionId, 'detalle']);
+    } else {
+      this.router.navigate(['/invoices']);
+    }
+  }
+
   private guardRendiciones() {
     if (this.id) return; // edición: siempre permitida
     if (!this.userStateService.isColaborador()) return;
+    // Desde detalle de rendición siempre hay contexto; no redirigir a /invoices
+    if (this.rendicionId) return;
 
     const user = this.userStateService.getUser();
     const userId = user?._id;
@@ -158,6 +169,7 @@ export default class AddInvoiceComponent implements OnInit {
   }
 
   ngOnInit() {
+    this.rendicionId = this.route.snapshot.queryParamMap.get('rendicionId');
     this.guardRendiciones();
     this.loadCategories();
     this.loadProjects();
@@ -411,11 +423,7 @@ export default class AddInvoiceComponent implements OnInit {
         next: () => {
           this.isLoading.set(false);
           this.notificationService.show('Planilla guardada correctamente', 'success');
-          if (this.rendicionId) {
-            this.router.navigate(['/mis-rendiciones', this.rendicionId, 'detalle']);
-          } else {
-            this.router.navigate(['/invoices']);
-          }
+          this.navigateAfterExpenseSave();
         },
         error: (error) => {
           this.isLoading.set(false);
@@ -481,11 +489,7 @@ export default class AddInvoiceComponent implements OnInit {
         next: () => {
           this.isLoading.set(false);
           this.notificationService.show('Gasto guardado correctamente', 'success');
-          if (this.rendicionId) {
-            this.router.navigate(['/mis-rendiciones', this.rendicionId, 'detalle']);
-          } else {
-            this.router.navigate(['/invoices']);
-          }
+          this.navigateAfterExpenseSave();
         },
         error: (error) => {
           this.isLoading.set(false);
@@ -579,11 +583,7 @@ export default class AddInvoiceComponent implements OnInit {
               'Factura actualizada correctamente',
               'success'
             );
-            if (this.rendicionId) {
-              this.router.navigate(['/mis-rendiciones', this.rendicionId, 'detalle']);
-            } else {
-              this.router.navigate(['/invoices']);
-            }
+            this.navigateAfterExpenseSave();
           }
         },
         error: (error: any) => {
@@ -664,11 +664,7 @@ export default class AddInvoiceComponent implements OnInit {
           'Factura PDF analizada correctamente',
           'success'
         );
-        if (this.rendicionId) {
-          this.router.navigate(['/mis-rendiciones', this.rendicionId, 'detalle']);
-        } else {
-          this.router.navigate(['/invoices']);
-        }
+        this.navigateAfterExpenseSave();
       },
       error: (error) => {
         this.isLoading.set(false);
@@ -725,7 +721,7 @@ export default class AddInvoiceComponent implements OnInit {
                       'Factura subida correctamente',
                       'success'
                     );
-                    this.router.navigate(['/invoices']);
+                    this.navigateAfterExpenseSave();
                   },
                   error: (updateError) => {
                     console.warn(
@@ -737,7 +733,7 @@ export default class AddInvoiceComponent implements OnInit {
                       'Factura subida correctamente',
                       'success'
                     );
-                    this.router.navigate(['/invoices']);
+                    this.navigateAfterExpenseSave();
                   },
                 });
             } else {
@@ -746,11 +742,7 @@ export default class AddInvoiceComponent implements OnInit {
                 'Factura subida correctamente',
                 'success'
               );
-              if (this.rendicionId) {
-                this.router.navigate(['/mis-rendiciones', this.rendicionId, 'detalle']);
-              } else {
-                this.router.navigate(['/invoices']);
-              }
+              this.navigateAfterExpenseSave();
             }
           } else {
             this.isLoading.set(false);
@@ -758,11 +750,7 @@ export default class AddInvoiceComponent implements OnInit {
               'Factura subida correctamente',
               'success'
             );
-            if (this.rendicionId) {
-              this.router.navigate(['/mis-rendiciones', this.rendicionId, 'detalle']);
-            } else {
-              this.router.navigate(['/invoices']);
-            }
+            this.navigateAfterExpenseSave();
           }
         },
         error: (error) => {
@@ -796,7 +784,7 @@ export default class AddInvoiceComponent implements OnInit {
   }
 
   back() {
-    this.router.navigate(['/invoices']);
+    this.navigateAfterExpenseSave();
   }
 
   get categoryId() {
@@ -855,7 +843,7 @@ export default class AddInvoiceComponent implements OnInit {
         'No se pudo obtener el ID de la empresa para validar con SUNAT',
         'error'
       );
-      this.router.navigate(['/invoices']);
+      this.navigateAfterExpenseSave();
       return;
     }
 
@@ -867,7 +855,7 @@ export default class AddInvoiceComponent implements OnInit {
 
         this.showSunatValidationResult(validationResult);
 
-        this.router.navigate(['/invoices']);
+        this.navigateAfterExpenseSave();
       },
       error: (error) => {
         this.isSunatValidating.set(false);
@@ -878,7 +866,7 @@ export default class AddInvoiceComponent implements OnInit {
           'Factura actualizada correctamente, pero hubo un error al validar con SUNAT',
           'error'
         );
-        this.router.navigate(['/invoices']);
+        this.navigateAfterExpenseSave();
       },
     });
   }
@@ -988,7 +976,7 @@ export default class AddInvoiceComponent implements OnInit {
           }
 
           this.notificationService.show(message, type);
-          this.router.navigate(['/invoices']);
+          this.navigateAfterExpenseSave();
         },
         error: (error) => {
           this.isSunatValidating.set(false);
@@ -998,7 +986,7 @@ export default class AddInvoiceComponent implements OnInit {
             'Factura actualizada correctamente, pero hubo un error al validar con SUNAT',
             'error'
           );
-          this.router.navigate(['/invoices']);
+          this.navigateAfterExpenseSave();
         },
       });
   }

@@ -249,13 +249,25 @@ export class InvoiceApprovalComponent implements OnInit {
       this.notificationService.show('Debe ingresar un motivo de rechazo', 'error');
       return;
     }
-    this.expenseReportsService.update(this.selectedReportId(), { status: 'rejected' }).subscribe({
+    this.expenseReportsService
+      .update(this.selectedReportId(), {
+        status: 'rejected',
+        rejectionReason: this.reportRejectionReason().trim(),
+      })
+      .subscribe({
       next: () => {
         this.notificationService.show('Rendición rechazada', 'success');
         this.closeRejectReportModal();
         this.loadSubmittedReports();
       },
-      error: () => this.notificationService.show('Error al rechazar la rendición', 'error'),
+      error: (err) => {
+        const raw = err?.error?.message;
+        const msg = Array.isArray(raw) ? raw.join(', ') : raw;
+        this.notificationService.show(
+          msg || 'Error al rechazar la rendición',
+          'error'
+        );
+      },
     });
   }
 

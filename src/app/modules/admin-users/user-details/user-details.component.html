@@ -131,6 +131,7 @@
             <th class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider">Presupuesto</th>
             <th class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider">Fecha</th>
             <th class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider">Estado</th>
+            <th class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider max-w-[220px]">Motivo rechazo</th>
             <th class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider">Acciones</th>
           </tr>
         </thead>
@@ -161,6 +162,13 @@
               <span class="px-2.5 py-1 rounded-full text-xs font-semibold" [ngClass]="getStatusColor(report.status)">
                 {{ getStatusLabel(report.status) }}
               </span>
+            </td>
+            <td class="px-6 py-4 text-tertiary text-xs max-w-[220px]">
+              @if (report.status === 'rejected' && report.rejectionReason) {
+                <span class="line-clamp-3 whitespace-pre-wrap break-words text-red-800" [title]="report.rejectionReason">{{ report.rejectionReason }}</span>
+              } @else {
+                <span>—</span>
+              }
             </td>
             <!-- Acciones -->
             <td class="px-6 py-4">
@@ -233,6 +241,20 @@
         }
       </select>
     </div>
+    @if (newStatus() === 'rejected') {
+    <div class="flex flex-col gap-2 mb-6">
+      <label class="text-sm font-medium text-secondary"
+        >Motivo de rechazo <span class="text-red-500">*</span></label
+      >
+      <textarea
+        rows="4"
+        placeholder="El colaborador verá este mensaje en su rendición."
+        [ngModel]="statusChangeRejectionReason()"
+        (ngModelChange)="statusChangeRejectionReason.set($event)"
+        class="border border-tertiary/30 rounded-xl px-3 py-2.5 text-sm bg-background focus:outline-none focus:ring-2 focus:ring-primary/30 text-secondary resize-none"
+      ></textarea>
+    </div>
+    }
     <div class="flex gap-3 justify-end">
       <button
         (click)="showStatusModal.set(false)"

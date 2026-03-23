@@ -57,6 +57,8 @@ export class UserDetailsComponent implements OnInit {
   showStatusModal = signal(false);
   selectedReport = signal<IExpenseReport | null>(null);
   newStatus = signal<RendicionStatus>('open');
+  /** Obligatorio si el nuevo estado es rechazada */
+  statusChangeRejectionReason = signal('');
 
   readonly STATUS_LABELS = STATUS_LABELS;
   readonly STATUS_COLORS = STATUS_COLORS;
@@ -123,13 +125,46 @@ export class UserDetailsComponent implements OnInit {
   openStatusModal(report: IExpenseReport) {
     this.selectedReport.set(report);
     this.newStatus.set(report.status);
+    this.statusChangeRejectionReason.set('');
     this.showStatusModal.set(true);
   }
 
   confirmStatusChange() {
     const report = this.selectedReport();
     if (!report) return;
-    this.expenseReportsService.update(report._id, { status: this.newStatus() }).subscribe({
+
+    const next = this.newStatus();
+    if (next === 'rejected') {
+      const reason = this.statusChangeRejectionReason().trim();
+      if (!reason) {
+        this.notificationService.show(
+          'Debes indicar el motivo de rechazo',
+          'error'
+        );
+        return;
+      }
+      this.expenseReportsService
+        .update(report._id, { status: 'rejected', rejectionReason: reason })
+        .subscribe({
+          next: () => {
+            this.notificationService.show(
+              'Estado actualizado correctamente',
+              'success'
+            );
+            this.showStatusModal.set(false);
+            this.loadExpenseReports();
+          },
+          error: (err) => {
+            const msg =
+              err?.error?.message ||
+              'Error al actualizar el estado (¿motivo de rechazo?)';
+            this.notificationService.show(msg, 'error');
+          },
+        });
+      return;
+    }
+
+    this.expenseReportsService.update(report._id, { status: next }).subscribe({
       next: () => {
         this.notificationService.show('Estado actualizado correctamente', 'success');
         this.showStatusModal.set(false);
