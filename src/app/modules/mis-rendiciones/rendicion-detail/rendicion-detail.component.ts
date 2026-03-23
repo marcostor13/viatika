@@ -426,8 +426,10 @@ export class RendicionDetailComponent implements OnInit {
     return `${index}-${String(row['fecha'] ?? '')}-${String(row['concepto'] ?? '').slice(0, 20)}`;
   }
 
-  getExpenseTotal(exp: Record<string, unknown>): number {
-    const t = exp['total'];
+  /** Acepta `unknown` para usar desde plantillas con `expense` de `@for` sin `unknown` en el pipe `number`. */
+  getExpenseTotal(exp: unknown): number {
+    if (exp == null || typeof exp !== 'object') return 0;
+    const t = (exp as Record<string, unknown>)['total'];
     if (typeof t === 'number' && !Number.isNaN(t)) return t;
     const n = Number(t);
     return Number.isNaN(n) ? 0 : n;
