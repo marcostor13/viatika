@@ -331,6 +331,108 @@ export class RendicionDetailComponent implements OnInit {
     }
   }
 
+  /** Modal ficha completa del comprobante (documento + datos). */
+  showExpenseDetailModal = signal(false);
+  selectedExpense = signal<Record<string, unknown> | null>(null);
+
+  openExpenseDetail(expense: Record<string, unknown>): void {
+    this.selectedExpense.set(expense);
+    this.showExpenseDetailModal.set(true);
+  }
+
+  closeExpenseDetail(): void {
+    this.showExpenseDetailModal.set(false);
+    this.selectedExpense.set(null);
+  }
+
+  getExpenseFileUrl(expense: Record<string, unknown> | null | undefined): string | null {
+    if (!expense) return null;
+    const f = expense['file'];
+    if (typeof f !== 'string' || !f.trim()) return null;
+    return f.trim();
+  }
+
+  hasExpenseFile(expense: Record<string, unknown> | null | undefined): boolean {
+    return this.getExpenseFileUrl(expense) !== null;
+  }
+
+  openExpenseFile(expense: Record<string, unknown>): void {
+    const url = this.getExpenseFileUrl(expense);
+    if (url) {
+      window.open(url, '_blank', 'noopener,noreferrer');
+    } else {
+      this.notificationService.show('No hay documento adjunto', 'warning');
+    }
+  }
+
+  isPreviewableImage(expense: Record<string, unknown>): boolean {
+    const u = this.getExpenseFileUrl(expense);
+    if (!u) return false;
+    return /\.(jpe?g|png|gif|webp)(\?|#|$)/i.test(u);
+  }
+
+  getExpenseDataObject(expense: Record<string, unknown>): Record<string, unknown> {
+    const raw = expense['data'];
+    try {
+      if (raw == null) return {};
+      if (typeof raw === 'string') return JSON.parse(raw) as Record<string, unknown>;
+      if (typeof raw === 'object') return { ...(raw as Record<string, unknown>) };
+    } catch {
+      return {};
+    }
+    return {};
+  }
+
+  /** Valor legible de un campo del JSON `data` de la factura/gasto. */
+  dataText(exp: Record<string, unknown>, key: string): string {
+    const d = this.getExpenseDataObject(exp);
+    const v = d[key];
+    if (v === null || v === undefined) return '—';
+    if (typeof v === 'object') return JSON.stringify(v);
+    return String(v);
+  }
+
+  getExpenseStatusForUi(status: unknown): string {
+    return this.mapExpenseStatusExport(typeof status === 'string' ? status : undefined);
+  }
+
+  getPopulatedName(field: unknown): string {
+    if (field && typeof field === 'object' && field !== null && 'name' in field) {
+      return String((field as { name: string }).name);
+    }
+    return '—';
+  }
+
+  getExpenseTypeKey(exp: Record<string, unknown>): 'factura' | 'planilla_movilidad' | 'otros_gastos' {
+    const t = exp['expenseType'];
+    if (t === 'planilla_movilidad') return 'planilla_movilidad';
+    if (t === 'otros_gastos') return 'otros_gastos';
+    return 'factura';
+  }
+
+  mobilityRows(exp: Record<string, unknown>): Record<string, unknown>[] {
+    const rows = exp['mobilityRows'];
+    return Array.isArray(rows) ? (rows as Record<string, unknown>[]) : [];
+  }
+
+  sunatBlock(exp: Record<string, unknown>): Record<string, unknown> | null {
+    const d = this.getExpenseDataObject(exp);
+    const s = d['sunatValidation'];
+    if (s && typeof s === 'object') return s as Record<string, unknown>;
+    return null;
+  }
+
+  trackMobilityRow(index: number, row: Record<string, unknown>): string {
+    return `${index}-${String(row['fecha'] ?? '')}-${String(row['concepto'] ?? '').slice(0, 20)}`;
+  }
+
+  getExpenseTotal(exp: Record<string, unknown>): number {
+    const t = exp['total'];
+    if (typeof t === 'number' && !Number.isNaN(t)) return t;
+    const n = Number(t);
+    return Number.isNaN(n) ? 0 : n;
+  }
+
   trackByExpenseId(_index: number, expense: { _id?: string }): string {
     return expense._id ?? `idx-${_index}`;
   }
