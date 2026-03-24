@@ -1,14 +1,15 @@
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, OnInit, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ExpenseReportsService } from '../../services/expense-reports.service';
 import { UserStateService } from '../../services/user-state.service';
 import { IExpenseReport } from '../../interfaces/expense-report.interface';
 import { RouterModule } from '@angular/router';
+import { CreateRendicionModalComponent } from '../admin-users/user-details/create-rendicion-modal/create-rendicion-modal.component';
 
 @Component({
   selector: 'app-mis-rendiciones',
   standalone: true,
-  imports: [CommonModule, RouterModule],
+  imports: [CommonModule, RouterModule, CreateRendicionModalComponent],
   templateUrl: './mis-rendiciones.component.html',
   styleUrls: ['./mis-rendiciones.component.scss']
 })
@@ -18,6 +19,16 @@ export class MisRendicionesComponent implements OnInit {
 
   expenseReports: IExpenseReport[] = [];
   isLoading = true;
+  showCreateModal = false;
+  showGuidelines = signal(false);
+
+  toggleGuidelines() {
+    this.showGuidelines.update(v => !v);
+  }
+
+  get currentUserId(): string {
+    return (this.userStateService.getUser() as any)?._id ?? '';
+  }
 
   ngOnInit(): void {
     this.loadMyReports();
@@ -26,10 +37,10 @@ export class MisRendicionesComponent implements OnInit {
   loadMyReports() {
     this.isLoading = true;
     const user = this.userStateService.getUser() as any;
-    
+
     if (user && user._id) {
       const clientId = user.companyId || (user.client?._id) || (user.clientId?._id) || user.clientId;
-      
+
       if (clientId) {
         this.expenseReportsService.findAllByUser(user._id, clientId).subscribe({
           next: (reports) => {
@@ -47,6 +58,17 @@ export class MisRendicionesComponent implements OnInit {
       }
     } else {
       this.isLoading = false;
+    }
+  }
+
+  openCreateModal() {
+    this.showCreateModal = true;
+  }
+
+  onModalClose(success: boolean) {
+    this.showCreateModal = false;
+    if (success) {
+      this.loadMyReports();
     }
   }
 }

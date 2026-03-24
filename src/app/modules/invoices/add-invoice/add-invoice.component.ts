@@ -668,12 +668,6 @@ export default class AddInvoiceComponent implements OnInit {
       },
       error: (error) => {
         this.isLoading.set(false);
-        const errorMessage =
-          error.error?.message || error.message || 'Intente nuevamente';
-        this.notificationService.show(
-          'Error al analizar PDF: ' + errorMessage,
-          'error'
-        );
       },
     });
   }
@@ -755,17 +749,6 @@ export default class AddInvoiceComponent implements OnInit {
         },
         error: (error) => {
           this.isLoading.set(false);
-          const errorMessage =
-            error.error?.message || error.message || 'Intente nuevamente';
-
-          if (error.status === 409) {
-            this.notificationService.show(errorMessage, 'error');
-          } else {
-            this.notificationService.show(
-              'Error al analizar la factura: ' + errorMessage,
-              'error'
-            );
-          }
         },
       });
     } else {

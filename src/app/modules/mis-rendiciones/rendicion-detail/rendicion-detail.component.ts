@@ -1,6 +1,6 @@
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnInit, inject, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { ReactiveFormsModule, FormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
+import { ReactiveFormsModule, FormsModule, FormBuilder, FormGroup, Validators, FormArray } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { ExpenseReportsService } from '../../../services/expense-reports.service';
 import { AdvanceService } from '../../../services/advance.service';
@@ -162,10 +162,36 @@ export class RendicionDetailComponent implements OnInit {
     return this.userStateService.isAdmin() || this.userStateService.isSuperAdmin();
   }
 
-  /** Colaborador puede agregar gastos y enviar (abierta o rechazada para corrección). */
-  get collaboratorCanEdit(): boolean {
+  /** La rendición está en fase de solicitud inicial (creada por colaborador, aún no aprobada). */
+  get isSolicitudPhase(): boolean {
+    if (!this.report) return false;
+    if (this.report.status === 'solicited') return true;
+    // Rechazada en fase de solicitud: no tiene gastos aún
+    if (this.report.status === 'rejected' && (this.report.expenseIds?.length ?? 0) === 0) return true;
+    return false;
+  }
+
+  /** Colaborador puede agregar gastos (rendición ya aprobada/abierta). */
+  get canAddExpenses(): boolean {
     if (!this.report || this.isAdminView) return false;
-    return this.report.status === 'open' || this.report.status === 'rejected';
+    return this.report.status === 'open';
+  }
+
+  /** Colaborador puede re-enviar la solicitud inicial (fue rechazada antes de agregar gastos). */
+  get canResendSolicitud(): boolean {
+    if (!this.report || this.isAdminView) return false;
+    return this.report.status === 'rejected' && (this.report.expenseIds?.length ?? 0) === 0;
+  }
+
+  /** Colaborador puede re-enviar la rendición completa (rechazada después de agregar gastos). */
+  get canResubmitReport(): boolean {
+    if (!this.report || this.isAdminView) return false;
+    return this.report.status === 'rejected' && (this.report.expenseIds?.length ?? 0) > 0;
+  }
+
+  /** Colaborador puede agregar gastos y enviar (abierta o rechazada en fase de gastos). */
+  get collaboratorCanEdit(): boolean {
+    return this.canAddExpenses || this.canResubmitReport;
   }
 
   openAdminApproveModal(): void {
@@ -178,18 +204,85 @@ export class RendicionDetailComponent implements OnInit {
   }
 
   confirmApproveReport(): void {
+    const isSolicitud = this.report?.status === 'solicited';
+    const newStatus = isSolicitud ? 'open' : 'approved';
     this.isApprovingReport.set(true);
-    this.expenseReportsService.update(this.id, { status: 'approved' }).subscribe({
+    this.expenseReportsService.update(this.id, { status: newStatus }).subscribe({
       next: (res) => {
         this.report = res;
         this.calculateTotals();
         this.showAdminApproveModal.set(false);
         this.isApprovingReport.set(false);
-        this.notificationService.show('Rendición aprobada correctamente', 'success');
+        this.notificationService.show(
+          isSolicitud ? 'Solicitud aprobada. El colaborador ya puede agregar sus gastos.' : 'Rendición aprobada correctamente',
+          'success',
+        );
       },
       error: () => {
         this.isApprovingReport.set(false);
-        this.notificationService.show('Error al aprobar la rendición', 'error');
+        this.notificationService.show('Error al aprobar', 'error');
+      },
+    });
+  }
+
+  // Edit-solicitud form (shown when rejected at solicitud phase)
+  showEditSolicitudForm = signal(false);
+  editSolicitudForm!: FormGroup;
+  isResendingSolicitud = signal(false);
+
+  get peopleNames(): FormArray {
+    return this.editSolicitudForm.get('peopleNames') as FormArray;
+  }
+
+  addPersonName() {
+    this.peopleNames.push(this.fb.control(''));
+  }
+
+  removePersonName(index: number) {
+    if (this.peopleNames.length > 1) {
+      this.peopleNames.removeAt(index);
+    } else {
+      this.peopleNames.at(0).setValue('');
+    }
+  }
+
+  openEditSolicitudForm(): void {
+    if (!this.report) return;
+    const names = Array.isArray(this.report.peopleNames) ? this.report.peopleNames : [this.report.peopleNames || ''];
+    this.editSolicitudForm = this.fb.group({
+      title: [this.report.title, Validators.required],
+      description: [this.report.description ?? ''],
+      budget: [{ value: this.report.budget ?? 0, disabled: true }, [Validators.required, Validators.min(0)]], 
+      accountNumber: [this.report.accountNumber ?? ''],
+      idDocument: [this.report.idDocument ?? ''],
+      peopleNames: this.fb.array(names.map(n => this.fb.control(n))),
+      location: [this.report.location ?? ''],
+      startDate: [this.report.startDate ? new Date(this.report.startDate).toISOString().split('T')[0] : ''],
+      endDate: [this.report.endDate ? new Date(this.report.endDate).toISOString().split('T')[0] : ''],
+    });
+    this.showEditSolicitudForm.set(true);
+  }
+
+  resendSolicitud(): void {
+    if (!this.editSolicitudForm || this.editSolicitudForm.invalid) return;
+    this.isResendingSolicitud.set(true);
+    // Use getRawValue() because budget might be disabled
+    const val = this.editSolicitudForm.getRawValue();
+    this.expenseReportsService.update(this.id, { 
+      ...val, 
+      status: 'solicited',
+      rejectionReason: '' // Clear rejection reason on resubmit
+    }).subscribe({
+      next: (res) => {
+        this.report = res;
+        this.calculateTotals();
+        this.showEditSolicitudForm.set(false);
+        this.isResendingSolicitud.set(false);
+        this.notificationService.show('Solicitud reenviada correctamente', 'success');
+      },
+      error: () => {
+        this.isResendingSolicitud.set(false);
+        this.notificationService.show('Error al reenviar la solicitud', 'error');
       },
     });
   }
@@ -466,6 +559,7 @@ export class RendicionDetailComponent implements OnInit {
   getReportStatusLabel(): string {
     if (!this.report) return '';
     const labels: Record<IExpenseReport['status'], string> = {
+      solicited: 'Solicitada',
       open: 'Abierta',
       submitted: 'Enviada',
       approved: 'Aprobada',
@@ -483,6 +577,15 @@ export class RendicionDetailComponent implements OnInit {
       if (name) return name;
     }
     return '—';
+  }
+
+  getCollaboratorSignature(): string | undefined {
+    const u = this.report?.userId;
+    if (u == null) return undefined;
+    if (typeof u === 'object' && u !== null && 'signature' in u) {
+      return (u as { signature?: string }).signature;
+    }
+    return undefined;
   }
 
   private mapExpenseStatusExport(status?: string): string {
@@ -526,15 +629,26 @@ export class RendicionDetailComponent implements OnInit {
       .replace(/[^\w\sáéíóúÁÉÍÓÚñÑ-]/g, '')
       .replace(/\s+/g, '_')
       .slice(0, 50);
-    const comprobantes = (this.report.expenseIds || []).map((exp: Record<string, unknown>) => ({
-      tipo: this.getExpenseTypeLabel(exp),
-      fecha: this.getExpenseDate(exp),
-      descripcion: this.getExpenseDescription(exp),
-      monto: Number(exp['total']) || 0,
-      estadoComprobante: this.mapExpenseStatusExport(
-        typeof exp['status'] === 'string' ? exp['status'] : undefined,
-      ),
-    }));
+    const comprobantes = (this.report.expenseIds || []).map((exp: Record<string, unknown>) => {
+      const dataObj = this.getExpenseDataObject(exp);
+      let provider = exp['provider'] as string || dataObj['razonSocial'] as string || '';
+      if (!provider && this.getExpenseTypeLabel(exp) === 'Planilla movilidad') {
+        provider = 'Planilla de Movilidad';
+      }
+      const numDoc = dataObj['serie'] && dataObj['correlativo'] ? `${dataObj['serie']}-${dataObj['correlativo']}` : '';
+
+      return {
+        tipo: this.getExpenseTypeLabel(exp),
+        fecha: this.getExpenseDate(exp),
+        descripcion: this.getExpenseDescription(exp),
+        monto: Number(exp['total']) || 0,
+        estadoComprobante: this.mapExpenseStatusExport(
+          typeof exp['status'] === 'string' ? exp['status'] : undefined,
+        ),
+        proveedor: provider,
+        numeroDocumento: numDoc
+      };
+    });
     const anticipos = this.advances.map((a) => ({
       descripcion: a.description,
       monto: a.amount,
@@ -565,6 +679,22 @@ export class RendicionDetailComponent implements OnInit {
       comprobantes,
       anticipos,
       settlement: this.getSettlementForExport(),
+      // New fields
+      accountNumber: this.report.accountNumber,
+      idDocument: this.report.idDocument,
+      peopleNames: this.report.peopleNames,
+      location: this.report.location,
+      startDate: this.report.startDate ? new Date(this.report.startDate).toLocaleDateString('es-PE') : undefined,
+      endDate: this.report.endDate ? new Date(this.report.endDate).toLocaleDateString('es-PE') : undefined,
+      items: (this.report.items || []).map(i => ({
+        descripcion: i.description,
+        importe: i.amount,
+        personas: i.peopleCount,
+        combustible: i.fuelAmount,
+        dias: i.daysCount,
+        total: i.total
+      })),
+      signature: this.getCollaboratorSignature()
     };
   }
 

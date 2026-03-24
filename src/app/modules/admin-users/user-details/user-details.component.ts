@@ -12,9 +12,10 @@ import { UserStateService } from '../../../services/user-state.service';
 import { NotificationService } from '../../../services/notification.service';
 import { ConfirmationService } from '../../../services/confirmation.service';
 
-type RendicionStatus = 'open' | 'submitted' | 'approved' | 'rejected' | 'closed';
+type RendicionStatus = 'solicited' | 'open' | 'submitted' | 'approved' | 'rejected' | 'closed';
 
 const STATUS_LABELS: Record<RendicionStatus, string> = {
+  solicited: 'Solicitada',
   open: 'Abierta',
   submitted: 'Enviada',
   approved: 'Aprobada',
@@ -23,6 +24,7 @@ const STATUS_LABELS: Record<RendicionStatus, string> = {
 };
 
 const STATUS_COLORS: Record<RendicionStatus, string> = {
+  solicited: 'bg-purple-100 text-purple-800',
   open: 'bg-blue-100 text-blue-800',
   submitted: 'bg-yellow-100 text-yellow-800',
   approved: 'bg-green-100 text-green-800',
@@ -62,7 +64,7 @@ export class UserDetailsComponent implements OnInit {
 
   readonly STATUS_LABELS = STATUS_LABELS;
   readonly STATUS_COLORS = STATUS_COLORS;
-  readonly statuses: RendicionStatus[] = ['open', 'submitted', 'approved', 'rejected', 'closed'];
+  readonly statuses: RendicionStatus[] = ['solicited', 'open', 'submitted', 'approved', 'rejected', 'closed'];
 
   ngOnInit(): void {
     if (this.id) this.getUserData();

@@ -9,13 +9,12 @@ import { ConfirmationService } from '../../services/confirmation.service';
 import { UserStateService } from '../../services/user-state.service';
 import { ERoles } from './interfaces/roles.enum';
 import { Router } from '@angular/router';
-import { DataComponent } from '../../components/data/data.component';
 import { ButtonComponent } from '../../design-system/button/button.component';
 
 @Component({
   selector: 'app-admin-users',
   standalone: true,
-  imports: [CommonModule, FormsModule, DataComponent, ButtonComponent],
+  imports: [CommonModule, FormsModule, ButtonComponent],
   templateUrl: './admin-users.component.html',
   styleUrls: ['./admin-users.component.scss'],
 })
@@ -142,5 +141,19 @@ export default class AdminUsersComponent implements OnInit {
   redirectToCreateUser(userId = '') {
     const path = userId ? `/${userId}` : '';
     this.router.navigate([`/admin-users/create-user${path}`]);
+  }
+
+  getInitials(name: string): string {
+    if (!name) return 'U';
+    return name
+      .split(' ')
+      .filter((n) => n.trim().length > 0)
+      .slice(0, 2)
+      .map((n) => n[0].toUpperCase())
+      .join('');
+  }
+
+  getRoleLabel(roleName: string): string {
+    return ERoles[roleName as keyof typeof ERoles] ?? roleName;
   }
 }

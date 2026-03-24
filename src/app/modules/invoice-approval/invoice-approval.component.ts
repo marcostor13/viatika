@@ -211,24 +211,33 @@ export class InvoiceApprovalComponent implements OnInit {
     this.loadingReports.set(true);
     this.expenseReportsService.findAllByClient(clientId).subscribe({
       next: (reports) => {
-        this.submittedReports.set(reports.filter(r => r.status === 'submitted'));
+        this.submittedReports.set(reports.filter(r => r.status === 'submitted' || r.status === 'solicited'));
         this.loadingReports.set(false);
       },
       error: () => this.loadingReports.set(false),
     });
   }
 
-  approveReport(id: string) {
+  approveReport(report: IExpenseReport) {
+    const isSolicitud = report.status === 'solicited';
+    const title = isSolicitud ? 'Aprobar solicitud' : 'Aprobar rendición';
+    const message = isSolicitud
+      ? '¿Confirma la aprobación de esta solicitud? El colaborador podrá agregar sus gastos.'
+      : '¿Confirma la aprobación de esta rendición?';
+    const newStatus = isSolicitud ? 'open' : 'approved';
     this.confirmationService.confirm({
-      title: 'Aprobar rendición',
-      message: '¿Confirma la aprobación de esta rendición?',
+      title,
+      message,
       accept: () => {
-        this.expenseReportsService.update(id, { status: 'approved' }).subscribe({
+        this.expenseReportsService.update(report._id, { status: newStatus }).subscribe({
           next: () => {
-            this.notificationService.show('Rendición aprobada correctamente', 'success');
+            this.notificationService.show(
+              isSolicitud ? 'Solicitud aprobada. El colaborador ya puede agregar sus gastos.' : 'Rendición aprobada correctamente',
+              'success',
+            );
             this.loadSubmittedReports();
           },
-          error: () => this.notificationService.show('Error al aprobar la rendición', 'error'),
+          error: () => this.notificationService.show('Error al aprobar', 'error'),
         });
       },
     });

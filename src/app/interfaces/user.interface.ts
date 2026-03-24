@@ -15,6 +15,7 @@ export interface IUser {
   companyId?: string;
   status?: string;
   phone?: string;
+  signature?: string;
   createdAt?: Date;
   updatedAt?: Date;
   isSelf?: boolean; // Bandera para indicar si es el usuario actual logueado
@@ -84,6 +85,7 @@ export interface IUserResponse {
   employeeCode?: string;
   address?: string;
   phone?: string;
+  signature?: string;
 }
 
 

@@ -142,6 +142,15 @@
         <span class="font-medium">Tesorería</span>
       </a>
       }
+      <a
+        [routerLink]="['/mi-firma']"
+        routerLinkActive="bg-primary text-white"
+        [class.bg-primary]="isSelected('/mi-firma')"
+        [class.text-quaternary]="isSelected('/mi-firma')"
+        class="flex items-center px-4 py-3 text-secondary rounded-xl hover:bg-background hover:text-primary transition-all duration-200 group"
+      >
+        <span class="font-medium">Mi Firma Digital</span>
+      </a>
     </nav>
 
     <!-- User Section -->
@@ -373,6 +382,15 @@
           <span class="font-medium text-lg">Tesorería</span>
         </a>
         }
+        <a
+          [routerLink]="['/mi-firma']"
+          (click)="toggleSidebar()"
+          [class.bg-primary]="isSelected('/mi-firma')"
+          [class.text-quaternary]="isSelected('/mi-firma')"
+          class="flex items-center px-4 py-4 text-secondary rounded-xl hover:bg-background hover:text-primary transition-all duration-200 group"
+        >
+          <span class="font-medium text-lg">Mi Firma Digital</span>
+        </a>
       </nav>
 
       <!-- Mobile User Section -->

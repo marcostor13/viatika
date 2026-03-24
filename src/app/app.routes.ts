@@ -170,6 +170,13 @@ export const routes: Routes = [
           ),
       },
       {
+        path: 'mi-firma',
+        loadComponent: () =>
+          import('./modules/firma-digital/firma-digital.component').then(
+            (m) => m.FirmaDigitalComponent
+          ),
+      },
+      {
         path: 'tesoreria',
         loadComponent: () =>
           import('./modules/tesoreria/tesoreria.component').then(

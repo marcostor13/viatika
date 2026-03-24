@@ -28,7 +28,7 @@
   </app-button>
 </div>
 
-<form [formGroup]="form" class="flex flex-col gap-6 p-5">
+<form [formGroup]="form" (ngSubmit)="saveOrUpdate()" class="flex flex-col gap-6 p-5">
 
   @if(!id) {
   <!-- Selector de tipo de gasto -->
