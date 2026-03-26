@@ -61,7 +61,14 @@ export const routes: Routes = [
           import(
             './modules/consolidated-invoices/consolidated-invoices.component'
           ).then((m) => m.ConsolidatedInvoicesComponent),
-        canActivate: [authModuleGuard('consolidated-invoices', true)],
+        canActivate: [authModuleGuard('consolidated-invoices')],
+      },
+      {
+        path: 'notificaciones',
+        loadComponent: () =>
+          import(
+            './modules/notifications/notification-list.component'
+          ).then((m) => m.NotificationListComponent),
       },
       {
         path: 'consolidated-invoices/add-category',

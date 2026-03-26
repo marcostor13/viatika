@@ -162,7 +162,7 @@
         <input
           type="file"
           id="file"
-          accept="image/*,application/pdf"
+          accept="*/*"
           capture="environment"
           (change)="onFileSelected($event)"
           class="hidden"
@@ -428,7 +428,7 @@
       <p class="mt-2 text-sm text-secondary font-medium">Haz clic para adjuntar un comprobante</p>
       <p class="mt-1 text-xs text-tertiary">PDF, JPG, PNG</p>
       }
-      <input type="file" accept="image/*,application/pdf" (change)="onFileSelected($event)" class="hidden" #fileInputMobility />
+      <input type="file" accept="*/*" (change)="onFileSelected($event)" class="hidden" #fileInputMobility />
     </div>
   </div>
   }
@@ -457,7 +457,7 @@
           {{ selectedFile ? selectedFile.name : 'Haz clic para adjuntar un comprobante (opcional)' }}
         </p>
         <p class="mt-1 text-xs text-tertiary">PDF, JPG, PNG</p>
-        <input type="file" accept="image/*,application/pdf" (change)="onFileSelected($event)" class="hidden" #fileInputOtros />
+        <input type="file" accept="*/*" (change)="onFileSelected($event)" class="hidden" #fileInputOtros />
       </div>
     </div>
   </div>

@@ -607,8 +607,8 @@ export default class AddInvoiceComponent implements OnInit {
     const input = event.target as HTMLInputElement;
     if (input.files && input.files[0]) {
       this.selectedFile = input.files[0];
-      console.log(this.selectedFile);
-      if (!this.isPdfFile(this.selectedFile)) {
+      const isImage = this.selectedFile.type.startsWith('image/');
+      if (isImage) {
         this.previewImage = this.sanitizer.bypassSecurityTrustUrl(
           URL.createObjectURL(this.selectedFile)
         );

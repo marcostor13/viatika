@@ -19,6 +19,7 @@ export interface IExpenseReport {
   rejectionReason?: string;
   expenseIds: any[];
   createdBy: any; // User who created it
+  approvedBy?: any; // Admin who approved it
   projectId?: any;
   createdAt: string;
   updatedAt: string;

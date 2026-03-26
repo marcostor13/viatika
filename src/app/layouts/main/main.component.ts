@@ -1,12 +1,13 @@
 import { Component, inject, OnDestroy } from '@angular/core';
 import { Router, RouterOutlet, NavigationEnd } from '@angular/router';
 import { SidebarComponent } from '../../components/sidebar/sidebar.component';
+import { NotificationBellComponent } from '../../components/notification-bell/notification-bell.component';
 import { Subscription } from 'rxjs';
 
 @Component({
   selector: 'app-main',
   standalone: true,
-  imports: [RouterOutlet, SidebarComponent],
+  imports: [RouterOutlet, SidebarComponent, NotificationBellComponent],
   templateUrl: './main.component.html',
   styleUrl: './main.component.scss',
 })

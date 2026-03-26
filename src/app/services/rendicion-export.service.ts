@@ -67,6 +67,9 @@ export interface RendicionExportData {
   endDate?: string;
   items?: RendicionExportBudgetItemRow[];
   signature?: string;
+  approvedByName?: string;
+  createdByName?: string;
+  projectName?: string;
 }
 
 const RED_HEADER = 'FF912f2c'; // Dark red for headers
@@ -142,7 +145,6 @@ export class RendicionExportService {
     dateCell.font = { bold: true, size: 10 };
     dateCell.alignment = { horizontal: 'center' };
 
-    // Info block
     ws.getCell('A9').value = 'Colaborador:';
     ws.mergeCells('B9:D9');
     ws.getCell('B9').value = data.colaborador;
@@ -151,8 +153,19 @@ export class RendicionExportService {
     ws.mergeCells('B10:D10');
     ws.getCell('B10').value = data.location || '';
 
+    ws.getCell('E9').value = 'DNI:';
+    ws.getCell('F9').value = data.idDocument || '';
+    ws.getCell('E10').value = 'Cta / CCI:';
+    ws.getCell('F10').value = data.accountNumber || '';
+
+    if (data.peopleNames && data.peopleNames.length > 0) {
+      ws.getCell('A11').value = 'Personas:';
+      ws.mergeCells('B11:F11');
+      ws.getCell('B11').value = data.peopleNames.join(', ');
+    }
+
     // Table Header
-    let r = 12;
+    let r = 13;
     const headers = ['Item', 'Fecha\nEmisión', 'Tipo\nde\nDoc.', 'Nº del Documento', 'Proveedor', 'Concepto', 'Ingresos', 'Gastos'];
     headers.forEach((h, i) => {
       const c = ws.getCell(r, i + 1);
@@ -243,18 +256,64 @@ export class RendicionExportService {
     cGas.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
     r += 2;
 
-    // Summary Difference
-    ws.mergeCells(r, 5, r, 6);
-    const cDiffTitle = ws.getCell(r, 5);
-    cDiffTitle.value = 'Por rendir y/o reembolsar';
-    cDiffTitle.alignment = { horizontal: 'right' };
+    r += 1;
+    if (data.items && data.items.length > 0) {
+      ws.getCell(r, 1).value = 'RESUMEN DE SOLICITUD (PRESUPUESTO DETALLADO)';
+      ws.getCell(r, 1).font = { bold: true };
+      r++;
+      const budgetHeaders = ['Viáticos', 'Importe (S/)', 'Personas', 'Combustible GLP/dia', 'Días', 'Total (S/)'];
+      budgetHeaders.forEach((h, i) => {
+        const c = ws.getCell(r, i + 1);
+        c.value = h;
+        c.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+        c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: RED_HEADER } };
+        c.alignment = { horizontal: 'center' };
+        c.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
+      });
+      r++;
+      data.items.forEach(item => {
+        ws.getCell(r, 1).value = item.descripcion;
+        ws.getCell(r, 2).value = item.importe;
+        ws.getCell(r, 3).value = item.personas;
+        ws.getCell(r, 4).value = item.combustible;
+        ws.getCell(r, 5).value = item.dias;
+        ws.getCell(r, 6).value = item.total;
+        [2, 4, 6].forEach(col => ws.getCell(r, col).numFmt = '#,##0.00');
+        for (let i = 1; i <= 6; i++) {
+          ws.getCell(r, i).border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
+        }
+        r++;
+      });
+      r++;
+    }
 
-    const cDiffVal = ws.getCell(r, 8);
-    cDiffVal.value = sumIngresos - sumGastos;
-    cDiffVal.numFmt = '#,##0.00';
-    cDiffVal.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: YELLOW_CELL } };
-    cDiffVal.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
-    r += 4;
+    ws.getCell(r, 1).value = 'RESUMEN DE RENDICIÓN';
+    ws.getCell(r, 1).font = { bold: true };
+    r++;
+    ws.getCell(r, 1).value = 'Presupuesto asignado:';
+    ws.getCell(r, 4).value = data.presupuesto;
+    ws.getCell(r, 4).numFmt = '#,##0.00';
+    r++;
+    ws.getCell(r, 1).value = 'Total gastado:';
+    ws.getCell(r, 4).value = data.totalGastado;
+    ws.getCell(r, 4).numFmt = '#,##0.00';
+    r++;
+    ws.getCell(r, 1).value = 'Saldo sin gastar:';
+    ws.getCell(r, 4).value = data.saldoLibre;
+    ws.getCell(r, 4).numFmt = '#,##0.00';
+    r++;
+    if (data.approvedByName && data.approvedByName !== '—') {
+      ws.getCell(r, 1).value = 'Aprobado por:';
+      ws.getCell(r, 4).value = data.approvedByName;
+      r++;
+    }
+    ws.getCell(r, 1).value = 'Estado:';
+    ws.getCell(r, 4).value = data.estado;
+    r++;
+    ws.getCell(r, 1).value = 'Fecha generación:';
+    ws.getCell(r, 4).value = data.fechaGeneracion;
+
+    r += 2;
 
     if (data.signature) {
       ws.getRow(r - 1).height = 45; // Make some room
@@ -319,7 +378,20 @@ export class RendicionExportService {
     doc.text(`Colaborador:  ${data.colaborador}`, 14, y);
     y += 5;
     doc.text(`Localidad:    ${data.location || ''}`, 14, y);
-    y += 8;
+    y += 5;
+    if (data.idDocument) {
+      doc.text(`DNI:          ${data.idDocument}`, 14, y);
+      y += 5;
+    }
+    if (data.accountNumber) {
+      doc.text(`Cta / CCI:    ${data.accountNumber}`, 14, y);
+      y += 5;
+    }
+    if (data.peopleNames && data.peopleNames.length > 0) {
+      doc.text(`Personas:     ${data.peopleNames.join(', ')}`, 14, y);
+      y += 5;
+    }
+    y += 3;
 
     let itemIndex = 1;
     let sumIngresos = 0;
@@ -394,11 +466,58 @@ export class RendicionExportService {
 
     y += 12;
 
-    doc.text('Por rendir y/o reembolsar', doc.internal.pageSize.getWidth() - 14 - 25, y + 4, { align: 'right' });
-    doc.setFillColor(255, 255, 0); // Yellow
-    doc.setDrawColor(0);
-    doc.rect(doc.internal.pageSize.getWidth() - 14 - 20, y, 20, 6, 'FD');
-    doc.text((sumIngresos - sumGastos).toFixed(2), doc.internal.pageSize.getWidth() - 14 - 2, y + 4, { align: 'right' });
+    doc.setFont("helvetica", "bold");
+    doc.text('RESUMEN DE RENDICIÓN', 14, y);
+    doc.setFont("helvetica", "normal");
+    y += 6;
+    doc.text(`Presupuesto asignado:   S/ ${data.presupuesto.toFixed(2)}`, 14, y);
+    y += 5;
+    doc.text(`Total gastado:          S/ ${data.totalGastado.toFixed(2)}`, 14, y);
+    y += 5;
+    doc.text(`Saldo sin gastar:       S/ ${data.saldoLibre.toFixed(2)}`, 14, y);
+    y += 6;
+    if (data.approvedByName && data.approvedByName !== '—') {
+      doc.text(`Aprobado por: ${data.approvedByName}`, 14, y);
+      y += 5;
+    }
+    doc.text(`Estado: ${data.estado}`, 14, y);
+    y += 5;
+    doc.text(`Fecha generación: ${data.fechaGeneracion}`, 14, y);
+
+    if (data.items && data.items.length > 0) {
+      y += 10;
+      if (y > doc.internal.pageSize.getHeight() - 60) {
+        doc.addPage();
+        y = 20;
+      }
+      doc.setFont("helvetica", "bold");
+      doc.text('RESUMEN DE SOLICITUD (PRESUPUESTO DETALLADO)', 14, y);
+      y += 5;
+      autoTable(doc, {
+        startY: y,
+        head: [['Viáticos', 'Importe', 'Personas', 'Combustible', 'Días', 'Total']],
+        body: data.items.map(i => [
+          i.descripcion,
+          i.importe.toFixed(2),
+          i.personas,
+          i.combustible.toFixed(2),
+          i.dias,
+          i.total.toFixed(2)
+        ]),
+        theme: 'grid',
+        headStyles: { fillColor: [145, 47, 44], textColor: 255 },
+        styles: { fontSize: 8 },
+        columnStyles: {
+          1: { halign: 'right' },
+          2: { halign: 'center' },
+          3: { halign: 'right' },
+          4: { halign: 'center' },
+          5: { halign: 'right' },
+        },
+        margin: { left: 14, right: 14 }
+      });
+      y = afterTable(doc);
+    }
 
     y += 30;
     if (y > doc.internal.pageSize.getHeight() - 20) {

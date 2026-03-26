@@ -139,7 +139,12 @@ export class RendicionDetailComponent implements OnInit {
   }
 
   goBack() {
-    this.router.navigate(['/mis-rendiciones']);
+    const ownerId = typeof this.report?.userId === 'object' ? this.report?.userId?._id : this.report?.userId;
+    if (this.isAdminView && ownerId) {
+      this.router.navigate(['/admin-users', ownerId, 'details']);
+    } else {
+      this.router.navigate(['/mis-rendiciones']);
+    }
   }
 
   submitReport() {
@@ -325,6 +330,89 @@ export class RendicionDetailComponent implements OnInit {
   deletingExpenseId = signal<string | null>(null);
   isExportingExcel = signal(false);
   isExportingPdf = signal(false);
+
+  // --- Aprobación documento por documento ---
+  approvingExpenseId = signal<string | null>(null);
+  rejectingExpenseId = signal<string | null>(null);
+  showExpenseRejectModal = signal(false);
+  expenseRejectTargetId = signal<string | null>(null);
+  expenseRejectReason = signal('');
+
+  /** Todos los comprobantes del reporte tienen status === 'approved'. */
+  get allDocumentsApproved(): boolean {
+    if (!this.report?.expenseIds || this.report.expenseIds.length === 0) return false;
+    return this.report.expenseIds.every((exp: any) => exp.status === 'approved');
+  }
+
+  /** El admin puede aprobar la rendición completa solo si:
+   *  1. La rendición está en status 'submitted' (colaborador la envió).
+   *  2. Todos los documentos están aprobados individualmente.
+   */
+  get canFinalApprove(): boolean {
+    return this.report?.status === 'submitted' && this.allDocumentsApproved;
+  }
+
+  /** Cantidad de documentos aprobados individualmente. */
+  get approvedDocCount(): number {
+    return this.report?.expenseIds?.filter((exp: any) => exp.status === 'approved').length ?? 0;
+  }
+
+  /** Cantidad total de documentos. */
+  get totalDocCount(): number {
+    return this.report?.expenseIds?.length ?? 0;
+  }
+
+  approveExpense(expenseId: string): void {
+    this.approvingExpenseId.set(expenseId);
+    this.invoicesService.approveInvoice(expenseId, { status: 'approved' }).subscribe({
+      next: () => {
+        this.notificationService.show('Documento aprobado', 'success');
+        this.approvingExpenseId.set(null);
+        this.loadReport();
+      },
+      error: (err) => {
+        this.approvingExpenseId.set(null);
+        const msg = err?.error?.message;
+        this.notificationService.show(
+          typeof msg === 'string' ? msg : 'Error al aprobar documento',
+          'error'
+        );
+      },
+    });
+  }
+
+  openExpenseRejectModal(expenseId: string): void {
+    this.expenseRejectTargetId.set(expenseId);
+    this.expenseRejectReason.set('');
+    this.showExpenseRejectModal.set(true);
+  }
+
+  closeExpenseRejectModal(): void {
+    this.showExpenseRejectModal.set(false);
+    this.expenseRejectTargetId.set(null);
+  }
+
+  confirmRejectExpense(): void {
+    const id = this.expenseRejectTargetId();
+    if (!id) return;
+    this.rejectingExpenseId.set(id);
+    this.invoicesService.rejectInvoice(id, { status: 'rejected', reason: this.expenseRejectReason() }).subscribe({
+      next: () => {
+        this.notificationService.show('Documento rechazado', 'success');
+        this.rejectingExpenseId.set(null);
+        this.showExpenseRejectModal.set(false);
+        this.loadReport();
+      },
+      error: (err) => {
+        this.rejectingExpenseId.set(null);
+        const msg = err?.error?.message;
+        this.notificationService.show(
+          typeof msg === 'string' ? msg : 'Error al rechazar documento',
+          'error'
+        );
+      },
+    });
+  }
 
   openSubmitModal() {
     this.showSubmitModal = true;
@@ -588,6 +676,33 @@ export class RendicionDetailComponent implements OnInit {
     return undefined;
   }
 
+  getApprovedByName(): string {
+    const u = this.report?.approvedBy;
+    if (u == null) return '—';
+    if (typeof u === 'object' && u !== null && 'name' in u) {
+      return (u as { name?: string }).name || '—';
+    }
+    return '—';
+  }
+
+  getCreatedByName(): string {
+    const u = this.report?.createdBy;
+    if (u == null) return '—';
+    if (typeof u === 'object' && u !== null && 'name' in u) {
+      return (u as { name?: string }).name || '—';
+    }
+    return '—';
+  }
+
+  getProjectName(): string {
+    const p = this.report?.projectId;
+    if (p == null) return '—';
+    if (typeof p === 'object' && p !== null && 'name' in p) {
+      return (p as { name?: string }).name || '—';
+    }
+    return '—';
+  }
+
   private mapExpenseStatusExport(status?: string): string {
     const s = String(status || 'pending').toLowerCase();
     const labels: Record<string, string> = {
@@ -694,7 +809,10 @@ export class RendicionDetailComponent implements OnInit {
         dias: i.daysCount,
         total: i.total
       })),
-      signature: this.getCollaboratorSignature()
+      signature: this.getCollaboratorSignature(),
+      approvedByName: this.getApprovedByName(),
+      createdByName: this.getCreatedByName(),
+      projectName: this.getProjectName(),
     };
   }
 
