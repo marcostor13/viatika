@@ -114,7 +114,7 @@ export class UserStateService {
   }
 
   hasModulePermission(module: string): boolean {
-    if (this.isSuperAdmin()) return true;
+    if (this.isSuperAdmin() || this.isAdmin()) return true;
     const perms = this.getPermissions();
     return perms.modules?.includes(module) ?? false;
   }

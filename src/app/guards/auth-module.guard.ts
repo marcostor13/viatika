@@ -11,16 +11,12 @@ export function authModuleGuard(module: string, bypassForAdmin = false): CanActi
       return router.createUrlTree(['/login']);
     }
 
-    if (bypassForAdmin && userState.isAdmin()) {
-      return true;
-    }
-
     if (userState.hasModulePermission(module)) {
       return true;
     }
 
     if (userState.isColaborador()) return router.createUrlTree(['/inicio']);
-    if (userState.isAdmin()) return router.createUrlTree(['/consolidated-invoices']);
+    if (userState.isAdmin()) return router.createUrlTree(['/admin-users']);
     return router.createUrlTree(['/clients-admin']);
   };
 }
