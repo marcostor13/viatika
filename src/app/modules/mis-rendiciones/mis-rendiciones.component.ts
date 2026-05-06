@@ -150,4 +150,22 @@ export class MisRendicionesComponent implements OnInit {
       this.loadMyReports();
     }
   }
+
+  isReportInProgress(report: IExpenseReport): boolean {
+    if (report.status !== 'open') return false;
+    return this.myAdvances.some(adv => {
+      const rid =
+        adv.expenseReportId && typeof adv.expenseReportId === 'object'
+          ? adv.expenseReportId._id
+          : null;
+      return rid === report._id && (adv.status === 'paid' || adv.status === 'settled');
+    });
+  }
+
+  panelStatusText(report: IExpenseReport): string {
+    if (this.isReportInProgress(report)) return 'EN PROGRESO - REGISTRANDO GASTOS';
+    if (report.status === 'solicited') return 'SOLICITADA';
+    if (report.status === 'open') return 'ABIERTA';
+    return report.status.toUpperCase();
+  }
 }

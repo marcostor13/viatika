@@ -60,6 +60,18 @@ export default class AddInvoiceComponent implements OnInit {
   expenseType = signal<ExpenseType>('factura');
   percentage = signal(0);
   isLoading = signal(false);
+  readonly todayIso = new Date().toISOString().split('T')[0];
+  showPostOcrReview = signal(false);
+  postOcrInvoiceId = signal<string | null>(null);
+  private postOcrBaseInvoice: any = null;
+
+  private notifyCategoryLimitWarning(response: { categoryLimitWarning?: string; categoryLimitPercent?: number } | null | undefined): void {
+    if (!response?.categoryLimitWarning) return;
+    const pct = typeof response.categoryLimitPercent === 'number'
+      ? ` (${response.categoryLimitPercent.toFixed(2)}%)`
+      : '';
+    this.notificationService.show(`${response.categoryLimitWarning}${pct}`, 'warning');
+  }
 
   /** Tras crear/actualizar gasto: vuelve al detalle de rendición o al listado de facturas. */
   private navigateAfterExpenseSave(): void {
@@ -280,6 +292,19 @@ export default class AddInvoiceComponent implements OnInit {
       description: [''],
       declaracionJurada: [false],
       declaracionJuradaFirmante: [''],
+      // Recibo de caja
+      receiptRazonSocial: [''],
+      receiptRuc: [''],
+      receiptNumeroDocumento: [''],
+      receiptConcepto: [''],
+      receiptFecha: [''],
+      receiptMonto: [null],
+      // Comprobante de caja
+      voucherEntregadoA: [''],
+      voucherDireccion: [''],
+      voucherConcepto: [''],
+      voucherFecha: [''],
+      voucherMonto: [null],
       // Planilla de movilidad
       mobilityRows: this.fb.array([]),
     });
@@ -379,9 +404,125 @@ export default class AddInvoiceComponent implements OnInit {
           !!(this.form.get('declaracionJuradaFirmante')?.value || '').trim() &&
           (this.form.get('totalOtros')?.value > 0)
         );
+      case 'recibo_caja':
+        return (
+          this.form.get('proyectId')?.valid === true &&
+          this.form.get('categoryId')?.valid === true &&
+          !!this.selectedFile &&
+          !!(this.form.get('receiptFecha')?.value || '').trim() &&
+          !!(this.form.get('receiptConcepto')?.value || '').trim() &&
+          (this.form.get('receiptMonto')?.value > 0)
+        );
+      case 'comprobante_caja':
+        return (
+          this.form.get('proyectId')?.valid === true &&
+          this.form.get('categoryId')?.valid === true &&
+          !!(this.form.get('voucherEntregadoA')?.value || '').trim() &&
+          !!(this.form.get('voucherConcepto')?.value || '').trim() &&
+          (this.form.get('voucherMonto')?.value > 0)
+        );
       default:
         return this.form.valid;
     }
+  }
+
+  saveCashReceipt() {
+    const fecha = this.form.get('receiptFecha')?.value;
+    const concepto = (this.form.get('receiptConcepto')?.value || '').trim();
+    const monto = Number(this.form.get('receiptMonto')?.value || 0);
+    if (!this.selectedFile) {
+      this.notificationService.show('Debes adjuntar el archivo del recibo', 'error');
+      return;
+    }
+    if (!fecha || !concepto || monto <= 0) {
+      this.notificationService.show('Completa los campos obligatorios del recibo', 'error');
+      return;
+    }
+
+    this.isLoading.set(true);
+    const { downloadUrl$ } = this.uploadService.uploadFile(this.selectedFile, environment.storagePath);
+    downloadUrl$.subscribe({
+      next: (url) => {
+        const payload = {
+          proyectId: this.form.get('proyectId')?.value,
+          categoryId: this.form.get('categoryId')?.value,
+          expenseReportId: this.rendicionId || undefined,
+          total: monto,
+          fechaEmision: fecha,
+          imageUrl: url,
+          data: JSON.stringify({
+            razonSocial: this.form.get('receiptRazonSocial')?.value || '',
+            ruc: this.form.get('receiptRuc')?.value || '',
+            numeroDocumento: this.form.get('receiptNumeroDocumento')?.value || '',
+            concepto,
+          }),
+        };
+        this.invoiceService.createCashReceipt(payload).subscribe({
+          next: (res) => {
+            this.isLoading.set(false);
+            this.notificationService.show('Recibo de caja guardado correctamente', 'success');
+            this.notifyCategoryLimitWarning(res);
+            this.navigateAfterExpenseSave();
+          },
+          error: (error) => {
+            this.isLoading.set(false);
+            this.notificationService.show(
+              'Error al guardar recibo: ' + (error.error?.message || error.message),
+              'error'
+            );
+          },
+        });
+      },
+      error: (err) => {
+        this.isLoading.set(false);
+        this.notificationService.show('Error al subir el archivo: ' + err.message, 'error');
+      },
+    });
+  }
+
+  saveCashVoucher() {
+    const entregadoA = (this.form.get('voucherEntregadoA')?.value || '').trim();
+    const direccion = (this.form.get('voucherDireccion')?.value || '').trim();
+    const concepto = (this.form.get('voucherConcepto')?.value || '').trim();
+    const fecha = this.form.get('voucherFecha')?.value || '';
+    const monto = Number(this.form.get('voucherMonto')?.value || 0);
+    if (!entregadoA || !concepto || monto <= 0) {
+      this.notificationService.show(
+        'Completa los campos obligatorios del comprobante de caja',
+        'error'
+      );
+      return;
+    }
+
+    this.isLoading.set(true);
+    const payload = {
+      proyectId: this.form.get('proyectId')?.value,
+      categoryId: this.form.get('categoryId')?.value,
+      expenseReportId: this.rendicionId || undefined,
+      total: monto,
+      fechaEmision: fecha || undefined,
+      data: JSON.stringify({
+        entregadoA,
+        direccion,
+        concepto,
+        monto,
+      }),
+    };
+    this.invoiceService.createCashVoucher(payload).subscribe({
+      next: (res) => {
+        this.isLoading.set(false);
+        this.notificationService.show('Comprobante de caja guardado correctamente', 'success');
+        this.notifyCategoryLimitWarning(res);
+        this.navigateAfterExpenseSave();
+      },
+      error: (error) => {
+        this.isLoading.set(false);
+        this.notificationService.show(
+          'Error al guardar comprobante: ' + (error.error?.message || error.message),
+          'error'
+        );
+      },
+    });
   }
 
   saveMobilitySheet() {
@@ -420,9 +561,10 @@ export default class AddInvoiceComponent implements OnInit {
         imageUrl,
       };
       this.invoiceService.createMobilitySheet(payload).subscribe({
-        next: () => {
+        next: (res) => {
           this.isLoading.set(false);
           this.notificationService.show('Planilla guardada correctamente', 'success');
+          this.notifyCategoryLimitWarning(res);
           this.navigateAfterExpenseSave();
         },
         error: (error) => {
@@ -486,9 +628,10 @@ export default class AddInvoiceComponent implements OnInit {
         imageUrl,
       };
       this.invoiceService.createOtherExpense(payload).subscribe({
-        next: () => {
+        next: (res) => {
           this.isLoading.set(false);
           this.notificationService.show('Gasto guardado correctamente', 'success');
+          this.notifyCategoryLimitWarning(res);
           this.navigateAfterExpenseSave();
         },
         error: (error) => {
@@ -526,6 +669,12 @@ export default class AddInvoiceComponent implements OnInit {
         break;
       case 'otros_gastos':
         this.saveOtherExpense();
+        break;
+      case 'recibo_caja':
+        this.saveCashReceipt();
+        break;
+      case 'comprobante_caja':
+        this.saveCashVoucher();
         break;
       default:
         if (!this.selectedFile) {
@@ -695,47 +844,33 @@ export default class AddInvoiceComponent implements OnInit {
               } catch {}
             }
 
-            if (dataObj.fechaEmision) {
-              // Solo enviar campos actualizables, excluyendo metadatos de MongoDB
-              const updatePayload = {
-                proyectId: res.proyectId,
-                categoryId: res.categoryId,
-                total: res.total,
-                data: JSON.stringify(dataObj),
-                fechaEmision: dataObj.fechaEmision,
-                status: res.status,
-              };
-
-              this.invoiceService
-                .updateInvoice(res._id, updatePayload)
-                .subscribe({
-                  next: () => {
-                    this.isLoading.set(false);
-                    this.notificationService.show(
-                      'Factura subida correctamente',
-                      'success'
-                    );
-                    this.navigateAfterExpenseSave();
-                  },
-                  error: (updateError) => {
-                    console.warn(
-                      'Error al actualizar fechaEmision:',
-                      updateError
-                    );
-                    this.isLoading.set(false);
-                    this.notificationService.show(
-                      'Factura subida correctamente',
-                      'success'
-                    );
-                    this.navigateAfterExpenseSave();
-                  },
-                });
+            if (
+              dataObj?.rucEmisor ||
+              dataObj?.fechaEmision ||
+              dataObj?.serie ||
+              dataObj?.correlativo
+            ) {
+              this.form.patchValue({
+                rucEmisor: dataObj.rucEmisor || '',
+                fechaEmision: this.formatDateForInput(dataObj.fechaEmision),
+                serie: dataObj.serie || '',
+                correlativo: dataObj.correlativo || '',
+              });
+              this.postOcrInvoiceId.set(res._id);
+              this.postOcrBaseInvoice = res;
+              this.showPostOcrReview.set(true);
+              this.isLoading.set(false);
+              this.notificationService.show(
+                'Revisa y confirma los datos extraidos por OCR antes de guardar.',
+                'warning'
+              );
             } else {
               this.isLoading.set(false);
               this.notificationService.show(
                 'Factura subida correctamente',
                 'success'
               );
+              this.notifyCategoryLimitWarning(res);
               this.navigateAfterExpenseSave();
             }
           } else {
@@ -744,6 +879,7 @@ export default class AddInvoiceComponent implements OnInit {
               'Factura subida correctamente',
               'success'
             );
+            this.notifyCategoryLimitWarning(res);
             this.navigateAfterExpenseSave();
           }
         },
@@ -758,6 +894,59 @@ export default class AddInvoiceComponent implements OnInit {
         'error'
       );
     }
+  }
+
+  confirmPostOcrReview() {
+    const invoiceId = this.postOcrInvoiceId();
+    if (!invoiceId || !this.postOcrBaseInvoice) return;
+    const formValue = this.form.value;
+    let baseData: any = {};
+    try {
+      baseData =
+        typeof this.postOcrBaseInvoice.data === 'string'
+          ? JSON.parse(this.postOcrBaseInvoice.data || '{}')
+          : this.postOcrBaseInvoice.data || {};
+    } catch {
+      baseData = {};
+    }
+    const dataObj = {
+      ...baseData,
+      rucEmisor: formValue.rucEmisor || '',
+      fechaEmision: this.formatDateForBackend(formValue.fechaEmision || ''),
+      serie: formValue.serie || '',
+      correlativo: formValue.correlativo || '',
+    };
+    const updatePayload = {
+      proyectId: this.postOcrBaseInvoice.proyectId,
+      categoryId: this.postOcrBaseInvoice.categoryId,
+      total: this.postOcrBaseInvoice.total,
+      data: JSON.stringify(dataObj),
+      fechaEmision: dataObj.fechaEmision,
+      status: this.postOcrBaseInvoice.status,
+    };
+
+    this.isLoading.set(true);
+    this.invoiceService.updateInvoice(invoiceId, updatePayload).subscribe({
+      next: () => {
+        if (this.shouldValidateWithSunat(formValue)) {
+          this.id = invoiceId;
+          this.originalInvoice = this.postOcrBaseInvoice;
+          this.validateWithSunatData(formValue);
+        } else {
+          this.isLoading.set(false);
+          this.notificationService.show('Factura guardada correctamente', 'success');
+          this.notifyCategoryLimitWarning(this.postOcrBaseInvoice);
+          this.navigateAfterExpenseSave();
+        }
+      },
+      error: (error) => {
+        this.isLoading.set(false);
+        this.notificationService.show(
+          'Error al guardar datos OCR: ' + (error.error?.message || error.message),
+          'error'
+        );
+      },
+    });
   }
 
   openInvoice() {
@@ -800,6 +989,8 @@ export default class AddInvoiceComponent implements OnInit {
     switch (this.expenseType()) {
       case 'planilla_movilidad': return 'Guardar Planilla';
       case 'otros_gastos': return 'Guardar Gasto';
+      case 'recibo_caja': return 'Guardar Recibo de Caja';
+      case 'comprobante_caja': return 'Guardar Comprobante de Caja';
       default: return 'Subir factura';
     }
   }

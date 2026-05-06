@@ -68,6 +68,28 @@
         </svg>
         Otros Gastos (DJ)
       </button>
+      <button type="button"
+        (click)="setExpenseType('recibo_caja')"
+        [class]="expenseType() === 'recibo_caja'
+          ? 'flex items-center gap-2 px-4 py-2 rounded-lg border-2 border-primary bg-primary/10 text-primary text-sm font-medium'
+          : 'flex items-center gap-2 px-4 py-2 rounded-lg border-2 border-gray-200 bg-white text-secondary text-sm font-medium hover:border-primary/50 transition-colors'"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m6 9.75H8.25m0 0H12m-3.75 0h3.75m-3.75 0v-3.75m0 3.75v3.75" />
+        </svg>
+        Recibo de Caja
+      </button>
+      <button type="button"
+        (click)="setExpenseType('comprobante_caja')"
+        [class]="expenseType() === 'comprobante_caja'
+          ? 'flex items-center gap-2 px-4 py-2 rounded-lg border-2 border-primary bg-primary/10 text-primary text-sm font-medium'
+          : 'flex items-center gap-2 px-4 py-2 rounded-lg border-2 border-gray-200 bg-white text-secondary text-sm font-medium hover:border-primary/50 transition-colors'"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v12m-3-2.25h6m-7.5 3h9A2.25 2.25 0 0 0 18.75 16.5v-9A2.25 2.25 0 0 0 16.5 5.25h-9A2.25 2.25 0 0 0 5.25 7.5v9A2.25 2.25 0 0 0 7.5 18.75Z" />
+        </svg>
+        Comprobante de Caja
+      </button>
     </div>
   </div>
   }
@@ -195,6 +217,62 @@
       </div>
     </div>
   </div>
+  @if(!id && expenseType() === 'factura' && showPostOcrReview()) {
+  <div class="bg-quaternary rounded-xl shadow-soft border border-amber-200 p-6 space-y-4">
+    <div class="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+      Revisa y ajusta los datos extraídos por OCR antes de guardar el comprobante.
+    </div>
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+      <div class="flex flex-col gap-1">
+        <label for="rucEmisorOcr" class="text-xs font-medium text-secondary">RUC Emisor</label>
+        <input
+          id="rucEmisorOcr"
+          type="text"
+          formControlName="rucEmisor"
+          class="w-full h-[40px] px-3 rounded-lg border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-primary/20"
+        />
+      </div>
+      <div class="flex flex-col gap-1">
+        <label for="fechaEmisionOcr" class="text-xs font-medium text-secondary">Fecha Emisión</label>
+        <input
+          id="fechaEmisionOcr"
+          type="date"
+          [max]="todayIso"
+          formControlName="fechaEmision"
+          class="w-full h-[40px] px-3 rounded-lg border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-primary/20"
+        />
+      </div>
+      <div class="flex flex-col gap-1">
+        <label for="serieOcr" class="text-xs font-medium text-secondary">Serie</label>
+        <input
+          id="serieOcr"
+          type="text"
+          formControlName="serie"
+          class="w-full h-[40px] px-3 rounded-lg border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-primary/20"
+        />
+      </div>
+      <div class="flex flex-col gap-1">
+        <label for="correlativoOcr" class="text-xs font-medium text-secondary">Correlativo</label>
+        <input
+          id="correlativoOcr"
+          type="text"
+          formControlName="correlativo"
+          class="w-full h-[40px] px-3 rounded-lg border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-primary/20"
+        />
+      </div>
+    </div>
+    <div class="flex justify-end">
+      <button
+        type="button"
+        (click)="confirmPostOcrReview()"
+        [disabled]="isLoading() || isSunatValidating()"
+        class="px-4 py-2 rounded-lg bg-primary text-white text-sm font-semibold hover:bg-primary/90 disabled:opacity-50"
+      >
+        Confirmar y guardar factura
+      </button>
+    </div>
+  </div>
+  }
   } @if (percentage() > 0 && percentage() < 100) {
   <div class="bg-quaternary rounded-xl shadow-soft border border-gray-100 p-6">
     <div class="flex flex-col gap-3">
@@ -215,6 +293,7 @@
       <input
         id="fechaEmision"
         type="date"
+        [max]="todayIso"
         formControlName="fechaEmision"
         class="w-full h-[42px] px-4 rounded-lg border border-gray-200 bg-background focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-sm"
       />
@@ -274,7 +353,7 @@
     }
 
     <div formArrayName="mobilityRows" class="flex flex-col gap-3">
-      @for(row of mobilityRowsArray.controls; track $index; let i = $index) {
+      @for(row of mobilityRowsArray.controls; track i; let i = $index) {
       <div [formGroupName]="i" class="border border-gray-200 rounded-lg p-4 bg-white">
         <div class="flex justify-between items-center mb-3">
           <span class="text-xs font-semibold text-tertiary uppercase tracking-wide">Fila {{ i + 1 }}</span>
@@ -289,6 +368,7 @@
           <div class="flex flex-col gap-1">
             <label class="text-xs font-medium text-secondary">Fecha <span class="text-error">*</span></label>
             <input type="date" formControlName="fecha"
+              [max]="todayIso"
               class="w-full h-[38px] px-3 rounded-lg border border-tertiary/40 bg-background focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm" />
           </div>
           <!-- Concepto -->
@@ -486,6 +566,90 @@
   </div>
   }
 
+  <!-- ===== RECIBO DE CAJA ===== -->
+  @if(!id && expenseType() === 'recibo_caja') {
+  <div class="bg-quaternary rounded-xl shadow-soft border border-gray-100 p-6 space-y-5">
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <div class="flex flex-col gap-2">
+        <label class="text-sm font-medium text-secondary">Razón social</label>
+        <input type="text" formControlName="receiptRazonSocial"
+          class="w-full h-[42px] px-4 rounded-lg border border-gray-200 bg-background focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary/20" />
+      </div>
+      <div class="flex flex-col gap-2">
+        <label class="text-sm font-medium text-secondary">RUC</label>
+        <input type="text" formControlName="receiptRuc"
+          class="w-full h-[42px] px-4 rounded-lg border border-gray-200 bg-background focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary/20" />
+      </div>
+      <div class="flex flex-col gap-2">
+        <label class="text-sm font-medium text-secondary">N° Documento</label>
+        <input type="text" formControlName="receiptNumeroDocumento"
+          class="w-full h-[42px] px-4 rounded-lg border border-gray-200 bg-background focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary/20" />
+      </div>
+      <div class="flex flex-col gap-2">
+        <label class="text-sm font-medium text-secondary">Fecha <span class="text-error">*</span></label>
+        <input type="date" [max]="todayIso" formControlName="receiptFecha"
+          class="w-full h-[42px] px-4 rounded-lg border border-gray-200 bg-background focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary/20" />
+      </div>
+    </div>
+    <div class="flex flex-col gap-2">
+      <label class="text-sm font-medium text-secondary">Concepto <span class="text-error">*</span></label>
+      <textarea formControlName="receiptConcepto" rows="2"
+        class="w-full rounded-lg border border-gray-200 px-4 py-2 bg-background focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary/20 resize-none"></textarea>
+    </div>
+    <div class="flex flex-col gap-2">
+      <label class="text-sm font-medium text-secondary">Monto total S/. <span class="text-error">*</span></label>
+      <input type="number" min="0" step="0.01" formControlName="receiptMonto"
+        class="w-full h-[42px] px-4 rounded-lg border border-gray-200 bg-background focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary/20" />
+    </div>
+    <div class="flex flex-col gap-2">
+      <label class="text-sm font-medium text-secondary">Adjunto del recibo <span class="text-error">*</span></label>
+      <div class="bg-background border-2 border-dashed border-tertiary rounded-xl p-6 text-center cursor-pointer hover:border-primary hover:bg-primary/5 transition-all duration-200 group"
+        (click)="fileInputReceipt.click()">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 mx-auto text-tertiary group-hover:text-primary transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+        </svg>
+        <p class="mt-2 text-sm text-secondary font-medium">
+          {{ selectedFile ? selectedFile.name : 'Haz clic para adjuntar el recibo' }}
+        </p>
+        <input type="file" accept="*/*" (change)="onFileSelected($event)" class="hidden" #fileInputReceipt />
+      </div>
+    </div>
+  </div>
+  }
+
+  <!-- ===== COMPROBANTE DE CAJA ===== -->
+  @if(!id && expenseType() === 'comprobante_caja') {
+  <div class="bg-quaternary rounded-xl shadow-soft border border-gray-100 p-6 space-y-5">
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <div class="flex flex-col gap-2">
+        <label class="text-sm font-medium text-secondary">Entregado a <span class="text-error">*</span></label>
+        <input type="text" formControlName="voucherEntregadoA"
+          class="w-full h-[42px] px-4 rounded-lg border border-gray-200 bg-background focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary/20" />
+      </div>
+      <div class="flex flex-col gap-2">
+        <label class="text-sm font-medium text-secondary">Fecha</label>
+        <input type="date" [max]="todayIso" formControlName="voucherFecha"
+          class="w-full h-[42px] px-4 rounded-lg border border-gray-200 bg-background focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary/20" />
+      </div>
+    </div>
+    <div class="flex flex-col gap-2">
+      <label class="text-sm font-medium text-secondary">Dirección</label>
+      <input type="text" formControlName="voucherDireccion"
+        class="w-full h-[42px] px-4 rounded-lg border border-gray-200 bg-background focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary/20" />
+    </div>
+    <div class="flex flex-col gap-2">
+      <label class="text-sm font-medium text-secondary">Concepto <span class="text-error">*</span></label>
+      <textarea formControlName="voucherConcepto" rows="2"
+        class="w-full rounded-lg border border-gray-200 px-4 py-2 bg-background focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary/20 resize-none"></textarea>
+    </div>
+    <div class="flex flex-col gap-2">
+      <label class="text-sm font-medium text-secondary">Monto total S/. <span class="text-error">*</span></label>
+      <input type="number" min="0" step="0.01" formControlName="voucherMonto"
+        class="w-full h-[42px] px-4 rounded-lg border border-gray-200 bg-background focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary/20" />
+    </div>
+  </div>
+  }
+
   <div class="flex flex-col sm:flex-row gap-3 justify-end pt-4">
     <app-button
       label="Cancelar"
@@ -498,7 +662,7 @@
       [label]="getButtonLabel()"
       variant="primary"
       size="md"
-      [disabled]="!isFormValid() || isLoading() || isSunatValidating()"
+      [disabled]="!isFormValid() || isLoading() || isSunatValidating() || showPostOcrReview()"
       (clicked)="saveOrUpdate()"
     >
       @if (isLoading() || isSunatValidating()) {

@@ -16,7 +16,7 @@
 | 2 | Solicitud de viáticos | 2 | 2 | 100% |
 | 3 | Aprobación de viáticos | 2 | 2 | 100% |
 | 4 | Pago tesorería | 2 | 2 | 100% |
-| 5 | Ingreso y validación de gastos | 0 | 11 | 0% |
+| 5 | Ingreso y validación de gastos | 11 | 11 | 100% |
 | 6 | Reembolsos | 0 | 5 | 0% |
 | 7 | Devolución de saldos | 0 | 4 | 0% |
 | 8 | Cierre definitivo | 0 | 4 | 0% |
@@ -24,7 +24,7 @@
 | 10 | Caja chica | 0 | 3 | 0% |
 | T | Transversal / soporte | 0 | 6 | 0% |
 
-**Total ítems:** 48 · **Avance global:** 10 / 48 → **~21%**
+**Total ítems:** 48 · **Avance global:** 21 / 48 → **~44%**
 
 ---
 
@@ -70,19 +70,19 @@
 
 ## Fase 5 — Ingreso y validación de gastos
 
-**Avance:** 0 / 11 → **0%**
+**Avance:** 11 / 11 → **100%**
 
-- [ ] UI gastos habilitada cuando Pagado + estado rendición en panel
-- [ ] Factura: OCR + validación SUNAT + edición post-OCR
-- [ ] Planilla movilidad: GPS, correlativo, PDF
-- [ ] Recibo de caja (OCR/manual + archivo obligatorio)
-- [ ] Comprobante de caja: correlativo, PDF plantilla
-- [ ] Reglas plazo ingreso (normal / observado / bloqueo mes)
-- [ ] Alertas y bloqueos límite categoría (90% / 100%)
-- [ ] Revisión coordinador: listado, aprobar/rechazar, historial
-- [ ] Cierre rendición colaborador → envío aprobación final
-- [ ] Aprobación final rendición coordinador + rechazo con observación
-- [ ] PDF rendición completa + declaración jurada contabilidad
+- [x] UI gastos habilitada cuando Pagado + estado rendición en panel *(frontend: detalle de rendición solo habilita “Añadir gasto” cuando existe anticipo en estado `paid/settled`; si aún no hay pago, muestra aviso al colaborador. En panel “Mis Rendiciones” se muestra estado “EN PROGRESO - REGISTRANDO GASTOS” cuando la rendición `open` ya tiene anticipo pagado.)*
+- [x] Factura: OCR + validación SUNAT + edición post-OCR *(flujo factura mantiene OCR + SUNAT; se añadió revisión post-OCR en la misma pantalla de carga para editar RUC/fecha/serie/correlativo antes de confirmar guardado, y luego ejecutar validación SUNAT con datos corregidos.)*
+- [x] Planilla movilidad: GPS, correlativo, PDF *(GPS y distancia ya operativos en formulario. Se añadió correlativo interno por usuario en backend (`internalCode`, formato iniciales+secuencia) al crear planilla de movilidad y descarga de PDF específico de planilla desde el detalle de comprobante.)*
+- [x] Recibo de caja (OCR/manual + archivo obligatorio) *(se implementó flujo manual completo con archivo obligatorio: nuevo tipo `recibo_caja`, endpoint backend dedicado, validaciones de fecha no futura/monto > 0/archivo requerido, y formulario frontend para captura estructurada + adjunto.)*
+- [x] Comprobante de caja: correlativo, PDF plantilla *(nuevo tipo `comprobante_caja` en backend/frontend, generación de correlativo por usuario (iniciales+secuencia), guardado del formulario interno y descarga PDF dedicada del comprobante desde el detalle de rendición.)*
+- [x] Reglas plazo ingreso (normal / observado / bloqueo mes) *(backend: marca `observado` + detalle cuando supera 2 días dentro del mismo mes; bloquea guardado si supera 2 días y cambia de mes. Front: muestra badge/alerta “Observado” y mensaje en detalle de comprobante)*
+- [x] Alertas y bloqueos límite categoría (90% / 100%) *(backend: valida contra `limit` de categoría acumulando gastos por rendición/categoría y bloquea al llegar a 100%; en 90% devuelve advertencia y % usado. Front: notificación warning al registrar gasto y visualización de alerta en ficha de comprobante)*
+- [x] Revisión coordinador: listado, aprobar/rechazar, historial *(flujo de aprobación/rechazo por comprobante activo en detalle de rendición; backend ahora registra `reviewHistory` por ítem (acción, fecha, motivo) y frontend lo muestra en la ficha del comprobante para trazabilidad de revisiones)*
+- [x] Cierre rendición colaborador → envío aprobación final *(backend: al pasar a `submitted` valida que exista al menos un gasto, que no haya comprobantes rechazados y que todos tengan archivo adjunto; frontend: deshabilita “Enviar rendición” y muestra guía cuando no cumple condiciones, evitando envíos inválidos antes del test)*
+- [x] Aprobación final rendición coordinador + rechazo con observación *(backend: al aprobar rendición valida que todos los gastos estén en `approved`; si no, bloquea con mensaje explícito. Además se reforzó permiso por rol para impedir que colaborador apruebe/rechace/cierre rendiciones por API.)*
+- [x] PDF rendición completa + declaración jurada contabilidad *(PDF de rendición ya disponible en detalle. Se agregó flujo de Declaración Jurada para Admin/Contabilidad: modal para seleccionar tipo y comprobantes, endpoint backend `POST /expense-report/:id/affidavit` con validación de rendición cerrada + registro en historial/auditoría, y descarga de PDF de DJ desde frontend.)*
 
 ---
 
