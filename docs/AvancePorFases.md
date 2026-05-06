@@ -2,7 +2,9 @@
 
 **Referencia:** [PlanDesarrolloPorFases.md](./PlanDesarrolloPorFases.md) · [Funcionalidades.md](./Funcionalidades.md)
 
-**Cómo usar:** Marcá con `[x]` lo terminado y `[ ]` lo pendiente. Actualizá la línea **Avance** de cada fase y la tabla resumen (porcentajes son manuales).
+**Contraste código vs alcance (Fase 1):** [ContrasteFase1-AlcanceVsCodigo.md](./ContrasteFase1-AlcanceVsCodigo.md)
+
+**Cómo usar:** Marcá con `[x]` lo terminado y `[ ]` lo pendiente. Actualizá la línea **Avance** de cada fase y la tabla resumen (porcentajes son manuales). Los ítems `[x]` pueden tener **deuda** respecto al PDF; el contraste lo detalla.
 
 ---
 
@@ -10,9 +12,9 @@
 
 | Fase | Nombre | Ítems listos | Total ítems | % |
 |:----:|--------|:------------:|:-----------:|:-:|
-| 1 | Configuración inicial | 0 | 6 | 0% |
-| 2 | Solicitud de viáticos | 0 | 2 | 0% |
-| 3 | Aprobación de viáticos | 0 | 2 | 0% |
+| 1 | Configuración inicial | 4 | 6 | ~67% |
+| 2 | Solicitud de viáticos | 2 | 2 | 100% |
+| 3 | Aprobación de viáticos | 2 | 2 | 100% |
 | 4 | Pago tesorería | 0 | 2 | 0% |
 | 5 | Ingreso y validación de gastos | 0 | 11 | 0% |
 | 6 | Reembolsos | 0 | 5 | 0% |
@@ -22,38 +24,38 @@
 | 10 | Caja chica | 0 | 3 | 0% |
 | T | Transversal / soporte | 0 | 6 | 0% |
 
-**Total ítems:** 48 · **Avance global:** 0 / 48 → **0%**
+**Total ítems:** 48 · **Avance global:** 8 / 48 → **~17%**
 
 ---
 
 ## Fase 1 — Configuración inicial
 
-**Avance:** 0 / 6 → **0%**
+**Avance:** 4 / 6 → **~67%** (varios puntos del PDF siguen pendientes — ver contraste)
 
-- [ ] 1.1 CRUD centros de costo (unicidad, formato en selectores)
+- [x] 1.1 CRUD centros de costo + unicidad de código *(pendiente respecto al doc: campo “nombre cliente” dedicado y formato de selector `[Código - Proyecto - Cliente]`)*
 - [ ] 1.2 Carga masiva Excel centros de costo + duplicados + errores
-- [ ] 1.3 CRUD categorías + límites + alerta 90%
+- [x] 1.3 CRUD categorías + límites en datos *(pendiente: bloqueo por tope y alerta 90% al registrar gastos, según doc / Fase 5)*
 - [ ] 1.4 Carga masiva usuarios + duplicados + primer login
-- [ ] 1.5 Gestión usuarios web + permisos + filtros
-- [ ] 1.6 Firma digital en perfil + bloqueo transaccional sin firma
+- [x] 1.5 Gestión usuarios web + permisos por módulo *(pendiente respecto al doc: Excel masivo, coordinador, tipo contrato, filtros área/cargo/contrato)*
+- [x] 1.6 Firma digital en perfil *(pendiente respecto al doc: carga archivo PNG/JPG 500KB y **guard** que bloquee lo transaccional sin firma)*
 
 ---
 
 ## Fase 2 — Solicitud de viáticos
 
-**Avance:** 0 / 2 → **0%**
+**Avance:** 2 / 2 → **100%** *(formulario colaborador + correo/log backend; coordinador asignable en alta/edición usuario tipo Colaborador)*
 
-- [ ] Formulario solicitud (lugar, fechas, centro de costo, detalle categorías, totales)
-- [ ] Notificación al coordinador al enviar + log de envío
+- [x] Formulario solicitud (lugar, fechas, centro de costo, detalle categorías, totales) *(modal `app-solicitud-viaticos-modal`: Mis rendiciones + «Solicitar más viáticos» en detalle; Places si hay API key en `environment`; selector `[Código - Proyecto]` + cliente cuando el API lo devuelve)*
+- [x] Notificación al coordinador al enviar + log de envío *(plantilla correo + `coordinatorNotification` en anticipo; requiere `coordinatorId` en el colaborador)*
 
 ---
 
 ## Fase 3 — Aprobación de viáticos
 
-**Avance:** 0 / 2 → **0%**
+**Avance:** 2 / 2 → **100%** *(notificación contabilidad: usuarios Administrador del cliente + módulo `tesoreria`; urgencia si fecha inicio viaje es hoy o mañana; compromiso en campo `committedAdvanceTotal` del centro de costo hasta registrar pago)*
 
-- [ ] Rechazo con observación + notificación + re-edición con historial
-- [ ] Aprobación + notificación contabilidad (urgente si aplica) + compromiso presupuestal
+- [x] Rechazo con observación + notificación + re-edición con historial *(mín. 10 caracteres en `RejectAdvanceDto`; correo `viatico-rechazo-colaborador`; `PATCH /advance/:id/resubmit`; historial con acción `resubmitted`; UI Mis rendiciones + modal + tesorería “Historial”)*
+- [x] Aprobación + notificación contabilidad (urgente si aplica) + compromiso presupuestal *(correo `viatico-aprobacion-contabilidad`; `committedAdvanceTotal` en proyecto; liberación al `register-payment`)*
 
 ---
 

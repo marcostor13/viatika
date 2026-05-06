@@ -12,12 +12,11 @@ const BASE_URL = `${environment.api}/category`;
 describe('CategoriaService', () => {
   let service: CategoriaService;
   let http: HttpTestingController;
-  let userState: jest.Mocked<UserStateService>;
+  let userState: jasmine.SpyObj<UserStateService>;
 
   beforeEach(() => {
-    const userStateMock: Partial<jest.Mocked<UserStateService>> = {
-      getUser: jest.fn().mockReturnValue({ companyId: COMPANY_ID } as any),
-    };
+    const userStateMock = jasmine.createSpyObj<UserStateService>('UserStateService', ['getUser']);
+    userStateMock.getUser.and.returnValue({ companyId: COMPANY_ID } as any);
 
     TestBed.configureTestingModule({
       imports: [HttpClientTestingModule],
@@ -29,7 +28,7 @@ describe('CategoriaService', () => {
 
     service = TestBed.inject(CategoriaService);
     http = TestBed.inject(HttpTestingController);
-    userState = TestBed.inject(UserStateService) as jest.Mocked<UserStateService>;
+    userState = TestBed.inject(UserStateService) as jasmine.SpyObj<UserStateService>;
   });
 
   afterEach(() => http.verify());
@@ -102,9 +101,10 @@ describe('CategoriaService', () => {
 
   describe('companyId fallback', () => {
     it('uses empty string when user has no companyId', () => {
-      userState.getUser.mockReturnValue(null as any);
+      userState.getUser.and.returnValue(null as any);
       service.getAllFlat().subscribe();
       const req = http.expectOne(`${BASE_URL}//flat`);
+      expect(req.request.method).toBe('GET');
       req.flush([]);
     });
   });

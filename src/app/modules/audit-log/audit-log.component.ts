@@ -17,6 +17,7 @@ const ACTION_LABELS: Record<string, string> = {
   approve_advance_l1: 'Aprobó anticipo (L1)',
   approve_advance_l2: 'Aprobó anticipo (L2)',
   reject_advance: 'Rechazó anticipo',
+  resubmit_advance: 'Reenvió solicitud de viáticos corregida',
   pay_advance: 'Registró pago anticipo',
   settle_advance: 'Liquidó anticipo',
   create_user: 'Creó usuario',

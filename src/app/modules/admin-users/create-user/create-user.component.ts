@@ -1,4 +1,4 @@
-import { Component, inject } from '@angular/core';
+import { Component, inject, OnInit } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { AdminUsersService } from '../services/admin-users.service';
@@ -7,6 +7,7 @@ import { ReactiveFormsModule } from '@angular/forms';
 import {
   IRoleResponse,
   IUserResponse,
+  IUser,
 } from '../../../interfaces/user.interface';
 import { NotificationService } from '../../../services/notification.service';
 import { UserStateService } from '../../../services/user-state.service';
@@ -19,7 +20,7 @@ import { ERoles } from '../interfaces/roles.enum';
   styleUrls: ['./create-user.component.scss'],
   standalone: true,
 })
-export class CreateUserComponent {
+export class CreateUserComponent implements OnInit {
   private router: Router = inject(Router);
   private formBuilder: FormBuilder = inject(FormBuilder);
   private route: ActivatedRoute = inject(ActivatedRoute);
@@ -37,15 +38,51 @@ export class CreateUserComponent {
     employeeCode: [''],
     address: [''],
     phone: [''],
+    coordinatorId: [''],
   });
   roles: IRoleResponse[] = [];
   enumRoles = ERoles;
+  coordinatorCandidates: IUserResponse[] = [];
 
   ngOnInit() {
+    this.loadCoordinatorCandidates();
     if (this.id) {
       this.getUser();
     }
     this.getRoles();
+  }
+
+  loadCoordinatorCandidates(): void {
+    this.adminUsersService.getUsers().subscribe({
+      next: (users) => {
+        const exclude = this.id;
+        this.coordinatorCandidates = users.filter((u) => {
+          if (!u.isActive) return false;
+          if (exclude && u._id === exclude) return false;
+          const roleName = u.role?.name;
+          return (
+            roleName === 'Administrador' ||
+            u.permissions?.canApproveL1 === true ||
+            u.permissions?.canApproveL2 === true
+          );
+        });
+      },
+      error: () => {
+        this.coordinatorCandidates = [];
+      },
+    });
+  }
+
+  get selectedRoleIsCollaborador(): boolean {
+    const rid = this.form.get('roleId')?.value;
+    const r = this.roles.find((x) => x._id === rid);
+    return r?.name === 'Colaborador';
+  }
+
+  private coordinatorIdFromUser(user: IUserResponse): string {
+    const c = user.coordinatorId;
+    if (!c) return '';
+    return typeof c === 'object' && c !== null && '_id' in c ? c._id : String(c);
   }
 
   getRoleName(roleId: string) {
@@ -76,6 +113,7 @@ export class CreateUserComponent {
       employeeCode: user.employeeCode || '',
       address: user.address || '',
       phone: user.phone || '',
+      coordinatorId: this.coordinatorIdFromUser(user),
     });
   }
 
@@ -87,7 +125,18 @@ export class CreateUserComponent {
 
   createUser() {
     if (this.form.valid) {
-      this.adminUsersService.createUser(this.form.value).subscribe((user) => {
+      const raw = this.form.value as IUser & {
+        coordinatorId?: string;
+        password?: string;
+      };
+      const payload = { ...raw } as IUser & { coordinatorId?: string };
+      if (
+        !this.selectedRoleIsCollaborador ||
+        !raw.coordinatorId?.trim()
+      ) {
+        delete payload.coordinatorId;
+      }
+      this.adminUsersService.createUser(payload).subscribe(() => {
         this.notificationService.show(
           'Usuario creado correctamente',
           'success'
@@ -99,11 +148,17 @@ export class CreateUserComponent {
 
   updateUser() {
     if (this.form.valid) {
-      const updateData = { ...this.form.value };
-      delete updateData.password;
+      const updateData = { ...this.form.value } as Record<string, unknown>;
+      delete updateData['password'];
+
+      if (!this.selectedRoleIsCollaborador) {
+        delete updateData['coordinatorId'];
+      } else if (!updateData['coordinatorId']) {
+        updateData['coordinatorId'] = null;
+      }
 
       this.adminUsersService
-        .updateUser(this.id, updateData)
+        .updateUser(this.id, updateData as Partial<IUser>)
         .subscribe((user) => {
           this.notificationService.show(
             'Usuario editado correctamente',
