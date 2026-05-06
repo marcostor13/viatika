@@ -38,7 +38,7 @@
       <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-5 flex flex-col gap-3">
         <div class="flex justify-between items-start gap-2">
           <span [class]="ADVANCE_STATUS_COLORS[adv.status]" class="inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium">
-            {{ ADVANCE_STATUS_LABELS[adv.status] }}
+            {{ advanceStatusText(adv) }}
           </span>
           @if (adv.solicitudVersion && adv.solicitudVersion > 1) {
           <span class="text-xs text-gray-400">v{{ adv.solicitudVersion }}</span>
@@ -64,6 +64,14 @@
         >
           Corregir y reenviar
         </button>
+        }
+        @if (adv.status === 'paid' && hasExpenseReportLink(adv)) {
+        <a
+          [routerLink]="['/mis-rendiciones', getExpenseReportId(adv), 'detalle']"
+          class="w-full inline-flex justify-center py-2.5 text-sm font-semibold rounded-lg bg-green-600 text-white hover:bg-green-700 transition-colors no-underline"
+        >
+          Registrar gastos
+        </a>
         }
       </div>
       }

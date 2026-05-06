@@ -23,6 +23,10 @@ export interface IPaymentInfo {
   cci?: string;
   transferDate: string;
   reference?: string;
+  paymentReceiptUrl: string;
+  paymentReceiptFileName?: string;
+  paymentReceiptMimeType?: string;
+  paymentReceiptSizeBytes?: number;
 }
 
 export interface IAdvanceSettlement {
@@ -135,6 +139,10 @@ export interface IPayAdvancePayload {
   cci?: string;
   transferDate: string;
   reference?: string;
+  paymentReceiptUrl: string;
+  paymentReceiptFileName?: string;
+  paymentReceiptMimeType?: string;
+  paymentReceiptSizeBytes?: number;
 }
 
 export const ADVANCE_STATUS_LABELS: Record<AdvanceStatus, string> = {

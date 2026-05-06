@@ -126,6 +126,24 @@ export class MisRendicionesComponent implements OnInit {
     return 'Centro de costo';
   }
 
+  advanceStatusText(adv: IAdvance): string {
+    if (adv.status === 'paid') return 'En Progreso - Registrando Gastos';
+    return this.ADVANCE_STATUS_LABELS[adv.status];
+  }
+
+  hasExpenseReportLink(adv: IAdvance): boolean {
+    return !!(
+      adv.expenseReportId &&
+      typeof adv.expenseReportId === 'object' &&
+      '_id' in adv.expenseReportId
+    );
+  }
+
+  getExpenseReportId(adv: IAdvance): string | null {
+    if (!this.hasExpenseReportLink(adv)) return null;
+    return (adv.expenseReportId as { _id: string })._id;
+  }
+
   onModalClose(success: boolean) {
     this.showCreateModal = false;
     if (success) {

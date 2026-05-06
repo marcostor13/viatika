@@ -15,7 +15,7 @@
 | 1 | Configuración inicial | 4 | 6 | ~67% |
 | 2 | Solicitud de viáticos | 2 | 2 | 100% |
 | 3 | Aprobación de viáticos | 2 | 2 | 100% |
-| 4 | Pago tesorería | 0 | 2 | 0% |
+| 4 | Pago tesorería | 2 | 2 | 100% |
 | 5 | Ingreso y validación de gastos | 0 | 11 | 0% |
 | 6 | Reembolsos | 0 | 5 | 0% |
 | 7 | Devolución de saldos | 0 | 4 | 0% |
@@ -24,7 +24,7 @@
 | 10 | Caja chica | 0 | 3 | 0% |
 | T | Transversal / soporte | 0 | 6 | 0% |
 
-**Total ítems:** 48 · **Avance global:** 8 / 48 → **~17%**
+**Total ítems:** 48 · **Avance global:** 10 / 48 → **~21%**
 
 ---
 
@@ -61,10 +61,10 @@
 
 ## Fase 4 — Gestión de pago por tesorería
 
-**Avance:** 0 / 2 → **0%**
+**Avance:** 2 / 2 → **100%**
 
-- [ ] Registro comprobante pago → estado Pagado + activación módulo gastos
-- [ ] Notificación colaborador + coordinador con PDF y enlace
+- [x] Registro comprobante pago → estado Pagado + activación módulo gastos *(backend `register-payment` exige comprobante PDF/JPG/PNG (máx. 10MB), guarda metadata y cambia estado a `paid`; en Mis Rendiciones se muestra “En Progreso - Registrando Gastos” con acceso a “Registrar gastos” en la rendición vinculada)*
+- [x] Notificación colaborador + coordinador con PDF y enlace *(correo `viatico-pago-realizado` al colaborador y su coordinador con monto, fecha, referencia y enlace directo al comprobante y a la plataforma)*
 
 ---
 

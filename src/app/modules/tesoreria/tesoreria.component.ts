@@ -4,6 +4,7 @@ import { ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angula
 import { AdvanceService } from '../../services/advance.service';
 import { UserStateService } from '../../services/user-state.service';
 import { NotificationService } from '../../services/notification.service';
+import { UploadService } from '../../services/upload.service';
 import {
   IAdvance,
   IAdvanceStats,
@@ -22,6 +23,7 @@ export class TesoreriaComponent implements OnInit {
   private advanceService = inject(AdvanceService);
   private userStateService = inject(UserStateService);
   private notificationService = inject(NotificationService);
+  private uploadService = inject(UploadService);
   private fb = inject(FormBuilder);
 
   activeTab = signal<Tab>('pendientes');
@@ -37,6 +39,11 @@ export class TesoreriaComponent implements OnInit {
   showRejectModal = false;
   showReturnModal = false;
   showHistoryModal = false;
+  isUploadingReceipt = signal(false);
+  paymentReceiptUrl: string | null = null;
+  paymentReceiptName: string | null = null;
+  paymentReceiptMimeType: string | null = null;
+  paymentReceiptSizeBytes: number | null = null;
 
   paymentForm!: FormGroup;
   rejectForm!: FormGroup;
@@ -160,6 +167,18 @@ export class TesoreriaComponent implements OnInit {
 
   openPaymentModal(advance: IAdvance) {
     this.selectedAdvance = advance;
+    this.paymentForm.reset({
+      method: 'transferencia_bancaria',
+      bankName: '',
+      accountNumber: '',
+      cci: '',
+      transferDate: new Date().toISOString().split('T')[0],
+      reference: '',
+    });
+    this.paymentReceiptUrl = null;
+    this.paymentReceiptName = null;
+    this.paymentReceiptMimeType = null;
+    this.paymentReceiptSizeBytes = null;
     const user = typeof advance.userId === 'object' ? advance.userId : null;
     if (user?.bankAccount) {
       this.paymentForm.patchValue({
@@ -171,10 +190,54 @@ export class TesoreriaComponent implements OnInit {
     this.showPaymentModal = true;
   }
 
+  onPaymentReceiptSelected(event: Event) {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    if (!file) return;
+
+    const allowedTypes = ['application/pdf', 'image/jpeg', 'image/png'];
+    if (!allowedTypes.includes(file.type)) {
+      this.notificationService.show('Formato inválido. Usa PDF, JPG o PNG.', 'error');
+      input.value = '';
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      this.notificationService.show('El comprobante no puede superar 10MB.', 'error');
+      input.value = '';
+      return;
+    }
+
+    this.isUploadingReceipt.set(true);
+    this.uploadService.upload(file).subscribe({
+      next: (res) => {
+        this.paymentReceiptUrl = res.url;
+        this.paymentReceiptName = file.name;
+        this.paymentReceiptMimeType = file.type;
+        this.paymentReceiptSizeBytes = file.size;
+        this.notificationService.show('Comprobante cargado correctamente', 'success');
+        this.isUploadingReceipt.set(false);
+      },
+      error: () => {
+        this.notificationService.show('No se pudo subir el comprobante', 'error');
+        this.isUploadingReceipt.set(false);
+      },
+    });
+  }
+
   confirmPayment() {
     if (!this.selectedAdvance || this.paymentForm.invalid) return;
+    if (!this.paymentReceiptUrl) {
+      this.notificationService.show('Debes adjuntar el comprobante de pago.', 'error');
+      return;
+    }
     this.isActing.set(true);
-    this.advanceService.registerPayment(this.selectedAdvance._id, this.paymentForm.value).subscribe({
+    this.advanceService.registerPayment(this.selectedAdvance._id, {
+      ...this.paymentForm.value,
+      paymentReceiptUrl: this.paymentReceiptUrl,
+      paymentReceiptFileName: this.paymentReceiptName || undefined,
+      paymentReceiptMimeType: this.paymentReceiptMimeType || undefined,
+      paymentReceiptSizeBytes: this.paymentReceiptSizeBytes || undefined,
+    }).subscribe({
       next: () => {
         this.notificationService.show('Pago registrado correctamente', 'success');
         this.showPaymentModal = false;
