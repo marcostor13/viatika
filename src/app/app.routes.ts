@@ -192,6 +192,22 @@ export const routes: Routes = [
         canActivate: [AuthTesoreroGuard],
       },
       {
+        path: 'centros-de-costo',
+        loadComponent: () =>
+          import('./modules/centros-de-costo/centros-de-costo.component').then(
+            (m) => m.CentrosDeCostoComponent
+          ),
+        canActivate: [AuthAdmin2Guard],
+      },
+      {
+        path: 'categorias',
+        loadComponent: () =>
+          import('./modules/categorias/categorias.component').then(
+            (m) => m.CategoriasComponent
+          ),
+        canActivate: [AuthAdmin2Guard],
+      },
+      {
         path: 'audit-log',
         loadComponent: () =>
           import('./modules/audit-log/audit-log.component').then(

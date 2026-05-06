@@ -104,7 +104,9 @@ export class InvoicesService {
   }
 
   getCategories(companyId?: string): Observable<ICategory[]> {
-    const url = companyId ? `${this.categoryUrl}/${companyId}` : this.categoryUrl;
+    const url = companyId
+      ? `${this.categoryUrl}/${companyId}/flat`
+      : `${this.categoryUrl}/flat`;
     return this.http.get<ICategory[]>(url);
   }
 
@@ -118,13 +120,14 @@ export class InvoicesService {
 
   updateCategory(
     id: string,
+    clientId: string,
     category: Partial<ICategory>
   ): Observable<ICategory> {
-    return this.http.patch<ICategory>(`${this.categoryUrl}/${id}`, category);
+    return this.http.patch<ICategory>(`${this.categoryUrl}/${id}/${clientId}`, category);
   }
 
-  deleteCategory(id: string): Observable<any> {
-    return this.http.delete(`${this.categoryUrl}/${id}`);
+  deleteCategory(id: string, clientId: string): Observable<any> {
+    return this.http.delete(`${this.categoryUrl}/${id}/${clientId}`);
   }
 
   getProjects(companyId?: string): Observable<IProject[]> {

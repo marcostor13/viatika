@@ -1,0 +1,131 @@
+<div class="p-5 flex flex-col gap-6">
+
+  <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+    <div>
+      <h1 class="text-2xl font-bold text-secondary">Centros de Costo</h1>
+      <p class="text-sm text-tertiary mt-0.5">Gestiona los centros de costo de tu empresa</p>
+    </div>
+    @if (!showForm) {
+      <app-button label="Nuevo Centro de Costo" variant="primary" size="md" (clicked)="add()" />
+    }
+  </div>
+
+  @if (showForm) {
+    <div class="bg-quaternary rounded-2xl border border-tertiary/20 shadow-soft p-5">
+      <h3 class="text-base font-semibold text-secondary mb-4">
+        {{ editingProject ? 'Editar Centro de Costo' : 'Nuevo Centro de Costo' }}
+      </h3>
+      <div class="flex flex-col gap-3">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div class="flex flex-col gap-1.5">
+            <label class="text-xs font-semibold text-tertiary uppercase tracking-wider">Nombre *</label>
+            <input
+              type="text"
+              [(ngModel)]="form.name"
+              placeholder="Nombre del centro de costo"
+              class="h-[42px] px-3 rounded-xl border border-tertiary/30 bg-background text-sm text-secondary focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all"
+            />
+          </div>
+          <div class="flex flex-col gap-1.5">
+            <label class="text-xs font-semibold text-tertiary uppercase tracking-wider">
+              Código <span class="text-tertiary/60 font-normal normal-case">(auto-generado si se deja vacío)</span>
+            </label>
+            <input
+              type="text"
+              [(ngModel)]="form.code"
+              placeholder="Ej: CC-LIMA-01"
+              class="h-[42px] px-3 rounded-xl border border-tertiary/30 bg-background text-sm text-secondary focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all uppercase"
+            />
+          </div>
+        </div>
+        <div class="flex items-center gap-2">
+          <label class="relative inline-flex items-center cursor-pointer">
+            <input type="checkbox" [(ngModel)]="form.isActive" class="sr-only peer" />
+            <div class="w-10 h-5 bg-tertiary/30 peer-focus:outline-none rounded-full peer peer-checked:bg-primary transition-colors"></div>
+            <div class="absolute left-0.5 top-0.5 bg-white w-4 h-4 rounded-full transition-transform peer-checked:translate-x-5 shadow-sm"></div>
+          </label>
+          <span class="text-sm text-secondary">Activo</span>
+        </div>
+        <div class="flex gap-2 justify-end">
+          <app-button [label]="editingProject ? 'Actualizar' : 'Guardar'" variant="primary" size="md" (clicked)="save()" />
+          <app-button label="Cancelar" variant="secondary" size="md" (clicked)="cancel()" />
+        </div>
+      </div>
+    </div>
+  }
+
+  @if (loading) {
+    <div class="flex justify-center items-center py-12">
+      <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+    </div>
+  } @else {
+    <div class="bg-quaternary rounded-2xl border border-tertiary/20 shadow-soft overflow-hidden">
+      @if (projects.length === 0) {
+        <div class="flex flex-col items-center justify-center py-16 text-center gap-3 text-tertiary">
+          <svg class="w-12 h-12 opacity-30" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+              d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+          </svg>
+          <div>
+            <p class="text-sm font-medium text-secondary">No hay centros de costo</p>
+            <p class="text-xs mt-1">Crea el primero con el botón de arriba</p>
+          </div>
+        </div>
+      } @else {
+        <table class="w-full text-sm">
+          <thead class="bg-background border-b border-tertiary/20">
+            <tr>
+              <th class="text-left px-5 py-3 text-xs font-semibold text-tertiary uppercase tracking-wider">Nombre</th>
+              <th class="text-left px-5 py-3 text-xs font-semibold text-tertiary uppercase tracking-wider">Código</th>
+              <th class="text-left px-5 py-3 text-xs font-semibold text-tertiary uppercase tracking-wider">Estado</th>
+              <th class="text-right px-5 py-3 text-xs font-semibold text-tertiary uppercase tracking-wider">Acciones</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-tertiary/10">
+            @for (project of projects; track project._id) {
+              <tr class="hover:bg-background/50 transition-colors">
+                <td class="px-5 py-3.5 font-medium text-secondary">{{ project.name }}</td>
+                <td class="px-5 py-3.5">
+                  <span class="font-mono text-xs bg-background px-2 py-1 rounded-lg border border-tertiary/20 text-tertiary">
+                    {{ project.code || '-' }}
+                  </span>
+                </td>
+                <td class="px-5 py-3.5">
+                  @if (project.isActive !== false) {
+                    <span class="text-xs font-medium text-green-700 bg-green-50 px-2.5 py-1 rounded-full border border-green-200">Activo</span>
+                  } @else {
+                    <span class="text-xs font-medium text-amber-700 bg-amber-50 px-2.5 py-1 rounded-full border border-amber-200">Inactivo</span>
+                  }
+                </td>
+                <td class="px-5 py-3.5 text-right">
+                  <div class="flex justify-end gap-2">
+                    <button
+                      (click)="edit(project)"
+                      class="p-2 rounded-lg text-tertiary hover:text-primary hover:bg-primary/10 transition-colors"
+                      title="Editar"
+                    >
+                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                          d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                      </svg>
+                    </button>
+                    <button
+                      (click)="delete(project)"
+                      class="p-2 rounded-lg text-tertiary hover:text-error hover:bg-error/10 transition-colors"
+                      title="Eliminar"
+                    >
+                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                          d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      </svg>
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      }
+    </div>
+  }
+</div>

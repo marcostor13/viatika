@@ -1,8 +1,9 @@
 export interface IProject {
   _id?: string;
   name: string;
-  description?: string;
+  code?: string;
   isActive?: boolean;
+  description?: string;
   createdAt?: Date;
   updatedAt?: Date;
 }
