@@ -30,6 +30,7 @@ import { ICategory } from '../../invoices/interfaces/category.interface';
 import {
   ICreateAdvancePayload,
   IAdvanceLinePayload,
+  IAdvance,
 } from '../../../interfaces/advance.interface';
 
 /** Coincide con backend AdvanceService.computeExpectedLineTotal */
@@ -55,6 +56,8 @@ export class SolicitudViaticosModalComponent implements OnChanges {
   /** Si viene desde una rendición, se envía al crear la solicitud (opcional). */
   @Input() expenseReportId: string | null = null;
   @Input() initialProjectId: string | null = null;
+  /** Si está definido, el envío usa PATCH resubmit en lugar de crear (Fase 3). */
+  @Input() advanceToResubmit: IAdvance | null = null;
 
   @Output() closed = new EventEmitter<boolean>();
 
@@ -85,6 +88,11 @@ export class SolicitudViaticosModalComponent implements OnChanges {
   }
 
   private bootstrapModal(): void {
+    if (this.advanceToResubmit) {
+      this.bootstrapFromAdvance(this.advanceToResubmit);
+      return;
+    }
+
     this.form.reset({
       place: '',
       startDate: '',
@@ -96,6 +104,70 @@ export class SolicitudViaticosModalComponent implements OnChanges {
       this.lines.removeAt(0);
     }
     this.lines.push(this.createLineGroup());
+
+    const clientId = this.resolveCompanyId();
+    if (clientId) {
+      this.invoicesService.getProjects(clientId).subscribe({
+        next: (list) =>
+          this.projects.set((list || []).filter((p) => p.isActive !== false)),
+        error: () => this.projects.set([]),
+      });
+      this.categoriaService.getAllFlat().subscribe({
+        next: (res) =>
+          this.categories.set((res || []).filter((c) => c.isActive !== false)),
+        error: () => this.categories.set([]),
+      });
+    }
+  }
+
+  private ymdFromAdvanceDate(value: string | undefined): string {
+    if (!value) return '';
+    const s = String(value);
+    return s.length >= 10 ? s.slice(0, 10) : s;
+  }
+
+  private categoryIdFromLine(line: {
+    categoryId: unknown;
+  }): string {
+    const c = line.categoryId;
+    if (c && typeof c === 'object' && '_id' in (c as object)) {
+      return String((c as { _id: string })._id);
+    }
+    return String(c ?? '');
+  }
+
+  private bootstrapFromAdvance(adv: IAdvance): void {
+    while (this.lines.length) {
+      this.lines.removeAt(0);
+    }
+    const rows = adv.lines?.length ? adv.lines : [];
+    for (const ln of rows) {
+      const g = this.createLineGroup();
+      g.patchValue({
+        categoryId: this.categoryIdFromLine(ln),
+        importe: ln.importe,
+        peopleCount: ln.peopleCount,
+        glpPerDay: ln.glpPerDay,
+        days: ln.days,
+      });
+      this.lines.push(g);
+    }
+    if (!this.lines.length) {
+      this.lines.push(this.createLineGroup());
+    }
+
+    const pid =
+      typeof adv.projectId === 'object' && adv.projectId
+        ? adv.projectId._id
+        : String(adv.projectId ?? '');
+
+    this.form.patchValue({
+      place: adv.place ?? '',
+      startDate: this.ymdFromAdvanceDate(adv.startDate),
+      endDate: this.ymdFromAdvanceDate(adv.endDate),
+      projectId: pid,
+      observations: adv.observations ?? '',
+    });
 
     const clientId = this.resolveCompanyId();
     if (clientId) {
@@ -235,13 +307,22 @@ export class SolicitudViaticosModalComponent implements OnChanges {
       projectId: this.form.value.projectId as string,
       lines: linesPayload,
       observations: (this.form.value.observations || '').trim() || undefined,
-      expenseReportId: this.expenseReportId || undefined,
     };
+    if (!this.advanceToResubmit && this.expenseReportId) {
+      payload.expenseReportId = this.expenseReportId;
+    }
 
     this.submitting.set(true);
-    this.advanceService.create(payload).subscribe({
+    const req = this.advanceToResubmit
+      ? this.advanceService.resubmit(this.advanceToResubmit._id, payload)
+      : this.advanceService.create(payload);
+
+    req.subscribe({
       next: () => {
-        this.notifications.show('Solicitud de viáticos enviada correctamente', 'success');
+        const msg = this.advanceToResubmit
+          ? 'Solicitud corregida y reenviada correctamente'
+          : 'Solicitud de viáticos enviada correctamente';
+        this.notifications.show(msg, 'success');
         this.submitting.set(false);
         this.dismiss(true);
       },

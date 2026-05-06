@@ -11,7 +11,7 @@ export type AdvanceStatus =
 export interface IApprovalEntry {
   level: number;
   approvedBy: string;
-  action: 'approved' | 'rejected';
+  action: 'approved' | 'rejected' | 'resubmitted';
   notes?: string;
   date: string;
 }
@@ -75,6 +75,9 @@ export interface IAdvance {
   rejectedBy?: string;
   rejectionReason?: string;
   returnedAmount?: number;
+  /** Reenvíos tras rechazo (Fase 3). */
+  solicitudVersion?: number;
+  budgetCommitmentRecorded?: boolean;
   createdAt: string;
   updatedAt: string;
 }

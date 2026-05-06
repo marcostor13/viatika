@@ -75,4 +75,9 @@ export class AdvanceService {
   registerReturn(id: string, returnedAmount: number): Observable<IAdvance> {
     return this.http.patch<IAdvance>(`${this.url}/${id}/return`, { returnedAmount });
   }
+
+  /** Fase 3 — corrección y reenvío tras rechazo (solo el colaborador dueño). */
+  resubmit(id: string, payload: ICreateAdvancePayload): Observable<IAdvance> {
+    return this.http.patch<IAdvance>(`${this.url}/${id}/resubmit`, payload);
+  }
 }

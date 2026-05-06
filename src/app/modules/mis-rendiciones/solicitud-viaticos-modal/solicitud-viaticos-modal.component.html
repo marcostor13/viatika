@@ -19,9 +19,11 @@
           </svg>
         </div>
         <div>
-          <h3 class="text-lg font-bold text-secondary" id="viaticos-modal-title">Solicitud de viáticos</h3>
+          <h3 class="text-lg font-bold text-secondary" id="viaticos-modal-title">
+            {{ advanceToResubmit ? 'Corregir y reenviar solicitud' : 'Solicitud de viáticos' }}
+          </h3>
           <p class="text-xs text-tertiary mt-0.5">
-            Flujo Fase 2
+            {{ advanceToResubmit ? 'Versión ' + (advanceToResubmit.solicitudVersion ?? 1) + ' · Historial conservado' : 'Flujo solicitud' }}
           </p>
         </div>
       </div>

@@ -36,6 +36,7 @@ export class TesoreriaComponent implements OnInit {
   showPaymentModal = false;
   showRejectModal = false;
   showReturnModal = false;
+  showHistoryModal = false;
 
   paymentForm!: FormGroup;
   rejectForm!: FormGroup;
@@ -63,7 +64,10 @@ export class TesoreriaComponent implements OnInit {
       reference: [''],
     });
     this.rejectForm = this.fb.group({
-      rejectionReason: ['', Validators.required],
+      rejectionReason: [
+        '',
+        [Validators.required, Validators.minLength(10)],
+      ],
     });
     this.returnForm = this.fb.group({
       returnedAmount: [null, [Validators.required, Validators.min(0.01)]],
@@ -239,5 +243,29 @@ export class TesoreriaComponent implements OnInit {
 
   getLevelsBadge(advance: IAdvance): string {
     return `L${advance.requiredLevels}`;
+  }
+
+  openHistoryModal(advance: IAdvance) {
+    this.selectedAdvance = advance;
+    this.showHistoryModal = true;
+  }
+
+  closeHistoryModal() {
+    this.showHistoryModal = false;
+  }
+
+  approvalActionLabel(action: string): string {
+    const map: Record<string, string> = {
+      approved: 'Aprobación',
+      rejected: 'Rechazo',
+      resubmitted: 'Reenvío',
+    };
+    return map[action] ?? action;
+  }
+
+  formatHistoryDate(iso: string): string {
+    if (!iso) return '—';
+    const d = new Date(iso);
+    return Number.isNaN(d.getTime()) ? iso : d.toLocaleString('es-PE');
   }
 }

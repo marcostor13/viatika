@@ -14,7 +14,7 @@
 |:----:|--------|:------------:|:-----------:|:-:|
 | 1 | Configuración inicial | 4 | 6 | ~67% |
 | 2 | Solicitud de viáticos | 2 | 2 | 100% |
-| 3 | Aprobación de viáticos | 0 | 2 | 0% |
+| 3 | Aprobación de viáticos | 2 | 2 | 100% |
 | 4 | Pago tesorería | 0 | 2 | 0% |
 | 5 | Ingreso y validación de gastos | 0 | 11 | 0% |
 | 6 | Reembolsos | 0 | 5 | 0% |
@@ -24,7 +24,7 @@
 | 10 | Caja chica | 0 | 3 | 0% |
 | T | Transversal / soporte | 0 | 6 | 0% |
 
-**Total ítems:** 48 · **Avance global:** 6 / 48 → **~13%**
+**Total ítems:** 48 · **Avance global:** 8 / 48 → **~17%**
 
 ---
 
@@ -52,10 +52,10 @@
 
 ## Fase 3 — Aprobación de viáticos
 
-**Avance:** 0 / 2 → **0%**
+**Avance:** 2 / 2 → **100%** *(notificación contabilidad: usuarios Administrador del cliente + módulo `tesoreria`; urgencia si fecha inicio viaje es hoy o mañana; compromiso en campo `committedAdvanceTotal` del centro de costo hasta registrar pago)*
 
-- [ ] Rechazo con observación + notificación + re-edición con historial
-- [ ] Aprobación + notificación contabilidad (urgente si aplica) + compromiso presupuestal
+- [x] Rechazo con observación + notificación + re-edición con historial *(mín. 10 caracteres en `RejectAdvanceDto`; correo `viatico-rechazo-colaborador`; `PATCH /advance/:id/resubmit`; historial con acción `resubmitted`; UI Mis rendiciones + modal + tesorería “Historial”)*
+- [x] Aprobación + notificación contabilidad (urgente si aplica) + compromiso presupuestal *(correo `viatico-aprobacion-contabilidad`; `committedAdvanceTotal` en proyecto; liberación al `register-payment`)*
 
 ---
 
