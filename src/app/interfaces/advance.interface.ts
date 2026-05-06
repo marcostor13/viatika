@@ -33,11 +33,37 @@ export interface IAdvanceSettlement {
   settledAt: string;
 }
 
+export interface IAdvanceLine {
+  categoryId: { _id: string; name: string; key?: string } | string;
+  importe: number;
+  peopleCount: number;
+  glpPerDay: number;
+  days: number;
+  lineTotal: number;
+}
+
+export interface ICoordinatorNotification {
+  recipientUserId?: string;
+  sentAt?: string;
+  status: 'sent' | 'failed' | 'skipped';
+  errorMessage?: string;
+}
+
 export interface IAdvance {
   _id: string;
   userId: { _id: string; name: string; email: string; bankAccount?: IBankAccount } | string;
   clientId: string;
   expenseReportId?: { _id: string; title: string; status: string } | string;
+  /** Fase 2 — centro de costo */
+  projectId?:
+    | { _id: string; code?: string; name: string; isActive?: boolean }
+    | string;
+  place?: string;
+  startDate?: string;
+  endDate?: string;
+  lines?: IAdvanceLine[];
+  observations?: string;
+  coordinatorNotification?: ICoordinatorNotification;
   amount: number;
   description: string;
   status: AdvanceStatus;
@@ -69,10 +95,26 @@ export interface IAdvanceStats {
   totalApprovedAmount: number;
 }
 
+export interface IAdvanceLinePayload {
+  categoryId: string;
+  importe: number;
+  peopleCount: number;
+  glpPerDay: number;
+  days: number;
+  lineTotal: number;
+}
+
+/** Legacy: solo amount + description. Fase 2: lugar, fechas, proyecto, líneas y total coherente. */
 export interface ICreateAdvancePayload {
   amount: number;
   description: string;
   expenseReportId?: string;
+  place?: string;
+  startDate?: string;
+  endDate?: string;
+  projectId?: string;
+  lines?: IAdvanceLinePayload[];
+  observations?: string;
 }
 
 export interface IApproveAdvancePayload {

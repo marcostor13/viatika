@@ -5,11 +5,12 @@ import { UserStateService } from '../../services/user-state.service';
 import { IExpenseReport } from '../../interfaces/expense-report.interface';
 import { RouterModule } from '@angular/router';
 import { CreateRendicionModalComponent } from '../admin-users/user-details/create-rendicion-modal/create-rendicion-modal.component';
+import { SolicitudViaticosModalComponent } from './solicitud-viaticos-modal/solicitud-viaticos-modal.component';
 
 @Component({
   selector: 'app-mis-rendiciones',
   standalone: true,
-  imports: [CommonModule, RouterModule, CreateRendicionModalComponent],
+  imports: [CommonModule, RouterModule, CreateRendicionModalComponent, SolicitudViaticosModalComponent],
   templateUrl: './mis-rendiciones.component.html',
   styleUrls: ['./mis-rendiciones.component.scss']
 })
@@ -20,6 +21,7 @@ export class MisRendicionesComponent implements OnInit {
   expenseReports: IExpenseReport[] = [];
   isLoading = true;
   showCreateModal = false;
+  showViaticosModal = false;
   showGuidelines = signal(false);
 
   toggleGuidelines() {
@@ -63,6 +65,17 @@ export class MisRendicionesComponent implements OnInit {
 
   openCreateModal() {
     this.showCreateModal = true;
+  }
+
+  openViaticosModal() {
+    this.showViaticosModal = true;
+  }
+
+  onViaticosModalClosed(success: boolean) {
+    this.showViaticosModal = false;
+    if (success) {
+      /* Opcional: recargar listados si en el futuro se muestran anticipos aquí */
+    }
   }
 
   onModalClose(success: boolean) {

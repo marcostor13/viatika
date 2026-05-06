@@ -106,6 +106,23 @@
         placeholder="Ej: 987654321"
       />
     </div>
+    @if (selectedRoleIsCollaborador) {
+    <div class="flex flex-col gap-2">
+      <label>
+        Coordinador / aprobador
+        <span class="text-tertiary text-xs">(opcional — recibe la solicitud de viáticos)</span>
+      </label>
+      <select name="coordinatorId" formControlName="coordinatorId">
+        <option value="">Sin coordinador asignado</option>
+        @for (u of coordinatorCandidates; track u._id) {
+        <option [value]="u._id">{{ u.name }} — {{ u.email }}</option>
+        }
+      </select>
+      <p class="text-xs text-tertiary">
+        Solo usuarios administradores o con permiso de aprobación aparecen en la lista.
+      </p>
+    </div>
+    }
     <button
       type="submit"
       class="bg-primary text-white px-4 py-3 sm:py-2 rounded-md flex items-center justify-center gap-2 text-sm sm:text-base shadow-sm mt-5"

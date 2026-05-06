@@ -72,7 +72,14 @@ export const httpInterceptor: HttpInterceptorFn = (req, next) => {
       req.url.includes('/expense/client/') ||
       req.url.includes('/expense/test-sunat-credentials/');
 
-    if (shouldAddClientId && !req.url.endsWith(companyId)) {
+    // Evita duplicar clientId en rutas que ya lo incluyen explícitamente (ej: /category/:clientId/flat).
+    const alreadyContainsClientIdInPath =
+      req.url.includes(`/category/${companyId}`) ||
+      req.url.includes(`/project/${companyId}`) ||
+      req.url.includes(`/expense-report/user/`) ||
+      req.url.includes(`/user/client/${companyId}`);
+
+    if (shouldAddClientId && !req.url.endsWith(companyId) && !alreadyContainsClientIdInPath) {
        // Only append if it's not already there
        req = req.clone({ url: `${req.url}/${companyId}` });
     }

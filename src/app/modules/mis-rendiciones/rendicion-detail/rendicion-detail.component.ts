@@ -14,11 +14,18 @@ import {
   RendicionExportService,
   RendicionExportData,
 } from '../../../services/rendicion-export.service';
+import { SolicitudViaticosModalComponent } from '../solicitud-viaticos-modal/solicitud-viaticos-modal.component';
 
 @Component({
   selector: 'app-rendicion-detail',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, FormsModule, ButtonComponent],
+  imports: [
+    CommonModule,
+    ReactiveFormsModule,
+    FormsModule,
+    ButtonComponent,
+    SolicitudViaticosModalComponent,
+  ],
   templateUrl: './rendicion-detail.component.html',
   styleUrls: ['./rendicion-detail.component.scss']
 })
@@ -38,8 +45,6 @@ export class RendicionDetailComponent implements OnInit {
   isLoading = true;
   advances: IAdvance[] = [];
   showAdvanceModal = false;
-  isRequestingAdvance = signal(false);
-  advanceForm!: FormGroup;
 
   readonly ADVANCE_STATUS_LABELS = ADVANCE_STATUS_LABELS;
   readonly ADVANCE_STATUS_COLORS = ADVANCE_STATUS_COLORS;
@@ -51,14 +56,16 @@ export class RendicionDetailComponent implements OnInit {
   }
 
   ngOnInit(): void {
-    this.advanceForm = this.fb.group({
-      amount: [null, [Validators.required, Validators.min(1)]],
-      description: ['', Validators.required],
-    });
     if (this.id) {
       this.loadReport();
       this.loadAdvances();
     }
+  }
+
+  get reportProjectId(): string | null {
+    const p = this.report?.projectId;
+    if (!p) return null;
+    return typeof p === 'object' && p !== null ? p._id ?? null : String(p);
   }
 
   loadAdvances() {
@@ -84,28 +91,12 @@ export class RendicionDetailComponent implements OnInit {
   }
 
   openAdvanceModal() {
-    this.advanceForm.reset();
     this.showAdvanceModal = true;
   }
 
-  submitAdvance() {
-    if (this.advanceForm.invalid) return;
-    this.isRequestingAdvance.set(true);
-    this.advanceService.create({
-      ...this.advanceForm.value,
-      expenseReportId: this.id,
-    }).subscribe({
-      next: () => {
-        this.notificationService.show('Solicitud de anticipo enviada correctamente', 'success');
-        this.showAdvanceModal = false;
-        this.loadAdvances();
-        this.isRequestingAdvance.set(false);
-      },
-      error: (e) => {
-        this.notificationService.show(e.error?.message || 'Error al solicitar anticipo', 'error');
-        this.isRequestingAdvance.set(false);
-      },
-    });
+  onSolicitudViaticosClosed(success: boolean): void {
+    this.showAdvanceModal = false;
+    if (success) this.loadAdvances();
   }
 
   loadReport() {

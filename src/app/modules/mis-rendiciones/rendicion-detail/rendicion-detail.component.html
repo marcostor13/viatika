@@ -1122,43 +1122,12 @@
 </div>
 }
 
-<!-- Modal: Solicitar Anticipo -->
-@if(showAdvanceModal) {
-<div class="fixed inset-0 z-50 flex items-center justify-center p-4" (click)="showAdvanceModal=false">
-  <div class="absolute inset-0 bg-black/40 backdrop-blur-sm"></div>
-  <div class="relative bg-white rounded-2xl shadow-xl p-6 w-full max-w-sm" (click)="$event.stopPropagation()">
-    <h3 class="text-lg font-bold text-gray-900 mb-1">Solicitar Anticipo</h3>
-    <p class="text-sm text-gray-500 mb-4">
-      Los anticipos ≤ S/. 500 requieren 1 aprobación. Los mayores requieren aprobación de Tesorería.
-    </p>
-    <form [formGroup]="advanceForm" class="space-y-4">
-      <div class="flex flex-col gap-1">
-        <label class="text-sm font-medium text-gray-700">Monto solicitado S/. <span class="text-red-500">*</span></label>
-        <input type="number" formControlName="amount" min="1" step="0.01" placeholder="0.00"
-          class="w-full h-[42px] px-4 rounded-lg border border-gray-200 bg-gray-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm" />
-        @if(advanceForm.get('amount')?.value > 500) {
-        <p class="text-xs text-orange-600">⚠ Monto mayor a S/. 500 — requiere aprobación de Tesorería (2 niveles)</p>
-        }
-      </div>
-      <div class="flex flex-col gap-1">
-        <label class="text-sm font-medium text-gray-700">Descripción / Motivo <span class="text-red-500">*</span></label>
-        <textarea formControlName="description" rows="3" placeholder="¿Para qué necesitas el anticipo?"
-          class="w-full px-4 py-2 rounded-lg border border-gray-200 bg-gray-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm resize-none"></textarea>
-      </div>
-    </form>
-    <div class="flex gap-3 mt-5">
-      <button type="button" (click)="showAdvanceModal=false"
-        class="flex-1 py-2 border border-gray-200 rounded-xl text-sm text-gray-600 hover:bg-gray-50 transition-colors">
-        Cancelar
-      </button>
-      <button type="button" (click)="submitAdvance()" [disabled]="advanceForm.invalid || isRequestingAdvance()"
-        class="flex-1 py-2 bg-primary text-white rounded-xl text-sm font-medium hover:bg-primary/90 disabled:opacity-50 transition-colors">
-        {{ isRequestingAdvance() ? 'Enviando...' : 'Solicitar' }}
-      </button>
-    </div>
-  </div>
-</div>
-}
+<app-solicitud-viaticos-modal
+  [isOpen]="showAdvanceModal"
+  [expenseReportId]="id"
+  [initialProjectId]="reportProjectId"
+  (closed)="onSolicitudViaticosClosed($event)"
+/>
 
 <!-- Modal: Confirmación de envío de rendición -->
 @if(showSubmitModal && report) {

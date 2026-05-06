@@ -51,6 +51,8 @@ El alcance está organizado en **10 fases funcionales**. El desarrollo debe segu
 
 **Depende de:** centros de costo y categorías; usuarios y asignación de coordinador; firma digital si se aplica el bloqueo transaccional antes de operar.
 
+**Implementación en código (referencia):** Backend — `POST /advance` con cuerpo extendido (lugar, fechas, proyecto, líneas, observaciones), validación de totales y firma; correo al coordinador + `coordinatorNotification`. Frontend — modal «Solicitud de viáticos» (Mis rendiciones y detalle de rendición con Places y tabla por categoría); campo coordinador en alta/edición de usuario colaborador.
+
 ---
 
 ## Fase 3 — Aprobación de viáticos
