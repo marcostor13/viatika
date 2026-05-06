@@ -54,6 +54,24 @@
         <span class="font-medium">Colaboradores</span>
       </a>
       <a
+        [routerLink]="['/centros-de-costo']"
+        routerLinkActive="bg-primary text-white"
+        [class.bg-primary]="isSelected('/centros-de-costo')"
+        [class.text-quaternary]="isSelected('/centros-de-costo')"
+        class="flex items-center px-4 py-3 text-secondary rounded-xl hover:bg-background hover:text-primary transition-all duration-200 group"
+      >
+        <span class="font-medium">Centros de Costo</span>
+      </a>
+      <a
+        [routerLink]="['/categorias']"
+        routerLinkActive="bg-primary text-white"
+        [class.bg-primary]="isSelected('/categorias')"
+        [class.text-quaternary]="isSelected('/categorias')"
+        class="flex items-center px-4 py-3 text-secondary rounded-xl hover:bg-background hover:text-primary transition-all duration-200 group"
+      >
+        <span class="font-medium">Categorías</span>
+      </a>
+      <a
         [routerLink]="['/audit-log']"
         routerLinkActive="bg-primary text-white"
         [class.bg-primary]="isSelected('/audit-log')"
@@ -292,6 +310,24 @@
           class="flex items-center px-4 py-4 text-secondary rounded-xl hover:bg-background hover:text-primary transition-all duration-200 group"
         >
           <span class="font-medium text-lg">Colaboradores</span>
+        </a>
+        <a
+          [routerLink]="['/centros-de-costo']"
+          (click)="toggleSidebar()"
+          [class.bg-primary]="isSelected('/centros-de-costo')"
+          [class.text-quaternary]="isSelected('/centros-de-costo')"
+          class="flex items-center px-4 py-4 text-secondary rounded-xl hover:bg-background hover:text-primary transition-all duration-200 group"
+        >
+          <span class="font-medium text-lg">Centros de Costo</span>
+        </a>
+        <a
+          [routerLink]="['/categorias']"
+          (click)="toggleSidebar()"
+          [class.bg-primary]="isSelected('/categorias')"
+          [class.text-quaternary]="isSelected('/categorias')"
+          class="flex items-center px-4 py-4 text-secondary rounded-xl hover:bg-background hover:text-primary transition-all duration-200 group"
+        >
+          <span class="font-medium text-lg">Categorías</span>
         </a>
         <a
           [routerLink]="['/audit-log']"

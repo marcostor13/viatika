@@ -3,8 +3,6 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { InvoicesService } from '../invoices/services/invoices.service';
 import { NotificationService } from '../../services/notification.service';
-import { ICategory } from '../invoices/interfaces/category.interface';
-import { IProject } from '../invoices/interfaces/project.interface';
 import { HttpErrorResponse } from '@angular/common/http';
 import { MaskPipe } from '../../pipes/mask.pipe';
 import { ICompanyConfig } from '../../interfaces/company-config.interface';
@@ -25,14 +23,6 @@ export class ConfiguracionComponent implements OnInit {
   private notificationService = inject(NotificationService);
   private companyConfigService = inject(CompanyConfigService);
   private userStateService = inject(UserStateService);
-  categories: ICategory[] = [];
-  newCategory: ICategory = { name: '' };
-  editingCategory: ICategory | null = null;
-  showCategoryForm = false;
-  projects: IProject[] = [];
-  newProject: IProject = { name: '' };
-  editingProject: IProject | null = null;
-  showProjectForm = false;
   companyConfig: ICompanyConfig | null = null;
   showCompanyForm = false;
   selectedLogoFile: File | null = null;
@@ -52,8 +42,6 @@ export class ConfiguracionComponent implements OnInit {
   loading = false;
 
   ngOnInit() {
-    this.loadCategories();
-    this.loadProjects();
     this.loadCompanyConfig();
     this.loadSunatConfig();
   }
@@ -157,174 +145,6 @@ export class ConfiguracionComponent implements OnInit {
           this.logoUploadProgress = 0;
         },
       });
-  }
-
-  loadCategories() {
-    const companyId = this.userStateService.getUser()?.companyId;
-    this.invoicesService.getCategories(companyId).subscribe((categories) => {
-      this.categories = categories;
-    });
-  }
-
-  addCategory() {
-    this.showCategoryForm = true;
-    this.editingCategory = null;
-    this.newCategory = { name: '' };
-  }
-
-  editCategory(category: ICategory) {
-    this.showCategoryForm = true;
-    this.editingCategory = { ...category };
-    this.newCategory = { ...category };
-  }
-
-  cancelCategoryEdit() {
-    this.showCategoryForm = false;
-    this.editingCategory = null;
-    this.newCategory = { name: '' };
-  }
-
-  validateName() {
-    if (!this.newCategory.name) {
-      this.notificationService.show(
-        'El nombre de la categoría es obligatorio',
-        'error'
-      );
-      return false;
-    }
-    return true;
-  }
-
-  save() {
-    if (!this.validateName()) {
-      return;
-    }
-    if (this.editingCategory) {
-      this.updateCategory();
-    } else {
-      this.saveCategory();
-    }
-  }
-
-  saveCategory() {
-    this.invoicesService.createCategory(this.newCategory).subscribe(() => {
-      this.notificationService.show('Categoría creada exitosamente', 'success');
-      this.loadCategories();
-      this.cancelCategoryEdit();
-    });
-  }
-
-  updateCategory() {
-    this.invoicesService
-      .updateCategory(this.editingCategory?._id!, {
-        name: this.newCategory.name,
-      })
-      .subscribe(() => {
-        this.notificationService.show(
-          'Categoría actualizada exitosamente',
-          'success'
-        );
-        this.loadCategories();
-        this.cancelCategoryEdit();
-      });
-  }
-
-  deleteCategory(category: ICategory) {
-    if (
-      confirm(
-        `¿Estás seguro de que quieres eliminar la categoría "${category.name}"?`
-      )
-    ) {
-      this.invoicesService.deleteCategory(category._id!).subscribe(() => {
-        this.notificationService.show(
-          'Categoría eliminada exitosamente',
-          'success'
-        );
-        this.loadCategories();
-      });
-    }
-  }
-
-  loadProjects() {
-    const companyId = this.userStateService.getUser()?.companyId;
-    this.invoicesService.getProjects(companyId).subscribe((projects) => {
-      this.projects = projects;
-    });
-  }
-
-  addProject() {
-    this.showProjectForm = true;
-    this.editingProject = null;
-    this.newProject = { name: '' };
-  }
-
-  editProject(project: IProject) {
-    this.showProjectForm = true;
-    this.editingProject = { ...project };
-    this.newProject = { ...project };
-  }
-
-  cancelProjectEdit() {
-    this.showProjectForm = false;
-    this.editingProject = null;
-    this.newProject = { name: '' };
-  }
-
-  validateProjectName() {
-    if (!this.newProject.name?.trim()) {
-      this.notificationService.show(
-        'El nombre del proyecto es obligatorio',
-        'error'
-      );
-      return false;
-    }
-    return true;
-  }
-
-  saveProject() {
-    if (!this.validateProjectName()) {
-      return;
-    }
-
-    if (this.editingProject) {
-      const companyId = this.userStateService.getUser()?.companyId || '';
-      this.invoicesService
-        .updateProject(this.editingProject._id!, { name: this.newProject.name }, companyId)
-        .subscribe(() => {
-          this.notificationService.show(
-            'Proyecto actualizado exitosamente',
-            'success'
-          );
-          this.loadProjects();
-          this.cancelProjectEdit();
-        });
-    } else {
-      this.invoicesService.createProject(this.newProject).subscribe(() => {
-        this.notificationService.show(
-          'Proyecto creado exitosamente',
-          'success'
-        );
-        this.loadProjects();
-        this.cancelProjectEdit();
-      });
-    }
-  }
-
-  deleteProject(project: IProject) {
-    if (
-      confirm(
-        `¿Estás seguro de que quieres eliminar el proyecto "${project.name}"?`
-      )
-    ) {
-      const companyId = this.userStateService.getUser()?.companyId || '';
-      this.invoicesService.deleteProject(project._id!, companyId).subscribe(() => {
-        this.notificationService.show(
-          'Proyecto eliminado exitosamente',
-          'success'
-        );
-        this.loadProjects();
-      });
-    }
   }
 
   private getClientId(): string {
