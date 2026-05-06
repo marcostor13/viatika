@@ -1,0 +1,157 @@
+# Avance por etapas — Viátika
+
+**Referencia:** [PlanDesarrolloPorFases.md](./PlanDesarrolloPorFases.md) · [Funcionalidades.md](./Funcionalidades.md)
+
+**Cómo usar:** Marcá con `[x]` lo terminado y `[ ]` lo pendiente. Actualizá la línea **Avance** de cada fase y la tabla resumen (porcentajes son manuales).
+
+---
+
+## Resumen por fase
+
+| Fase | Nombre | Ítems listos | Total ítems | % |
+|:----:|--------|:------------:|:-----------:|:-:|
+| 1 | Configuración inicial | 0 | 6 | 0% |
+| 2 | Solicitud de viáticos | 0 | 2 | 0% |
+| 3 | Aprobación de viáticos | 0 | 2 | 0% |
+| 4 | Pago tesorería | 0 | 2 | 0% |
+| 5 | Ingreso y validación de gastos | 0 | 11 | 0% |
+| 6 | Reembolsos | 0 | 5 | 0% |
+| 7 | Devolución de saldos | 0 | 4 | 0% |
+| 8 | Cierre definitivo | 0 | 4 | 0% |
+| 9 | Reembolso directo | 0 | 3 | 0% |
+| 10 | Caja chica | 0 | 3 | 0% |
+| T | Transversal / soporte | 0 | 6 | 0% |
+
+**Total ítems:** 48 · **Avance global:** 0 / 48 → **0%**
+
+---
+
+## Fase 1 — Configuración inicial
+
+**Avance:** 0 / 6 → **0%**
+
+- [ ] 1.1 CRUD centros de costo (unicidad, formato en selectores)
+- [ ] 1.2 Carga masiva Excel centros de costo + duplicados + errores
+- [ ] 1.3 CRUD categorías + límites + alerta 90%
+- [ ] 1.4 Carga masiva usuarios + duplicados + primer login
+- [ ] 1.5 Gestión usuarios web + permisos + filtros
+- [ ] 1.6 Firma digital en perfil + bloqueo transaccional sin firma
+
+---
+
+## Fase 2 — Solicitud de viáticos
+
+**Avance:** 0 / 2 → **0%**
+
+- [ ] Formulario solicitud (lugar, fechas, centro de costo, detalle categorías, totales)
+- [ ] Notificación al coordinador al enviar + log de envío
+
+---
+
+## Fase 3 — Aprobación de viáticos
+
+**Avance:** 0 / 2 → **0%**
+
+- [ ] Rechazo con observación + notificación + re-edición con historial
+- [ ] Aprobación + notificación contabilidad (urgente si aplica) + compromiso presupuestal
+
+---
+
+## Fase 4 — Gestión de pago por tesorería
+
+**Avance:** 0 / 2 → **0%**
+
+- [ ] Registro comprobante pago → estado Pagado + activación módulo gastos
+- [ ] Notificación colaborador + coordinador con PDF y enlace
+
+---
+
+## Fase 5 — Ingreso y validación de gastos
+
+**Avance:** 0 / 11 → **0%**
+
+- [ ] UI gastos habilitada cuando Pagado + estado rendición en panel
+- [ ] Factura: OCR + validación SUNAT + edición post-OCR
+- [ ] Planilla movilidad: GPS, correlativo, PDF
+- [ ] Recibo de caja (OCR/manual + archivo obligatorio)
+- [ ] Comprobante de caja: correlativo, PDF plantilla
+- [ ] Reglas plazo ingreso (normal / observado / bloqueo mes)
+- [ ] Alertas y bloqueos límite categoría (90% / 100%)
+- [ ] Revisión coordinador: listado, aprobar/rechazar, historial
+- [ ] Cierre rendición colaborador → envío aprobación final
+- [ ] Aprobación final rendición coordinador + rechazo con observación
+- [ ] PDF rendición completa + declaración jurada contabilidad
+
+---
+
+## Fase 6 — Reembolsos
+
+**Avance:** 0 / 5 → **0%**
+
+- [ ] Cálculo saldo a favor colaborador + activación flujo
+- [ ] Notificación a contabilidad con enlace
+- [ ] Registro pago reembolso + comprobante
+- [ ] Estado Reembolsado + notificación con PDF a colaborador
+- [ ] Documentos disponibles en “Mis documentos”
+
+---
+
+## Fase 7 — Devolución de saldos
+
+**Avance:** 0 / 4 → **0%**
+
+- [ ] Detección saldo a favor empresa + notificación con datos bancarios
+- [ ] Carga comprobante por colaborador
+- [ ] Validación contabilidad
+- [ ] Estado Devolución completada + notificaciones finales
+
+---
+
+## Fase 8 — Cierre definitivo
+
+**Avance:** 0 / 4 → **0%**
+
+- [ ] Botón cierre solo contabilidad + condiciones (aprobada + liquidada)
+- [ ] Validaciones pre-cierre (comprobantes, liquidación, observaciones)
+- [ ] Estado Cerrado + bloqueo ediciones + logs
+- [ ] Firma en PDFs definitivos + marca auditoría
+
+---
+
+## Fase 9 — Reembolso directo
+
+**Avance:** 0 / 3 → **0%**
+
+- [ ] Coordinador: alta reembolso directo (datos + urgencia)
+- [ ] Notificaciones colaborador y contabilidad
+- [ ] Flujo gastos y posteriores alineado a Fase 5
+
+---
+
+## Fase 10 — Caja chica
+
+**Avance:** 0 / 3 → **0%**
+
+- [ ] Apertura/fondeo mensual + habilitación gastos caja chica por centro
+- [ ] Registro gastos sin aprobación por ítem + alertas fondo (sin bloqueo duro)
+- [ ] Cierre mensual + PDF resumen + arrastre saldo al mes siguiente
+
+---
+
+## Transversal / soporte
+
+**Avance:** 0 / 6 → **0%**
+
+- [ ] Notificaciones y plantillas correo (§6.4, §7)
+- [ ] API SUNAT + OCR con fallback / reintentos
+- [ ] Geolocalización y distancias (§6.3)
+- [ ] Correlativos + generación PDF (§6.5, §9)
+- [ ] Reportes, dashboard, exportación (§8)
+- [ ] Reglas de negocio RN aplicadas y probadas (§5)
+
+---
+
+## Notas
+
+- Los porcentajes de la tabla **Resumen** y las líneas **Avance** hay que recalcularlos cuando cambien los checks (ej.: 3 de 6 → 50%).
+- **Avance global** = suma de ítems con `[x]` / 48 (o excluí la fila Transversal si preferís medir solo fases 1–10: total 42).
