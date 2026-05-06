@@ -38,4 +38,23 @@ export class ExpenseReportsService {
   delete(id: string): Observable<any> {
     return this.http.delete(`${this.apiUrl}/expense-report/${id}`);
   }
+
+  createAffidavit(
+    reportId: string,
+    payload: { type: 'viaticos_nacionales' | 'viajes_exterior'; expenseIds: string[] }
+  ): Observable<{
+    reportId: string;
+    type: 'viaticos_nacionales' | 'viajes_exterior';
+    expenseIds: string[];
+    generatedBy: string;
+    generatedAt: string;
+  }> {
+    return this.http.post<{
+      reportId: string;
+      type: 'viaticos_nacionales' | 'viajes_exterior';
+      expenseIds: string[];
+      generatedBy: string;
+      generatedAt: string;
+    }>(`${this.apiUrl}/expense-report/${reportId}/affidavit`, payload);
+  }
 }

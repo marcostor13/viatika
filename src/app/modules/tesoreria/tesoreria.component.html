@@ -212,6 +212,23 @@
             class="w-full h-[38px] px-3 rounded-lg border border-gray-200 text-sm" />
         </div>
       </div>
+
+      <div class="flex flex-col gap-1">
+        <label class="text-xs font-medium text-gray-600">Comprobante de pago <span class="text-red-500">*</span></label>
+        <input
+          type="file"
+          accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png"
+          (change)="onPaymentReceiptSelected($event)"
+          class="w-full h-[38px] px-2 py-1 rounded-lg border border-gray-200 text-sm bg-white file:mr-3 file:px-2 file:py-1 file:rounded file:border-0 file:bg-gray-100 file:text-gray-700"
+        />
+        @if (isUploadingReceipt()) {
+        <p class="text-xs text-blue-600">Subiendo comprobante...</p>
+        } @else if (paymentReceiptName) {
+        <p class="text-xs text-green-700">Adjunto: {{ paymentReceiptName }}</p>
+        } @else {
+        <p class="text-xs text-gray-500">Formatos: PDF/JPG/PNG (máx. 10MB).</p>
+        }
+      </div>
     </form>
 
     <div class="flex gap-3 mt-5">
@@ -219,7 +236,7 @@
         class="flex-1 py-2 border border-gray-200 rounded-xl text-sm text-gray-600 hover:bg-gray-50 transition-colors">
         Cancelar
       </button>
-      <button type="button" (click)="confirmPayment()" [disabled]="paymentForm.invalid || isActing()"
+      <button type="button" (click)="confirmPayment()" [disabled]="paymentForm.invalid || isActing() || isUploadingReceipt() || !paymentReceiptUrl"
         class="flex-1 py-2 bg-blue-600 text-white rounded-xl text-sm font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors">
         {{ isActing() ? 'Registrando...' : 'Confirmar Pago' }}
       </button>

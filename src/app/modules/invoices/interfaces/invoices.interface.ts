@@ -1,7 +1,12 @@
 import { IProject } from './project.interface';
 import { ICategory } from './category.interface';
 
-export type ExpenseType = 'factura' | 'planilla_movilidad' | 'otros_gastos';
+export type ExpenseType =
+  | 'factura'
+  | 'planilla_movilidad'
+  | 'otros_gastos'
+  | 'recibo_caja'
+  | 'comprobante_caja';
 
 export interface IMobilityRowCoords {
   lat: number;
@@ -38,6 +43,25 @@ export interface ICreateOtherExpensePayload {
   declaracionJurada: true;
   declaracionJuradaFirmante: string;
   imageUrl?: string;
+}
+
+export interface ICreateCashReceiptPayload {
+  proyectId: string;
+  categoryId: string;
+  expenseReportId?: string;
+  total: number;
+  data: string;
+  fechaEmision: string;
+  imageUrl: string;
+}
+
+export interface ICreateCashVoucherPayload {
+  proyectId: string;
+  categoryId: string;
+  expenseReportId?: string;
+  total: number;
+  data: string;
+  fechaEmision?: string;
 }
 
 export interface IInvoice {
@@ -84,6 +108,18 @@ export interface IInvoiceResponse {
   approvedBy?: string;
   rejectedBy?: string;
   rejectionReason?: string;
+  observado?: boolean;
+  observacionPlazo?: string;
+  diasRetraso?: number;
+  categoryLimitPercent?: number;
+  categoryLimitWarning?: string;
+  reviewHistory?: {
+    action: 'approved' | 'rejected';
+    reviewerId?: string;
+    reviewedAt: string;
+    reason?: string;
+  }[];
+  internalCode?: string;
 
   provider?: string;
   ruc?: string;

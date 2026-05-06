@@ -126,10 +126,46 @@ export class MisRendicionesComponent implements OnInit {
     return 'Centro de costo';
   }
 
+  advanceStatusText(adv: IAdvance): string {
+    if (adv.status === 'paid') return 'En Progreso - Registrando Gastos';
+    return this.ADVANCE_STATUS_LABELS[adv.status];
+  }
+
+  hasExpenseReportLink(adv: IAdvance): boolean {
+    return !!(
+      adv.expenseReportId &&
+      typeof adv.expenseReportId === 'object' &&
+      '_id' in adv.expenseReportId
+    );
+  }
+
+  getExpenseReportId(adv: IAdvance): string | null {
+    if (!this.hasExpenseReportLink(adv)) return null;
+    return (adv.expenseReportId as { _id: string })._id;
+  }
+
   onModalClose(success: boolean) {
     this.showCreateModal = false;
     if (success) {
       this.loadMyReports();
     }
+  }
+
+  isReportInProgress(report: IExpenseReport): boolean {
+    if (report.status !== 'open') return false;
+    return this.myAdvances.some(adv => {
+      const rid =
+        adv.expenseReportId && typeof adv.expenseReportId === 'object'
+          ? adv.expenseReportId._id
+          : null;
+      return rid === report._id && (adv.status === 'paid' || adv.status === 'settled');
+    });
+  }
+
+  panelStatusText(report: IExpenseReport): string {
+    if (this.isReportInProgress(report)) return 'EN PROGRESO - REGISTRANDO GASTOS';
+    if (report.status === 'solicited') return 'SOLICITADA';
+    if (report.status === 'open') return 'ABIERTA';
+    return report.status.toUpperCase();
   }
 }
