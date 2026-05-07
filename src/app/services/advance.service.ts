@@ -10,6 +10,7 @@ import {
   IApproveAdvancePayload,
   IRejectAdvancePayload,
   IPayAdvancePayload,
+  IReturnProof,
 } from '../interfaces/advance.interface';
 
 @Injectable({ providedIn: 'root' })
@@ -79,5 +80,23 @@ export class AdvanceService {
   /** Fase 3 — corrección y reenvío tras rechazo (solo el colaborador dueño). */
   resubmit(id: string, payload: ICreateAdvancePayload): Observable<IAdvance> {
     return this.http.patch<IAdvance>(`${this.url}/${id}/resubmit`, payload);
+  }
+
+  // ─── Fase 7 — devolución de saldo ──────────────────────────────────────────
+
+  initiateReturn(id: string): Observable<IAdvance> {
+    return this.http.patch<IAdvance>(`${this.url}/${id}/return/initiate`, {});
+  }
+
+  uploadReturnProof(id: string, proof: Omit<IReturnProof, 'uploadedAt'>): Observable<IAdvance> {
+    return this.http.patch<IAdvance>(`${this.url}/${id}/return/proof`, proof);
+  }
+
+  validateReturn(id: string, approved: boolean, rejectionReason?: string): Observable<IAdvance> {
+    return this.http.patch<IAdvance>(`${this.url}/${id}/return/validate`, { approved, rejectionReason });
+  }
+
+  findPendingReturns(clientId: string): Observable<IAdvance[]> {
+    return this.http.get<IAdvance[]>(`${this.url}/pending-returns/client/${clientId}`);
   }
 }

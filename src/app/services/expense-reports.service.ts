@@ -63,6 +63,28 @@ export class ExpenseReportsService {
     );
   }
 
+  validateClosure(reportId: string): Observable<string[]> {
+    return this.http.get<string[]>(`${this.apiUrl}/expense-report/${reportId}/close/validate`);
+  }
+
+  close(reportId: string): Observable<IExpenseReport> {
+    return this.http.patch<IExpenseReport>(`${this.apiUrl}/expense-report/${reportId}/close`, {});
+  }
+
+  requestReopening(reportId: string, reason: string): Observable<IExpenseReport> {
+    return this.http.post<IExpenseReport>(
+      `${this.apiUrl}/expense-report/${reportId}/reopen-request`,
+      { reason }
+    );
+  }
+
+  approveReopening(reportId: string, approve: boolean): Observable<IExpenseReport> {
+    return this.http.patch<IExpenseReport>(
+      `${this.apiUrl}/expense-report/${reportId}/reopen-approve`,
+      { approve }
+    );
+  }
+
   createAffidavit(
     reportId: string,
     payload: { type: 'viaticos_nacionales' | 'viajes_exterior'; expenseIds: string[] }

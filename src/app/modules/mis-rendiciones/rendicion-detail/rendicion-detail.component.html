@@ -82,9 +82,42 @@
               <span class="w-4 h-4 border-2 border-indigo-300 border-t-indigo-700 rounded-full animate-spin" aria-hidden="true"></span>
               Generando DJ...
             } @else {
-              Declaración Jurada
+              Declaracion Jurada
             }
           </button>
+          @if (canClose) {
+          <button
+            type="button"
+            (click)="openCloseModal()"
+            [disabled]="isValidatingClosure()"
+            class="inline-flex items-center justify-center gap-2 min-h-[40px] px-3 py-2 rounded-lg text-xs sm:text-sm font-semibold border border-gray-400 bg-gray-700 text-white hover:bg-gray-800 disabled:opacity-50 transition-all touch-manipulation"
+          >
+            @if (isValidatingClosure()) {
+              <span class="w-4 h-4 border-2 border-gray-300 border-t-white rounded-full animate-spin" aria-hidden="true"></span>
+              Validando...
+            } @else {
+              Cerrar Definitivamente
+            }
+          </button>
+          }
+          @if (canRequestReopen) {
+          <button
+            type="button"
+            (click)="openReopenRequestModal()"
+            class="inline-flex items-center justify-center gap-2 min-h-[40px] px-3 py-2 rounded-lg text-xs sm:text-sm font-semibold border border-orange-300 bg-orange-50 text-orange-900 hover:bg-orange-100 transition-all touch-manipulation"
+          >
+            Solicitar Reapertura
+          </button>
+          }
+          @if (canApproveReopen) {
+          <button
+            type="button"
+            (click)="showReopenApproveModal.set(true)"
+            class="inline-flex items-center justify-center gap-2 min-h-[40px] px-3 py-2 rounded-lg text-xs sm:text-sm font-semibold border border-blue-300 bg-blue-50 text-blue-900 hover:bg-blue-100 transition-all touch-manipulation"
+          >
+            Revisar Solicitud de Reapertura
+          </button>
+          }
           }
         </div>
         }
@@ -559,6 +592,41 @@
           </div>
           }
         </div>
+      </div>
+      }
+
+      <!-- Devoluciones pendientes (Fase 7) -->
+      @for (adv of advancesWithPendingReturn; track adv._id) {
+      <div class="rounded-xl border border-red-200 bg-red-50/80 p-4 mb-4">
+        <div class="flex items-center justify-between mb-2">
+          <h3 class="font-semibold text-red-800 text-sm">Devolucion de saldo pendiente</h3>
+          <span [class]="returnRecordStatusColor(adv.returnRecord?.status || '')"
+            class="text-xs px-2 py-0.5 rounded font-medium">
+            {{ returnRecordStatusLabel(adv.returnRecord?.status || '') }}
+          </span>
+        </div>
+        <p class="text-xs text-gray-700 mb-1">
+          Anticipo: <strong>{{ adv.description }}</strong> — Monto a devolver:
+          <strong class="text-red-700">S/ {{ adv.returnRecord?.amountDue | number:'1.2-2' }}</strong>
+        </p>
+        <p class="text-xs text-gray-600">
+          Vencimiento: {{ adv.returnRecord?.dueDate | date:'dd/MM/yyyy' }}
+          @if (adv.returnRecord?.isOverdue) {
+          <span class="ml-1 font-semibold text-red-600">VENCIDO</span>
+          }
+        </p>
+        @if (adv.returnRecord?.status === 'rejected' && adv.returnRecord?.validation?.rejectionReason) {
+        <p class="text-xs text-red-700 mt-1">
+          Rechazo: {{ adv.returnRecord?.validation?.rejectionReason }}
+        </p>
+        }
+        @if (!isAdminView && (adv.returnRecord?.status === 'pending' || adv.returnRecord?.status === 'rejected')) {
+        <button type="button"
+          (click)="openReturnProofModal(adv._id, adv.returnRecord?.amountDue || 0)"
+          class="mt-2 text-xs px-3 py-1.5 bg-red-700 text-white rounded-lg hover:bg-red-800 font-medium">
+          Cargar comprobante de deposito
+        </button>
+        }
       </div>
       }
 
@@ -1616,6 +1684,222 @@
         (click)="generateAffidavit()"
       >
         Generar
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Confirmar cierre definitivo -->
+@if (showCloseModal()) {
+<div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
+  <div class="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
+    <div class="px-6 pt-6 pb-4 border-b border-gray-100">
+      <h3 class="text-lg font-semibold text-gray-900">Cerrar Rendicion Definitivamente</h3>
+      <p class="text-sm text-gray-500 mt-1">Esta accion bloquea toda edicion posterior.</p>
+    </div>
+
+    <div class="px-6 py-4 space-y-3">
+      @if (closureErrors().length > 0) {
+        <div class="rounded-xl border border-red-200 bg-red-50 p-4">
+          <p class="text-sm font-semibold text-red-800 mb-2">No se puede cerrar por las siguientes razones:</p>
+          <ul class="list-disc list-inside space-y-1">
+            @for (err of closureErrors(); track err) {
+              <li class="text-sm text-red-700">{{ err }}</li>
+            }
+          </ul>
+        </div>
+      } @else {
+        <div class="rounded-xl border border-gray-200 bg-gray-50 p-4">
+          <p class="text-sm text-gray-700">Todas las condiciones se cumplen. Al confirmar:</p>
+          <ul class="list-disc list-inside mt-2 space-y-1 text-sm text-gray-600">
+            <li>La rendicion quedara en estado <strong>Cerrada</strong></li>
+            <li>No podra agregar, editar ni eliminar comprobantes</li>
+            <li>Se notificara al colaborador por correo</li>
+          </ul>
+        </div>
+      }
+    </div>
+
+    <div class="px-6 pb-6 pt-2 flex gap-3">
+      <button
+        type="button"
+        class="flex-1 py-2.5 border border-gray-200 rounded-xl text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors"
+        [disabled]="isClosing()"
+        (click)="closeCloseModal()"
+      >
+        Cancelar
+      </button>
+      <button
+        type="button"
+        class="flex-1 py-2.5 bg-gray-800 text-white rounded-xl text-sm font-medium hover:bg-gray-900 disabled:opacity-50 transition-colors"
+        [disabled]="isClosing() || closureErrors().length > 0"
+        (click)="confirmClose()"
+      >
+        @if (isClosing()) {
+          <span class="inline-block w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin mr-1"></span>
+          Cerrando...
+        } @else {
+          Confirmar Cierre
+        }
+      </button>
+    </div>
+  </div>
+</div>
+}
+
+<!-- Modal: Solicitar reapertura -->
+@if (showReopenRequestModal()) {
+<div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
+  <div class="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden">
+    <div class="px-6 pt-6 pb-4 border-b border-gray-100">
+      <h3 class="text-lg font-semibold text-gray-900">Solicitar Reapertura</h3>
+      <p class="text-sm text-gray-500 mt-1">El motivo debe ser detallado (minimo 200 caracteres).</p>
+    </div>
+
+    <div class="px-6 py-4">
+      <label class="block text-sm font-medium text-gray-700 mb-1">
+        Motivo de reapertura
+        <span class="ml-1 text-xs font-normal text-gray-400">({{ reopenReason().length }}/200 min)</span>
+      </label>
+      <textarea
+        rows="5"
+        class="w-full rounded-xl border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary resize-none"
+        placeholder="Describe el motivo por el que se requiere reabrir esta rendicion..."
+        [value]="reopenReason()"
+        (input)="reopenReason.set($any($event.target).value)"
+      ></textarea>
+    </div>
+
+    <div class="px-6 pb-6 pt-2 flex gap-3">
+      <button
+        type="button"
+        class="flex-1 py-2.5 border border-gray-200 rounded-xl text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors"
+        [disabled]="isRequestingReopen()"
+        (click)="showReopenRequestModal.set(false)"
+      >
+        Cancelar
+      </button>
+      <button
+        type="button"
+        class="flex-1 py-2.5 bg-orange-600 text-white rounded-xl text-sm font-medium hover:bg-orange-700 disabled:opacity-50 transition-colors"
+        [disabled]="isRequestingReopen() || reopenReason().trim().length < 200"
+        (click)="submitReopenRequest()"
+      >
+        @if (isRequestingReopen()) {
+          <span class="inline-block w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin mr-1"></span>
+          Enviando...
+        } @else {
+          Enviar Solicitud
+        }
+      </button>
+    </div>
+  </div>
+</div>
+}
+
+<!-- Modal: Aprobar/rechazar reapertura -->
+@if (showReopenApproveModal()) {
+<div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
+  <div class="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
+    <div class="px-6 pt-6 pb-4 border-b border-gray-100">
+      <h3 class="text-lg font-semibold text-gray-900">Solicitud de Reapertura</h3>
+    </div>
+
+    <div class="px-6 py-4 space-y-3">
+      <div class="rounded-xl border border-blue-200 bg-blue-50 p-4">
+        <p class="text-sm font-semibold text-blue-800 mb-1">Motivo indicado:</p>
+        <p class="text-sm text-blue-700 whitespace-pre-wrap">{{ closureRecord?.reopeningReason || 'Sin motivo indicado' }}</p>
+      </div>
+      <p class="text-sm text-gray-600">Aprueba para devolver la rendicion al estado <strong>Aprobada</strong> y permitir edicion.</p>
+    </div>
+
+    <div class="px-6 pb-6 pt-2 flex gap-3">
+      <button
+        type="button"
+        class="flex-1 py-2.5 border border-red-200 bg-red-50 text-red-700 rounded-xl text-sm font-medium hover:bg-red-100 disabled:opacity-50 transition-colors"
+        [disabled]="isApprovingReopen()"
+        (click)="confirmReopenApproval(false)"
+      >
+        Rechazar
+      </button>
+      <button
+        type="button"
+        class="flex-1 py-2.5 bg-blue-600 text-white rounded-xl text-sm font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors"
+        [disabled]="isApprovingReopen()"
+        (click)="confirmReopenApproval(true)"
+      >
+        @if (isApprovingReopen()) {
+          <span class="inline-block w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin mr-1"></span>
+          Procesando...
+        } @else {
+          Aprobar Reapertura
+        }
+      </button>
+    </div>
+  </div>
+</div>
+}
+}
+
+<!-- Modal: Cargar comprobante de devolución (Fase 7) -->
+@if (showReturnProofModal()) {
+<div class="fixed inset-0 z-50 flex items-center justify-center p-4" (click)="showReturnProofModal.set(false)">
+  <div class="absolute inset-0 bg-black/40 backdrop-blur-sm"></div>
+  <div class="relative bg-white rounded-2xl shadow-xl p-6 w-full max-w-md" (click)="$event.stopPropagation()">
+    <h3 class="text-lg font-bold text-gray-900 mb-1">Cargar comprobante de deposito</h3>
+    <p class="text-sm text-gray-500 mb-4">Adjunta el comprobante del deposito que realizaste para devolver el saldo del anticipo.</p>
+    <div class="space-y-3">
+      <div class="grid grid-cols-2 gap-3">
+        <div class="flex flex-col gap-1">
+          <label class="text-xs font-medium text-gray-600">Fecha de deposito <span class="text-red-500">*</span></label>
+          <input type="date" [value]="returnProofDepositDate()" (input)="returnProofDepositDate.set($any($event.target).value)"
+            class="w-full h-[38px] px-3 rounded-lg border border-gray-200 text-sm" />
+        </div>
+        <div class="flex flex-col gap-1">
+          <label class="text-xs font-medium text-gray-600">Monto devuelto S/ <span class="text-red-500">*</span></label>
+          <input type="number" [value]="returnProofAmount()" (input)="returnProofAmount.set(+$any($event.target).value)"
+            min="0" step="0.01" class="w-full h-[38px] px-3 rounded-lg border border-gray-200 text-sm" />
+        </div>
+      </div>
+      <div class="flex flex-col gap-1">
+        <label class="text-xs font-medium text-gray-600">Banco de origen <span class="text-red-500">*</span></label>
+        <input type="text" [value]="returnProofBank()" (input)="returnProofBank.set($any($event.target).value)"
+          placeholder="BCP, Interbank, BBVA..." class="w-full h-[38px] px-3 rounded-lg border border-gray-200 text-sm" />
+      </div>
+      <div class="flex flex-col gap-1">
+        <label class="text-xs font-medium text-gray-600">N° de operacion <span class="text-red-500">*</span></label>
+        <input type="text" [value]="returnProofOperation()" (input)="returnProofOperation.set($any($event.target).value)"
+          placeholder="Numero de transaccion" class="w-full h-[38px] px-3 rounded-lg border border-gray-200 text-sm" />
+      </div>
+      <div class="flex flex-col gap-1">
+        <label class="text-xs font-medium text-gray-600">Nota (opcional)</label>
+        <textarea [value]="returnProofNote()" (input)="returnProofNote.set($any($event.target).value)"
+          rows="2" class="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm resize-none"></textarea>
+      </div>
+      <div class="flex flex-col gap-1">
+        <label class="text-xs font-medium text-gray-600">Comprobante adjunto <span class="text-red-500">*</span></label>
+        <input type="file" accept=".pdf,.jpg,.jpeg,.png"
+          (change)="onReturnProofFileSelected($event)"
+          class="w-full px-2 py-1.5 rounded-lg border border-gray-200 text-sm bg-white file:mr-2 file:px-2 file:py-1 file:rounded file:border-0 file:bg-gray-100 file:text-gray-700" />
+        @if (isUploadingReturnProof()) {
+        <p class="text-xs text-blue-600">Subiendo...</p>
+        } @else if (returnProofFileName()) {
+        <p class="text-xs text-green-700">Adjunto: {{ returnProofFileName() }}</p>
+        } @else {
+        <p class="text-xs text-gray-400">PDF/JPG/PNG (max 10MB)</p>
+        }
+      </div>
+    </div>
+    <div class="flex gap-3 mt-5">
+      <button type="button" (click)="showReturnProofModal.set(false)"
+        [disabled]="isSubmittingReturnProof()"
+        class="flex-1 py-2 border border-gray-200 rounded-xl text-sm text-gray-600 hover:bg-gray-50 disabled:opacity-50">
+        Cancelar
+      </button>
+      <button type="button" (click)="submitReturnProof()"
+        [disabled]="!returnProofUrl() || isSubmittingReturnProof() || isUploadingReturnProof()"
+        class="flex-1 py-2 bg-red-700 text-white rounded-xl text-sm font-medium hover:bg-red-800 disabled:opacity-50">
+        {{ isSubmittingReturnProof() ? 'Enviando...' : 'Enviar comprobante' }}
       </button>
     </div>
   </div>

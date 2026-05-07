@@ -53,6 +53,37 @@ export interface ICoordinatorNotification {
   errorMessage?: string;
 }
 
+export type ReturnRecordStatus = 'pending' | 'proof_uploaded' | 'validated' | 'rejected';
+
+export interface IReturnProof {
+  depositDate: string;
+  amountReturned: number;
+  bankOrigin: string;
+  operationNumber: string;
+  fileUrl: string;
+  fileKey?: string;
+  uploadedAt: string;
+  note?: string;
+}
+
+export interface IReturnValidation {
+  validatedBy: string;
+  validatedAt: string;
+  approved: boolean;
+  rejectionReason?: string;
+}
+
+export interface IReturnRecord {
+  status: ReturnRecordStatus;
+  amountDue: number;
+  dueDate: string;
+  proof?: IReturnProof;
+  validation?: IReturnValidation;
+  isOverdue: boolean;
+  remindersSent: number;
+  escalatedAt?: string;
+}
+
 export interface IAdvance {
   _id: string;
   userId: { _id: string; name: string; email: string; bankAccount?: IBankAccount } | string;
@@ -79,6 +110,7 @@ export interface IAdvance {
   rejectedBy?: string;
   rejectionReason?: string;
   returnedAmount?: number;
+  returnRecord?: IReturnRecord;
   /** Reenvíos tras rechazo (Fase 3). */
   solicitudVersion?: number;
   budgetCommitmentRecorded?: boolean;

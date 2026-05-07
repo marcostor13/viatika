@@ -93,6 +93,18 @@
       class="px-4 py-2 rounded-lg text-sm font-medium transition-all">
       Aprobados / En pago
     </button>
+    @if (canPayAndSettle) {
+    <button type="button" (click)="activeTab.set('devoluciones')"
+      [class]="activeTab() === 'devoluciones' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'"
+      class="px-4 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-1.5">
+      Devoluciones
+      @if (pendingReturns.length > 0) {
+      <span class="inline-flex items-center justify-center w-5 h-5 rounded-full bg-red-500 text-white text-[10px] font-bold">
+        {{ pendingReturns.length }}
+      </span>
+      }
+    </button>
+    }
     <button type="button" (click)="activeTab.set('historial')"
       [class]="activeTab() === 'historial' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'"
       class="px-4 py-2 rounded-lg text-sm font-medium transition-all">
@@ -100,7 +112,61 @@
     </button>
   </div>
 
-  <!-- Table -->
+  <!-- Devoluciones tab content -->
+  @if (activeTab() === 'devoluciones') {
+  <div class="bg-white rounded-xl border border-gray-200 overflow-hidden">
+    @if (pendingReturns.length === 0) {
+    <div class="p-12 text-center text-gray-400 text-sm">No hay devoluciones pendientes.</div>
+    } @else {
+    <table class="min-w-full divide-y divide-gray-200 text-sm">
+      <thead class="bg-gray-50 text-xs font-medium text-gray-500 uppercase tracking-wider">
+        <tr>
+          <th class="px-4 py-3 text-left">Colaborador</th>
+          <th class="px-4 py-3 text-right">Monto S/</th>
+          <th class="px-4 py-3 text-center">Vencimiento</th>
+          <th class="px-4 py-3 text-center">Estado</th>
+          <th class="px-4 py-3 text-right">Accion</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-gray-100">
+        @for (adv of pendingReturns; track adv._id) {
+        <tr class="hover:bg-gray-50" [class.bg-red-50]="adv.returnRecord?.isOverdue">
+          <td class="px-4 py-3 font-medium text-gray-900">{{ getUserName(adv) }}</td>
+          <td class="px-4 py-3 text-right font-bold text-red-700">
+            S/ {{ adv.returnRecord?.amountDue | number:'1.2-2' }}
+          </td>
+          <td class="px-4 py-3 text-center text-xs text-gray-600">
+            {{ adv.returnRecord?.dueDate | date:'dd/MM/yyyy' }}
+            @if (adv.returnRecord?.isOverdue) {
+            <span class="ml-1 text-red-600 font-semibold">VENCIDO</span>
+            }
+          </td>
+          <td class="px-4 py-3 text-center">
+            <span [class]="returnStatusColor(adv.returnRecord?.status || '')"
+              class="inline-flex px-2 py-0.5 rounded text-xs font-medium">
+              {{ returnStatusLabel(adv.returnRecord?.status || '') }}
+            </span>
+          </td>
+          <td class="px-4 py-3 text-right">
+            @if (adv.returnRecord?.status === 'proof_uploaded') {
+            <button type="button" (click)="openValidateReturnModal(adv)"
+              class="text-xs px-3 py-1.5 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 font-medium">
+              Revisar comprobante
+            </button>
+            } @else if (adv.returnRecord?.status === 'rejected') {
+            <span class="text-xs text-gray-400">Esperando nuevo comprobante</span>
+            }
+          </td>
+        </tr>
+        }
+      </tbody>
+    </table>
+    }
+  </div>
+  }
+
+  <!-- Table (other tabs) -->
+  @if (activeTab() !== 'devoluciones') {
   <div class="bg-white rounded-xl border border-gray-200 overflow-hidden">
     @if(isLoading()) {
     <div class="flex justify-center p-12">
@@ -209,7 +275,60 @@
     </table>
     }
   </div>
+  } <!-- end @if activeTab !== devoluciones -->
 </div>
+
+<!-- Modal: Validar comprobante de devolución -->
+@if (showValidateReturnModal && selectedReturnAdvance) {
+<div class="fixed inset-0 z-50 flex items-center justify-center p-4" (click)="showValidateReturnModal=false">
+  <div class="absolute inset-0 bg-black/40 backdrop-blur-sm"></div>
+  <div class="relative bg-white rounded-2xl shadow-xl p-6 w-full max-w-md" (click)="$event.stopPropagation()">
+    <h3 class="text-lg font-bold text-gray-900 mb-1">Revisar comprobante de devolución</h3>
+    <p class="text-sm text-gray-500 mb-4">
+      Colaborador: <strong>{{ getUserName(selectedReturnAdvance) }}</strong><br />
+      Monto a devolver: <strong>S/ {{ selectedReturnAdvance.returnRecord?.amountDue | number:'1.2-2' }}</strong>
+    </p>
+    @if (selectedReturnAdvance.returnRecord?.proof) {
+    <div class="rounded-lg bg-gray-50 border border-gray-200 p-3 mb-4 text-sm space-y-1">
+      <p><span class="text-gray-500">Fecha deposito:</span> {{ selectedReturnAdvance.returnRecord?.proof?.depositDate | date:'dd/MM/yyyy' }}</p>
+      <p><span class="text-gray-500">Monto devuelto:</span> S/ {{ selectedReturnAdvance.returnRecord?.proof?.amountReturned | number:'1.2-2' }}</p>
+      <p><span class="text-gray-500">Banco origen:</span> {{ selectedReturnAdvance.returnRecord?.proof?.bankOrigin }}</p>
+      <p><span class="text-gray-500">N° operacion:</span> {{ selectedReturnAdvance.returnRecord?.proof?.operationNumber }}</p>
+      @if (selectedReturnAdvance.returnRecord?.proof?.note) {
+      <p><span class="text-gray-500">Nota:</span> {{ selectedReturnAdvance.returnRecord?.proof?.note }}</p>
+      }
+      <a [href]="selectedReturnAdvance.returnRecord?.proof?.fileUrl" target="_blank"
+        class="text-xs text-primary font-semibold hover:underline inline-block mt-1">
+        Ver documento adjunto
+      </a>
+    </div>
+    }
+    <div class="flex flex-col gap-2 mb-4">
+      <label class="text-xs font-medium text-gray-600">Motivo de rechazo (si aplica, min. 50 caracteres)</label>
+      <textarea [value]="returnRejectReason()" (input)="returnRejectReason.set($any($event.target).value)"
+        rows="3" placeholder="Describe por que rechazas este comprobante..."
+        class="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm resize-none"></textarea>
+      <p class="text-xs text-gray-400">{{ returnRejectReason().length }} / 50 min.</p>
+    </div>
+    <div class="flex gap-3">
+      <button type="button" (click)="showValidateReturnModal=false"
+        class="flex-1 py-2 border border-gray-200 rounded-xl text-sm text-gray-600 hover:bg-gray-50">
+        Cancelar
+      </button>
+      <button type="button" (click)="confirmValidateReturn(false)"
+        [disabled]="isValidatingReturn() || returnRejectReason().trim().length < 50"
+        class="flex-1 py-2 bg-red-600 text-white rounded-xl text-sm font-medium hover:bg-red-700 disabled:opacity-50">
+        Rechazar
+      </button>
+      <button type="button" (click)="confirmValidateReturn(true)"
+        [disabled]="isValidatingReturn()"
+        class="flex-1 py-2 bg-emerald-600 text-white rounded-xl text-sm font-medium hover:bg-emerald-700 disabled:opacity-50">
+        {{ isValidatingReturn() ? 'Procesando...' : 'Aprobar' }}
+      </button>
+    </div>
+  </div>
+</div>
+}
 
 <!-- Modal: Registrar Pago -->
 @if(showPaymentModal && selectedAdvance) {

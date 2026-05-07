@@ -170,6 +170,24 @@
       </a>
       }
       <a
+        [routerLink]="['/reembolso-directo']"
+        routerLinkActive="bg-primary text-white"
+        [class.bg-primary]="isSelected('/reembolso-directo')"
+        [class.text-quaternary]="isSelected('/reembolso-directo')"
+        class="flex items-center px-4 py-3 text-secondary rounded-xl hover:bg-background hover:text-primary transition-all duration-200 group"
+      >
+        <span class="font-medium">Reembolso Directo</span>
+      </a>
+      <a
+        [routerLink]="['/caja-chica']"
+        routerLinkActive="bg-primary text-white"
+        [class.bg-primary]="isSelected('/caja-chica')"
+        [class.text-quaternary]="isSelected('/caja-chica')"
+        class="flex items-center px-4 py-3 text-secondary rounded-xl hover:bg-background hover:text-primary transition-all duration-200 group"
+      >
+        <span class="font-medium">Caja Chica</span>
+      </a>
+      <a
         [routerLink]="['/mi-firma']"
         routerLinkActive="bg-primary text-white"
         [class.bg-primary]="isSelected('/mi-firma')"
@@ -436,6 +454,24 @@
           <span class="font-medium text-lg">Tesorería</span>
         </a>
         }
+        <a
+          [routerLink]="['/reembolso-directo']"
+          (click)="toggleSidebar()"
+          [class.bg-primary]="isSelected('/reembolso-directo')"
+          [class.text-quaternary]="isSelected('/reembolso-directo')"
+          class="flex items-center px-4 py-4 text-secondary rounded-xl hover:bg-background hover:text-primary transition-all duration-200 group"
+        >
+          <span class="font-medium text-lg">Reembolso Directo</span>
+        </a>
+        <a
+          [routerLink]="['/caja-chica']"
+          (click)="toggleSidebar()"
+          [class.bg-primary]="isSelected('/caja-chica')"
+          [class.text-quaternary]="isSelected('/caja-chica')"
+          class="flex items-center px-4 py-4 text-secondary rounded-xl hover:bg-background hover:text-primary transition-all duration-200 group"
+        >
+          <span class="font-medium text-lg">Caja Chica</span>
+        </a>
         <a
           [routerLink]="['/mi-firma']"
           (click)="toggleSidebar()"

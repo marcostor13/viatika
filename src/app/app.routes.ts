@@ -255,6 +255,22 @@ export const routes: Routes = [
           ),
         canActivate: [authModuleGuard('audit-log', true)],
       },
+      {
+        path: 'reembolso-directo',
+        loadComponent: () =>
+          import('./modules/reembolso-directo/reembolso-directo.component').then(
+            (m) => m.ReembolsoDirectoComponent
+          ),
+        canActivate: [AuthColaboradorGuard],
+      },
+      {
+        path: 'caja-chica',
+        loadComponent: () =>
+          import('./modules/caja-chica/caja-chica.component').then(
+            (m) => m.CajaChicaComponent
+          ),
+        canActivate: [AuthColaboradorGuard],
+      },
     ],
   },
   {
