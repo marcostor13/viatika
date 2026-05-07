@@ -16,6 +16,7 @@ const ACTION_LABELS: Record<string, string> = {
   create_rendicion: 'Creó rendición',
   delete_rendicion: 'Eliminó rendición',
   update_rendicion_status: 'Cambió estado rendición',
+  register_reimbursement_payment: 'Registró pago de reembolso',
   approve_advance_l1: 'Aprobó anticipo (L1)',
   approve_advance_l2: 'Aprobó anticipo (L2)',
   reject_advance: 'Rechazó anticipo',

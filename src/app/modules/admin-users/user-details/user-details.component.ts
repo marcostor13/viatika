@@ -12,7 +12,14 @@ import { UserStateService } from '../../../services/user-state.service';
 import { NotificationService } from '../../../services/notification.service';
 import { ConfirmationService } from '../../../services/confirmation.service';
 
-type RendicionStatus = 'solicited' | 'open' | 'submitted' | 'approved' | 'rejected' | 'closed';
+type RendicionStatus =
+  | 'solicited'
+  | 'open'
+  | 'submitted'
+  | 'approved'
+  | 'rejected'
+  | 'reimbursed'
+  | 'closed';
 
 const STATUS_LABELS: Record<RendicionStatus, string> = {
   solicited: 'Solicitada',
@@ -20,6 +27,7 @@ const STATUS_LABELS: Record<RendicionStatus, string> = {
   submitted: 'Enviada',
   approved: 'Aprobada',
   rejected: 'Rechazada',
+  reimbursed: 'Reembolsado',
   closed: 'Cerrada',
 };
 
@@ -29,6 +37,7 @@ const STATUS_COLORS: Record<RendicionStatus, string> = {
   submitted: 'bg-yellow-100 text-yellow-800',
   approved: 'bg-green-100 text-green-800',
   rejected: 'bg-red-100 text-red-800',
+  reimbursed: 'bg-emerald-100 text-emerald-800',
   closed: 'bg-gray-100 text-gray-800',
 };
 
@@ -64,7 +73,15 @@ export class UserDetailsComponent implements OnInit {
 
   readonly STATUS_LABELS = STATUS_LABELS;
   readonly STATUS_COLORS = STATUS_COLORS;
-  readonly statuses: RendicionStatus[] = ['solicited', 'open', 'submitted', 'approved', 'rejected', 'closed'];
+  /** Estados editables por PATCH; «reembolsado» lo registra solo tesorería. */
+  readonly statuses: RendicionStatus[] = [
+    'solicited',
+    'open',
+    'submitted',
+    'approved',
+    'rejected',
+    'closed',
+  ];
 
   ngOnInit(): void {
     if (this.id) this.getUserData();
@@ -126,7 +143,7 @@ export class UserDetailsComponent implements OnInit {
   // ── Cambiar estado ───────────────────────────────────────────────
   openStatusModal(report: IExpenseReport) {
     this.selectedReport.set(report);
-    this.newStatus.set(report.status);
+    this.newStatus.set(report.status as RendicionStatus);
     this.statusChangeRejectionReason.set('');
     this.showStatusModal.set(true);
   }

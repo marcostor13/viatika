@@ -17,14 +17,14 @@
 | 3 | Aprobación de viáticos | 2 | 2 | 100% |
 | 4 | Pago tesorería | 2 | 2 | 100% |
 | 5 | Ingreso y validación de gastos | 11 | 11 | 100% |
-| 6 | Reembolsos | 0 | 5 | 0% |
+| 6 | Reembolsos | 5 | 5 | 100% |
 | 7 | Devolución de saldos | 0 | 4 | 0% |
 | 8 | Cierre definitivo | 0 | 4 | 0% |
 | 9 | Reembolso directo | 0 | 3 | 0% |
 | 10 | Caja chica | 0 | 3 | 0% |
 | T | Transversal / soporte | 0 | 6 | 0% |
 
-**Total ítems:** 48 · **Avance global:** 21 / 48 → **~44%**
+**Total ítems:** 48 · **Avance global:** 26 / 48 → **~54%**
 
 ---
 
@@ -72,6 +72,8 @@
 
 **Avance:** 11 / 11 → **100%**
 
+**Pruebas automatizadas (regresión Fase 5):** en `viatika-back`, `npm test` incluye `expense-report.service.spec.ts` (envío/aprobación final/declaración jurada) y `expense.service.spec.ts` (plazo de ingreso y límites 90%/100% por categoría). En `viatika`, `ng test` incluye `expense-reports.service.spec.ts` (`createAffidavit`).
+
 - [x] UI gastos habilitada cuando Pagado + estado rendición en panel *(frontend: detalle de rendición solo habilita “Añadir gasto” cuando existe anticipo en estado `paid/settled`; si aún no hay pago, muestra aviso al colaborador. En panel “Mis Rendiciones” se muestra estado “EN PROGRESO - REGISTRANDO GASTOS” cuando la rendición `open` ya tiene anticipo pagado.)*
 - [x] Factura: OCR + validación SUNAT + edición post-OCR *(flujo factura mantiene OCR + SUNAT; se añadió revisión post-OCR en la misma pantalla de carga para editar RUC/fecha/serie/correlativo antes de confirmar guardado, y luego ejecutar validación SUNAT con datos corregidos.)*
 - [x] Planilla movilidad: GPS, correlativo, PDF *(GPS y distancia ya operativos en formulario. Se añadió correlativo interno por usuario en backend (`internalCode`, formato iniciales+secuencia) al crear planilla de movilidad y descarga de PDF específico de planilla desde el detalle de comprobante.)*
@@ -88,13 +90,13 @@
 
 ## Fase 6 — Reembolsos
 
-**Avance:** 0 / 5 → **0%**
+**Avance:** 5 / 5 → **100%**
 
-- [ ] Cálculo saldo a favor colaborador + activación flujo
-- [ ] Notificación a contabilidad con enlace
-- [ ] Registro pago reembolso + comprobante
-- [ ] Estado Reembolsado + notificación con PDF a colaborador
-- [ ] Documentos disponibles en “Mis documentos”
+- [x] Cálculo saldo a favor colaborador + activación flujo *(al aprobar la rendición final, `AdvanceService.liquidateExpenseReport` consolida anticipos pagados vs gastos aprobados, actualiza `settlement` en la rendición y marca anticipos como liquidados; equivale a liquidación manual por anticipo pero alineada al cierre de rendición según Funcionalidades §6.1)*  
+- [x] Notificación a contabilidad con enlace *(correo `rendicion-reembolso-contabilidad.hbs` a destinatarios `findViaticoAccountingNotifyRecipients`; asunto y cuerpo alineados al texto tipo Funcionalidades §6.1 paso 2 — rendición identificada, monto y colaborador; enlace al detalle; flag `reimbursementAccountingNotifiedAt` para evitar reenvíos)*  
+- [x] Registro pago reembolso + comprobante *(endpoint `PATCH /expense-report/:id/register-reimbursement-payment`, validación PDF/JPG/PNG máx. 10MB como en pago de anticipo; UI en Tesorería — tabla «Reembolsos pendientes» + modal; API valida que la rendición y el listado de pendientes correspondan al `clientId` del JWT salvo `SUPER_ADMIN`)*  
+- [x] Estado Reembolsado + notificación con PDF a colaborador *(estado `reimbursed`, correo `rendicion-reembolso-pagado.hbs` con adjunto del comprobante a colaborador y coordinador; notificación in-app)*  
+- [x] Documentos disponibles en “Mis documentos” *(ruta `/mis-documentos` colaborador; `GET /expense-report/documents/my` agrupa comprobantes de pago de viático y de reembolso; rechazo 400 si la sesión no tiene cliente Mongo válido)*  
 
 ---
 

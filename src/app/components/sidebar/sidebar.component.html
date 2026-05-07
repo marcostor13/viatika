@@ -31,6 +31,15 @@
       >
         <span class="font-medium">Mis Rendiciones</span>
       </a>
+      <a
+        [routerLink]="['/mis-documentos']"
+        routerLinkActive="bg-primary text-white"
+        [class.bg-primary]="isSelected('/mis-documentos')"
+        [class.text-quaternary]="isSelected('/mis-documentos')"
+        class="flex items-center px-4 py-3 text-secondary rounded-xl hover:bg-background hover:text-primary transition-all duration-200 group"
+      >
+        <span class="font-medium">Mis Documentos</span>
+      </a>
       }
 
       <!-- Admin: páginas fijas -->
@@ -288,6 +297,15 @@
           class="flex items-center px-4 py-4 text-secondary rounded-xl hover:bg-background hover:text-primary transition-all duration-200 group"
         >
           <span class="font-medium text-lg">Mis Rendiciones</span>
+        </a>
+        <a
+          [routerLink]="['/mis-documentos']"
+          (click)="toggleSidebar()"
+          [class.bg-primary]="isSelected('/mis-documentos')"
+          [class.text-quaternary]="isSelected('/mis-documentos')"
+          class="flex items-center px-4 py-4 text-secondary rounded-xl hover:bg-background hover:text-primary transition-all duration-200 group"
+        >
+          <span class="font-medium text-lg">Mis Documentos</span>
         </a>
         }
 

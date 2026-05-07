@@ -1,7 +1,7 @@
 import { Component, OnInit, inject, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormsModule, FormBuilder, FormGroup, Validators, FormArray } from '@angular/forms';
-import { ActivatedRoute, Router } from '@angular/router';
+import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { ExpenseReportsService } from '../../../services/expense-reports.service';
 import { AdvanceService } from '../../../services/advance.service';
 import { NotificationService } from '../../../services/notification.service';
@@ -28,6 +28,7 @@ import { SolicitudViaticosModalComponent } from '../solicitud-viaticos-modal/sol
     FormsModule,
     ButtonComponent,
     SolicitudViaticosModalComponent,
+    RouterModule,
   ],
   templateUrl: './rendicion-detail.component.html',
   styleUrls: ['./rendicion-detail.component.scss']
@@ -709,6 +710,7 @@ export class RendicionDetailComponent implements OnInit {
       submitted: 'Enviada',
       approved: 'Aprobada',
       rejected: 'Rechazada',
+      reimbursed: 'Reembolsado',
       closed: 'Cerrada',
     };
     return labels[this.report.status] ?? this.report.status;

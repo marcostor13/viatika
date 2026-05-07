@@ -4,16 +4,37 @@ import { inject } from '@angular/core';
 import { LoaderService } from '../services/loader.service';
 import { finalize } from 'rxjs';
 
+/** Evita enviar Bearer con JWT caduco o ilegible (Passport devuelve 401 igual que sin cabecera). */
+function isJwtExpiredOrInvalid(token: string): boolean {
+  try {
+    const parts = token.split('.');
+    if (parts.length !== 3) return true;
+    let base64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+    const pad = base64.length % 4;
+    if (pad) base64 += '='.repeat(4 - pad);
+    const payload = JSON.parse(atob(base64));
+    if (typeof payload.exp !== 'number') return false;
+    return payload.exp * 1000 <= Date.now();
+  } catch {
+    return true;
+  }
+}
+
 export const httpInterceptor: HttpInterceptorFn = (req, next) => {
   const userStateService = inject(UserStateService);
   const loaderService = inject(LoaderService);
   loaderService.show();
-  const user = userStateService.getUser();
+  let user = userStateService.getUser();
+  let token = user?.access_token || userStateService.getToken() || null;
+  if (token && isJwtExpiredOrInvalid(token)) {
+    userStateService.clearUser();
+    user = null;
+    token = null;
+  }
   const currentHeaders = req.headers;
   const objectHeaders = Object.fromEntries(
     currentHeaders.keys().map((key) => [key, currentHeaders.get(key)])
   );
-  const token = user?.access_token || userStateService.getToken();
   let url = req.url;
 
   const excludedEndpoints = ['/auth', '/auth/', '/login'];
@@ -44,7 +65,7 @@ export const httpInterceptor: HttpInterceptorFn = (req, next) => {
     url.includes(endpoint)
   );
 
-  if (token) {
+  if (token != null && token !== '') {
     const headers: any = {
       ...objectHeaders,
       Authorization: `Bearer ${token}`,

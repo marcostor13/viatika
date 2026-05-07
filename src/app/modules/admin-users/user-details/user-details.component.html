@@ -100,15 +100,12 @@
       </button>
     </div>
 
-    <!-- Loading -->
+    <!-- Loading / vacío / tabla (una sola cadena @if / @else if / @else) -->
     @if (isLoadingReports()) {
     <div class="flex justify-center py-12">
       <div class="animate-spin rounded-full h-7 w-7 border-b-2 border-primary"></div>
     </div>
-    }
-
-    <!-- Empty state -->
-    @else if (expenseReports.length === 0) {
+    } @else if (expenseReports.length === 0) {
     <div class="flex flex-col items-center py-14 px-6 text-center">
       <div class="w-14 h-14 rounded-2xl bg-background flex items-center justify-center mb-4">
         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-7 h-7 text-tertiary">
@@ -118,10 +115,7 @@
       <p class="font-semibold text-secondary">Sin rendiciones asignadas</p>
       <p class="text-sm text-tertiary mt-1">Crea una rendición para asignarle un presupuesto a este colaborador.</p>
     </div>
-    }
-
-    <!-- Table -->
-    @else {
+    } @else {
     <div class="overflow-x-auto">
       <table class="w-full text-sm">
         <thead class="bg-background text-tertiary">
@@ -186,6 +180,7 @@
                     <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
                   </svg>
                 </button>
+                @if (report.status !== 'reimbursed') {
                 <button
                   (click)="openStatusModal(report)"
                   class="p-1.5 rounded-lg text-tertiary hover:bg-primary/10 hover:text-primary transition-colors"
@@ -195,6 +190,7 @@
                     <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" />
                   </svg>
                 </button>
+                }
                 <button
                   (click)="deleteReport(report)"
                   class="p-1.5 rounded-lg text-tertiary hover:bg-error/10 hover:text-error transition-colors"

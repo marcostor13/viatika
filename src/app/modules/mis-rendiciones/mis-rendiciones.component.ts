@@ -166,6 +166,7 @@ export class MisRendicionesComponent implements OnInit {
     if (this.isReportInProgress(report)) return 'EN PROGRESO - REGISTRANDO GASTOS';
     if (report.status === 'solicited') return 'SOLICITADA';
     if (report.status === 'open') return 'ABIERTA';
+    if (report.status === 'reimbursed') return 'REEMBOLSADO';
     return report.status.toUpperCase();
   }
 }

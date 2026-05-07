@@ -63,7 +63,7 @@ export class UserStateService {
   }
 
   isAuthenticated() {
-    return !!this._user();
+    return !!(this._user() && this.getToken());
   }
   getRole(): string {
     const user = this._user();
