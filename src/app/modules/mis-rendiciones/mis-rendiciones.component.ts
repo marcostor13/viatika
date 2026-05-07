@@ -123,10 +123,18 @@ export class MisRendicionesComponent implements OnInit {
   advanceProjectLabel(adv: IAdvance): string {
     const p = adv.projectId;
     if (p && typeof p === 'object' && 'name' in p) {
-      const code = (p as { code?: string }).code ?? '—';
-      return `[${code} — ${(p as { name: string }).name}]`;
+      const code = (p as { code?: string }).code;
+      return code ? `${code} — ${(p as { name: string }).name}` : (p as { name: string }).name;
     }
     return 'Centro de costo';
+  }
+
+  advanceDateRange(adv: IAdvance): string {
+    const fmt = (d: string) =>
+      new Date(d).toLocaleDateString('es-PE', { day: 'numeric', month: 'long', year: 'numeric' });
+    if (adv.startDate && adv.endDate) return `${fmt(adv.startDate)} al ${fmt(adv.endDate)}`;
+    if (adv.startDate) return fmt(adv.startDate);
+    return '';
   }
 
   advanceStatusText(adv: IAdvance): string {

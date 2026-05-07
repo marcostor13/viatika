@@ -89,6 +89,7 @@ export interface IAdvance {
   _id: string;
   userId: { _id: string; name: string; email: string; bankAccount?: IBankAccount } | string;
   clientId: string;
+  coordinatorId?: string;
   expenseReportId?: { _id: string; title: string; status: string } | string;
   /** Fase 2 — centro de costo */
   projectId?:

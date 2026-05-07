@@ -158,6 +158,17 @@
         <span class="font-medium">Actividad</span>
       </a>
       }
+      @if (canAccessViaticos()) {
+      <a
+        [routerLink]="['/viaticos']"
+        routerLinkActive="bg-primary text-white"
+        [class.bg-primary]="isSelected('/viaticos')"
+        [class.text-quaternary]="isSelected('/viaticos')"
+        class="flex items-center px-4 py-3 text-secondary rounded-xl hover:bg-background hover:text-primary transition-all duration-200 group"
+      >
+        <span class="font-medium">Viáticos</span>
+      </a>
+      }
       @if (canAccessTesoreria()) {
       <a
         [routerLink]="['/tesoreria']"
@@ -441,6 +452,17 @@
           class="flex items-center px-4 py-4 text-secondary rounded-xl hover:bg-background hover:text-primary transition-all duration-200 group"
         >
           <span class="font-medium text-lg">Actividad</span>
+        </a>
+        }
+        @if (canAccessViaticos()) {
+        <a
+          [routerLink]="['/viaticos']"
+          (click)="toggleSidebar()"
+          [class.bg-primary]="isSelected('/viaticos')"
+          [class.text-quaternary]="isSelected('/viaticos')"
+          class="flex items-center px-4 py-4 text-secondary rounded-xl hover:bg-background hover:text-primary transition-all duration-200 group"
+        >
+          <span class="font-medium text-lg">Viáticos</span>
         </a>
         }
         @if (canAccessTesoreria()) {
