@@ -3,11 +3,13 @@ import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { Router } from '@angular/router';
 import { environment } from '../../environments/environment';
+import { UserStateService } from './user-state.service';
 
 @Injectable({ providedIn: 'root' })
 export class AuthService {
   private router = inject(Router);
   private http = inject(HttpClient);
+  private userStateService = inject(UserStateService);
 
   login(email: string, password: string): Observable<any> {
     return this.http.post(`${environment.api}/auth/login`, {
@@ -17,8 +19,7 @@ export class AuthService {
   }
 
   logout() {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
+    this.userStateService.clearUser();
     this.router.navigate(['/login']);
   }
 
