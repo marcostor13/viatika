@@ -14,7 +14,7 @@ import {
 import { ExpenseReportsService } from '../../services/expense-reports.service';
 import { IExpenseReport } from '../../interfaces/expense-report.interface';
 import { RouterModule } from '@angular/router';
-type Tab = 'pendientes' | 'aprobados' | 'historial';
+type Tab = 'pendientes' | 'aprobados' | 'devoluciones' | 'historial';
 
 @Component({
   selector: 'app-tesoreria',
@@ -51,6 +51,16 @@ export class TesoreriaComponent implements OnInit {
   showRejectModal = false;
   showReturnModal = false;
   showHistoryModal = false;
+  pendingReturns: IAdvance[] = [];
+  selectedReturnAdvance: IAdvance | null = null;
+  showValidateReturnModal = false;
+  returnRejectReason = signal('');
+  isValidatingReturn = signal(false);
+  returnProofForm!: FormGroup;
+  showReturnProofModal = false;
+  returnProofReceiptUrl: string | null = null;
+  returnProofReceiptName: string | null = null;
+  isUploadingReturnProof = signal(false);
   isUploadingReceipt = signal(false);
   paymentReceiptUrl: string | null = null;
   paymentReceiptName: string | null = null;
@@ -74,6 +84,13 @@ export class TesoreriaComponent implements OnInit {
   }
 
   initForms() {
+    this.returnProofForm = this.fb.group({
+      depositDate: [new Date().toISOString().split('T')[0], Validators.required],
+      amountReturned: [null, [Validators.required, Validators.min(0.01)]],
+      bankOrigin: ['', Validators.required],
+      operationNumber: ['', Validators.required],
+      note: [''],
+    });
     this.paymentForm = this.fb.group({
       method: ['transferencia_bancaria', Validators.required],
       bankName: [''],
@@ -107,10 +124,12 @@ export class TesoreriaComponent implements OnInit {
         );
         this.isLoading.set(false);
         this.loadPendingReimbursements();
+        this.loadPendingReturns();
       },
       error: () => {
         this.isLoading.set(false);
         this.loadPendingReimbursements();
+        this.loadPendingReturns();
       },
     });
   }
@@ -128,6 +147,18 @@ export class TesoreriaComponent implements OnInit {
       error: () => {
         this.pendingReimbursements = [];
       },
+    });
+  }
+
+  private loadPendingReturns(): void {
+    const cid = this.userStateService.getUser()?.companyId;
+    if (!cid || !this.canPayAndSettle) {
+      this.pendingReturns = [];
+      return;
+    }
+    this.advanceService.findPendingReturns(String(cid)).subscribe({
+      next: rows => { this.pendingReturns = rows ?? []; },
+      error: () => { this.pendingReturns = []; },
     });
   }
 
@@ -468,5 +499,58 @@ export class TesoreriaComponent implements OnInit {
     if (!iso) return '—';
     const d = new Date(iso);
     return Number.isNaN(d.getTime()) ? iso : d.toLocaleString('es-PE');
+  }
+
+  // ─── Fase 7 — Devoluciones ─────────────────────────────────────────────────
+
+  returnStatusLabel(status: string): string {
+    const map: Record<string, string> = {
+      pending: 'Pendiente',
+      proof_uploaded: 'Comprobante cargado',
+      validated: 'Validado',
+      rejected: 'Rechazado',
+    };
+    return map[status] ?? status;
+  }
+
+  returnStatusColor(status: string): string {
+    const map: Record<string, string> = {
+      pending: 'bg-yellow-100 text-yellow-700',
+      proof_uploaded: 'bg-blue-100 text-blue-700',
+      validated: 'bg-green-100 text-green-700',
+      rejected: 'bg-red-100 text-red-700',
+    };
+    return map[status] ?? 'bg-gray-100 text-gray-600';
+  }
+
+  openValidateReturnModal(advance: IAdvance): void {
+    this.selectedReturnAdvance = advance;
+    this.returnRejectReason.set('');
+    this.showValidateReturnModal = true;
+  }
+
+  confirmValidateReturn(approved: boolean): void {
+    if (!this.selectedReturnAdvance) return;
+    if (!approved && this.returnRejectReason().trim().length < 50) {
+      this.notificationService.show('El motivo debe tener al menos 50 caracteres', 'warning');
+      return;
+    }
+    this.isValidatingReturn.set(true);
+    this.advanceService.validateReturn(
+      this.selectedReturnAdvance._id,
+      approved,
+      approved ? undefined : this.returnRejectReason().trim()
+    ).subscribe({
+      next: () => {
+        this.notificationService.show(approved ? 'Devolución validada' : 'Comprobante rechazado', 'success');
+        this.showValidateReturnModal = false;
+        this.isValidatingReturn.set(false);
+        this.loadData();
+      },
+      error: (e) => {
+        this.notificationService.show(e.error?.message || 'Error al validar', 'error');
+        this.isValidatingReturn.set(false);
+      },
+    });
   }
 }

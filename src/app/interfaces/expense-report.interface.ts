@@ -1,3 +1,18 @@
+export type IReopeningStatus = 'none' | 'requested' | 'approved';
+
+export interface IClosureRecord {
+  closedAt: string;
+  closedBy: string;
+  documentHashes?: string[];
+  reopeningStatus: IReopeningStatus;
+  reopeningRequestedBy?: string;
+  reopeningRequestedAt?: string;
+  reopeningReason?: string;
+  reopeningApprovedBy?: string;
+  reopeningApprovedAt?: string;
+  reopenedAt?: string;
+}
+
 export interface IExpenseReportBudgetItem {
   description: string;
   amount: number;
@@ -55,6 +70,7 @@ export interface IExpenseReport {
   settlement?: IExpenseReportSettlement;
   reimbursementPaymentInfo?: IReimbursementPaymentInfo;
   reimbursedAt?: string;
+  closureRecord?: IClosureRecord;
 }
 
 export interface ICreateExpenseReport {

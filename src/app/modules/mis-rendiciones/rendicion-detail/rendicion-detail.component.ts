@@ -7,6 +7,7 @@ import { AdvanceService } from '../../../services/advance.service';
 import { NotificationService } from '../../../services/notification.service';
 import { UserStateService } from '../../../services/user-state.service';
 import { InvoicesService } from '../../invoices/services/invoices.service';
+import { UploadService } from '../../../services/upload.service';
 import { IExpenseReport } from '../../../interfaces/expense-report.interface';
 import { IAdvance, ADVANCE_STATUS_LABELS, ADVANCE_STATUS_COLORS } from '../../../interfaces/advance.interface';
 import { ButtonComponent } from '../../../design-system/button/button.component';
@@ -42,6 +43,7 @@ export class RendicionDetailComponent implements OnInit {
   private userStateService = inject(UserStateService);
   private invoicesService = inject(InvoicesService);
   private rendicionExportService = inject(RendicionExportService);
+  private uploadService = inject(UploadService);
   private fb = inject(FormBuilder);
 
   id: string = this.route.snapshot.params['id'];
@@ -1026,6 +1028,246 @@ export class RendicionDetailComponent implements OnInit {
           );
         },
       });
+  }
+
+  // ─── Fase 7 — Devolución de saldo ─────────────────────────────────────────
+
+  showReturnProofModal = signal(false);
+  returnProofAdvanceId = signal<string | null>(null);
+  isUploadingReturnProof = signal(false);
+  isSubmittingReturnProof = signal(false);
+  returnProofUrl = signal<string | null>(null);
+  returnProofFileName = signal<string | null>(null);
+  returnProofDepositDate = signal(new Date().toISOString().split('T')[0]);
+  returnProofAmount = signal<number | null>(null);
+  returnProofBank = signal('');
+  returnProofOperation = signal('');
+  returnProofNote = signal('');
+
+  get advancesWithPendingReturn(): typeof this.advances {
+    return this.advances.filter(
+      a => a.returnRecord && ['pending', 'rejected'].includes(a.returnRecord.status)
+    );
+  }
+
+  returnRecordStatusLabel(status: string): string {
+    const map: Record<string, string> = {
+      pending: 'Pendiente',
+      proof_uploaded: 'Comprobante enviado',
+      validated: 'Validado',
+      rejected: 'Rechazado',
+    };
+    return map[status] ?? status;
+  }
+
+  returnRecordStatusColor(status: string): string {
+    const map: Record<string, string> = {
+      pending: 'bg-yellow-100 text-yellow-700',
+      proof_uploaded: 'bg-blue-100 text-blue-700',
+      validated: 'bg-green-100 text-green-700',
+      rejected: 'bg-red-100 text-red-700',
+    };
+    return map[status] ?? 'bg-gray-100 text-gray-600';
+  }
+
+  openReturnProofModal(advanceId: string, amountDue: number): void {
+    this.returnProofAdvanceId.set(advanceId);
+    this.returnProofAmount.set(amountDue);
+    this.returnProofUrl.set(null);
+    this.returnProofFileName.set(null);
+    this.returnProofDepositDate.set(new Date().toISOString().split('T')[0]);
+    this.returnProofBank.set('');
+    this.returnProofOperation.set('');
+    this.returnProofNote.set('');
+    this.showReturnProofModal.set(true);
+  }
+
+  onReturnProofFileSelected(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    if (!file) return;
+    const allowed = ['application/pdf', 'image/jpeg', 'image/png'];
+    if (!allowed.includes(file.type)) {
+      this.notificationService.show('Formato invalido. Usa PDF, JPG o PNG.', 'error');
+      input.value = '';
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      this.notificationService.show('El archivo no puede superar 10MB.', 'error');
+      input.value = '';
+      return;
+    }
+    this.isUploadingReturnProof.set(true);
+    this.uploadService.upload(file).subscribe({
+      next: (res) => {
+        this.returnProofUrl.set(res.url);
+        this.returnProofFileName.set(file.name);
+        this.notificationService.show('Comprobante subido', 'success');
+        this.isUploadingReturnProof.set(false);
+      },
+      error: () => {
+        this.notificationService.show('No se pudo subir el comprobante', 'error');
+        this.isUploadingReturnProof.set(false);
+      },
+    });
+  }
+
+  submitReturnProof(): void {
+    const id = this.returnProofAdvanceId();
+    const fileUrl = this.returnProofUrl();
+    const amountReturned = this.returnProofAmount();
+    if (!id || !fileUrl || !amountReturned || !this.returnProofBank() || !this.returnProofOperation()) {
+      this.notificationService.show('Completa todos los campos obligatorios', 'warning');
+      return;
+    }
+    this.isSubmittingReturnProof.set(true);
+    this.advanceService.uploadReturnProof(id, {
+      depositDate: this.returnProofDepositDate() as any,
+      amountReturned,
+      bankOrigin: this.returnProofBank(),
+      operationNumber: this.returnProofOperation(),
+      fileUrl,
+      note: this.returnProofNote() || undefined,
+    }).subscribe({
+      next: () => {
+        this.notificationService.show('Comprobante enviado correctamente', 'success');
+        this.showReturnProofModal.set(false);
+        this.isSubmittingReturnProof.set(false);
+        this.loadAdvances();
+      },
+      error: (err) => {
+        this.isSubmittingReturnProof.set(false);
+        const raw = err?.error?.message;
+        const msg = Array.isArray(raw) ? raw.join(', ') : raw;
+        this.notificationService.show(msg || 'Error al enviar comprobante', 'error');
+      },
+    });
+  }
+
+  // ─── Fase 8 — Cierre Definitivo ────────────────────────────────────────────
+
+  showCloseModal = signal(false);
+  isClosing = signal(false);
+  closureErrors = signal<string[]>([]);
+  isValidatingClosure = signal(false);
+
+  showReopenRequestModal = signal(false);
+  reopenReason = signal('');
+  isRequestingReopen = signal(false);
+
+  showReopenApproveModal = signal(false);
+  isApprovingReopen = signal(false);
+
+  get closureRecord(): any {
+    return (this.report as any)?.closureRecord;
+  }
+
+  get isClosed(): boolean {
+    return this.report?.status === 'closed';
+  }
+
+  get canClose(): boolean {
+    if (!this.isAdminView) return false;
+    return this.report?.status === 'approved' || this.report?.status === 'reimbursed';
+  }
+
+  get canRequestReopen(): boolean {
+    return this.isAdminView && this.isClosed &&
+      this.closureRecord?.reopeningStatus === 'none';
+  }
+
+  get canApproveReopen(): boolean {
+    return this.isAdminView && this.isClosed &&
+      this.closureRecord?.reopeningStatus === 'requested';
+  }
+
+  openCloseModal(): void {
+    this.closureErrors.set([]);
+    this.isValidatingClosure.set(true);
+    this.expenseReportsService.validateClosure(this.id).subscribe({
+      next: (errors) => {
+        this.closureErrors.set(errors);
+        this.isValidatingClosure.set(false);
+        this.showCloseModal.set(true);
+      },
+      error: () => {
+        this.isValidatingClosure.set(false);
+        this.notificationService.show('Error al validar condiciones de cierre', 'error');
+      },
+    });
+  }
+
+  closeCloseModal(): void {
+    if (this.isClosing()) return;
+    this.showCloseModal.set(false);
+  }
+
+  confirmClose(): void {
+    if (this.closureErrors().length > 0) return;
+    this.isClosing.set(true);
+    this.expenseReportsService.close(this.id).subscribe({
+      next: (res) => {
+        this.report = res;
+        this.isClosing.set(false);
+        this.showCloseModal.set(false);
+        this.notificationService.show('Rendicion cerrada definitivamente', 'success');
+      },
+      error: (err) => {
+        this.isClosing.set(false);
+        const raw = err?.error?.message;
+        const msg = Array.isArray(raw) ? raw.join(', ') : raw;
+        this.notificationService.show(msg || 'Error al cerrar la rendicion', 'error');
+      },
+    });
+  }
+
+  openReopenRequestModal(): void {
+    this.reopenReason.set('');
+    this.showReopenRequestModal.set(true);
+  }
+
+  submitReopenRequest(): void {
+    const reason = this.reopenReason().trim();
+    if (reason.length < 200) {
+      this.notificationService.show('El motivo debe tener al menos 200 caracteres', 'warning');
+      return;
+    }
+    this.isRequestingReopen.set(true);
+    this.expenseReportsService.requestReopening(this.id, reason).subscribe({
+      next: (res) => {
+        this.report = res;
+        this.isRequestingReopen.set(false);
+        this.showReopenRequestModal.set(false);
+        this.notificationService.show('Solicitud de reapertura enviada', 'success');
+      },
+      error: (err) => {
+        this.isRequestingReopen.set(false);
+        const raw = err?.error?.message;
+        const msg = Array.isArray(raw) ? raw.join(', ') : raw;
+        this.notificationService.show(msg || 'Error al solicitar reapertura', 'error');
+      },
+    });
+  }
+
+  confirmReopenApproval(approve: boolean): void {
+    this.isApprovingReopen.set(true);
+    this.expenseReportsService.approveReopening(this.id, approve).subscribe({
+      next: (res) => {
+        this.report = res;
+        this.isApprovingReopen.set(false);
+        this.showReopenApproveModal.set(false);
+        this.notificationService.show(
+          approve ? 'Reapertura aprobada' : 'Solicitud de reapertura rechazada',
+          'success'
+        );
+      },
+      error: (err) => {
+        this.isApprovingReopen.set(false);
+        const raw = err?.error?.message;
+        const msg = Array.isArray(raw) ? raw.join(', ') : raw;
+        this.notificationService.show(msg || 'Error al procesar reapertura', 'error');
+      },
+    });
   }
 
   exportMobilitySheet(expense: Record<string, unknown>): void {
