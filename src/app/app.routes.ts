@@ -134,6 +134,14 @@ export const routes: Routes = [
         canActivate: [AuthAdmin2Guard],
       },
       {
+        path: 'admin-users/bulk-import',
+        loadComponent: () =>
+          import('./modules/admin-users/bulk-import/admin-users-bulk-import.component').then(
+            (m) => m.AdminUsersBulkImportComponent
+          ),
+        canActivate: [AuthAdmin2Guard],
+      },
+      {
         path: 'configuracion',
         loadComponent: () =>
           import('./modules/configuracion/configuracion.component').then(
@@ -208,6 +216,30 @@ export const routes: Routes = [
         canActivate: [AuthAdmin2Guard],
       },
       {
+        path: 'centros-de-costo/form',
+        loadComponent: () =>
+          import('./modules/centros-de-costo/form/centros-de-costo-form.component').then(
+            (m) => m.CentrosDeCostoFormComponent
+          ),
+        canActivate: [AuthAdmin2Guard],
+      },
+      {
+        path: 'centros-de-costo/form/:id',
+        loadComponent: () =>
+          import('./modules/centros-de-costo/form/centros-de-costo-form.component').then(
+            (m) => m.CentrosDeCostoFormComponent
+          ),
+        canActivate: [AuthAdmin2Guard],
+      },
+      {
+        path: 'centros-de-costo/bulk-import',
+        loadComponent: () =>
+          import('./modules/centros-de-costo/bulk-import/centros-de-costo-bulk-import.component').then(
+            (m) => m.CentrosDeCostoBulkImportComponent
+          ),
+        canActivate: [AuthAdmin2Guard],
+      },
+      {
         path: 'categorias',
         loadComponent: () =>
           import('./modules/categorias/categorias.component').then(
@@ -234,6 +266,13 @@ export const routes: Routes = [
     path: 'login',
     loadComponent: () =>
       import('./modules/login/login.component').then((m) => m.LoginComponent),
+  },
+  {
+    path: 'cambiar-contrasena',
+    loadComponent: () =>
+      import('./modules/cambiar-contrasena/cambiar-contrasena.component').then(
+        (m) => m.CambiarContrasenaComponent
+      ),
   },
   {
     path: '**',

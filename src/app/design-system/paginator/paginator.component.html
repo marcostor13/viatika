@@ -8,7 +8,7 @@
       class="h-8 px-2 rounded-lg border border-tertiary/30 bg-background text-secondary text-xs focus:outline-none focus:ring-1 focus:ring-primary/30"
     >
       @for (l of limits; track l) {
-        <option [value]="l">{{ l }}</option>
+        <option [value]="l" [selected]="l === limit">{{ l }}</option>
       }
     </select>
     <span class="ml-2">{{ from }}-{{ to }} de {{ total }}</span>
