@@ -35,6 +35,7 @@ export class UserPermissionsComponent implements OnInit {
     { key: 'invoice-approval', label: 'Aprobación de Facturas', description: 'Revisar y aprobar facturas de colaboradores' },
     { key: 'consolidated-invoices', label: 'Consolidado', description: 'Ver reportes consolidados de gastos' },
     { key: 'tesoreria', label: 'Tesorería', description: 'Gestionar anticipos, pagos y liquidaciones' },
+    { key: 'contabilidad', label: 'Contabilidad', description: 'Recibir alertas de viáticos aprobados y flujos contables asociados' },
     { key: 'configuracion', label: 'Configuración', description: 'Configurar parámetros de la empresa' },
     { key: 'audit-log', label: 'Actividad', description: 'Ver el registro de actividad de la empresa' },
   ];

@@ -55,6 +55,8 @@ export const httpInterceptor: HttpInterceptorFn = (req, next) => {
     '/role',
     '/role/',
     '/audit-log',
+    '/notifications',
+    '/notifications/',
     '/bulk-import',
   ];
 
