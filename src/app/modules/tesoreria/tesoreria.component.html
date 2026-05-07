@@ -34,6 +34,53 @@
   </div>
   }
 
+  @if (canPayAndSettle && pendingReimbursements.length > 0) {
+  <div class="rounded-xl border border-amber-200 bg-amber-50/80 p-5 mb-8">
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+      <div>
+        <h2 class="text-lg font-bold text-gray-900">Reembolsos pendientes</h2>
+        <p class="text-sm text-gray-600 mt-0.5">
+          Rendiciones aprobadas con saldo a favor del colaborador — registrar transferencia y comprobante.
+        </p>
+      </div>
+    </div>
+    <div class="overflow-x-auto rounded-lg border border-amber-100 bg-white">
+      <table class="min-w-full divide-y divide-gray-200 text-sm">
+        <thead class="bg-amber-50/90 text-xs font-medium text-gray-600 uppercase">
+          <tr>
+            <th class="px-4 py-2 text-left">Colaborador</th>
+            <th class="px-4 py-2 text-left">Rendición</th>
+            <th class="px-4 py-2 text-right">A reembolsar S/</th>
+            <th class="px-4 py-2 text-center">Detalle</th>
+            <th class="px-4 py-2 text-right">Acción</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-100">
+          @for (rep of pendingReimbursements; track rep._id) {
+          <tr class="hover:bg-gray-50">
+            <td class="px-4 py-3 font-medium text-gray-900">{{ collaboratorReportName(rep) }}</td>
+            <td class="px-4 py-3 text-gray-700">{{ rep.title }}</td>
+            <td class="px-4 py-3 text-right font-bold text-emerald-700">{{ reimbursementAmount(rep) }}</td>
+            <td class="px-4 py-3 text-center">
+              <a [routerLink]="['/mis-rendiciones', rep._id, 'detalle']"
+                class="text-xs text-primary font-semibold hover:underline">
+                Ver rendición
+              </a>
+            </td>
+            <td class="px-4 py-3 text-right">
+              <button type="button" (click)="openReimbursementModal(rep)" [disabled]="isActing()"
+                class="text-xs px-3 py-1.5 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-50 font-medium">
+                Registrar pago
+              </button>
+            </td>
+          </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </div>
+  }
+
   <!-- Tabs -->
   <div class="flex gap-1 bg-gray-100 rounded-xl p-1 mb-6 w-fit">
     <button type="button" (click)="activeTab.set('pendientes')"
@@ -239,6 +286,91 @@
       <button type="button" (click)="confirmPayment()" [disabled]="paymentForm.invalid || isActing() || isUploadingReceipt() || !paymentReceiptUrl"
         class="flex-1 py-2 bg-blue-600 text-white rounded-xl text-sm font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors">
         {{ isActing() ? 'Registrando...' : 'Confirmar Pago' }}
+      </button>
+    </div>
+  </div>
+</div>
+}
+
+<!-- Modal: Registrar reembolso de rendición -->
+@if(showReimbursementModal && selectedReportReimbursement) {
+<div class="fixed inset-0 z-50 flex items-center justify-center p-4" (click)="showReimbursementModal=false">
+  <div class="absolute inset-0 bg-black/40 backdrop-blur-sm"></div>
+  <div class="relative bg-white rounded-2xl shadow-xl p-6 w-full max-w-md max-h-[90vh] overflow-y-auto" (click)="$event.stopPropagation()">
+    <h3 class="text-lg font-bold text-gray-900 mb-1">Registrar reembolso al colaborador</h3>
+    <p class="text-sm text-gray-500 mb-4">
+      Rendición: <strong>{{ selectedReportReimbursement.title }}</strong><br />
+      Colaborador: <strong>{{ collaboratorReportName(selectedReportReimbursement) }}</strong><br />
+      Monto: <strong>S/ {{ reimbursementAmount(selectedReportReimbursement) }}</strong>
+    </p>
+
+    <form [formGroup]="paymentForm" class="space-y-3">
+      <div class="flex flex-col gap-1">
+        <label class="text-xs font-medium text-gray-600">Método de pago</label>
+        <select formControlName="method" class="w-full h-[38px] px-3 rounded-lg border border-gray-200 text-sm bg-white">
+          <option value="transferencia_bancaria">Transferencia Bancaria</option>
+          <option value="efectivo">Efectivo</option>
+          <option value="cheque">Cheque</option>
+        </select>
+      </div>
+      @if(paymentForm.get('method')?.value === 'transferencia_bancaria') {
+      <div class="grid grid-cols-2 gap-3">
+        <div class="flex flex-col gap-1">
+          <label class="text-xs font-medium text-gray-600">Banco destino</label>
+          <input type="text" formControlName="bankName" placeholder="BCP, Interbank..."
+            class="w-full h-[38px] px-3 rounded-lg border border-gray-200 text-sm" />
+        </div>
+        <div class="flex flex-col gap-1">
+          <label class="text-xs font-medium text-gray-600">N° Cuenta</label>
+          <input type="text" formControlName="accountNumber"
+            class="w-full h-[38px] px-3 rounded-lg border border-gray-200 text-sm" />
+        </div>
+        <div class="flex flex-col gap-1 col-span-2">
+          <label class="text-xs font-medium text-gray-600">CCI</label>
+          <input type="text" formControlName="cci"
+            class="w-full h-[38px] px-3 rounded-lg border border-gray-200 text-sm font-mono" />
+        </div>
+      </div>
+      }
+      <div class="grid grid-cols-2 gap-3">
+        <div class="flex flex-col gap-1">
+          <label class="text-xs font-medium text-gray-600">Fecha de transferencia <span class="text-red-500">*</span></label>
+          <input type="date" formControlName="transferDate"
+            class="w-full h-[38px] px-3 rounded-lg border border-gray-200 text-sm" />
+        </div>
+        <div class="flex flex-col gap-1">
+          <label class="text-xs font-medium text-gray-600">Referencia / N° operación</label>
+          <input type="text" formControlName="reference"
+            class="w-full h-[38px] px-3 rounded-lg border border-gray-200 text-sm" />
+        </div>
+      </div>
+
+      <div class="flex flex-col gap-1">
+        <label class="text-xs font-medium text-gray-600">Comprobante <span class="text-red-500">*</span></label>
+        <input
+          type="file"
+          accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png"
+          (change)="onReimbursementReceiptSelected($event)"
+          class="w-full h-[38px] px-2 py-1 rounded-lg border border-gray-200 text-sm bg-white file:mr-3 file:px-2 file:py-1 file:rounded file:border-0 file:bg-gray-100 file:text-gray-700"
+        />
+        @if (isUploadingReceipt()) {
+        <p class="text-xs text-blue-600">Subiendo comprobante...</p>
+        } @else if (reimbursementReceiptName) {
+        <p class="text-xs text-green-700">Adjunto: {{ reimbursementReceiptName }}</p>
+        } @else {
+        <p class="text-xs text-gray-500">PDF/JPG/PNG (máx. 10MB).</p>
+        }
+      </div>
+    </form>
+
+    <div class="flex gap-3 mt-5">
+      <button type="button" (click)="showReimbursementModal=false"
+        class="flex-1 py-2 border border-gray-200 rounded-xl text-sm text-gray-600 hover:bg-gray-50 transition-colors">
+        Cancelar
+      </button>
+      <button type="button" (click)="confirmReimbursementPayment()" [disabled]="paymentForm.invalid || isActing() || isUploadingReceipt() || !reimbursementReceiptUrl"
+        class="flex-1 py-2 bg-emerald-600 text-white rounded-xl text-sm font-medium hover:bg-emerald-700 disabled:opacity-50 transition-colors">
+        {{ isActing() ? 'Registrando...' : 'Confirmar reembolso' }}
       </button>
     </div>
   </div>
