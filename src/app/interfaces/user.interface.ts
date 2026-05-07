@@ -84,6 +84,9 @@ export interface IUserResponse {
   permissions?: IUserPermissions;
   dni?: string;
   employeeCode?: string;
+  /** Fase 3 — notificaciones viáticos. */
+  area?: string;
+  cargo?: string;
   address?: string;
   phone?: string;
   signature?: string;

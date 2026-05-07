@@ -4,7 +4,7 @@ import { ExpenseReportsService } from '../../services/expense-reports.service';
 import { UserStateService } from '../../services/user-state.service';
 import { NotificationService } from '../../services/notification.service';
 import { IExpenseReport } from '../../interfaces/expense-report.interface';
-import { Router, RouterModule } from '@angular/router';
+import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { CreateRendicionModalComponent } from '../admin-users/user-details/create-rendicion-modal/create-rendicion-modal.component';
 import { SolicitudViaticosModalComponent } from './solicitud-viaticos-modal/solicitud-viaticos-modal.component';
 import { AdvanceService } from '../../services/advance.service';
@@ -27,6 +27,7 @@ export class MisRendicionesComponent implements OnInit {
   private advanceService = inject(AdvanceService);
   private notificationService = inject(NotificationService);
   private router = inject(Router);
+  private route = inject(ActivatedRoute);
 
   expenseReports: IExpenseReport[] = [];
   myAdvances: IAdvance[] = [];
@@ -64,6 +65,7 @@ export class MisRendicionesComponent implements OnInit {
     this.advanceService.findMy().subscribe({
       next: (list) => {
         this.myAdvances = list ?? [];
+        this.maybeOpenAdvanceFromEmailLink();
       },
       error: () => {
         this.myAdvances = [];
@@ -118,6 +120,23 @@ export class MisRendicionesComponent implements OnInit {
     if (success) {
       this.loadMyAdvances();
     }
+  }
+
+  /** Deep link desde correo de rechazo (Fase 3): ?viaticoAdvanceId= */
+  private maybeOpenAdvanceFromEmailLink(): void {
+    const id =
+      this.route.snapshot.queryParamMap.get('viaticoAdvanceId')?.trim();
+    if (!id) return;
+    const adv = this.myAdvances.find((a) => a._id === id);
+    if (adv && (adv.status === 'rejected' || adv.status === 'pending_l1')) {
+      this.openResubmitAdvance(adv);
+    }
+    void this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: { viaticoAdvanceId: null },
+      queryParamsHandling: 'merge',
+      replaceUrl: true,
+    });
   }
 
   advanceProjectLabel(adv: IAdvance): string {

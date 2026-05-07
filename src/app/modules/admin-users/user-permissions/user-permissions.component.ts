@@ -34,7 +34,8 @@ export class UserPermissionsComponent implements OnInit {
     { key: 'mis-rendiciones', label: 'Mis Rendiciones', description: 'Ver y gestionar rendiciones propias' },
     { key: 'invoice-approval', label: 'Aprobación de Facturas', description: 'Revisar y aprobar facturas de colaboradores' },
     { key: 'consolidated-invoices', label: 'Consolidado', description: 'Ver reportes consolidados de gastos' },
-    { key: 'tesoreria', label: 'Pagos (Tesorería)', description: 'Registrar comprobantes de pago y liquidar anticipos' },
+    { key: 'tesoreria', label: 'Pagos', description: 'Registrar comprobantes de pago y liquidar anticipos' },
+    { key: 'contabilidad', label: 'Contabilidad', description: 'Recibir alertas de viáticos aprobados y flujos contables asociados' },
     { key: 'configuracion', label: 'Configuración', description: 'Configurar parámetros de la empresa' },
     { key: 'audit-log', label: 'Actividad', description: 'Ver el registro de actividad de la empresa' },
   ];
