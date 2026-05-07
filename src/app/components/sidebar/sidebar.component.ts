@@ -45,6 +45,7 @@ export class SidebarComponent implements OnInit, OnDestroy {
 
   ngOnInit() {
     this.loadCompanyConfig();
+    this.companyConfigService.refreshConfig();
   }
 
   ngOnDestroy() {

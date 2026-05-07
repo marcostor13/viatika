@@ -26,9 +26,6 @@ export class CompanyConfigService {
 
   constructor() {
     this.initCompanyConfig();
-    if (this.userStateService.isAuthenticated()) {
-      this.loadCompanyConfig();
-    }
   }
 
   initCompanyConfig() {
