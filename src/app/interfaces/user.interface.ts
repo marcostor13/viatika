@@ -91,6 +91,7 @@ export interface IUserResponse {
   coordinatorId?:
     | string
     | { _id: string; name?: string; email?: string };
+  mustChangePassword?: boolean;
 }
 
 

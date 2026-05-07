@@ -1,37 +1,35 @@
-import { Component, inject, OnInit } from '@angular/core';
+import { Component, inject, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormsModule } from '@angular/forms';
+import { Router } from '@angular/router';
+import { HttpErrorResponse } from '@angular/common/http';
 import { InvoicesService } from '../invoices/services/invoices.service';
 import { NotificationService } from '../../services/notification.service';
 import { ConfirmationService } from '../../services/confirmation.service';
 import { UserStateService } from '../../services/user-state.service';
 import { IProject } from '../invoices/interfaces/project.interface';
-import { HttpErrorResponse } from '@angular/common/http';
 import { ButtonComponent } from '../../design-system/button/button.component';
-
-interface ProjectForm {
-  name: string;
-  code: string;
-  isActive: boolean;
-}
+import { PaginatorComponent } from '../../design-system/paginator/paginator.component';
+import { IPaginatedResult } from '../../interfaces/paginated-result.interface';
 
 @Component({
   selector: 'app-centros-de-costo',
   standalone: true,
-  imports: [CommonModule, FormsModule, ButtonComponent],
+  imports: [CommonModule, ButtonComponent, PaginatorComponent],
   templateUrl: './centros-de-costo.component.html',
 })
 export class CentrosDeCostoComponent implements OnInit {
+  private router = inject(Router);
   private invoicesService = inject(InvoicesService);
   private notificationService = inject(NotificationService);
   private confirmationService = inject(ConfirmationService);
   private userStateService = inject(UserStateService);
 
-  projects: IProject[] = [];
-  editingProject: IProject | null = null;
-  showForm = false;
+  result = signal<IPaginatedResult<IProject>>({ data: [], total: 0, page: 1, pages: 0, limit: 20 });
+  get projects() { return this.result().data; }
   loading = false;
-  form: ProjectForm = { name: '', code: '', isActive: true };
+  page = signal(1);
+  limit = signal(20);
+  search = signal('');
 
   ngOnInit() {
     this.load();
@@ -40,11 +38,8 @@ export class CentrosDeCostoComponent implements OnInit {
   load() {
     this.loading = true;
     const companyId = this.userStateService.getUser()?.companyId;
-    this.invoicesService.getProjects(companyId).subscribe({
-      next: (projects) => {
-        this.projects = projects;
-        this.loading = false;
-      },
+    this.invoicesService.getProjectsPaginated(companyId, this.page(), this.limit(), this.search() || undefined).subscribe({
+      next: (res) => { this.result.set(res); this.loading = false; },
       error: (error: HttpErrorResponse) => {
         this.notificationService.show('Error al cargar centros de costo: ' + error.message, 'error');
         this.loading = false;
@@ -52,63 +47,16 @@ export class CentrosDeCostoComponent implements OnInit {
     });
   }
 
-  add() {
-    this.showForm = true;
-    this.editingProject = null;
-    this.form = { name: '', code: '', isActive: true };
+  onSearch(value: string) { this.search.set(value); this.page.set(1); this.load(); }
+  onPageChange(p: number) { this.page.set(p); this.load(); }
+  onLimitChange(l: number) { this.limit.set(l); this.page.set(1); this.load(); }
+
+  navigateToForm(id?: string) {
+    this.router.navigate(id ? ['/centros-de-costo/form', id] : ['/centros-de-costo/form']);
   }
 
-  edit(project: IProject) {
-    this.showForm = true;
-    this.editingProject = project;
-    this.form = {
-      name: project.name,
-      code: project.code ?? '',
-      isActive: project.isActive ?? true,
-    };
-  }
-
-  cancel() {
-    this.showForm = false;
-    this.editingProject = null;
-    this.form = { name: '', code: '', isActive: true };
-  }
-
-  save() {
-    if (!this.form.name.trim()) {
-      this.notificationService.show('El nombre es obligatorio', 'error');
-      return;
-    }
-    const companyId = this.userStateService.getUser()?.companyId || '';
-    const payload: Partial<IProject> = {
-      name: this.form.name.trim(),
-      code: this.form.code.trim() || undefined,
-      isActive: this.form.isActive,
-    };
-
-    if (this.editingProject) {
-      this.invoicesService.updateProject(this.editingProject._id!, payload, companyId).subscribe({
-        next: () => {
-          this.notificationService.show('Centro de costo actualizado', 'success');
-          this.load();
-          this.cancel();
-        },
-        error: (error: HttpErrorResponse) => {
-          this.notificationService.show('Error al actualizar: ' + error.message, 'error');
-        },
-      });
-    } else {
-      this.invoicesService.createProject({ ...payload, name: this.form.name.trim() } as IProject).subscribe({
-        next: () => {
-          this.notificationService.show('Centro de costo creado', 'success');
-          this.load();
-          this.cancel();
-        },
-        error: (error: HttpErrorResponse) => {
-          this.notificationService.show('Error al crear: ' + error.message, 'error');
-        },
-      });
-    }
+  navigateToBulkImport() {
+    this.router.navigate(['/centros-de-costo/bulk-import']);
   }
 
   delete(project: IProject) {

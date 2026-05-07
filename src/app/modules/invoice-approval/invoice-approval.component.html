@@ -370,7 +370,7 @@
           <select
             class="w-full h-[42px] px-3 rounded-lg border border-gray-200 bg-gray-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-sm appearance-none cursor-pointer"
             [ngModel]="filterProject()"
-            (ngModelChange)="filterProject.set($event); getInvoices()"
+            (ngModelChange)="filterProject.set($event); page.set(1); getInvoices()"
             name="project"
           >
             <option value="">Todos los proyectos</option>
@@ -408,7 +408,7 @@
           <select
             class="w-full h-[42px] px-3 rounded-lg border border-gray-200 bg-gray-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-sm appearance-none cursor-pointer"
             [ngModel]="filterCategory()"
-            (ngModelChange)="filterCategory.set($event); getInvoices()"
+            (ngModelChange)="filterCategory.set($event); page.set(1); getInvoices()"
             name="category"
           >
             <option value="">Todas las categorías</option>
@@ -446,7 +446,7 @@
           <select
             class="w-full h-[42px] px-3 rounded-lg border border-gray-200 bg-gray-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-sm appearance-none cursor-pointer"
             [ngModel]="filterStatus()"
-            (ngModelChange)="filterStatus.set($event); getInvoices()"
+            (ngModelChange)="filterStatus.set($event); page.set(1); getInvoices()"
             name="status"
           >
             <option value="">Todos los estados</option>
@@ -486,7 +486,7 @@
             class="w-full h-[42px] px-3 rounded-lg border border-gray-200 bg-gray-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-sm"
             placeholder="Min"
             [ngModel]="filterAmountMin()"
-            (ngModelChange)="filterAmountMin.set($event); getInvoices()"
+            (ngModelChange)="filterAmountMin.set($event); page.set(1); getInvoices()"
             name="amountMin"
             min="0"
           />
@@ -495,7 +495,7 @@
             class="w-full h-[42px] px-3 rounded-lg border border-gray-200 bg-gray-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-sm"
             placeholder="Max"
             [ngModel]="filterAmountMax()"
-            (ngModelChange)="filterAmountMax.set($event); getInvoices()"
+            (ngModelChange)="filterAmountMax.set($event); page.set(1); getInvoices()"
             name="amountMax"
             min="0"
           />
@@ -602,6 +602,14 @@
     (clickOptionsEvent)="clickOptions($event)"
     (rowClick)="router.navigate(['/invoices', $event, 'details'])"
   ></app-data>
+  <app-paginator
+    [total]="result().total"
+    [page]="result().page"
+    [pages]="result().pages"
+    [limit]="result().limit"
+    (pageChange)="onPageChange($event)"
+    (limitChange)="onLimitChange($event)"
+  />
 
   } <!-- end @if(activeTab() === 'facturas') -->
 

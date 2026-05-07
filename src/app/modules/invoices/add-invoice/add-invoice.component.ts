@@ -601,6 +601,14 @@ export default class AddInvoiceComponent implements OnInit {
       this.notificationService.show('Completa los campos requeridos', 'error');
       return;
     }
+    const currentUser = this.userStateService.getUser();
+    if (!currentUser?.signature) {
+      this.notificationService.show(
+        'Debes registrar tu firma digital antes de enviar una Declaracion Jurada. Ve a Mi Firma en el menu.',
+        'error'
+      );
+      return;
+    }
     if (!declaracionJurada) {
       this.notificationService.show('Debes aceptar y firmar la declaración jurada', 'error');
       return;
