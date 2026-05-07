@@ -53,6 +53,8 @@ export class MainComponent implements OnDestroy {
       return 'Proyectos';
     } else if (path.includes('/mis-rendiciones')) {
       return 'Mis Rendiciones';
+    } else if (path.includes('/mis-documentos')) {
+      return 'Mis Documentos';
     } else if (path.includes('/tesoreria')) {
       return 'Tesorería';
     }

@@ -7,6 +7,27 @@ export interface IExpenseReportBudgetItem {
   total: number;
 }
 
+export interface IExpenseReportSettlement {
+  advanceTotal: number;
+  expenseTotal: number;
+  difference: number;
+  type: 'reembolso' | 'devolucion' | 'equilibrado';
+  settledAt?: string;
+}
+
+export interface IReimbursementPaymentInfo {
+  method: 'transferencia_bancaria' | 'efectivo' | 'cheque';
+  bankName?: string;
+  accountNumber?: string;
+  cci?: string;
+  transferDate: string;
+  reference?: string;
+  paymentReceiptUrl: string;
+  paymentReceiptFileName?: string;
+  paymentReceiptMimeType?: string;
+  paymentReceiptSizeBytes?: number;
+}
+
 export interface IExpenseReport {
   _id: string;
   title: string;
@@ -14,7 +35,7 @@ export interface IExpenseReport {
   budget: number;
   userId: any; // Ideally IUserResponse or string ID
   clientId: string;
-  status: 'solicited' | 'open' | 'submitted' | 'approved' | 'rejected' | 'closed';
+  status: 'solicited' | 'open' | 'submitted' | 'approved' | 'rejected' | 'reimbursed' | 'closed';
   /** Motivo indicado por el administrador al rechazar */
   rejectionReason?: string;
   expenseIds: any[];
@@ -31,6 +52,9 @@ export interface IExpenseReport {
   startDate?: string;
   endDate?: string;
   items?: IExpenseReportBudgetItem[];
+  settlement?: IExpenseReportSettlement;
+  reimbursementPaymentInfo?: IReimbursementPaymentInfo;
+  reimbursedAt?: string;
 }
 
 export interface ICreateExpenseReport {
@@ -50,11 +74,43 @@ export interface ICreateExpenseReport {
   items?: IExpenseReportBudgetItem[];
 }
 
+export interface IRegisterReimbursementPaymentPayload {
+  method: 'transferencia_bancaria' | 'efectivo' | 'cheque';
+  bankName?: string;
+  accountNumber?: string;
+  cci?: string;
+  transferDate: string;
+  reference?: string;
+  paymentReceiptUrl: string;
+  paymentReceiptFileName?: string;
+  paymentReceiptMimeType?: string;
+  paymentReceiptSizeBytes?: number;
+}
+
+export interface IMisDocumentoItem {
+  kind: 'viatico_pago' | 'reembolso_rendicion';
+  title: string;
+  receiptUrl: string;
+  receiptFileName?: string;
+  date?: string;
+  expenseReportId?: string;
+  advanceId?: string;
+  amountFormatted?: string;
+  detailUrl?: string;
+}
+
 export interface IUpdateExpenseReport {
   title?: string;
   description?: string;
   budget?: number;
-  status?: 'solicited' | 'open' | 'submitted' | 'approved' | 'rejected' | 'closed';
+  status?:
+    | 'solicited'
+    | 'open'
+    | 'submitted'
+    | 'approved'
+    | 'rejected'
+    | 'reimbursed'
+    | 'closed';
   rejectionReason?: string;
   expenseIds?: string[];
   // New fields

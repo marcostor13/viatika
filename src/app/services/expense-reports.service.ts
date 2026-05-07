@@ -1,10 +1,12 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '../../environments/environment';
-import { 
-  IExpenseReport, 
-  ICreateExpenseReport, 
-  IUpdateExpenseReport 
+import {
+  IExpenseReport,
+  ICreateExpenseReport,
+  IUpdateExpenseReport,
+  IRegisterReimbursementPaymentPayload,
+  IMisDocumentoItem,
 } from '../interfaces/expense-report.interface';
 import { Observable } from 'rxjs';
 
@@ -37,6 +39,28 @@ export class ExpenseReportsService {
 
   delete(id: string): Observable<any> {
     return this.http.delete(`${this.apiUrl}/expense-report/${id}`);
+  }
+
+  findPendingReimbursements(clientId: string): Observable<IExpenseReport[]> {
+    return this.http.get<IExpenseReport[]>(
+      `${this.apiUrl}/expense-report/pending-reimbursements/client/${clientId}`
+    );
+  }
+
+  findMyDocuments(): Observable<{ items: IMisDocumentoItem[] }> {
+    return this.http.get<{ items: IMisDocumentoItem[] }>(
+      `${this.apiUrl}/expense-report/documents/my`
+    );
+  }
+
+  registerReimbursementPayment(
+    reportId: string,
+    payload: IRegisterReimbursementPaymentPayload
+  ): Observable<IExpenseReport> {
+    return this.http.patch<IExpenseReport>(
+      `${this.apiUrl}/expense-report/${reportId}/register-reimbursement-payment`,
+      payload
+    );
   }
 
   createAffidavit(

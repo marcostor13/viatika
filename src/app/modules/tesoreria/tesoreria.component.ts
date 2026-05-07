@@ -11,16 +11,20 @@ import {
   ADVANCE_STATUS_LABELS,
   ADVANCE_STATUS_COLORS,
 } from '../../interfaces/advance.interface';
+import { ExpenseReportsService } from '../../services/expense-reports.service';
+import { IExpenseReport } from '../../interfaces/expense-report.interface';
+import { RouterModule } from '@angular/router';
 type Tab = 'pendientes' | 'aprobados' | 'historial';
 
 @Component({
   selector: 'app-tesoreria',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule],
+  imports: [CommonModule, ReactiveFormsModule, RouterModule],
   templateUrl: './tesoreria.component.html',
 })
 export class TesoreriaComponent implements OnInit {
   private advanceService = inject(AdvanceService);
+  private expenseReportsService = inject(ExpenseReportsService);
   private userStateService = inject(UserStateService);
   private notificationService = inject(NotificationService);
   private uploadService = inject(UploadService);
@@ -33,8 +37,16 @@ export class TesoreriaComponent implements OnInit {
   stats: IAdvanceStats | null = null;
   allAdvances: IAdvance[] = [];
   pendingAdvances: IAdvance[] = [];
+  /** Rendiciones aprobadas con reembolso al colaborador pendiente de comprobante (Fase 6) */
+  pendingReimbursements: IExpenseReport[] = [];
 
   selectedAdvance: IAdvance | null = null;
+  selectedReportReimbursement: IExpenseReport | null = null;
+  showReimbursementModal = false;
+  reimbursementReceiptUrl: string | null = null;
+  reimbursementReceiptName: string | null = null;
+  reimbursementReceiptMimeType: string | null = null;
+  reimbursementReceiptSizeBytes: number | null = null;
   showPaymentModal = false;
   showRejectModal = false;
   showReturnModal = false;
@@ -94,8 +106,28 @@ export class TesoreriaComponent implements OnInit {
           ['pending_l1', 'pending_l2', 'approved'].includes(a.status)
         );
         this.isLoading.set(false);
+        this.loadPendingReimbursements();
       },
-      error: () => { this.isLoading.set(false); },
+      error: () => {
+        this.isLoading.set(false);
+        this.loadPendingReimbursements();
+      },
+    });
+  }
+
+  private loadPendingReimbursements(): void {
+    const cid = this.userStateService.getUser()?.companyId;
+    if (!cid || !this.canPayAndSettle) {
+      this.pendingReimbursements = [];
+      return;
+    }
+    this.expenseReportsService.findPendingReimbursements(String(cid)).subscribe({
+      next: rows => {
+        this.pendingReimbursements = rows ?? [];
+      },
+      error: () => {
+        this.pendingReimbursements = [];
+      },
     });
   }
 
@@ -222,6 +254,112 @@ export class TesoreriaComponent implements OnInit {
         this.isUploadingReceipt.set(false);
       },
     });
+  }
+
+  openReimbursementModal(report: IExpenseReport): void {
+    this.selectedReportReimbursement = report;
+    this.paymentForm.reset({
+      method: 'transferencia_bancaria',
+      bankName: '',
+      accountNumber: '',
+      cci: '',
+      transferDate: new Date().toISOString().split('T')[0],
+      reference: '',
+    });
+    this.reimbursementReceiptUrl = null;
+    this.reimbursementReceiptName = null;
+    this.reimbursementReceiptMimeType = null;
+    this.reimbursementReceiptSizeBytes = null;
+    const user = typeof report.userId === 'object' ? report.userId : null;
+    const bankAccount = user && typeof user === 'object' && 'bankAccount' in user
+      ? (user as { bankAccount?: { bankName?: string; accountNumber?: string; cci?: string } }).bankAccount
+      : undefined;
+    if (bankAccount) {
+      this.paymentForm.patchValue({
+        bankName: bankAccount.bankName,
+        accountNumber: bankAccount.accountNumber,
+        cci: bankAccount.cci,
+      });
+    }
+    this.showReimbursementModal = true;
+  }
+
+  onReimbursementReceiptSelected(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    if (!file) return;
+    const allowedTypes = ['application/pdf', 'image/jpeg', 'image/png'];
+    if (!allowedTypes.includes(file.type)) {
+      this.notificationService.show('Formato inválido. Usa PDF, JPG o PNG.', 'error');
+      input.value = '';
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      this.notificationService.show('El comprobante no puede superar 10MB.', 'error');
+      input.value = '';
+      return;
+    }
+    this.isUploadingReceipt.set(true);
+    this.uploadService.upload(file).subscribe({
+      next: res => {
+        this.reimbursementReceiptUrl = res.url;
+        this.reimbursementReceiptName = file.name;
+        this.reimbursementReceiptMimeType = file.type;
+        this.reimbursementReceiptSizeBytes = file.size;
+        this.notificationService.show('Comprobante cargado correctamente', 'success');
+        this.isUploadingReceipt.set(false);
+      },
+      error: () => {
+        this.notificationService.show('No se pudo subir el comprobante', 'error');
+        this.isUploadingReceipt.set(false);
+      },
+    });
+  }
+
+  confirmReimbursementPayment(): void {
+    if (!this.selectedReportReimbursement || this.paymentForm.invalid) return;
+    if (!this.reimbursementReceiptUrl) {
+      this.notificationService.show('Debes adjuntar el comprobante de pago del reembolso.', 'error');
+      return;
+    }
+    this.isActing.set(true);
+    this.expenseReportsService
+      .registerReimbursementPayment(this.selectedReportReimbursement._id, {
+        ...this.paymentForm.value,
+        paymentReceiptUrl: this.reimbursementReceiptUrl,
+        paymentReceiptFileName: this.reimbursementReceiptName || undefined,
+        paymentReceiptMimeType: this.reimbursementReceiptMimeType || undefined,
+        paymentReceiptSizeBytes: this.reimbursementReceiptSizeBytes || undefined,
+      })
+      .subscribe({
+        next: () => {
+          this.notificationService.show('Reembolso registrado correctamente', 'success');
+          this.showReimbursementModal = false;
+          this.loadData();
+          this.isActing.set(false);
+        },
+        error: e => {
+          this.notificationService.show(
+            e.error?.message || 'Error al registrar el reembolso',
+            'error'
+          );
+          this.isActing.set(false);
+        },
+      });
+  }
+
+  collaboratorReportName(report: IExpenseReport): string {
+    const u = report.userId;
+    if (u && typeof u === 'object' && 'name' in u && (u as { name?: string }).name) {
+      return (u as { name: string }).name;
+    }
+    return '—';
+  }
+
+  reimbursementAmount(report: IExpenseReport): string {
+    const d = report.settlement?.difference;
+    if (d == null) return '—';
+    return Math.abs(Number(d)).toFixed(2);
   }
 
   confirmPayment() {
