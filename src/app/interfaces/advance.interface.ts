@@ -6,7 +6,8 @@ export type AdvanceStatus =
   | 'paid'
   | 'settled'
   | 'rejected'
-  | 'returned';
+  | 'returned'
+  | 'cancelled';
 
 export interface IApprovalEntry {
   level: number;
@@ -186,6 +187,7 @@ export const ADVANCE_STATUS_LABELS: Record<AdvanceStatus, string> = {
   settled: 'Liquidado',
   rejected: 'Rechazado',
   returned: 'Devuelto',
+  cancelled: 'Cancelado',
 };
 
 export const ADVANCE_STATUS_COLORS: Record<AdvanceStatus, string> = {
@@ -197,4 +199,5 @@ export const ADVANCE_STATUS_COLORS: Record<AdvanceStatus, string> = {
   settled: 'bg-emerald-100 text-emerald-700',
   rejected: 'bg-red-100 text-red-700',
   returned: 'bg-purple-100 text-purple-700',
+  cancelled: 'bg-orange-100 text-orange-700',
 };

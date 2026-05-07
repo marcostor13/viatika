@@ -82,6 +82,10 @@ export class AdvanceService {
     return this.http.patch<IAdvance>(`${this.url}/${id}/resubmit`, payload);
   }
 
+  cancelAdvance(id: string): Observable<IAdvance> {
+    return this.http.patch<IAdvance>(`${this.url}/${id}/cancel`, {});
+  }
+
   // ─── Fase 7 — devolución de saldo ──────────────────────────────────────────
 
   initiateReturn(id: string): Observable<IAdvance> {

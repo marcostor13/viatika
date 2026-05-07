@@ -2,8 +2,9 @@ import { Component, OnInit, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ExpenseReportsService } from '../../services/expense-reports.service';
 import { UserStateService } from '../../services/user-state.service';
+import { NotificationService } from '../../services/notification.service';
 import { IExpenseReport } from '../../interfaces/expense-report.interface';
-import { RouterModule } from '@angular/router';
+import { Router, RouterModule } from '@angular/router';
 import { CreateRendicionModalComponent } from '../admin-users/user-details/create-rendicion-modal/create-rendicion-modal.component';
 import { SolicitudViaticosModalComponent } from './solicitud-viaticos-modal/solicitud-viaticos-modal.component';
 import { AdvanceService } from '../../services/advance.service';
@@ -24,6 +25,8 @@ export class MisRendicionesComponent implements OnInit {
   private expenseReportsService = inject(ExpenseReportsService);
   private userStateService = inject(UserStateService);
   private advanceService = inject(AdvanceService);
+  private notificationService = inject(NotificationService);
+  private router = inject(Router);
 
   expenseReports: IExpenseReport[] = [];
   myAdvances: IAdvance[] = [];
@@ -151,6 +154,82 @@ export class MisRendicionesComponent implements OnInit {
     }
   }
 
+  // ─── Cancelar / Eliminar rendición solicitada ────────────────────────────────
+
+  showCancelReportModal = signal(false);
+  cancellingReport = signal<IExpenseReport | null>(null);
+  isCancellingReport = signal(false);
+  cancelReportReason = signal('');
+
+  openCancelReportModal(report: IExpenseReport, event: Event): void {
+    event.preventDefault();
+    event.stopPropagation();
+    this.cancellingReport.set(report);
+    this.cancelReportReason.set('');
+    this.showCancelReportModal.set(true);
+  }
+
+  confirmCancelReport(): void {
+    const report = this.cancellingReport();
+    if (!report) return;
+    this.isCancellingReport.set(true);
+    this.expenseReportsService
+      .cancelRendicion(report._id, this.cancelReportReason().trim() || undefined)
+      .subscribe({
+        next: () => {
+          this.isCancellingReport.set(false);
+          this.showCancelReportModal.set(false);
+          this.cancellingReport.set(null);
+          this.notificationService.show('Rendicion cancelada correctamente', 'success');
+          this.loadMyReports();
+        },
+        error: (err) => {
+          this.isCancellingReport.set(false);
+          const raw = err?.error?.message;
+          const msg = Array.isArray(raw) ? raw.join(', ') : raw;
+          this.notificationService.show(msg || 'Error al cancelar', 'error');
+        },
+      });
+  }
+
+  goToReportDetail(report: IExpenseReport, event: Event): void {
+    event.preventDefault();
+    event.stopPropagation();
+    this.router.navigate(['/mis-rendiciones', report._id, 'detalle']);
+  }
+
+  // ─── Cancelar / Eliminar solicitud de viáticos pendiente ─────────────────────
+
+  showCancelAdvanceModal = signal(false);
+  cancellingAdvance = signal<IAdvance | null>(null);
+  isCancellingAdvance = signal(false);
+
+  openCancelAdvanceModal(adv: IAdvance): void {
+    this.cancellingAdvance.set(adv);
+    this.showCancelAdvanceModal.set(true);
+  }
+
+  confirmCancelAdvance(): void {
+    const adv = this.cancellingAdvance();
+    if (!adv) return;
+    this.isCancellingAdvance.set(true);
+    this.advanceService.cancelAdvance(adv._id).subscribe({
+      next: () => {
+        this.isCancellingAdvance.set(false);
+        this.showCancelAdvanceModal.set(false);
+        this.cancellingAdvance.set(null);
+        this.notificationService.show('Solicitud cancelada correctamente', 'success');
+        this.loadMyAdvances();
+      },
+      error: (err) => {
+        this.isCancellingAdvance.set(false);
+        const raw = err?.error?.message;
+        const msg = Array.isArray(raw) ? raw.join(', ') : raw;
+        this.notificationService.show(msg || 'Error al cancelar', 'error');
+      },
+    });
+  }
+
   isReportInProgress(report: IExpenseReport): boolean {
     if (report.status !== 'open') return false;
     return this.myAdvances.some(adv => {
@@ -164,9 +243,16 @@ export class MisRendicionesComponent implements OnInit {
 
   panelStatusText(report: IExpenseReport): string {
     if (this.isReportInProgress(report)) return 'EN PROGRESO - REGISTRANDO GASTOS';
-    if (report.status === 'solicited') return 'SOLICITADA';
-    if (report.status === 'open') return 'ABIERTA';
-    if (report.status === 'reimbursed') return 'REEMBOLSADO';
-    return report.status.toUpperCase();
+    const map: Partial<Record<IExpenseReport['status'], string>> = {
+      solicited: 'SOLICITADA',
+      open: 'ABIERTA',
+      submitted: 'ENVIADA',
+      approved: 'APROBADA',
+      rejected: 'RECHAZADA',
+      reimbursed: 'REEMBOLSADO',
+      closed: 'CERRADA',
+      cancelled: 'CANCELADA',
+    };
+    return map[report.status] ?? report.status.toUpperCase();
   }
 }

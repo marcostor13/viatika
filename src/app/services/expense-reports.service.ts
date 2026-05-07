@@ -63,6 +63,13 @@ export class ExpenseReportsService {
     );
   }
 
+  cancelRendicion(id: string, reason?: string): Observable<IExpenseReport> {
+    return this.http.patch<IExpenseReport>(
+      `${this.apiUrl}/expense-report/${id}/cancel`,
+      { reason }
+    );
+  }
+
   validateClosure(reportId: string): Observable<string[]> {
     return this.http.get<string[]>(`${this.apiUrl}/expense-report/${reportId}/close/validate`);
   }

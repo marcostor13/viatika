@@ -286,23 +286,25 @@ export class RendicionDetailComponent implements OnInit {
   resendSolicitud(): void {
     if (!this.editSolicitudForm || this.editSolicitudForm.invalid) return;
     this.isResendingSolicitud.set(true);
-    // Use getRawValue() because budget might be disabled
     const val = this.editSolicitudForm.getRawValue();
-    this.expenseReportsService.update(this.id, { 
-      ...val, 
-      status: 'solicited',
-      rejectionReason: '' // Clear rejection reason on resubmit
-    }).subscribe({
+    const isRejected = this.report?.status === 'rejected';
+    const payload = isRejected
+      ? { ...val, status: 'solicited' as const, rejectionReason: '' }
+      : { ...val };
+    this.expenseReportsService.update(this.id, payload).subscribe({
       next: (res) => {
         this.report = res;
         this.calculateTotals();
         this.showEditSolicitudForm.set(false);
         this.isResendingSolicitud.set(false);
-        this.notificationService.show('Solicitud reenviada correctamente', 'success');
+        this.notificationService.show(
+          isRejected ? 'Solicitud reenviada correctamente' : 'Solicitud actualizada correctamente',
+          'success'
+        );
       },
       error: () => {
         this.isResendingSolicitud.set(false);
-        this.notificationService.show('Error al reenviar la solicitud', 'error');
+        this.notificationService.show('Error al guardar los cambios', 'error');
       },
     });
   }
@@ -714,6 +716,7 @@ export class RendicionDetailComponent implements OnInit {
       rejected: 'Rechazada',
       reimbursed: 'Reembolsado',
       closed: 'Cerrada',
+      cancelled: 'Cancelada',
     };
     return labels[this.report.status] ?? this.report.status;
   }
@@ -1268,6 +1271,87 @@ export class RendicionDetailComponent implements OnInit {
         this.notificationService.show(msg || 'Error al procesar reapertura', 'error');
       },
     });
+  }
+
+  // ─── Editar / Cancelar / Eliminar solicitud de viáticos pendiente ────────────
+
+  editingAdvance = signal<IAdvance | null>(null);
+  showEditAdvanceModal = signal(false);
+  showCancelAdvanceModal = signal(false);
+  cancellingAdvanceId = signal<string | null>(null);
+  isCancellingAdvance = signal(false);
+
+  openEditAdvanceModal(adv: IAdvance): void {
+    this.editingAdvance.set(adv);
+    this.showEditAdvanceModal.set(true);
+  }
+
+  onEditAdvanceClosed(success: boolean): void {
+    this.editingAdvance.set(null);
+    this.showEditAdvanceModal.set(false);
+    if (success) this.loadAdvances();
+  }
+
+  openCancelAdvanceModal(adv: IAdvance): void {
+    this.cancellingAdvanceId.set(adv._id);
+    this.showCancelAdvanceModal.set(true);
+  }
+
+  confirmCancelAdvance(): void {
+    const id = this.cancellingAdvanceId();
+    if (!id) return;
+    this.isCancellingAdvance.set(true);
+    this.advanceService.cancelAdvance(id).subscribe({
+      next: () => {
+        this.isCancellingAdvance.set(false);
+        this.showCancelAdvanceModal.set(false);
+        this.cancellingAdvanceId.set(null);
+        this.notificationService.show('Solicitud de viaticos cancelada', 'success');
+        this.loadAdvances();
+      },
+      error: (err) => {
+        this.isCancellingAdvance.set(false);
+        const raw = err?.error?.message;
+        const msg = Array.isArray(raw) ? raw.join(', ') : raw;
+        this.notificationService.show(msg || 'Error al cancelar la solicitud', 'error');
+      },
+    });
+  }
+
+  // ─── Cancelar / Eliminar rendición solicitada ────────────────────────────────
+
+  /** Colaborador puede cancelar o eliminar solo cuando la rendición está pendiente de aprobación. */
+  get canCancelOrDelete(): boolean {
+    return !this.isAdminView && this.report?.status === 'solicited';
+  }
+
+  showCancelModal = signal(false);
+  cancelReason = signal('');
+  isCancelling = signal(false);
+
+  openCancelModal(): void {
+    this.cancelReason.set('');
+    this.showCancelModal.set(true);
+  }
+
+  confirmCancelReport(): void {
+    this.isCancelling.set(true);
+    this.expenseReportsService
+      .cancelRendicion(this.id, this.cancelReason().trim() || undefined)
+      .subscribe({
+        next: (res) => {
+          this.report = res;
+          this.isCancelling.set(false);
+          this.showCancelModal.set(false);
+          this.notificationService.show('Rendicion cancelada correctamente', 'success');
+        },
+        error: (err) => {
+          this.isCancelling.set(false);
+          const raw = err?.error?.message;
+          const msg = Array.isArray(raw) ? raw.join(', ') : raw;
+          this.notificationService.show(msg || 'Error al cancelar la rendicion', 'error');
+        },
+      });
   }
 
   exportMobilitySheet(expense: Record<string, unknown>): void {
