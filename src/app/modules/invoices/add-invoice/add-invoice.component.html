@@ -369,13 +369,13 @@
             <label class="text-xs font-medium text-secondary">Fecha <span class="text-error">*</span></label>
             <input type="date" formControlName="fecha"
               [max]="todayIso"
-              class="w-full h-[38px] px-3 rounded-lg border border-tertiary/40 bg-background focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm" />
+              class="w-full h-[42px] px-3 rounded-lg border border-tertiary/40 bg-background focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm" />
           </div>
           <!-- Concepto -->
           <div class="flex flex-col gap-1 sm:col-span-2">
             <label class="text-xs font-medium text-secondary">Concepto <span class="text-error">*</span></label>
             <input type="text" formControlName="concepto" placeholder="Descripción del traslado"
-              class="w-full h-[38px] px-3 rounded-lg border border-tertiary/40 bg-background focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm" />
+              class="w-full h-[42px] px-3 rounded-lg border border-tertiary/40 bg-background focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm" />
           </div>
           <!-- Origen con autocomplete -->
           <div class="flex flex-col gap-1 sm:col-span-3">
@@ -395,7 +395,7 @@
                 (placeSelected)="onOrigenSelected($event, i)"
                 placeholder="Ej: Av. Javier Prado 123, Lima"
                 autocomplete="off"
-                class="w-full h-[38px] pl-9 pr-3 rounded-lg border border-tertiary/40 bg-background focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm" />
+                class="w-full h-[42px] pl-9 pr-3 rounded-lg border border-tertiary/40 bg-background focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm" />
             </div>
             @if (row.get('origenLat')?.value) {
             <span class="text-xs text-green-600 flex items-center gap-1 mt-0.5">
@@ -423,7 +423,7 @@
                 (placeSelected)="onDestinoSelected($event, i)"
                 placeholder="Ej: Aeropuerto Jorge Chávez, Callao"
                 autocomplete="off"
-                class="w-full h-[38px] pl-9 pr-3 rounded-lg border border-tertiary/40 bg-background focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm" />
+                class="w-full h-[42px] pl-9 pr-3 rounded-lg border border-tertiary/40 bg-background focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm" />
             </div>
             @if (row.get('destinoLat')?.value) {
             <span class="text-xs text-green-600 flex items-center gap-1 mt-0.5">
@@ -450,18 +450,18 @@
           <div class="flex flex-col gap-1">
             <label class="text-xs font-medium text-secondary">Total S/. <span class="text-error">*</span></label>
             <input type="number" formControlName="total" placeholder="0.00" min="0" step="0.01"
-              class="w-full h-[38px] px-3 rounded-lg border border-tertiary/40 bg-background focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm" />
+              class="w-full h-[42px] px-3 rounded-lg border border-tertiary/40 bg-background focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm" />
           </div>
           <div class="flex flex-col gap-1">
             <label class="text-xs font-medium text-secondary">Cliente / Proveedor</label>
             <input type="text" formControlName="clienteProveedor" placeholder="Nombre"
-              class="w-full h-[38px] px-3 rounded-lg border border-tertiary/40 bg-background focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm" />
+              class="w-full h-[42px] px-3 rounded-lg border border-tertiary/40 bg-background focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm" />
           </div>
           <!-- Gestión -->
           <div class="flex flex-col gap-1 sm:col-span-3">
             <label class="text-xs font-medium text-secondary">Gestión (Motivo)</label>
             <input type="text" formControlName="gestion" placeholder="Motivo del traslado"
-              class="w-full h-[38px] px-3 rounded-lg border border-tertiary/40 bg-background focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm" />
+              class="w-full h-[42px] px-3 rounded-lg border border-tertiary/40 bg-background focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm" />
           </div>
         </div>
       </div>

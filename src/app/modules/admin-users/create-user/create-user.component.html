@@ -1,134 +1,190 @@
-<div class="create-user xl:w-1/2 w-full">
-  <div class="flex items-center gap-2 w-full justify-between">
-    <button
-      class="bg-secondary text-white px-4 py-3 sm:py-2 rounded-md flex items-center justify-center gap-2 text-sm sm:text-base shadow-sm"
-      (click)="back()"
-    >
-      <svg
-        xmlns="http://www.w3.org/2000/svg"
-        fill="none"
-        viewBox="0 0 24 24"
-        stroke-width="1.5"
-        stroke="currentColor"
-        class="size-6"
-      >
-        <path
-          stroke-linecap="round"
-          stroke-linejoin="round"
-          d="M9 15 3 9m0 0 6-6M3 9h12a6 6 0 0 1 0 12h-3"
-        />
-      </svg>
+<div class="p-5 flex flex-col gap-6">
 
-      Volver
+  <!-- Header -->
+  <div class="flex items-center gap-3">
+    <button
+      (click)="back()"
+      class="p-2 rounded-xl hover:bg-background transition-colors text-tertiary"
+      title="Volver"
+    >
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5 3 12m0 0 7.5-7.5M3 12h18" />
+      </svg>
     </button>
-    <h2 class="font-bold">{{ id ? "Editar Usuario" : "Crear Usuario" }}</h2>
-  </div>
-  <form [formGroup]="form" class="py-5 flex flex-col gap-2">
-    <div class="flex flex-col gap-2">
-      <label>Nombre</label>
-      <input
-        type="text"
-        name="name"
-        formControlName="name"
-        [ngClass]="{ 'border-red-500': name?.invalid && name?.touched }"
-      />
-      @if(name?.invalid && name?.touched) {
-      <p class="text-red-500">El nombre es requerido</p>
-      }
-    </div>
-    <div class="flex flex-col gap-2">
-      <label>Email</label>
-      <input
-        type="email"
-        name="email"
-        formControlName="email"
-        [ngClass]="{ 'border-red-500': email?.invalid && email?.touched }"
-      />
-      @if(email?.invalid && email?.touched) {
-      <p class="text-red-500">El email es requerido</p>
-      }
-    </div>
-    <div class="flex flex-col gap-2">
-      <label>Rol</label>
-      <select
-        name="role"
-        formControlName="roleId"
-        [ngClass]="{ 'border-red-500': roleId?.invalid && roleId?.touched }"
-      >
-        <option value="" disabled>Selecciona un rol</option>
-        @for(role of roles; track role._id) {
-        <option [value]="role._id">{{ role.name }}</option>
-        }
-      </select>
-    </div>
-    @if(!id) {
-    <div class="flex flex-col gap-2">
-      <label>Contraseña</label>
-      <input type="password" name="password" formControlName="password" />
-      @if(password?.invalid && password?.touched) {
-      <p class="text-red-500">La contraseña es requerida</p>
-      }
-    </div>
-    }
-    <div class="flex flex-col gap-2">
-      <label>DNI <span class="text-tertiary text-xs">(opcional)</span></label>
-      <input
-        type="text"
-        name="dni"
-        formControlName="dni"
-        placeholder="Ej: 12345678"
-      />
-    </div>
-    <div class="flex flex-col gap-2">
-      <label>Código de Empleado <span class="text-tertiary text-xs">(opcional)</span></label>
-      <input
-        type="text"
-        name="employeeCode"
-        formControlName="employeeCode"
-        placeholder="Ej: EMP-001"
-      />
-    </div>
-    <div class="flex flex-col gap-2">
-      <label>Dirección <span class="text-tertiary text-xs">(opcional)</span></label>
-      <input
-        type="text"
-        name="address"
-        formControlName="address"
-        placeholder="Ej: Av. Lima 123, Lima"
-      />
-    </div>
-    <div class="flex flex-col gap-2">
-      <label>Teléfono <span class="text-tertiary text-xs">(opcional)</span></label>
-      <input
-        type="text"
-        name="phone"
-        formControlName="phone"
-        placeholder="Ej: 987654321"
-      />
-    </div>
-    @if (selectedRoleIsCollaborador) {
-    <div class="flex flex-col gap-2">
-      <label>
-        Coordinador / aprobador
-        <span class="text-tertiary text-xs">(opcional — recibe la solicitud de viáticos)</span>
-      </label>
-      <select name="coordinatorId" formControlName="coordinatorId">
-        <option value="">Sin coordinador asignado</option>
-        @for (u of coordinatorCandidates; track u._id) {
-        <option [value]="u._id">{{ u.name }} — {{ u.email }}</option>
-        }
-      </select>
-      <p class="text-xs text-tertiary">
-        Solo usuarios administradores o con permiso de aprobación aparecen en la lista.
+    <div>
+      <h1 class="text-2xl font-bold text-secondary">
+        {{ id ? 'Editar Colaborador' : 'Nuevo Colaborador' }}
+      </h1>
+      <p class="text-sm text-tertiary mt-0.5">
+        {{ id ? 'Modifica los datos del colaborador' : 'Completa los campos para crear un nuevo colaborador' }}
       </p>
     </div>
-    }
-    <button
-      type="submit"
-      class="bg-primary text-white px-4 py-3 sm:py-2 rounded-md flex items-center justify-center gap-2 text-sm sm:text-base shadow-sm mt-5"
-      (click)="id ? updateUser() : createUser()"
-    >
-      {{ id ? "Actualizar" : "Crear" }}
-    </button>
+  </div>
+
+  <!-- Form card -->
+  <form [formGroup]="form" class="bg-quaternary rounded-2xl border border-tertiary/20 shadow-soft p-6 max-w-xl">
+    <div class="flex flex-col gap-5">
+
+      <!-- Nombre -->
+      <div class="flex flex-col gap-1.5">
+        <label class="text-xs font-semibold text-tertiary uppercase tracking-wider">Nombre *</label>
+        <input
+          type="text"
+          formControlName="name"
+          placeholder="Nombre completo"
+          class="h-[42px] px-3 rounded-xl border bg-background text-sm text-secondary focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all"
+          [ngClass]="name?.invalid && name?.touched ? 'border-red-400' : 'border-tertiary/30'"
+        />
+        @if (name?.invalid && name?.touched) {
+          <p class="text-xs text-red-500">El nombre es requerido</p>
+        }
+      </div>
+
+      <!-- Email -->
+      <div class="flex flex-col gap-1.5">
+        <label class="text-xs font-semibold text-tertiary uppercase tracking-wider">Email *</label>
+        <input
+          type="email"
+          formControlName="email"
+          placeholder="correo@empresa.com"
+          class="h-[42px] px-3 rounded-xl border bg-background text-sm text-secondary focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all"
+          [ngClass]="email?.invalid && email?.touched ? 'border-red-400' : 'border-tertiary/30'"
+        />
+        @if (email?.invalid && email?.touched) {
+          <p class="text-xs text-red-500">El email es requerido y debe ser válido</p>
+        }
+      </div>
+
+      <!-- Rol -->
+      <div class="flex flex-col gap-1.5">
+        <label class="text-xs font-semibold text-tertiary uppercase tracking-wider">Rol *</label>
+        <select
+          formControlName="roleId"
+          class="h-[42px] px-3 rounded-xl border bg-background text-sm text-secondary focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all"
+          [ngClass]="roleId?.invalid && roleId?.touched ? 'border-red-400' : 'border-tertiary/30'"
+        >
+          <option value="" disabled>Selecciona un rol</option>
+          @for (role of roles; track role._id) {
+            <option [value]="role._id">{{ role.name }}</option>
+          }
+        </select>
+        @if (roleId?.invalid && roleId?.touched) {
+          <p class="text-xs text-red-500">El rol es requerido</p>
+        }
+      </div>
+
+      <!-- Separador campos opcionales -->
+      <div class="border-t border-tertiary/10 pt-1">
+        <p class="text-xs text-tertiary font-medium uppercase tracking-wider">Datos adicionales <span class="font-normal normal-case">(opcionales)</span></p>
+      </div>
+
+      <!-- DNI -->
+      <div class="flex flex-col gap-1.5">
+        <label class="text-xs font-semibold text-tertiary uppercase tracking-wider">DNI</label>
+        <input
+          type="text"
+          formControlName="dni"
+          placeholder="Ej: 12345678"
+          class="h-[42px] px-3 rounded-xl border border-tertiary/30 bg-background text-sm text-secondary focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all"
+        />
+      </div>
+
+      <!-- Código de Empleado -->
+      <div class="flex flex-col gap-1.5">
+        <label class="text-xs font-semibold text-tertiary uppercase tracking-wider">Código de Empleado</label>
+        <input
+          type="text"
+          formControlName="employeeCode"
+          placeholder="Ej: EMP-001"
+          class="h-[42px] px-3 rounded-xl border border-tertiary/30 bg-background text-sm text-secondary focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all"
+        />
+      </div>
+
+      <!-- Dirección -->
+      <div class="flex flex-col gap-1.5">
+        <label class="text-xs font-semibold text-tertiary uppercase tracking-wider">Dirección</label>
+        <input
+          type="text"
+          formControlName="address"
+          placeholder="Ej: Av. Lima 123, Lima"
+          class="h-[42px] px-3 rounded-xl border border-tertiary/30 bg-background text-sm text-secondary focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all"
+        />
+      </div>
+
+      <!-- Teléfono -->
+      <div class="flex flex-col gap-1.5">
+        <label class="text-xs font-semibold text-tertiary uppercase tracking-wider">Teléfono</label>
+        <input
+          type="text"
+          formControlName="phone"
+          placeholder="Ej: 987654321"
+          class="h-[42px] px-3 rounded-xl border border-tertiary/30 bg-background text-sm text-secondary focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all"
+        />
+      </div>
+
+      <!-- Coordinador (solo si el rol es Colaborador) -->
+      @if (selectedRoleIsCollaborador) {
+        <div class="flex flex-col gap-1.5">
+          <label class="text-xs font-semibold text-tertiary uppercase tracking-wider">Coordinador / Aprobador</label>
+          <select
+            formControlName="coordinatorId"
+            class="h-[42px] px-3 rounded-xl border border-tertiary/30 bg-background text-sm text-secondary focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all"
+          >
+            <option value="">Sin coordinador asignado</option>
+            @for (u of coordinatorCandidates; track u._id) {
+              <option [value]="u._id">{{ u.name }} — {{ u.email }}</option>
+            }
+          </select>
+          <p class="text-xs text-tertiary">Solo administradores o usuarios con permiso de aprobación aparecen en la lista.</p>
+        </div>
+      }
+
+      <!-- Acciones -->
+      <div class="flex gap-3 pt-1">
+        <app-button
+          [label]="id ? 'Actualizar' : 'Crear colaborador'"
+          variant="primary"
+          size="md"
+          (clicked)="id ? updateUser() : createUser()"
+        />
+        <app-button label="Cancelar" variant="secondary" size="md" (clicked)="back()" />
+      </div>
+
+    </div>
   </form>
+
 </div>
+
+<!-- Modal contraseña temporal -->
+@if (showPasswordModal) {
+  <div class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+    <div class="bg-quaternary rounded-2xl border border-tertiary/20 shadow-soft p-6 max-w-sm w-full">
+      <div class="flex flex-col gap-4">
+        <div>
+          <h2 class="text-lg font-bold text-secondary">Usuario creado</h2>
+          <p class="text-sm text-tertiary mt-1">
+            Comparte esta contrasena temporal con el colaborador. Al iniciar sesion se le pedira cambiarla.
+          </p>
+        </div>
+        <div class="bg-background rounded-xl border border-tertiary/20 p-3 flex items-center justify-between gap-3">
+          <span class="font-mono text-sm text-secondary select-all tracking-wide">{{ temporaryPassword }}</span>
+          <button
+            (click)="copyPassword()"
+            class="shrink-0 text-xs font-medium px-3 py-1.5 rounded-lg border transition-colors"
+            [ngClass]="passwordCopied
+              ? 'border-green-400 text-green-600 bg-green-50'
+              : 'border-tertiary/30 text-tertiary hover:border-primary hover:text-primary'"
+          >
+            {{ passwordCopied ? 'Copiado' : 'Copiar' }}
+          </button>
+        </div>
+        <app-button
+          label="Continuar"
+          variant="primary"
+          size="md"
+          (clicked)="closePasswordModal()"
+        />
+      </div>
+    </div>
+  </div>
+}

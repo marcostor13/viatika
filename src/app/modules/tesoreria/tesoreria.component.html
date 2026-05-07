@@ -222,7 +222,7 @@
     <form [formGroup]="paymentForm" class="space-y-3">
       <div class="flex flex-col gap-1">
         <label class="text-xs font-medium text-gray-600">Método de pago</label>
-        <select formControlName="method" class="w-full h-[38px] px-3 rounded-lg border border-gray-200 text-sm bg-white">
+        <select formControlName="method" class="w-full h-[42px] px-3 rounded-lg border border-gray-200 text-sm bg-white">
           <option value="transferencia_bancaria">Transferencia Bancaria</option>
           <option value="efectivo">Efectivo</option>
           <option value="cheque">Cheque</option>
@@ -233,17 +233,17 @@
         <div class="flex flex-col gap-1">
           <label class="text-xs font-medium text-gray-600">Banco</label>
           <input type="text" formControlName="bankName" placeholder="BCP, Interbank..."
-            class="w-full h-[38px] px-3 rounded-lg border border-gray-200 text-sm" />
+            class="w-full h-[42px] px-3 rounded-lg border border-gray-200 text-sm" />
         </div>
         <div class="flex flex-col gap-1">
           <label class="text-xs font-medium text-gray-600">N° Cuenta</label>
           <input type="text" formControlName="accountNumber"
-            class="w-full h-[38px] px-3 rounded-lg border border-gray-200 text-sm" />
+            class="w-full h-[42px] px-3 rounded-lg border border-gray-200 text-sm" />
         </div>
         <div class="flex flex-col gap-1 col-span-2">
           <label class="text-xs font-medium text-gray-600">CCI (Código de Cuenta Interbancario)</label>
           <input type="text" formControlName="cci" placeholder="00320000000000000000"
-            class="w-full h-[38px] px-3 rounded-lg border border-gray-200 text-sm font-mono" />
+            class="w-full h-[42px] px-3 rounded-lg border border-gray-200 text-sm font-mono" />
         </div>
       </div>
       }
@@ -251,12 +251,12 @@
         <div class="flex flex-col gap-1">
           <label class="text-xs font-medium text-gray-600">Fecha de transferencia <span class="text-red-500">*</span></label>
           <input type="date" formControlName="transferDate"
-            class="w-full h-[38px] px-3 rounded-lg border border-gray-200 text-sm" />
+            class="w-full h-[42px] px-3 rounded-lg border border-gray-200 text-sm" />
         </div>
         <div class="flex flex-col gap-1">
           <label class="text-xs font-medium text-gray-600">N° de Operación / Referencia</label>
           <input type="text" formControlName="reference"
-            class="w-full h-[38px] px-3 rounded-lg border border-gray-200 text-sm" />
+            class="w-full h-[42px] px-3 rounded-lg border border-gray-200 text-sm" />
         </div>
       </div>
 
@@ -266,7 +266,7 @@
           type="file"
           accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png"
           (change)="onPaymentReceiptSelected($event)"
-          class="w-full h-[38px] px-2 py-1 rounded-lg border border-gray-200 text-sm bg-white file:mr-3 file:px-2 file:py-1 file:rounded file:border-0 file:bg-gray-100 file:text-gray-700"
+          class="w-full h-[42px] px-2 py-1 rounded-lg border border-gray-200 text-sm bg-white file:mr-3 file:px-2 file:py-1 file:rounded file:border-0 file:bg-gray-100 file:text-gray-700"
         />
         @if (isUploadingReceipt()) {
         <p class="text-xs text-blue-600">Subiendo comprobante...</p>
@@ -445,7 +445,7 @@
       <div class="flex flex-col gap-1">
         <label class="text-xs font-medium text-gray-600">Monto devuelto S/. <span class="text-red-500">*</span></label>
         <input type="number" formControlName="returnedAmount" min="0" step="0.01"
-          class="w-full h-[38px] px-3 rounded-lg border border-gray-200 text-sm" />
+          class="w-full h-[42px] px-3 rounded-lg border border-gray-200 text-sm" />
       </div>
     </form>
     <div class="flex gap-3 mt-4">
