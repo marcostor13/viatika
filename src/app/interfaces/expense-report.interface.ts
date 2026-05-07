@@ -50,7 +50,7 @@ export interface IExpenseReport {
   budget: number;
   userId: any; // Ideally IUserResponse or string ID
   clientId: string;
-  status: 'solicited' | 'open' | 'submitted' | 'approved' | 'rejected' | 'reimbursed' | 'closed';
+  status: 'solicited' | 'open' | 'submitted' | 'approved' | 'rejected' | 'reimbursed' | 'closed' | 'cancelled';
   /** Motivo indicado por el administrador al rechazar */
   rejectionReason?: string;
   expenseIds: any[];
@@ -126,7 +126,8 @@ export interface IUpdateExpenseReport {
     | 'approved'
     | 'rejected'
     | 'reimbursed'
-    | 'closed';
+    | 'closed'
+    | 'cancelled';
   rejectionReason?: string;
   expenseIds?: string[];
   // New fields

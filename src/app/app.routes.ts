@@ -5,6 +5,7 @@ import { AuthColaboradorGuard } from './guards/auth-colaborador.guard';
 import { AuthAdmin2Guard } from './guards/auth-admin2.guard';
 import { AuthSuperGuard } from './guards/auth-super.guard';
 import { AuthTesoreroGuard } from './guards/auth-tesorero.guard';
+import { AuthViaticosGuard } from './guards/auth-viaticos.guard';
 import { defaultRedirectGuard } from './guards/default-redirect.guard';
 import { authModuleGuard } from './guards/auth-module.guard';
 import { MainComponent } from './layouts/main/main.component';
@@ -198,6 +199,14 @@ export const routes: Routes = [
           import('./modules/firma-digital/firma-digital.component').then(
             (m) => m.FirmaDigitalComponent
           ),
+      },
+      {
+        path: 'viaticos',
+        loadComponent: () =>
+          import('./modules/viaticos/viaticos.component').then(
+            (m) => m.ViaticosComponent
+          ),
+        canActivate: [AuthViaticosGuard],
       },
       {
         path: 'tesoreria',

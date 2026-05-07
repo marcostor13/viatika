@@ -117,6 +117,14 @@ export class SidebarComponent implements OnInit, OnDestroy {
     return this.userStateService.canAccessTesoreria();
   }
 
+  canAccessViaticos(): boolean {
+    return (
+      this.userStateService.isAdmin() ||
+      this.userStateService.isSuperAdmin() ||
+      this.userStateService.canApproveL1()
+    );
+  }
+
   hasModulePermission(module: string): boolean {
     return this.userStateService.hasModulePermission(module);
   }

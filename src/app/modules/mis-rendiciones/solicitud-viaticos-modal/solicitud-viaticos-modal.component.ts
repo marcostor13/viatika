@@ -347,9 +347,6 @@ export class SolicitudViaticosModalComponent implements OnChanges {
   }
 
   projectLabel(p: IProject): string {
-    const code = p.code || '—';
-    const client = (p as IProject & { client?: { comercialName?: string } }).client;
-    const cliente = client?.comercialName ? ` — ${client.comercialName}` : '';
-    return `[${code} - ${p.name}]${cliente}`;
+    return p.code ? `${p.code} — ${p.name}` : p.name;
   }
 }
