@@ -113,8 +113,34 @@
       </a>
       }
 
+      <!-- Coordinador: nav fijo -->
+      @if (isCoordinador()) {
+      <a
+        [routerLink]="['/viaticos']"
+        routerLinkActive="bg-primary text-white"
+        [class.bg-primary]="isSelected('/viaticos')"
+        [class.text-quaternary]="isSelected('/viaticos')"
+        class="flex items-center px-4 py-3 text-secondary rounded-xl hover:bg-background hover:text-primary transition-all duration-200 group"
+      >
+        <span class="font-medium">Viáticos</span>
+      </a>
+      }
+
+      <!-- Contabilidad: nav fijo -->
+      @if (isContabilidad()) {
+      <a
+        [routerLink]="['/tesoreria']"
+        routerLinkActive="bg-primary text-white"
+        [class.bg-primary]="isSelected('/tesoreria')"
+        [class.text-quaternary]="isSelected('/tesoreria')"
+        class="flex items-center px-4 py-3 text-secondary rounded-xl hover:bg-background hover:text-primary transition-all duration-200 group"
+      >
+        <span class="font-medium">Pagos</span>
+      </a>
+      }
+
       <!-- Módulos opcionales: controlados 100% por permisos -->
-      @if (isColaborador() && hasModulePermission('invoice-approval')) {
+      @if (!isAdmin() && !isSuper() && !isCoordinador() && !isContabilidad() && hasModulePermission('invoice-approval')) {
       <a
         [routerLink]="['/invoice-approval']"
         routerLinkActive="bg-primary text-white"
@@ -125,7 +151,7 @@
         <span class="font-medium">Aprobación de Facturas</span>
       </a>
       }
-      @if (isColaborador() && hasModulePermission('consolidated-invoices')) {
+      @if (!isAdmin() && !isSuper() && !isCoordinador() && !isContabilidad() && hasModulePermission('consolidated-invoices')) {
       <a
         [routerLink]="['/consolidated-invoices']"
         routerLinkActive="bg-primary text-white"
@@ -147,7 +173,7 @@
         <span class="font-medium">Configuración</span>
       </a>
       }
-      @if (isColaborador() && hasModulePermission('audit-log')) {
+      @if (!isAdmin() && !isSuper() && !isCoordinador() && !isContabilidad() && hasModulePermission('audit-log')) {
       <a
         [routerLink]="['/audit-log']"
         routerLinkActive="bg-primary text-white"
@@ -158,7 +184,7 @@
         <span class="font-medium">Actividad</span>
       </a>
       }
-      @if (canAccessViaticos()) {
+      @if (!isCoordinador() && canAccessViaticos()) {
       <a
         [routerLink]="['/viaticos']"
         routerLinkActive="bg-primary text-white"
@@ -169,7 +195,7 @@
         <span class="font-medium">Viáticos</span>
       </a>
       }
-      @if (canAccessTesoreria()) {
+      @if (!isContabilidad() && canAccessTesoreria()) {
       <a
         [routerLink]="['/tesoreria']"
         routerLinkActive="bg-primary text-white"
@@ -177,7 +203,7 @@
         [class.text-quaternary]="isSelected('/tesoreria')"
         class="flex items-center px-4 py-3 text-secondary rounded-xl hover:bg-background hover:text-primary transition-all duration-200 group"
       >
-        <span class="font-medium">Tesorería</span>
+        <span class="font-medium">Pagos</span>
       </a>
       }
       <a
@@ -409,8 +435,34 @@
         </a>
         }
 
+        <!-- Coordinador: nav fijo -->
+        @if (isCoordinador()) {
+        <a
+          [routerLink]="['/viaticos']"
+          (click)="toggleSidebar()"
+          [class.bg-primary]="isSelected('/viaticos')"
+          [class.text-quaternary]="isSelected('/viaticos')"
+          class="flex items-center px-4 py-4 text-secondary rounded-xl hover:bg-background hover:text-primary transition-all duration-200 group"
+        >
+          <span class="font-medium text-lg">Viáticos</span>
+        </a>
+        }
+
+        <!-- Contabilidad: nav fijo -->
+        @if (isContabilidad()) {
+        <a
+          [routerLink]="['/tesoreria']"
+          (click)="toggleSidebar()"
+          [class.bg-primary]="isSelected('/tesoreria')"
+          [class.text-quaternary]="isSelected('/tesoreria')"
+          class="flex items-center px-4 py-4 text-secondary rounded-xl hover:bg-background hover:text-primary transition-all duration-200 group"
+        >
+          <span class="font-medium text-lg">Pagos</span>
+        </a>
+        }
+
         <!-- Módulos opcionales: controlados 100% por permisos -->
-        @if (isColaborador() && hasModulePermission('invoice-approval')) {
+        @if (!isAdmin() && !isSuper() && !isCoordinador() && !isContabilidad() && hasModulePermission('invoice-approval')) {
         <a
           [routerLink]="['/invoice-approval']"
           (click)="toggleSidebar()"
@@ -421,7 +473,7 @@
           <span class="font-medium text-lg">Aprobación de Facturas</span>
         </a>
         }
-        @if (isColaborador() && hasModulePermission('consolidated-invoices')) {
+        @if (!isAdmin() && !isSuper() && !isCoordinador() && !isContabilidad() && hasModulePermission('consolidated-invoices')) {
         <a
           [routerLink]="['/consolidated-invoices']"
           (click)="toggleSidebar()"
@@ -443,7 +495,7 @@
           <span class="font-medium text-lg">Configuración</span>
         </a>
         }
-        @if (isColaborador() && hasModulePermission('audit-log')) {
+        @if (!isAdmin() && !isSuper() && !isCoordinador() && !isContabilidad() && hasModulePermission('audit-log')) {
         <a
           [routerLink]="['/audit-log']"
           (click)="toggleSidebar()"
@@ -454,7 +506,7 @@
           <span class="font-medium text-lg">Actividad</span>
         </a>
         }
-        @if (canAccessViaticos()) {
+        @if (!isCoordinador() && canAccessViaticos()) {
         <a
           [routerLink]="['/viaticos']"
           (click)="toggleSidebar()"
@@ -465,7 +517,7 @@
           <span class="font-medium text-lg">Viáticos</span>
         </a>
         }
-        @if (canAccessTesoreria()) {
+        @if (!isContabilidad() && canAccessTesoreria()) {
         <a
           [routerLink]="['/tesoreria']"
           (click)="toggleSidebar()"
@@ -473,7 +525,7 @@
           [class.text-quaternary]="isSelected('/tesoreria')"
           class="flex items-center px-4 py-4 text-secondary rounded-xl hover:bg-background hover:text-primary transition-all duration-200 group"
         >
-          <span class="font-medium text-lg">Tesorería</span>
+          <span class="font-medium text-lg">Pagos</span>
         </a>
         }
         <a

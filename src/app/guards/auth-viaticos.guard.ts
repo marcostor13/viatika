@@ -14,9 +14,14 @@ export class AuthViaticosGuard implements CanActivate {
     const allowed =
       this.userState.isAdmin() ||
       this.userState.isSuperAdmin() ||
+      this.userState.isCoordinador() ||
       this.userState.canApproveL1();
     if (!allowed) {
-      this.router.navigate([this.userState.isColaborador() ? '/mis-rendiciones' : '/login']);
+      const role = this.userState.getRole();
+      const fallback = (role === 'Colaborador') ? '/mis-rendiciones'
+        : (role === 'Contabilidad') ? '/tesoreria'
+        : '/login';
+      this.router.navigate([fallback]);
       return false;
     }
     return true;

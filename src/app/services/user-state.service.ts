@@ -103,6 +103,14 @@ export class UserStateService {
     return role === 'Superadministrador';
   }
 
+  isContabilidad() {
+    return this.getRole() === 'Contabilidad';
+  }
+
+  isCoordinador() {
+    return this.getRole() === 'Coordinador';
+  }
+
   // Helper for both types of admins (used in Guards)
   isAnyAdmin() {
     return this.isAdmin() || this.isSuperAdmin();
@@ -120,7 +128,7 @@ export class UserStateService {
   }
 
   canApproveL1(): boolean {
-    if (this.isSuperAdmin()) return true;
+    if (this.isSuperAdmin() || this.isAdmin() || this.isCoordinador()) return true;
     return this.getPermissions().canApproveL1 === true;
   }
 
@@ -129,8 +137,12 @@ export class UserStateService {
   }
 
   canAccessTesoreria(): boolean {
-    if (this.isSuperAdmin()) return true;
+    if (this.isSuperAdmin() || this.isContabilidad()) return true;
     const perms = this.getPermissions();
     return perms.modules?.includes('tesoreria') ?? false;
+  }
+
+  canAccessPagos(): boolean {
+    return this.canAccessTesoreria();
   }
 }
