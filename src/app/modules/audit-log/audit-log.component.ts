@@ -2,6 +2,8 @@ import { Component, inject, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AuditLogService, IAuditLog } from '../../services/audit-log.service';
+import { PaginatorComponent } from '../../design-system/paginator/paginator.component';
+import { IPaginatedResult } from '../../interfaces/paginated-result.interface';
 
 const ACTION_LABELS: Record<string, string> = {
   login: 'Inicio de sesión',
@@ -36,17 +38,19 @@ const MODULE_LABELS: Record<string, string> = {
 @Component({
   selector: 'app-audit-log',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, PaginatorComponent],
   templateUrl: './audit-log.component.html',
 })
 export class AuditLogComponent implements OnInit {
   private auditLogService = inject(AuditLogService);
 
-  logs: IAuditLog[] = [];
-  filteredLogs: IAuditLog[] = [];
+  result = signal<IPaginatedResult<IAuditLog>>({ data: [], total: 0, page: 1, pages: 0, limit: 20 });
+  get logs() { return this.result().data; }
   isLoading = signal(false);
   searchText = '';
   filterModule = '';
+  page = signal(1);
+  limit = signal(20);
 
   readonly modules = ['facturas', 'rendiciones', 'tesoreria', 'usuarios'];
   readonly MODULE_LABELS = MODULE_LABELS;
@@ -57,10 +61,14 @@ export class AuditLogComponent implements OnInit {
 
   loadLogs() {
     this.isLoading.set(true);
-    this.auditLogService.findAll(500).subscribe({
-      next: (logs) => {
-        this.logs = logs;
-        this.applyFilters();
+    this.auditLogService.findAll({
+      page: this.page(),
+      limit: this.limit(),
+      module: this.filterModule || undefined,
+      search: this.searchText.trim() || undefined,
+    }).subscribe({
+      next: (res) => {
+        this.result.set(res);
         this.isLoading.set(false);
       },
       error: () => {
@@ -69,22 +77,9 @@ export class AuditLogComponent implements OnInit {
     });
   }
 
-  applyFilters() {
-    let result = this.logs;
-    if (this.filterModule) {
-      result = result.filter((l) => l.module === this.filterModule);
-    }
-    if (this.searchText.trim()) {
-      const q = this.searchText.toLowerCase();
-      result = result.filter(
-        (l) =>
-          l.userName.toLowerCase().includes(q) ||
-          l.action.toLowerCase().includes(q) ||
-          l.details?.toLowerCase().includes(q)
-      );
-    }
-    this.filteredLogs = result;
-  }
+  applyFilters() { this.page.set(1); this.loadLogs(); }
+  onPageChange(p: number) { this.page.set(p); this.loadLogs(); }
+  onLimitChange(l: number) { this.limit.set(l); this.page.set(1); this.loadLogs(); }
 
   getActionLabel(action: string): string {
     return ACTION_LABELS[action] || action;

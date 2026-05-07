@@ -1,31 +1,29 @@
 <div class="admin-users">
-  <!-- Header -->
-  <div class="p-5 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-    <div>
-      <h1 class="text-2xl font-bold text-secondary">Colaboradores</h1>
-      <p class="text-sm text-tertiary mt-0.5">
-        {{ filteredUsers.length }}
-        {{ filteredUsers.length !== allUsers.length ? 'de ' + allUsers.length + ' usuarios' : (allUsers.length === 1 ? 'usuario' : 'usuarios') }}
-      </p>
-    </div>
-    <app-button
-      label="Crear Usuario"
-      variant="primary"
-      size="md"
-      [fullWidth]="true"
-      class="sm:w-auto"
-      (clicked)="redirectToCreateUser()"
-    >
-      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-5 sm:size-6">
-        <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-      </svg>
-    </app-button>
-  </div>
+  <div class="p-5 flex flex-col gap-6">
 
-  <!-- Filters -->
-  <div class="px-5 pb-4">
+    <!-- Header -->
+    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+      <div>
+        <h1 class="text-2xl font-bold text-secondary">Colaboradores</h1>
+        <p class="text-sm text-tertiary mt-0.5">{{ result().total }} {{ result().total === 1 ? 'usuario' : 'usuarios' }}</p>
+      </div>
+      <div class="flex gap-2 flex-wrap">
+        <button
+          type="button"
+          (click)="navigateToBulkImport()"
+          class="h-[38px] px-4 text-sm rounded-xl border border-tertiary/30 text-secondary hover:bg-background transition-colors flex items-center gap-2"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5" />
+          </svg>
+          Carga masiva
+        </button>
+        <app-button label="Crear Usuario" variant="primary" size="md" (clicked)="redirectToCreateUser()" />
+      </div>
+    </div>
+
+    <!-- Filters -->
     <div class="flex flex-col sm:flex-row gap-3">
-      <!-- Search -->
       <div class="relative flex-1">
         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"
           class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-tertiary pointer-events-none">
@@ -39,8 +37,6 @@
           class="w-full pl-9 pr-3 py-2 text-sm border border-tertiary/30 rounded-xl bg-background text-secondary placeholder:text-tertiary focus:outline-none focus:ring-2 focus:ring-primary/30"
         />
       </div>
-
-      <!-- Role filter -->
       <select
         [(ngModel)]="filterRole"
         (ngModelChange)="applyFilters()"
@@ -48,11 +44,9 @@
       >
         <option value="">Todos los roles</option>
         @for (role of roleOptions; track role.value) {
-        <option [value]="role.value">{{ role.label }}</option>
+          <option [value]="role.value">{{ role.label }}</option>
         }
       </select>
-
-      <!-- Status filter -->
       <select
         [(ngModel)]="filterStatus"
         (ngModelChange)="applyFilters()"
@@ -62,141 +56,205 @@
         <option value="active">Activos</option>
         <option value="inactive">Inactivos</option>
       </select>
-
-      <!-- Clear filters -->
       @if (hasActiveFilters) {
-      <button
-        (click)="clearFilters()"
-        class="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-tertiary rounded-xl hover:bg-background hover:text-secondary transition-colors whitespace-nowrap"
-        title="Limpiar filtros"
-      >
-        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" />
-        </svg>
-        Limpiar
-      </button>
+        <button
+          (click)="clearFilters()"
+          class="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-tertiary rounded-xl hover:bg-background hover:text-secondary transition-colors whitespace-nowrap"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" />
+          </svg>
+          Limpiar
+        </button>
       }
     </div>
-  </div>
 
-  <!-- Empty state when filters return nothing -->
-  @if (filteredUsers.length === 0 && allUsers.length > 0) {
-  <div class="flex flex-col items-center py-14 text-center px-6">
-    <div class="w-12 h-12 rounded-2xl bg-background flex items-center justify-center mb-3">
-      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6 text-tertiary">
-        <path stroke-linecap="round" stroke-linejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
-      </svg>
-    </div>
-    <p class="font-semibold text-secondary">Sin resultados</p>
-    <p class="text-sm text-tertiary mt-1">No hay usuarios que coincidan con los filtros aplicados.</p>
-    <button (click)="clearFilters()" class="mt-3 text-sm text-primary hover:underline">Limpiar filtros</button>
-  </div>
-  }
-
-  <!-- Cards Grid -->
-  @if (filteredUsers.length > 0) {
-  <div class="px-5 pb-8">
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-      @for (user of filteredUsers; track user._id) {
-      <div 
-        class="bg-white rounded-2xl p-5 sm:p-6 shadow-sm border border-gray-100 hover:shadow-md transition-all duration-300 flex flex-col relative overflow-hidden group"
-      >
-        <!-- Top accent line for active status -->
-        <div 
-          class="absolute top-0 left-0 w-full h-1 transition-colors" 
-          [ngClass]="user.isActive ? 'bg-green-500' : 'bg-gray-300'"
-        ></div>
-
-        <!-- User Info Header -->
-        <div class="flex items-start justify-between mb-4 mt-1">
-          <div class="flex items-center gap-3 sm:gap-4 min-w-0">
-            <!-- Avatar -->
-            <div 
-              class="w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-lg sm:text-xl shrink-0 uppercase select-none"
-            >
-               {{ getInitials(user.name) }}
-            </div>
-            <!-- Name & Email -->
-            <div class="min-w-0">
-              <h3 class="font-bold text-gray-900 text-base sm:text-lg leading-tight truncate" [title]="user.name">
-                {{ user.name }}
-              </h3>
-              <p class="text-sm text-gray-500 mt-0.5 truncate" [title]="user.email">
-                {{ user.email }}
-              </p>
-            </div>
-          </div>
-        </div>
-
-        <!-- Badges -->
-        <div class="flex flex-wrap gap-2 mb-4">
-          <span 
-            class="px-2.5 py-1 rounded-full text-xs font-semibold"
-            [ngClass]="user.roleName === 'Administrador' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'"
-          >
-            {{ user.roleName }}
-          </span>
-          <span 
-            class="px-2.5 py-1 rounded-full text-xs font-semibold"
-            [ngClass]="user.isActive ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'"
-          >
-            {{ user.isActive ? 'Activo' : 'Inactivo' }}
-          </span>
-        </div>
-
-        <div class="flex-grow"></div>
-
-        <!-- Actions -->
-        <div class="flex items-center gap-2 mt-4 pt-4 border-t border-gray-100">
-          <!-- Primary Action: View Details -->
-          <button
-            type="button"
-            (click)="router.navigate(['/admin-users', user._id, 'details'])"
-            class="flex-1 min-h-[44px] flex items-center justify-center gap-2 px-4 rounded-xl bg-primary/10 text-primary font-semibold hover:bg-primary hover:text-white active:scale-[0.98] transition-all touch-manipulation group/btn"
-          >
-            <span>Ver perfil</span>
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4 transition-transform group-hover/btn:translate-x-1">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" />
+    <!-- Content -->
+    @if (filteredUsers.length === 0) {
+      @if (hasActiveFilters) {
+        <div class="flex flex-col items-center py-14 text-center px-6">
+          <div class="w-12 h-12 rounded-2xl bg-background flex items-center justify-center mb-3 border border-tertiary/20">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6 text-tertiary">
+              <path stroke-linecap="round" stroke-linejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
             </svg>
-          </button>
-
-          <!-- Secondary Actions -->
-          <div class="flex items-center shrink-0">
-            <button
-              type="button"
-              (click)="redirectToCreateUser(user._id)"
-              class="p-2.5 rounded-xl text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"
-              title="Editar"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
-                <path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125" />
-              </svg>
-            </button>
-            <button
-              type="button"
-              (click)="toggleUserActive(user._id)"
-              class="p-2.5 rounded-xl text-gray-400 hover:text-amber-600 hover:bg-amber-50 transition-colors"
-              [title]="user.isActive ? 'Desactivar' : 'Activar'"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
-                 <path stroke-linecap="round" stroke-linejoin="round" d="M5.636 5.636a9 9 0 1 0 12.728 0M12 3v9" />
-              </svg>
-            </button>
-            <button
-              type="button"
-              (click)="deleteUser(user._id)"
-              class="p-2.5 rounded-xl text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors"
-              title="Eliminar"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
-                <path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
-              </svg>
-            </button>
+          </div>
+          <p class="font-semibold text-secondary">Sin resultados</p>
+          <p class="text-sm text-tertiary mt-1">No hay usuarios que coincidan con los filtros aplicados.</p>
+          <button (click)="clearFilters()" class="mt-3 text-sm text-primary hover:underline">Limpiar filtros</button>
+        </div>
+      } @else {
+        <div class="bg-quaternary rounded-2xl border border-tertiary/20 shadow-soft flex flex-col items-center justify-center py-16 text-center gap-3 text-tertiary">
+          <svg class="w-12 h-12 opacity-30" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+              d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
+          </svg>
+          <div>
+            <p class="text-sm font-medium text-secondary">No hay usuarios</p>
+            <p class="text-xs mt-1">Crea el primero con el botón de arriba</p>
           </div>
         </div>
-      </div>
       }
-    </div>
+    } @else {
+      <div class="bg-quaternary rounded-2xl border border-tertiary/20 shadow-soft overflow-hidden">
+
+        <!-- Desktop table -->
+        <table class="hidden sm:table w-full text-sm">
+          <thead class="bg-background border-b border-tertiary/20">
+            <tr>
+              <th class="text-left px-5 py-3 text-xs font-semibold text-tertiary uppercase tracking-wider">Nombre</th>
+              <th class="text-left px-5 py-3 text-xs font-semibold text-tertiary uppercase tracking-wider">Email</th>
+              <th class="text-left px-5 py-3 text-xs font-semibold text-tertiary uppercase tracking-wider">Rol</th>
+              <th class="text-left px-5 py-3 text-xs font-semibold text-tertiary uppercase tracking-wider">Estado</th>
+              <th class="text-right px-5 py-3 text-xs font-semibold text-tertiary uppercase tracking-wider">Acciones</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-tertiary/10">
+            @for (user of filteredUsers; track user._id) {
+              <tr class="hover:bg-background/50 transition-colors">
+                <td class="px-5 py-3.5">
+                  <div class="flex items-center gap-3">
+                    <div class="w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xs font-bold shrink-0 uppercase select-none">
+                      {{ getInitials(user.name) }}
+                    </div>
+                    <span class="font-medium text-secondary">{{ user.name }}</span>
+                  </div>
+                </td>
+                <td class="px-5 py-3.5 text-tertiary">{{ user.email }}</td>
+                <td class="px-5 py-3.5">
+                  <span class="px-2.5 py-1 rounded-full text-xs font-semibold"
+                    [ngClass]="user.roleName === 'Administrador' ? 'bg-purple-50 text-purple-700 border border-purple-200' : 'bg-blue-50 text-blue-700 border border-blue-200'">
+                    {{ user.roleName }}
+                  </span>
+                </td>
+                <td class="px-5 py-3.5">
+                  <span class="px-2.5 py-1 rounded-full text-xs font-medium"
+                    [ngClass]="user.isActive ? 'text-green-700 bg-green-50 border border-green-200' : 'text-amber-700 bg-amber-50 border border-amber-200'">
+                    {{ user.isActive ? 'Activo' : 'Inactivo' }}
+                  </span>
+                </td>
+                <td class="px-5 py-3.5 text-right">
+                  <div class="flex justify-end gap-1">
+                    <button type="button"
+                      (click)="router.navigate(['/admin-users', user._id, 'details'])"
+                      class="p-2 rounded-lg text-tertiary hover:text-primary hover:bg-primary/10 transition-colors" title="Ver perfil">
+                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                      </svg>
+                    </button>
+                    <button type="button"
+                      (click)="redirectToCreateUser(user._id)"
+                      class="p-2 rounded-lg text-tertiary hover:text-primary hover:bg-primary/10 transition-colors" title="Editar">
+                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                      </svg>
+                    </button>
+                    <button type="button"
+                      (click)="toggleUserActive(user._id)"
+                      class="p-2 rounded-lg text-tertiary hover:text-amber-600 hover:bg-amber-50 transition-colors"
+                      [title]="user.isActive ? 'Desactivar' : 'Activar'">
+                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.636 5.636a9 9 0 1 0 12.728 0M12 3v9" />
+                      </svg>
+                    </button>
+                    <button type="button"
+                      (click)="resetPassword(user._id)"
+                      class="p-2 rounded-lg text-tertiary hover:text-purple-600 hover:bg-purple-50 transition-colors" title="Resetear contraseña">
+                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16.5 10.5V6.75a4.5 4.5 0 1 0-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 0 0 2.25-2.25v-6.75a2.25 2.25 0 0 0-2.25-2.25H6.75a2.25 2.25 0 0 0-2.25 2.25v6.75a2.25 2.25 0 0 0 2.25 2.25Z" />
+                      </svg>
+                    </button>
+                    <button type="button"
+                      (click)="deleteUser(user._id)"
+                      class="p-2 rounded-lg text-tertiary hover:text-error hover:bg-error/10 transition-colors" title="Eliminar">
+                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      </svg>
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+
+        <!-- Mobile list -->
+        <div class="sm:hidden divide-y divide-tertiary/10">
+          @for (user of filteredUsers; track user._id) {
+            <div class="p-4 hover:bg-background/50 transition-colors">
+              <div class="flex items-center gap-3 mb-2.5">
+                <div class="w-10 h-10 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-sm uppercase shrink-0 select-none">
+                  {{ getInitials(user.name) }}
+                </div>
+                <div class="min-w-0 flex-1">
+                  <p class="font-semibold text-secondary truncate leading-tight">{{ user.name }}</p>
+                  <p class="text-xs text-tertiary truncate mt-0.5">{{ user.email }}</p>
+                </div>
+              </div>
+              <div class="flex gap-2 mb-3">
+                <span class="px-2.5 py-1 rounded-full text-xs font-semibold"
+                  [ngClass]="user.roleName === 'Administrador' ? 'bg-purple-50 text-purple-700 border border-purple-200' : 'bg-blue-50 text-blue-700 border border-blue-200'">
+                  {{ user.roleName }}
+                </span>
+                <span class="px-2.5 py-1 rounded-full text-xs font-medium"
+                  [ngClass]="user.isActive ? 'text-green-700 bg-green-50 border border-green-200' : 'text-amber-700 bg-amber-50 border border-amber-200'">
+                  {{ user.isActive ? 'Activo' : 'Inactivo' }}
+                </span>
+              </div>
+              <div class="flex items-center gap-1">
+                <button type="button"
+                  (click)="router.navigate(['/admin-users', user._id, 'details'])"
+                  class="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-medium rounded-lg bg-primary/10 text-primary hover:bg-primary hover:text-white transition-colors">
+                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                  </svg>
+                  Ver perfil
+                </button>
+                <button type="button"
+                  (click)="redirectToCreateUser(user._id)"
+                  class="p-2 rounded-lg text-tertiary hover:text-primary hover:bg-primary/10 transition-colors" title="Editar">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                  </svg>
+                </button>
+                <button type="button"
+                  (click)="toggleUserActive(user._id)"
+                  class="p-2 rounded-lg text-tertiary hover:text-amber-600 hover:bg-amber-50 transition-colors"
+                  [title]="user.isActive ? 'Desactivar' : 'Activar'">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.636 5.636a9 9 0 1 0 12.728 0M12 3v9" />
+                  </svg>
+                </button>
+                <button type="button"
+                  (click)="resetPassword(user._id)"
+                  class="p-2 rounded-lg text-tertiary hover:text-purple-600 hover:bg-purple-50 transition-colors" title="Resetear contraseña">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16.5 10.5V6.75a4.5 4.5 0 1 0-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 0 0 2.25-2.25v-6.75a2.25 2.25 0 0 0-2.25-2.25H6.75a2.25 2.25 0 0 0-2.25 2.25v6.75a2.25 2.25 0 0 0 2.25 2.25Z" />
+                  </svg>
+                </button>
+                <button type="button"
+                  (click)="deleteUser(user._id)"
+                  class="p-2 rounded-lg text-tertiary hover:text-error hover:bg-error/10 transition-colors" title="Eliminar">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+          }
+        </div>
+
+        <app-paginator
+          [total]="result().total"
+          [page]="result().page"
+          [pages]="result().pages"
+          [limit]="result().limit"
+          (pageChange)="onPageChange($event)"
+          (limitChange)="onLimitChange($event)"
+        />
+      </div>
+    }
+
   </div>
-  }
 </div>

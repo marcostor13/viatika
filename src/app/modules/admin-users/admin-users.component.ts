@@ -1,4 +1,4 @@
-import { Component, inject, OnInit } from '@angular/core';
+import { Component, inject, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { IHeaderList } from '../../interfaces/header-list.interface';
@@ -10,11 +10,13 @@ import { UserStateService } from '../../services/user-state.service';
 import { ERoles } from './interfaces/roles.enum';
 import { Router } from '@angular/router';
 import { ButtonComponent } from '../../design-system/button/button.component';
+import { PaginatorComponent } from '../../design-system/paginator/paginator.component';
+import { IPaginatedResult } from '../../interfaces/paginated-result.interface';
 
 @Component({
   selector: 'app-admin-users',
   standalone: true,
-  imports: [CommonModule, FormsModule, ButtonComponent],
+  imports: [CommonModule, FormsModule, ButtonComponent, PaginatorComponent],
   templateUrl: './admin-users.component.html',
   styleUrls: ['./admin-users.component.scss'],
 })
@@ -25,20 +27,16 @@ export default class AdminUsersComponent implements OnInit {
   private confirmationService = inject(ConfirmationService);
   private userStateService = inject(UserStateService);
 
-  headers: IHeaderList[] = [
-    { header: 'Nombre', value: 'name' },
-    { header: 'Email', value: 'email' },
-    { header: 'Rol', value: 'roleName' },
-    { header: 'Estado', value: 'isActive' },
-    { header: 'Acciones', value: 'actions', options: ['view', 'edit', 'delete', 'activate'] },
-  ];
-
-  allUsers: IUserResponse[] = [];
-  filteredUsers: IUserResponse[] = [];
+  result = signal<IPaginatedResult<IUserResponse>>({ data: [], total: 0, page: 1, pages: 0, limit: 20 });
+  get filteredUsers() { return this.result().data; }
+  get allUsers() { return this.result().data; }
 
   searchText = '';
   filterRole = '';
   filterStatus = '';
+  page = signal(1);
+  limit = signal(20);
+  isSuperAdmin = this.userStateService.isSuperAdmin();
 
   readonly roleOptions = [
     { value: 'Administrador', label: 'Administrador' },
@@ -54,44 +52,40 @@ export default class AdminUsersComponent implements OnInit {
   }
 
   loadUsers() {
-    this.adminUsersService.getUsers().subscribe((users) => {
-      this.allUsers = users.map((user) => ({
-        ...user,
-        roleName: ERoles[user.role.name as keyof typeof ERoles] ?? user.role.name,
-        roleKey: user.role.name,
-      }));
-      this.applyFilters();
+    if (this.isSuperAdmin) {
+      this.adminUsersService.getUsers().subscribe((users) => {
+        const data = users.map((u) => ({ ...u, roleName: ERoles[u.role.name as keyof typeof ERoles] ?? u.role.name }));
+        this.result.set({ data, total: data.length, page: 1, pages: 1, limit: data.length });
+      });
+      return;
+    }
+    this.adminUsersService.getUsersPaginated({
+      page: this.page(),
+      limit: this.limit(),
+      search: this.searchText.trim() || undefined,
+      status: this.filterStatus || undefined,
+      roleName: this.filterRole || undefined,
+    }).subscribe({
+      next: (res) => {
+        res.data = res.data.map((u) => ({ ...u, roleName: ERoles[(u as any).role?.name as keyof typeof ERoles] ?? (u as any).role?.name }));
+        this.result.set(res);
+      },
+      error: () => this.notification.show('Error al cargar usuarios', 'error'),
     });
   }
 
-  applyFilters() {
-    let result = this.allUsers;
-
-    if (this.searchText.trim()) {
-      const q = this.searchText.toLowerCase();
-      result = result.filter(
-        (u) => u.name.toLowerCase().includes(q) || u.email.toLowerCase().includes(q)
-      );
-    }
-
-    if (this.filterRole) {
-      result = result.filter((u) => u.role.name === this.filterRole);
-    }
-
-    if (this.filterStatus !== '') {
-      const active = this.filterStatus === 'active';
-      result = result.filter((u) => u.isActive === active);
-    }
-
-    this.filteredUsers = result;
-  }
+  applyFilters() { this.page.set(1); this.loadUsers(); }
 
   clearFilters() {
     this.searchText = '';
     this.filterRole = '';
     this.filterStatus = '';
-    this.applyFilters();
+    this.page.set(1);
+    this.loadUsers();
   }
+
+  onPageChange(p: number) { this.page.set(p); this.loadUsers(); }
+  onLimitChange(l: number) { this.limit.set(l); this.page.set(1); this.loadUsers(); }
 
   get hasActiveFilters(): boolean {
     return !!(this.searchText || this.filterRole || this.filterStatus);
@@ -141,6 +135,27 @@ export default class AdminUsersComponent implements OnInit {
   redirectToCreateUser(userId = '') {
     const path = userId ? `/${userId}` : '';
     this.router.navigate([`/admin-users/create-user${path}`]);
+  }
+
+  navigateToBulkImport() {
+    this.router.navigate(['/admin-users/bulk-import']);
+  }
+
+  resetPassword(userId: string) {
+    this.confirmationService.show(
+      'Se generará una contraseña temporal y el usuario deberá cambiarla al iniciar sesión. ¿Continuar?',
+      () => {
+        this.adminUsersService.resetPassword(userId).subscribe({
+          next: (res) => {
+            this.notification.show(
+              `Contraseña temporal: ${res.temporaryPassword} (cópiala antes de cerrar)`,
+              'success'
+            );
+          },
+          error: () => this.notification.show('Error al resetear la contraseña', 'error'),
+        });
+      }
+    );
   }
 
   getInitials(name: string): string {

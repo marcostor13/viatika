@@ -24,7 +24,7 @@
         <select
           class="w-full h-[42px] px-3 rounded-xl border border-tertiary/30 bg-background text-sm text-secondary focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all"
           [ngModel]="filterProject()"
-          (ngModelChange)="filterProject.set($event); getInvoices()"
+          (ngModelChange)="filterProject.set($event); page.set(1); getInvoices()"
           name="project"
         >
           <option value="">Todos</option>
@@ -40,7 +40,7 @@
         <select
           class="w-full h-[42px] px-3 rounded-xl border border-tertiary/30 bg-background text-sm text-secondary focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all"
           [ngModel]="filterCategory()"
-          (ngModelChange)="filterCategory.set($event); getInvoices()"
+          (ngModelChange)="filterCategory.set($event); page.set(1); getInvoices()"
           name="category"
         >
           <option value="">Todas</option>
@@ -56,7 +56,7 @@
         <select
           class="w-full h-[42px] px-3 rounded-xl border border-tertiary/30 bg-background text-sm text-secondary focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all"
           [ngModel]="filterStatus()"
-          (ngModelChange)="filterStatus.set($event); getInvoices()"
+          (ngModelChange)="filterStatus.set($event); page.set(1); getInvoices()"
           name="status"
         >
           <option value="">Todos</option>
@@ -125,7 +125,7 @@
             class="w-full h-[42px] px-3 rounded-xl border border-tertiary/30 bg-background text-sm text-secondary focus:outline-none focus:ring-2 focus:ring-primary/30 transition-all"
             placeholder="Min"
             [ngModel]="filterAmountMin()"
-            (ngModelChange)="filterAmountMin.set($event); getInvoices()"
+            (ngModelChange)="filterAmountMin.set($event); page.set(1); getInvoices()"
             name="amountMin"
             min="0"
           />
@@ -134,7 +134,7 @@
             class="w-full h-[42px] px-3 rounded-xl border border-tertiary/30 bg-background text-sm text-secondary focus:outline-none focus:ring-2 focus:ring-primary/30 transition-all"
             placeholder="Max"
             [ngModel]="filterAmountMax()"
-            (ngModelChange)="filterAmountMax.set($event); getInvoices()"
+            (ngModelChange)="filterAmountMax.set($event); page.set(1); getInvoices()"
             name="amountMax"
             min="0"
           />
@@ -147,7 +147,7 @@
   <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
     <div class="bg-quaternary rounded-2xl border border-tertiary/20 shadow-soft p-4 flex flex-col gap-1">
       <span class="text-xs font-semibold text-tertiary uppercase tracking-wider">Total Facturas</span>
-      <span class="text-2xl font-bold text-secondary">{{ invoices.length }}</span>
+      <span class="text-2xl font-bold text-secondary">{{ statsData().total }}</span>
     </div>
     <div class="bg-quaternary rounded-2xl border border-tertiary/20 shadow-soft p-4 flex flex-col gap-1">
       <span class="text-xs font-semibold text-tertiary uppercase tracking-wider">Pendientes</span>
@@ -203,6 +203,14 @@
   (clickOptionsEvent)="clickOptions($event)"
   (rowClick)="router.navigate(['/invoices', $event, 'details'])"
 ></app-data>
+<app-paginator
+  [total]="result().total"
+  [page]="result().page"
+  [pages]="result().pages"
+  [limit]="result().limit"
+  (pageChange)="onPageChange($event)"
+  (limitChange)="onLimitChange($event)"
+/>
 
 <!-- Rejection Modal -->
 @if (showRejectionModal()) {

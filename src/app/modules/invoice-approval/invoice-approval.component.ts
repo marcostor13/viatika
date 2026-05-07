@@ -20,8 +20,10 @@ import { AdminUsersService } from '../admin-users/services/admin-users.service';
 import { IUserResponse } from '../../interfaces/user.interface';
 import { ButtonComponent } from '../../design-system/button/button.component';
 import { ExportButtonComponent } from '../../design-system/export-button/export-button.component';
+import { PaginatorComponent } from '../../design-system/paginator/paginator.component';
 import { ExpenseReportsService } from '../../services/expense-reports.service';
 import { IExpenseReport } from '../../interfaces/expense-report.interface';
+import { IPaginatedResult } from '../../interfaces/paginated-result.interface';
 
 interface IInvoice {
   _id?: string;
@@ -63,7 +65,7 @@ interface IInvoice {
 @Component({
   selector: 'app-invoice-approval',
   standalone: true,
-  imports: [CommonModule, FormsModule, DataComponent, FileDownloadComponent, ButtonComponent, ExportButtonComponent],
+  imports: [CommonModule, FormsModule, DataComponent, FileDownloadComponent, ButtonComponent, ExportButtonComponent, PaginatorComponent],
   templateUrl: './invoice-approval.component.html',
   styleUrl: './invoice-approval.component.scss',
 })
@@ -93,9 +95,12 @@ export class InvoiceApprovalComponent implements OnInit {
   categories: ICategory[] = [];
   projects: IProject[] = [];
   invoices: IInvoice[] = [];
-  allInvoices = signal<IInvoice[]>([]);
   users: IUserResponse[] = [];
   loading = false;
+  result = signal<IPaginatedResult<IInvoiceResponse>>({ data: [], total: 0, page: 1, pages: 0, limit: 20 });
+  page = signal(1);
+  limit = signal(20);
+  statsData = signal({ pending: 0, approved: 0, rejected: 0, total: 0 });
 
   headers: IHeaderList[] = [
     {
@@ -177,20 +182,7 @@ export class InvoiceApprovalComponent implements OnInit {
     amountMax: this.filterAmountMax(),
   }));
 
-  // Estadísticas calculadas (siempre sobre todas las facturas, no filtradas)
-  stats = computed(() => {
-    const invoices = this.allInvoices();
-    const approved = invoices.filter(
-      (inv) => inv.status === 'approved' || inv.status === 'APPROVED'
-    ).length;
-    const rejected = invoices.filter(
-      (inv) => inv.status === 'rejected' || inv.status === 'REJECTED'
-    ).length;
-    const pending = invoices.length - approved - rejected; // Todas las demás son pendientes
-    const total = invoices.length;
-
-    return { pending, approved, rejected, total };
-  });
+  stats = computed(() => this.statsData());
 
   ngOnInit() {
     this.loadData();
@@ -201,7 +193,14 @@ export class InvoiceApprovalComponent implements OnInit {
     this.getProjects();
     this.getCategories();
     this.getUsers();
+    this.loadStats();
     this.getInvoices();
+  }
+
+  loadStats() {
+    this.agentService.getStatusCounts().subscribe({
+      next: (s) => this.statsData.set(s),
+    });
   }
 
   loadSubmittedReports() {
@@ -302,62 +301,22 @@ export class InvoiceApprovalComponent implements OnInit {
 
   getInvoices() {
     this.loading = true;
-    const user = this.userStateService.getUser();
-
-    // Cargar todas las facturas sin filtros para estadísticas
-    this.agentService.getInvoices().subscribe({
+    this.agentService.getInvoices(this.filters(), 'fechaEmision', 'desc', this.page(), this.limit()).subscribe({
       next: (res) => {
-        if (res && res.length > 0) {
-          const firstItem = res[0];
-          if ('categoryId' in firstItem && 'data' in firstItem) {
-            const formattedInvoices = this.formatResponse(res);
-            this.allInvoices.set(formattedInvoices);
-          }
-        } else {
-          this.allInvoices.set([]);
-        }
-
-        // Después de cargar todas las facturas, cargar las filtradas
-        this.loadFilteredInvoices();
-      },
-      error: (error) => {
-        this.allInvoices.set([]);
-        this.loadFilteredInvoices();
-      },
-    });
-  }
-
-  private loadFilteredInvoices() {
-    this.agentService.getInvoices(this.filters()).subscribe({
-      next: (res) => {
-        if (res && res.length > 0) {
-          const firstItem = res[0];
-          if ('categoryId' in firstItem && 'data' in firstItem) {
-            this.invoices = this.formatResponse(res);
-          } else {
-            const anyItem = firstItem as any;
-            if (anyItem.key && anyItem.name) {
-              this.notificationService.show(
-                'Error: Los datos recibidos no son facturas',
-                'error'
-              );
-            }
-          }
-        } else {
-          this.invoices = [];
-        }
+        this.result.set(res);
+        this.invoices = this.formatResponse(res.data || []);
         this.loading = false;
       },
       error: (error) => {
         this.invoices = [];
         this.loading = false;
-        this.notificationService.show(
-          'Error al cargar las facturas: ' + error.message,
-          'error'
-        );
+        this.notificationService.show('Error al cargar las facturas: ' + error.message, 'error');
       },
     });
   }
+
+  onPageChange(p: number) { this.page.set(p); this.getInvoices(); }
+  onLimitChange(l: number) { this.limit.set(l); this.page.set(1); this.getInvoices(); }
 
   getUserName(userId?: string): string {
     if (!userId) {
@@ -515,7 +474,7 @@ export class InvoiceApprovalComponent implements OnInit {
           'Factura aprobada correctamente',
           'success'
         );
-        // Recargar datos para actualizar estadísticas
+        this.loadStats();
         this.getInvoices();
       },
       error: (error) => {
@@ -581,7 +540,7 @@ export class InvoiceApprovalComponent implements OnInit {
           'success'
         );
         this.closeRejectionModal();
-        // Recargar datos para actualizar estadísticas
+        this.loadStats();
         this.getInvoices();
       },
       error: (error) => {
@@ -730,6 +689,7 @@ export class InvoiceApprovalComponent implements OnInit {
     this.filterAmountMin.set('');
     this.filterAmountMax.set('');
     this.filterStatus.set('');
+    this.page.set(1);
     this.getInvoices();
   }
 
@@ -833,6 +793,7 @@ export class InvoiceApprovalComponent implements OnInit {
         this.filterDateTo.set(value);
       }
 
+      this.page.set(1);
       this.getInvoices();
     }
   }

@@ -20,6 +20,7 @@ import {
   ISunatConfig,
   ISunatCredentials,
 } from '../../../interfaces/sunat-config.interface';
+import { IPaginatedResult } from '../../../interfaces/paginated-result.interface';
 
 @Injectable({
   providedIn: 'root',
@@ -50,27 +51,34 @@ export class InvoicesService {
   getInvoices(
     filters?: any,
     sortBy: string = 'fechaEmision',
-    sortOrder: 'asc' | 'desc' = 'desc'
-  ): Observable<IInvoiceResponse[]> {
+    sortOrder: 'asc' | 'desc' = 'desc',
+    page = 1,
+    limit = 20
+  ): Observable<IPaginatedResult<IInvoiceResponse>> {
     let params = new HttpParams();
-
     params = params.set('sortBy', sortBy);
     params = params.set('sortOrder', sortOrder);
-
+    params = params.set('page', String(page));
+    params = params.set('limit', String(limit));
     if (filters) {
       Object.keys(filters).forEach((key) => {
-        if (
-          filters[key] !== undefined &&
-          filters[key] !== null &&
-          filters[key] !== ''
-        ) {
+        if (filters[key] !== undefined && filters[key] !== null && filters[key] !== '') {
           params = params.set(key, filters[key]);
         }
       });
     }
-    return this.http.get<IInvoiceResponse[]>(`${this.url}`, {
-      params,
-    });
+    return this.http.get<IPaginatedResult<IInvoiceResponse>>(`${this.url}`, { params });
+  }
+
+  getStatusCounts(): Observable<{ pending: number; approved: number; rejected: number; total: number }> {
+    return this.http.get<{ pending: number; approved: number; rejected: number; total: number }>(`${this.url}/stats`);
+  }
+
+  getProjectsPaginated(companyId?: string, page = 1, limit = 20, search?: string): Observable<IPaginatedResult<IProject>> {
+    let params = new HttpParams().set('page', String(page)).set('limit', String(limit));
+    if (search) params = params.set('search', search);
+    const url = companyId ? `${this.projectUrl}/${companyId}` : this.projectUrl;
+    return this.http.get<IPaginatedResult<IProject>>(url, { params });
   }
 
   getInvoiceById(id: string): Observable<IInvoiceResponse> {
@@ -261,6 +269,16 @@ export class InvoicesService {
 
   testSunatCredentials(clientId: string): Observable<any> {
     return this.http.get(`${this.url}/test-sunat-credentials/${clientId}`);
+  }
+
+  bulkImportProjects(formData: FormData): Observable<{ created: number; skipped: string[]; errors: string[] }> {
+    return this.http.post<{ created: number; skipped: string[]; errors: string[] }>(
+      `${this.projectUrl}/bulk-import`, formData
+    );
+  }
+
+  downloadProjectTemplate(): Observable<{ file: string; filename: string }> {
+    return this.http.get<{ file: string; filename: string }>(`${this.projectUrl}/bulk-import/template`);
   }
 
   validateWithSunatData(

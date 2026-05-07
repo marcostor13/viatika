@@ -21,6 +21,8 @@ import { AdminUsersService } from '../admin-users/services/admin-users.service';
 import { IUserResponse } from '../../interfaces/user.interface';
 import { ButtonComponent } from '../../design-system/button/button.component';
 import { ExportButtonComponent } from '../../design-system/export-button/export-button.component';
+import { PaginatorComponent } from '../../design-system/paginator/paginator.component';
+import { IPaginatedResult } from '../../interfaces/paginated-result.interface';
 
 interface IInvoice {
   _id?: string;
@@ -71,6 +73,7 @@ interface IInvoice {
     ChartsComponent,
     ButtonComponent,
     ExportButtonComponent,
+    PaginatorComponent,
   ],
   templateUrl: './consolidated-invoices.component.html',
   styleUrl: './consolidated-invoices.component.scss',
@@ -91,6 +94,10 @@ export class ConsolidatedInvoicesComponent implements OnInit {
   userInvoices: IInvoice[] = [];
   users: IUserResponse[] = [];
   loading = false;
+  result = signal<IPaginatedResult<IInvoiceResponse>>({ data: [], total: 0, page: 1, pages: 0, limit: 20 });
+  page = signal(1);
+  limit = signal(20);
+  statsData = signal({ pending: 0, approved: 0, rejected: 0, total: 0 });
 
   projectsWithInvoiceCount: { id: string; name: string; count: number }[] = [];
 
@@ -187,6 +194,7 @@ export class ConsolidatedInvoicesComponent implements OnInit {
   ngOnInit() {
     this.getProjects();
     this.getUsers();
+    this.loadStats();
     const categories$ = this.getCategories();
     if (categories$) {
       categories$.subscribe({
@@ -201,6 +209,12 @@ export class ConsolidatedInvoicesComponent implements OnInit {
         },
       });
     }
+  }
+
+  loadStats() {
+    this.agentService.getStatusCounts().subscribe({
+      next: (s) => this.statsData.set(s),
+    });
   }
 
   getUsers() {
@@ -225,42 +239,24 @@ export class ConsolidatedInvoicesComponent implements OnInit {
 
   getInvoices() {
     this.loading = true;
-
-    const currentFilters = this.filters();
-
-    this.agentService.getInvoices(currentFilters).subscribe({
+    this.agentService.getInvoices(this.filters(), 'fechaEmision', 'desc', this.page(), this.limit()).subscribe({
       next: (res) => {
-        if (res && res.length > 0) {
-          const firstItem = res[0];
-          if ('categoryId' in firstItem && 'data' in firstItem) {
-            this.invoices = this.formatResponse(res);
-            this.calculateProjectsWithInvoiceCount();
-          } else {
-            const anyItem = firstItem as any;
-            if (anyItem.key && anyItem.name) {
-              this.notificationService.show(
-                'Error: Los datos recibidos no son facturas',
-                'error'
-              );
-            }
-          }
-        } else {
-          this.invoices = [];
-          this.calculateProjectsWithInvoiceCount();
-        }
-        this.loading = false;
+        this.result.set(res);
+        this.invoices = this.formatResponse(res.data || []);
+        this.calculateProjectsWithInvoiceCount();
         this.userInvoices = this.invoices;
+        this.loading = false;
       },
       error: (error) => {
         this.invoices = [];
         this.loading = false;
-        this.notificationService.show(
-          'Error al cargar las facturas: ' + error.message,
-          'error'
-        );
+        this.notificationService.show('Error al cargar las facturas: ' + error.message, 'error');
       },
     });
   }
+
+  onPageChange(p: number) { this.page.set(p); this.getInvoices(); }
+  onLimitChange(l: number) { this.limit.set(l); this.page.set(1); this.getInvoices(); }
 
   formatResponse(res: IInvoiceResponse[]) {
     if (!res || !Array.isArray(res)) {
@@ -417,6 +413,7 @@ export class ConsolidatedInvoicesComponent implements OnInit {
           'Factura aprobada correctamente',
           'success'
         );
+        this.loadStats();
         this.getInvoices();
       },
       error: (error) => {
@@ -460,6 +457,7 @@ export class ConsolidatedInvoicesComponent implements OnInit {
           'success'
         );
         this.closeRejectionModal();
+        this.loadStats();
         this.getInvoices();
       },
       error: (error) => {
@@ -475,17 +473,9 @@ export class ConsolidatedInvoicesComponent implements OnInit {
     return this.invoices;
   }
 
-  get approvedCount(): number {
-    return this.invoices.filter(i => i.status === 'approved' || (i.status as string) === 'APPROVED').length;
-  }
-
-  get rejectedCount(): number {
-    return this.invoices.filter(i => i.status === 'rejected' || (i.status as string) === 'REJECTED').length;
-  }
-
-  get pendingCount(): number {
-    return this.invoices.length - this.approvedCount - this.rejectedCount;
-  }
+  get approvedCount(): number { return this.statsData().approved; }
+  get rejectedCount(): number { return this.statsData().rejected; }
+  get pendingCount(): number { return this.statsData().pending; }
 
   getCategories() {
     return this.agentService.getCategories().pipe(
@@ -705,6 +695,7 @@ export class ConsolidatedInvoicesComponent implements OnInit {
         this.filterDateTo.set(value);
       }
 
+      this.page.set(1);
       this.getInvoices();
     }
   }
