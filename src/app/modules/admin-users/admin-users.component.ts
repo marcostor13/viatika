@@ -141,21 +141,35 @@ export default class AdminUsersComponent implements OnInit {
     this.router.navigate(['/admin-users/bulk-import']);
   }
 
+  resetPasswordTemp: string = '';
+  showResetPasswordModal: boolean = false;
+  resetPasswordCopied: boolean = false;
+
   resetPassword(userId: string) {
     this.confirmationService.show(
-      'Se generará una contraseña temporal y el usuario deberá cambiarla al iniciar sesión. ¿Continuar?',
+      'Se generara una contrasena temporal y el usuario debera cambiarla al iniciar sesion. ¿Continuar?',
       () => {
         this.adminUsersService.resetPassword(userId).subscribe({
           next: (res) => {
-            this.notification.show(
-              `Contraseña temporal: ${res.temporaryPassword} (cópiala antes de cerrar)`,
-              'success'
-            );
+            this.resetPasswordTemp = res.temporaryPassword;
+            this.showResetPasswordModal = true;
+            this.resetPasswordCopied = false;
           },
-          error: () => this.notification.show('Error al resetear la contraseña', 'error'),
+          error: () => this.notification.show('Error al resetear la contrasena', 'error'),
         });
       }
     );
+  }
+
+  copyResetPassword() {
+    navigator.clipboard.writeText(this.resetPasswordTemp).then(() => {
+      this.resetPasswordCopied = true;
+      setTimeout(() => (this.resetPasswordCopied = false), 2000);
+    });
+  }
+
+  closeResetPasswordModal() {
+    this.showResetPasswordModal = false;
   }
 
   getInitials(name: string): string {

@@ -4,6 +4,7 @@ import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { AdminUsersService } from '../services/admin-users.service';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule } from '@angular/forms';
+import { ButtonComponent } from '../../../design-system/button/button.component';
 import {
   IRoleResponse,
   IUserResponse,
@@ -14,7 +15,7 @@ import { UserStateService } from '../../../services/user-state.service';
 import { ERoles } from '../interfaces/roles.enum';
 
 @Component({
-  imports: [CommonModule, ReactiveFormsModule],
+  imports: [CommonModule, ReactiveFormsModule, ButtonComponent],
   selector: 'app-create-user',
   templateUrl: './create-user.component.html',
   styleUrls: ['./create-user.component.scss'],
@@ -33,7 +34,6 @@ export class CreateUserComponent implements OnInit {
     name: ['', Validators.required],
     email: ['', [Validators.required, Validators.email]],
     roleId: ['', Validators.required],
-    password: [''],
     dni: [''],
     employeeCode: [''],
     address: [''],
@@ -43,6 +43,9 @@ export class CreateUserComponent implements OnInit {
   roles: IRoleResponse[] = [];
   enumRoles = ERoles;
   coordinatorCandidates: IUserResponse[] = [];
+  temporaryPassword: string = '';
+  showPasswordModal: boolean = false;
+  passwordCopied: boolean = false;
 
   ngOnInit() {
     this.loadCoordinatorCandidates();
@@ -125,25 +128,28 @@ export class CreateUserComponent implements OnInit {
 
   createUser() {
     if (this.form.valid) {
-      const raw = this.form.value as IUser & {
-        coordinatorId?: string;
-        password?: string;
-      };
+      const raw = this.form.value as IUser & { coordinatorId?: string };
       const payload = { ...raw } as IUser & { coordinatorId?: string };
-      if (
-        !this.selectedRoleIsCollaborador ||
-        !raw.coordinatorId?.trim()
-      ) {
+      if (!this.selectedRoleIsCollaborador || !raw.coordinatorId?.trim()) {
         delete payload.coordinatorId;
       }
-      this.adminUsersService.createUser(payload).subscribe(() => {
-        this.notificationService.show(
-          'Usuario creado correctamente',
-          'success'
-        );
-        this.router.navigate(['/admin-users']);
+      this.adminUsersService.createUser(payload).subscribe((res) => {
+        this.temporaryPassword = res.temporaryPassword;
+        this.showPasswordModal = true;
       });
     }
+  }
+
+  copyPassword() {
+    navigator.clipboard.writeText(this.temporaryPassword).then(() => {
+      this.passwordCopied = true;
+      setTimeout(() => (this.passwordCopied = false), 2000);
+    });
+  }
+
+  closePasswordModal() {
+    this.showPasswordModal = false;
+    this.router.navigate(['/admin-users']);
   }
 
   updateUser() {
@@ -183,9 +189,5 @@ export class CreateUserComponent implements OnInit {
 
   get roleId() {
     return this.form.get('roleId');
-  }
-
-  get password() {
-    return this.form.get('password');
   }
 }

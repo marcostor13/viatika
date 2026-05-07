@@ -78,8 +78,8 @@ export class CambiarContrasenaComponent {
     const token = this.userState.getToken();
     this.http
       .patch(
-        `${environment.api}/user/${user._id}`,
-        { password: this.newPassword, mustChangePassword: false },
+        `${environment.api}/user/profile/password`,
+        { password: this.newPassword },
         { headers: { Authorization: `Bearer ${token}` } }
       )
       .subscribe({

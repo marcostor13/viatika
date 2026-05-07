@@ -70,10 +70,9 @@ export class AdminUsersService {
       .pipe(catchError((error: any) => this.handleError(error)));
   }
 
-  createUser(user: IUser): Observable<IUserResponse> {
+  createUser(user: IUser): Observable<IUserResponse & { temporaryPassword: string }> {
     const currentUser = this.userStateService.getUser();
 
-    // Ensure we use the proper clientId mapping, either from the user being created or the currentUser.
     let targetClientId = user.companyId;
     if (!targetClientId && currentUser) {
       const uc = currentUser as IUserResponse & { clientId?: string | { _id: string }; client?: { _id: string } };
@@ -91,23 +90,14 @@ export class AdminUsersService {
     const userData = {
       ...user,
       clientId: targetClientId,
-      // Fallback in case backend logic needs it
       companyId: targetClientId,
-      // Agregar password por defecto si no existe
-      password: (user as any).password || 'Temporal123',
     };
 
-    console.log('Datos del usuario a crear:', userData);
-    console.log('Usuario actual:', currentUser);
-
     return this.http
-      .post<IUserResponse>(this.apiUrl, userData, {
+      .post<IUserResponse & { temporaryPassword: string }>(this.apiUrl, userData, {
         headers: this.getHeaders(),
       })
-      .pipe(
-        tap((response) => console.log('Respuesta al crear usuario:', response)),
-        catchError((error: any) => this.handleError(error))
-      );
+      .pipe(catchError((error: any) => this.handleError(error)));
   }
 
   updateUser(id: string, user: Partial<IUser>): Observable<IUserResponse> {

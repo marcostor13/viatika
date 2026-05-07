@@ -258,3 +258,37 @@
 
   </div>
 </div>
+
+<!-- Modal contrasena reseteada -->
+@if (showResetPasswordModal) {
+  <div class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+    <div class="bg-quaternary rounded-2xl border border-tertiary/20 shadow-soft p-6 max-w-sm w-full">
+      <div class="flex flex-col gap-4">
+        <div>
+          <h2 class="text-lg font-bold text-secondary">Contrasena reseteada</h2>
+          <p class="text-sm text-tertiary mt-1">
+            Comparte esta contrasena temporal con el colaborador. Al iniciar sesion se le pedira cambiarla.
+          </p>
+        </div>
+        <div class="bg-background rounded-xl border border-tertiary/20 p-3 flex items-center justify-between gap-3">
+          <span class="font-mono text-sm text-secondary select-all tracking-wide">{{ resetPasswordTemp }}</span>
+          <button
+            (click)="copyResetPassword()"
+            class="shrink-0 text-xs font-medium px-3 py-1.5 rounded-lg border transition-colors"
+            [ngClass]="resetPasswordCopied
+              ? 'border-green-400 text-green-600 bg-green-50'
+              : 'border-tertiary/30 text-tertiary hover:border-primary hover:text-primary'"
+          >
+            {{ resetPasswordCopied ? 'Copiado' : 'Copiar' }}
+          </button>
+        </div>
+        <app-button
+          label="Cerrar"
+          variant="primary"
+          size="md"
+          (clicked)="closeResetPasswordModal()"
+        />
+      </div>
+    </div>
+  </div>
+}
