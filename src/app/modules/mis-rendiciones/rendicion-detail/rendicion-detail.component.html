@@ -1,75 +1,98 @@
-<div class="px-4 sm:px-5 py-4 sm:py-6 max-w-7xl mx-auto pb-8">
-  <!-- Header: columna en mobile, fila en desktop -->
-  <div class="flex flex-col gap-4 md:flex-row md:items-start md:justify-between md:gap-6 mb-6 md:mb-8">
-    <div class="flex items-start gap-3 min-w-0">
+<div class="px-4 sm:px-5 py-4 sm:py-6 max-w-7xl mx-auto" [ngClass]="collaboratorCanEdit ? 'pb-24 sm:pb-8' : 'pb-8'">
+  <!-- ── PAGE HEADER ──────────────────────────────────────────────── -->
+  <div class="mb-5 sm:mb-7">
+
+    <!-- Fila 1: botón volver + título + badge -->
+    <div class="flex items-start gap-3">
       <button
         type="button"
         (click)="goBack()"
-        class="shrink-0 mt-0.5 p-1.5 -ml-1.5 rounded-lg text-gray-500 hover:text-gray-900 hover:bg-gray-100 active:scale-95 transition-all"
+        class="shrink-0 mt-1 p-1.5 -ml-1.5 rounded-lg text-gray-500 hover:text-gray-900 hover:bg-gray-100 active:scale-95 transition-all"
         aria-label="Volver"
       >
-        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
           <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5 3 12m0 0 7.5-7.5M3 12h18" />
         </svg>
       </button>
       <div class="min-w-0 flex-1">
-        <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:flex-wrap sm:gap-3 mb-0.5">
-          <h1 class="text-xl sm:text-2xl font-bold text-gray-900 break-words leading-tight">
-            {{ report?.title || 'Detalle de Rendición' }}
-          </h1>
-          @if (report) {
-          <span class="px-2.5 py-1 rounded-full text-xs font-semibold w-fit shrink-0" [ngClass]="{
-            'bg-purple-100 text-purple-700': report.status === 'solicited',
-            'bg-blue-100 text-blue-700': report.status === 'open',
-            'bg-yellow-100 text-yellow-700': report.status === 'submitted',
-            'bg-green-100 text-green-700': report.status === 'approved',
-            'bg-emerald-100 text-emerald-800': report.status === 'reimbursed',
-            'bg-red-100 text-red-700': report.status === 'rejected',
-            'bg-gray-100 text-gray-700': report.status === 'closed',
-            'bg-orange-100 text-orange-700': report.status === 'cancelled'
-          }">
-            {{ getReportStatusLabel() }}
-          </span>
-          @if (report.approvedBy) {
-            <p class="text-xs text-gray-500 mt-1">
-              Aprobado por: <span class="font-medium text-gray-700">{{ getApprovedByName() }}</span>
-            </p>
+        <h1 class="text-xl sm:text-2xl font-bold text-gray-900 leading-tight">
+          {{ report?.description || 'Rendición de viáticos' }}
+        </h1>
+        @if (report) {
+          <div class="flex flex-wrap items-center gap-x-3 gap-y-1 mt-2">
+            <span class="px-2.5 py-1 rounded-full text-xs font-semibold shrink-0" [ngClass]="{
+              'bg-purple-100 text-purple-700': report.status === 'solicited',
+              'bg-blue-100 text-blue-700': report.status === 'open',
+              'bg-yellow-100 text-yellow-700': report.status === 'submitted',
+              'bg-green-100 text-green-700': report.status === 'approved',
+              'bg-emerald-100 text-emerald-800': report.status === 'reimbursed',
+              'bg-red-100 text-red-700': report.status === 'rejected',
+              'bg-gray-100 text-gray-700': report.status === 'closed',
+              'bg-orange-100 text-orange-700': report.status === 'cancelled'
+            }">{{ getReportStatusLabel() }}</span>
+            @if (report.approvedBy) {
+              <p class="text-xs text-gray-500">
+                Aprobado por: <span class="font-medium text-gray-700">{{ getApprovedByName() }}</span>
+              </p>
+            }
+          </div>
+          @if (report.location || report.startDate) {
+          <dl class="mt-3 flex flex-col gap-1.5 sm:flex-row sm:flex-wrap sm:gap-x-5 text-sm">
+            @if (report.location) {
+            <div class="flex items-start gap-1.5">
+              <dt class="text-xs font-semibold text-gray-400 uppercase tracking-wide shrink-0 mt-0.5">Destino</dt>
+              <dd class="text-gray-700">{{ report.location }}</dd>
+            </div>
+            }
+            @if (reportDateRange) {
+            <div class="flex items-start gap-1.5">
+              <dt class="text-xs font-semibold text-gray-400 uppercase tracking-wide shrink-0 mt-0.5">Fechas</dt>
+              <dd class="text-gray-700">{{ reportDateRange }}</dd>
+            </div>
+            }
+          </dl>
           }
-          }
-        </div>
-        <p class="text-sm text-gray-500">Gasto total vs Presupuesto asignado</p>
-        @if (report && !isLoading) {
-        <div class="flex flex-wrap gap-2 mt-3" role="group" aria-label="Exportar detalle de rendición">
+        }
+      </div>
+    </div>
+
+    <!-- Fila 2: barra de herramientas (exportar izq. | acciones contextuales der.) -->
+    @if (report && !isLoading) {
+    <div class="mt-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+
+      <!-- Exportar (scrollable en mobile) -->
+      <div class="overflow-x-auto -mx-4 sm:mx-0 px-4 sm:px-0 shrink-0" role="group" aria-label="Exportar">
+        <div class="flex items-center gap-2 w-max pb-0.5">
           <button
             type="button"
             (click)="exportRendicionExcel()"
             [disabled]="isExportingExcel()"
-            class="inline-flex items-center justify-center gap-2 min-h-[40px] px-3 py-2 rounded-lg text-xs sm:text-sm font-semibold border border-emerald-200 bg-emerald-50 text-emerald-900 hover:bg-emerald-100 active:scale-[0.98] disabled:opacity-50 transition-all touch-manipulation"
+            class="inline-flex items-center justify-center gap-2 min-h-[38px] px-3 py-1.5 rounded-lg text-xs font-semibold border border-emerald-200 bg-emerald-50 text-emerald-900 hover:bg-emerald-100 active:scale-[0.98] disabled:opacity-50 transition-all touch-manipulation"
           >
             @if (isExportingExcel()) {
-              <span class="w-4 h-4 border-2 border-emerald-300 border-t-emerald-700 rounded-full animate-spin" aria-hidden="true"></span>
+              <span class="w-3.5 h-3.5 border-2 border-emerald-300 border-t-emerald-700 rounded-full animate-spin" aria-hidden="true"></span>
               Generando…
             } @else {
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 shrink-0" aria-hidden="true">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-3.5 h-3.5 shrink-0" aria-hidden="true">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
               </svg>
-              Descargar Excel
+              Excel
             }
           </button>
           <button
             type="button"
             (click)="exportRendicionPdf()"
             [disabled]="isExportingPdf()"
-            class="inline-flex items-center justify-center gap-2 min-h-[40px] px-3 py-2 rounded-lg text-xs sm:text-sm font-semibold border border-slate-200 bg-slate-50 text-slate-900 hover:bg-slate-100 active:scale-[0.98] disabled:opacity-50 transition-all touch-manipulation"
+            class="inline-flex items-center justify-center gap-2 min-h-[38px] px-3 py-1.5 rounded-lg text-xs font-semibold border border-slate-200 bg-slate-50 text-slate-900 hover:bg-slate-100 active:scale-[0.98] disabled:opacity-50 transition-all touch-manipulation"
           >
             @if (isExportingPdf()) {
-              <span class="w-4 h-4 border-2 border-slate-300 border-t-slate-700 rounded-full animate-spin" aria-hidden="true"></span>
+              <span class="w-3.5 h-3.5 border-2 border-slate-300 border-t-slate-700 rounded-full animate-spin" aria-hidden="true"></span>
               Generando…
             } @else {
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 shrink-0" aria-hidden="true">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-3.5 h-3.5 shrink-0" aria-hidden="true">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
               </svg>
-              Descargar PDF
+              PDF
             }
           </button>
           @if (isAdminView) {
@@ -77,10 +100,10 @@
             type="button"
             (click)="openAffidavitModal()"
             [disabled]="!canGenerateAffidavit() || isGeneratingAffidavit()"
-            class="inline-flex items-center justify-center gap-2 min-h-[40px] px-3 py-2 rounded-lg text-xs sm:text-sm font-semibold border border-indigo-200 bg-indigo-50 text-indigo-900 hover:bg-indigo-100 disabled:opacity-50 transition-all touch-manipulation"
+            class="inline-flex items-center justify-center gap-2 min-h-[38px] px-3 py-1.5 rounded-lg text-xs font-semibold border border-indigo-200 bg-indigo-50 text-indigo-900 hover:bg-indigo-100 disabled:opacity-50 transition-all touch-manipulation"
           >
             @if (isGeneratingAffidavit()) {
-              <span class="w-4 h-4 border-2 border-indigo-300 border-t-indigo-700 rounded-full animate-spin" aria-hidden="true"></span>
+              <span class="w-3.5 h-3.5 border-2 border-indigo-300 border-t-indigo-700 rounded-full animate-spin" aria-hidden="true"></span>
               Generando DJ...
             } @else {
               Declaracion Jurada
@@ -91,10 +114,10 @@
             type="button"
             (click)="openCloseModal()"
             [disabled]="isValidatingClosure()"
-            class="inline-flex items-center justify-center gap-2 min-h-[40px] px-3 py-2 rounded-lg text-xs sm:text-sm font-semibold border border-gray-400 bg-gray-700 text-white hover:bg-gray-800 disabled:opacity-50 transition-all touch-manipulation"
+            class="inline-flex items-center justify-center gap-2 min-h-[38px] px-3 py-1.5 rounded-lg text-xs font-semibold border border-gray-400 bg-gray-700 text-white hover:bg-gray-800 disabled:opacity-50 transition-all touch-manipulation"
           >
             @if (isValidatingClosure()) {
-              <span class="w-4 h-4 border-2 border-gray-300 border-t-white rounded-full animate-spin" aria-hidden="true"></span>
+              <span class="w-3.5 h-3.5 border-2 border-gray-300 border-t-white rounded-full animate-spin" aria-hidden="true"></span>
               Validando...
             } @else {
               Cerrar Definitivamente
@@ -105,7 +128,7 @@
           <button
             type="button"
             (click)="openReopenRequestModal()"
-            class="inline-flex items-center justify-center gap-2 min-h-[40px] px-3 py-2 rounded-lg text-xs sm:text-sm font-semibold border border-orange-300 bg-orange-50 text-orange-900 hover:bg-orange-100 transition-all touch-manipulation"
+            class="inline-flex items-center justify-center gap-2 min-h-[38px] px-3 py-1.5 rounded-lg text-xs font-semibold border border-orange-300 bg-orange-50 text-orange-900 hover:bg-orange-100 transition-all touch-manipulation"
           >
             Solicitar Reapertura
           </button>
@@ -114,200 +137,202 @@
           <button
             type="button"
             (click)="showReopenApproveModal.set(true)"
-            class="inline-flex items-center justify-center gap-2 min-h-[40px] px-3 py-2 rounded-lg text-xs sm:text-sm font-semibold border border-blue-300 bg-blue-50 text-blue-900 hover:bg-blue-100 transition-all touch-manipulation"
+            class="inline-flex items-center justify-center gap-2 min-h-[38px] px-3 py-1.5 rounded-lg text-xs font-semibold border border-blue-300 bg-blue-50 text-blue-900 hover:bg-blue-100 transition-all touch-manipulation"
           >
-            Revisar Solicitud de Reapertura
+            Revisar Reapertura
           </button>
           }
           }
         </div>
-        }
-        @if (report && report.status === 'rejected' && report.rejectionReason) {
-          <p class="text-sm text-red-900 mt-2 border-l-4 border-red-500 pl-3 py-2 bg-red-50 rounded-r-lg">
-            <span class="font-semibold">Motivo de rechazo: </span>
-            <span class="whitespace-pre-wrap break-words">{{ report.rejectionReason }}</span>
-          </p>
-        }
       </div>
-    </div>
 
-    <!-- Colaborador: solicitada (pendiente de aprobación) — puede editar, cancelar o eliminar -->
-    @if (report && report.status === 'solicited' && !isAdminView) {
-    <div class="rendicion-actions flex flex-col gap-2 w-full md:w-auto md:flex-row md:flex-wrap md:justify-end md:shrink-0">
-      <div class="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-purple-50 border border-purple-200 text-purple-800 text-sm font-medium">
-        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 shrink-0 text-purple-500">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
-        </svg>
-        Pendiente de aprobacion
-      </div>
-      <button
-        type="button"
-        class="inline-flex items-center justify-center gap-2 rounded-lg text-sm font-medium border border-primary bg-white text-primary hover:bg-primary/5 active:bg-primary/10 min-h-[44px] w-full md:w-auto px-4 py-2.5 transition-colors touch-manipulation"
-        (click)="openEditSolicitudForm()"
-      >
-        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 shrink-0">
-          <path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125" />
-        </svg>
-        Editar solicitud
-      </button>
-      <button
-        type="button"
-        class="inline-flex items-center justify-center gap-2 rounded-lg text-sm font-medium border border-amber-400 bg-amber-50 text-amber-800 hover:bg-amber-100 active:bg-amber-200 min-h-[44px] w-full md:w-auto px-4 py-2.5 transition-colors touch-manipulation"
-        (click)="openCancelModal()"
-      >
-        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 shrink-0">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M18.364 18.364A9 9 0 0 0 5.636 5.636m12.728 12.728A9 9 0 0 1 5.636 5.636m12.728 12.728L5.636 5.636" />
-        </svg>
-        Cancelar solicitud
-      </button>
-    </div>
-    }
+      <!-- Acciones contextuales (derecha en desktop) -->
+      <div class="flex flex-col gap-2 sm:items-end sm:shrink-0">
 
-    <!-- Colaborador: rendición rechazada en fase de solicitud (puede editar y re-enviar) -->
-    @if (report && canResendSolicitud) {
-    <div class="rendicion-actions flex flex-col gap-2 w-full md:w-auto md:flex-row md:flex-wrap md:justify-end md:shrink-0">
-      <button
-        type="button"
-        class="inline-flex items-center justify-center gap-2 rounded-lg text-sm font-medium border border-primary bg-white text-primary hover:bg-primary/5 active:bg-primary/10 min-h-[44px] w-full md:w-auto px-4 py-2.5 transition-colors touch-manipulation"
-        (click)="openEditSolicitudForm()"
-      >
-        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 shrink-0">
-          <path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125" />
-        </svg>
-        Editar y re-enviar solicitud
-      </button>
-    </div>
-    }
-    <!-- Colaborador: rendicion cancelada -->
-    @if (report && report.status === 'cancelled' && !isAdminView) {
-    <div class="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-orange-50 border border-orange-200 text-orange-800 text-sm font-medium w-full md:w-auto">
-      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 shrink-0 text-orange-500">
-        <path stroke-linecap="round" stroke-linejoin="round" d="M18.364 18.364A9 9 0 0 0 5.636 5.636m12.728 12.728A9 9 0 0 1 5.636 5.636m12.728 12.728L5.636 5.636" />
-      </svg>
-      Solicitud cancelada
-    </div>
-    }
+        <!-- Colaborador: solicitada — pendiente de aprobación -->
+        @if (report.status === 'solicited' && !isAdminView) {
+        <div class="flex flex-row flex-wrap gap-2">
+          <div class="flex items-center gap-2 px-3 py-2 rounded-lg bg-purple-50 border border-purple-200 text-purple-800 text-sm font-medium">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 shrink-0 text-purple-500">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+            </svg>
+            Pendiente de aprobacion
+          </div>
+          <button
+            type="button"
+            class="inline-flex items-center justify-center gap-2 rounded-lg text-sm font-medium border border-primary bg-white text-primary hover:bg-primary/5 min-h-[40px] px-4 py-2 transition-colors touch-manipulation"
+            (click)="openEditSolicitudForm()"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 shrink-0">
+              <path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125" />
+            </svg>
+            Editar
+          </button>
+          <button
+            type="button"
+            class="inline-flex items-center justify-center gap-2 rounded-lg text-sm font-medium border border-amber-400 bg-amber-50 text-amber-800 hover:bg-amber-100 min-h-[40px] px-4 py-2 transition-colors touch-manipulation"
+            (click)="openCancelModal()"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 shrink-0">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M18.364 18.364A9 9 0 0 0 5.636 5.636m12.728 12.728A9 9 0 0 1 5.636 5.636m12.728 12.728L5.636 5.636" />
+            </svg>
+            Cancelar
+          </button>
+        </div>
+        }
 
-    <!-- Colaborador: abierta o rechazada en fase de gastos (puede agregar y reenviar) -->
-    @if (report && collaboratorCanEdit) {
-    <div class="rendicion-actions flex flex-row flex-wrap items-center gap-2 w-full md:w-auto md:justify-end md:shrink-0">
-      @if (canAddExpenses) {
-      <app-button
-        label="Solicitar más viáticos"
-        variant="secondary"
-        size="sm"
-        [fullWidth]="false"
-        (clicked)="openAdvanceModal()"
-      >
-        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 -ml-1 shrink-0">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 18.75a60.07 60.07 0 0 1 15.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 0 1 3 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25M2.25 6v9m18-10.5v.75c0 .414.336.75.75.75h.75m-1.5-1.5h.375c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125h-.375m1.5-1.5H21a.75.75 0 0 0-.75.75v.75m0 0H3.75m0 0h-.375a1.125 1.125-0 0 1-1.125-1.125V15m1.5 1.5v-.75A.75.75 0 0 0 3 15h-.75M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Zm3 0h.008v.008H18V10.5Zm-12 0h.008v.008H6V10.5Z" />
-        </svg>
-      </app-button>
-      <app-button
-        label="Añadir Gasto"
-        variant="primary"
-        size="sm"
-        [fullWidth]="false"
-        (clicked)="openAddExpenseModal()"
-      >
-        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 -ml-1 shrink-0">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-        </svg>
-      </app-button>
-      }
-      <app-button
-        [label]="report.status === 'rejected' ? 'Volver a enviar rendición' : 'Enviar Rendición'"
-        variant="secondary"
-        size="sm"
-        [fullWidth]="false"
-        [disabled]="!canSubmitReport"
-        (clicked)="openSubmitModal()"
-      >
-        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 -ml-1 shrink-0">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M6 12 3.269 3.125A59.769 59.769 0 0 1 21.485 12 59.768 59.768 0 0 1 3.27 20.875L5.999 12Zm0 0h7.5" />
-        </svg>
-      </app-button>
-      @if (!canSubmitReport) {
-      <p class="w-full text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
-        Debes tener comprobantes registrados, con archivo adjunto y sin ítems rechazados para enviar la rendición.
-      </p>
-      }
-    </div>
-    }
+        <!-- Colaborador: rechazada en fase de solicitud -->
+        @if (canResendSolicitud) {
+        <div class="flex flex-row flex-wrap gap-2">
+          <button
+            type="button"
+            class="inline-flex items-center justify-center gap-2 rounded-lg text-sm font-medium border border-primary bg-white text-primary hover:bg-primary/5 min-h-[40px] px-4 py-2 transition-colors touch-manipulation"
+            (click)="openEditSolicitudForm()"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 shrink-0">
+              <path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125" />
+            </svg>
+            Editar y re-enviar
+          </button>
+        </div>
+        }
 
-    @if (report && !isAdminView && report.status === 'open' && !hasPaidAdvanceForReport) {
-    <div class="w-full md:w-auto">
-      <p class="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
-        Debes esperar que Contabilidad registre el pago del viático para habilitar el registro de gastos.
-      </p>
-    </div>
-    }
-
-    <!-- Admin: Aprobar solicitud inicial -->
-    @if (report && report.status === 'solicited' && isAdminView) {
-    <div class="rendicion-actions flex flex-row flex-wrap items-center gap-2 w-full md:w-auto md:justify-end md:shrink-0">
-      <app-button
-        label="Aprobar solicitud"
-        variant="primary"
-        size="sm"
-        [fullWidth]="false"
-        (clicked)="openAdminApproveModal()"
-      >
-        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 -ml-1 shrink-0">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
-        </svg>
-      </app-button>
-      <app-button
-        label="Rechazar solicitud"
-        variant="secondary"
-        size="sm"
-        [fullWidth]="false"
-        (clicked)="openAdminRejectModal()"
-      >
-        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 -ml-1 shrink-0">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 3.75h.008v.008H12v-.008Z" />
-        </svg>
-      </app-button>
-    </div>
-    }
-
-    <!-- Admin: Aprobar rendición final (requiere todos los documentos aprobados) -->
-    @if (report && report.status === 'submitted' && isAdminView) {
-    <div class="flex flex-col gap-2 w-full md:w-auto md:items-end md:shrink-0">
-      @if (!allDocumentsApproved) {
-        <p class="text-sm text-amber-700 bg-amber-50 border border-amber-200 px-4 py-2 rounded-lg leading-snug">
-          ⚠️ Debes aprobar todos los comprobantes antes de poder aprobar la rendición.
-          <span class="font-semibold block mt-0.5">{{ approvedDocCount }} de {{ totalDocCount }} aprobados.</span>
-        </p>
-      }
-      <div class="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:justify-end">
-        <app-button
-          [label]="canFinalApprove ? 'Aprobar Rendición' : 'Pendiente de revisión'"
-          variant="primary"
-          size="sm"
-          [fullWidth]="true"
-          [disabled]="!canFinalApprove"
-          (clicked)="openAdminApproveModal()"
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 mr-1 -ml-1 shrink-0">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
-          </svg>
-        </app-button>
-        <app-button
-          label="Rechazar rendición"
-          variant="danger"
-          size="sm"
-          [fullWidth]="true"
-          (clicked)="openAdminRejectModal()"
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 mr-1 -ml-1 shrink-0">
+        <!-- Colaborador: cancelada -->
+        @if (report.status === 'cancelled' && !isAdminView) {
+        <div class="flex items-center gap-2 px-3 py-2 rounded-lg bg-orange-50 border border-orange-200 text-orange-800 text-sm font-medium">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 shrink-0 text-orange-500">
             <path stroke-linecap="round" stroke-linejoin="round" d="M18.364 18.364A9 9 0 0 0 5.636 5.636m12.728 12.728A9 9 0 0 1 5.636 5.636m12.728 12.728L5.636 5.636" />
           </svg>
-        </app-button>
+          Solicitud cancelada
+        </div>
+        }
+
+        <!-- Colaborador: abierta / rechazada con gastos — hidden en mobile (sticky bar) -->
+        @if (collaboratorCanEdit) {
+        <div class="hidden sm:flex flex-wrap items-center gap-2 justify-end">
+          @if (canAddExpenses) {
+          <app-button
+            label="Solicitar más viáticos"
+            variant="secondary"
+            size="sm"
+            [fullWidth]="false"
+            (clicked)="openAdvanceModal()"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 -ml-1 shrink-0">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 18.75a60.07 60.07 0 0 1 15.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 0 1 3 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25M2.25 6v9m18-10.5v.75c0 .414.336.75.75.75h.75m-1.5-1.5h.375c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125h-.375m1.5-1.5H21a.75.75 0 0 0-.75.75v.75m0 0H3.75m0 0h-.375a1.125 1.125-0 0 1-1.125-1.125V15m1.5 1.5v-.75A.75.75 0 0 0 3 15h-.75M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Zm3 0h.008v.008H18V10.5Zm-12 0h.008v.008H6V10.5Z" />
+            </svg>
+          </app-button>
+          <app-button
+            label="Añadir Gasto"
+            variant="primary"
+            size="sm"
+            [fullWidth]="false"
+            (clicked)="openAddExpenseModal()"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 -ml-1 shrink-0">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+            </svg>
+          </app-button>
+          }
+          <div class="relative group/submit">
+            <app-button
+              [label]="report.status === 'rejected' ? 'Volver a enviar rendición' : 'Enviar Rendición'"
+              variant="secondary"
+              size="sm"
+              [fullWidth]="false"
+              [disabled]="!canSubmitReport"
+              (clicked)="openSubmitModal()"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 -ml-1 shrink-0">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M6 12 3.269 3.125A59.769 59.769 0 0 1 21.485 12 59.768 59.768 0 0 1 3.27 20.875L5.999 12Zm0 0h7.5" />
+              </svg>
+            </app-button>
+            @if (!canSubmitReport) {
+            <div class="absolute bottom-full right-0 mb-2 w-64 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 shadow-sm opacity-0 group-hover/submit:opacity-100 pointer-events-none transition-opacity duration-150 z-50">
+              Debes tener comprobantes registrados, con archivo adjunto y sin ítems rechazados para enviar la rendición.
+            </div>
+            }
+          </div>
+        </div>
+        }
+
+        <!-- Colaborador: abierta sin pago registrado -->
+        @if (!isAdminView && report.status === 'open' && !hasPaidAdvanceForReport) {
+        <p class="max-w-xs text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+          Debes esperar que Contabilidad registre el pago del viático para habilitar el registro de gastos.
+        </p>
+        }
+
+        <!-- Admin: solicitud inicial -->
+        @if (report.status === 'solicited' && isAdminView) {
+        <div class="flex flex-row flex-wrap gap-2 justify-end">
+          <app-button
+            label="Aprobar solicitud"
+            variant="primary"
+            size="sm"
+            [fullWidth]="false"
+            (clicked)="openAdminApproveModal()"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 -ml-1 shrink-0">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+            </svg>
+          </app-button>
+          <app-button
+            label="Rechazar solicitud"
+            variant="secondary"
+            size="sm"
+            [fullWidth]="false"
+            (clicked)="openAdminRejectModal()"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 -ml-1 shrink-0">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 3.75h.008v.008H12v-.008Z" />
+            </svg>
+          </app-button>
+        </div>
+        }
+
+        <!-- Admin: rendición enviada — aprobar o rechazar -->
+        @if (report.status === 'submitted' && isAdminView) {
+        <div class="flex flex-col gap-2 items-end">
+          @if (!allDocumentsApproved) {
+            <p class="text-sm text-amber-700 bg-amber-50 border border-amber-200 px-3 py-2 rounded-lg max-w-xs leading-snug">
+              Aprueba todos los comprobantes antes de poder aprobar la rendición.
+              <span class="font-semibold block mt-0.5">{{ approvedDocCount }} / {{ totalDocCount }} aprobados.</span>
+            </p>
+          }
+          <div class="flex flex-row flex-wrap gap-2 justify-end">
+            <app-button
+              [label]="canFinalApprove ? 'Aprobar Rendición' : 'Pendiente de revisión'"
+              variant="primary"
+              size="sm"
+              [fullWidth]="false"
+              [disabled]="!canFinalApprove"
+              (clicked)="openAdminApproveModal()"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 mr-1 -ml-1 shrink-0">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+              </svg>
+            </app-button>
+            <app-button
+              label="Rechazar rendición"
+              variant="danger"
+              size="sm"
+              [fullWidth]="false"
+              (clicked)="openAdminRejectModal()"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 mr-1 -ml-1 shrink-0">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M18.364 18.364A9 9 0 0 0 5.636 5.636m12.728 12.728A9 9 0 0 1 5.636 5.636m12.728 12.728L5.636 5.636" />
+              </svg>
+            </app-button>
+          </div>
+        </div>
+        }
+
       </div>
     </div>
     }
   </div>
+  <!-- ── END PAGE HEADER ──────────────────────────────────────────── -->
 
   @if(isLoading) {
     <div class="flex justify-center p-12">
@@ -334,7 +359,7 @@
               <p class="mt-3 text-xs font-medium text-red-800/90">Puedes editar los datos de la solicitud y volver a enviarla para aprobación.</p>
             }
             @if (canResubmitReport) {
-              <p class="mt-3 text-xs font-medium text-red-800/90">Puedes añadir gastos o solicitar anticipo y luego volver a enviar la rendición.</p>
+              <p class="mt-3 text-xs font-medium text-red-800/90">Puedes añadir gastos o solicitar viático y luego volver a enviar la rendición.</p>
             }
           </div>
         </div>
@@ -471,7 +496,7 @@
       }
 
       <!-- Progress and Summary Cards -->
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6 mb-6 md:mb-8">
+      <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6 mb-6 md:mb-8">
         <!-- Budget assigned -->
         <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4 sm:p-6">
           <div class="flex items-center gap-3 mb-2">
@@ -565,9 +590,9 @@
                       <tr class="bg-gray-50 text-gray-600 font-semibold border-b border-gray-100">
                         <th class="px-4 py-3">Viáticos</th>
                         <th class="px-4 py-3 text-center">Importe</th>
-                        <th class="px-4 py-3 text-center">Cantidad de personas</th>
-                        <th class="px-4 py-3 text-center">Cantidad combustible GLP x dia</th>
-                        <th class="px-4 py-3 text-center">Cantidad de dias</th>
+                        <th class="px-4 py-3 text-center">Personas</th>
+                        <th class="px-4 py-3 text-center">GLP / dia</th>
+                        <th class="px-4 py-3 text-center">Dias</th>
                         <th class="px-4 py-3 text-right">Total</th>
                       </tr>
                     </thead>
@@ -601,7 +626,7 @@
       @if(advances.length > 0) {
       <div class="bg-white rounded-xl shadow-sm border border-gray-200 mb-6">
         <div class="px-4 sm:px-6 py-4 border-b border-gray-200 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-          <h2 class="text-base font-bold text-gray-900">Anticipos Solicitados</h2>
+          <h2 class="text-base font-bold text-gray-900">Viáticos Solicitados</h2>
           <span class="text-sm font-semibold text-blue-700 bg-blue-50 px-3 py-1.5 rounded-full w-fit">
             Total aprobado: S/ {{ totalAnticipado | number:'1.2-2' }}
           </span>
@@ -660,7 +685,7 @@
           </span>
         </div>
         <p class="text-xs text-gray-700 mb-1">
-          Anticipo: <strong>{{ adv.description }}</strong> — Monto a devolver:
+          Viático: <strong>{{ adv.description }}</strong> — Monto a devolver:
           <strong class="text-red-700">S/ {{ adv.returnRecord?.amountDue | number:'1.2-2' }}</strong>
         </p>
         <p class="text-xs text-gray-600">
@@ -696,7 +721,7 @@
         </div>
         <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 text-center">
           <div>
-            <p class="text-xs text-gray-500">Anticipo entregado</p>
+            <p class="text-xs text-gray-500">Viático entregado</p>
             <p class="text-lg font-bold text-gray-900">S/ {{ settlement.advanceTotal | number:'1.2-2' }}</p>
           </div>
           <div>
@@ -768,11 +793,23 @@
         </div>
 
         @if(!report.expenseIds || report.expenseIds.length === 0) {
-          <div class="p-8 sm:p-12 text-center text-gray-500">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-12 h-12 mx-auto text-gray-300 mb-3">
+          <div class="p-8 sm:p-12 text-center text-gray-500 flex flex-col items-center gap-4">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-12 h-12 text-gray-300">
               <path stroke-linecap="round" stroke-linejoin="round" d="m9 13.5 3 2.25 3-2.25m0-6v6h-6v-6h6Z" />
             </svg>
             <p class="text-sm">No has subido ningún comprobante para esta rendición aún.</p>
+            @if (canAddExpenses) {
+            <button
+              type="button"
+              (click)="openAddExpenseModal()"
+              class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold bg-primary text-white hover:bg-primary/90 active:scale-[0.98] transition-all touch-manipulation"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4 shrink-0">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+              </svg>
+              Añadir primer comprobante
+            </button>
+            }
           </div>
         } @else {
           <!-- Mobile: tarjetas -->
@@ -1063,6 +1100,42 @@
     }
   }
 </div>
+
+<!-- Sticky bottom bar (mobile only) — colaborador con rendición editable -->
+@if (report && collaboratorCanEdit) {
+<div class="fixed bottom-0 left-0 right-0 z-30 sm:hidden bg-white border-t border-gray-200 shadow-[0_-4px_16px_rgba(0,0,0,0.08)] px-4 py-3 flex gap-3">
+  @if (canAddExpenses) {
+  <button
+    type="button"
+    (click)="openAddExpenseModal()"
+    class="flex-1 inline-flex items-center justify-center gap-2 min-h-[48px] rounded-xl text-sm font-bold bg-primary text-white hover:bg-primary/90 active:scale-[0.98] transition-all touch-manipulation"
+  >
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5 shrink-0">
+      <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+    </svg>
+    Añadir Gasto
+  </button>
+  }
+  <div class="relative group/submit flex-1">
+    <button
+      type="button"
+      (click)="openSubmitModal()"
+      [disabled]="!canSubmitReport"
+      class="w-full inline-flex items-center justify-center gap-2 min-h-[48px] rounded-xl text-sm font-bold border-2 border-primary text-primary bg-white hover:bg-primary/5 disabled:opacity-40 active:scale-[0.98] transition-all touch-manipulation"
+    >
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 shrink-0">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M6 12 3.269 3.125A59.769 59.769 0 0 1 21.485 12 59.768 59.768 0 0 1 3.27 20.875L5.999 12Zm0 0h7.5" />
+      </svg>
+      {{ report.status === 'rejected' ? 'Reenviar' : 'Enviar' }}
+    </button>
+    @if (!canSubmitReport) {
+    <div class="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-64 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 shadow-sm opacity-0 group-hover/submit:opacity-100 pointer-events-none transition-opacity duration-150 z-50">
+      Debes tener comprobantes registrados, con archivo adjunto y sin ítems rechazados para enviar la rendición.
+    </div>
+    }
+  </div>
+</div>
+}
 
 <!-- Modal: Ficha completa del comprobante (documento + datos) -->
 @if (showExpenseDetailModal() && selectedExpense(); as exp) {
@@ -2013,7 +2086,7 @@
   <div class="absolute inset-0 bg-black/40 backdrop-blur-sm"></div>
   <div class="relative bg-white rounded-2xl shadow-xl p-6 w-full max-w-md" (click)="$event.stopPropagation()">
     <h3 class="text-lg font-bold text-gray-900 mb-1">Cargar comprobante de deposito</h3>
-    <p class="text-sm text-gray-500 mb-4">Adjunta el comprobante del deposito que realizaste para devolver el saldo del anticipo.</p>
+    <p class="text-sm text-gray-500 mb-4">Adjunta el comprobante del deposito que realizaste para devolver el saldo del viático.</p>
     <div class="space-y-3">
       <div class="grid grid-cols-2 gap-3">
         <div class="flex flex-col gap-1">

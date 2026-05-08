@@ -17,6 +17,8 @@ export function authModuleGuard(module: string, bypassForAdmin = false): CanActi
 
     if (userState.isColaborador()) return router.createUrlTree(['/inicio']);
     if (userState.isAdmin()) return router.createUrlTree(['/admin-users']);
+    if (userState.isContabilidad()) return router.createUrlTree(['/tesoreria']);
+    if (userState.isCoordinador()) return router.createUrlTree(['/viaticos']);
     return router.createUrlTree(['/clients-admin']);
   };
 }
