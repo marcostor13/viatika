@@ -314,8 +314,12 @@ export class ChartsComponent implements OnInit, AfterViewInit {
       this.projects = projects;
       this.categories = categories;
 
-      if (Array.isArray(expenses)) {
-        this.expenses = expenses.map((invoice, index) => {
+      const rawExpenses = Array.isArray(expenses)
+        ? expenses
+        : (expenses as any)?.data;
+
+      if (Array.isArray(rawExpenses)) {
+        this.expenses = rawExpenses.map((invoice, index) => {
           let invoiceData: any = {};
 
           try {
