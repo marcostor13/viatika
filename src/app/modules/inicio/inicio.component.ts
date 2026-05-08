@@ -67,6 +67,10 @@ export class InicioComponent implements OnInit {
     this.advances().filter((a) => a.status === 'pending_l1' || a.status === 'pending_l2').length
   );
 
+  paidAdvances = computed(() =>
+    this.advances().filter((a) => a.status === 'paid')
+  );
+
   kpiAnticiposMonto = computed(() =>
     this.advances()
       .filter((a) => ['approved', 'paid', 'settled'].includes(a.status))
@@ -138,6 +142,23 @@ export class InicioComponent implements OnInit {
       return advance.expenseReportId.title;
     }
     return '—';
+  }
+
+  getAdvanceReportId(advance: IAdvance): string | null {
+    if (!advance.expenseReportId) return null;
+    if (typeof advance.expenseReportId === 'object') {
+      return advance.expenseReportId._id;
+    }
+    return advance.expenseReportId;
+  }
+
+  navigateToExpenseReport(advance: IAdvance) {
+    const reportId = this.getAdvanceReportId(advance);
+    if (reportId) {
+      this.router.navigate(['/mis-rendiciones', reportId, 'detalle']);
+    } else {
+      this.router.navigate(['/mis-rendiciones']);
+    }
   }
 
   get saldoLibreTotal(): number {

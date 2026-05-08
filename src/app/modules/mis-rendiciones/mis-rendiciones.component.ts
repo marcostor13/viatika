@@ -162,16 +162,25 @@ export class MisRendicionesComponent implements OnInit {
   }
 
   hasExpenseReportLink(adv: IAdvance): boolean {
-    return !!(
-      adv.expenseReportId &&
-      typeof adv.expenseReportId === 'object' &&
-      '_id' in adv.expenseReportId
-    );
+    return !!this.getExpenseReportId(adv);
   }
 
   getExpenseReportId(adv: IAdvance): string | null {
-    if (!this.hasExpenseReportLink(adv)) return null;
-    return (adv.expenseReportId as { _id: string })._id;
+    if (!adv.expenseReportId) return null;
+    if (typeof adv.expenseReportId === 'object' && '_id' in adv.expenseReportId) {
+      return (adv.expenseReportId as { _id: string })._id;
+    }
+    if (typeof adv.expenseReportId === 'string' && adv.expenseReportId) {
+      return adv.expenseReportId;
+    }
+    return null;
+  }
+
+  navigateToAdvanceReport(adv: IAdvance): void {
+    const reportId = this.getExpenseReportId(adv);
+    if (reportId) {
+      this.router.navigate(['/mis-rendiciones', reportId, 'detalle']);
+    }
   }
 
   onModalClose(success: boolean) {
@@ -266,6 +275,14 @@ export class MisRendicionesComponent implements OnInit {
           : null;
       return rid === report._id && (adv.status === 'paid' || adv.status === 'settled');
     });
+  }
+
+  reportDateRange(report: IExpenseReport): string {
+    const fmt = (d: string) =>
+      new Date(d).toLocaleDateString('es-PE', { day: 'numeric', month: 'long', year: 'numeric' });
+    if (report.startDate && report.endDate) return `${fmt(report.startDate)} al ${fmt(report.endDate)}`;
+    if (report.startDate) return fmt(report.startDate);
+    return '';
   }
 
   panelStatusText(report: IExpenseReport): string {

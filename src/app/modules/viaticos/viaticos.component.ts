@@ -1,5 +1,6 @@
 import { Component, OnInit, inject, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { Router } from '@angular/router';
 import { ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { AdvanceService } from '../../services/advance.service';
 import { UserStateService } from '../../services/user-state.service';
@@ -20,6 +21,7 @@ export class ViaticosComponent implements OnInit {
   private advanceService = inject(AdvanceService);
   private userState = inject(UserStateService);
   private notifications = inject(NotificationService);
+  private router = inject(Router);
   private fb = inject(FormBuilder);
 
   readonly STATUS_LABELS = ADVANCE_STATUS_LABELS;
@@ -46,9 +48,8 @@ export class ViaticosComponent implements OnInit {
   filterDateFrom = signal('');
   filterDateTo = signal('');
 
-  // Modals
+  // Modal rechazo
   showRejectModal = signal(false);
-  showDetailModal = signal(false);
   selectedAdvance = signal<IAdvance | null>(null);
   rejectForm!: FormGroup;
 
@@ -200,6 +201,10 @@ export class ViaticosComponent implements OnInit {
     });
   }
 
+  openDetail(a: IAdvance) {
+    this.router.navigate(['/viaticos', a._id]);
+  }
+
   openRejectModal(a: IAdvance) {
     this.selectedAdvance.set(a);
     this.rejectForm.reset();
@@ -222,21 +227,5 @@ export class ViaticosComponent implements OnInit {
         this.isActing.set(false);
       },
     });
-  }
-
-  openDetail(a: IAdvance) {
-    this.selectedAdvance.set(a);
-    this.showDetailModal.set(true);
-  }
-
-  detailLines(a: IAdvance) {
-    return a.lines ?? [];
-  }
-
-  categoryName(line: IAdvance['lines'] extends (infer L)[] | undefined ? L : never): string {
-    if (!line) return '—';
-    const c = (line as any).categoryId;
-    if (c && typeof c === 'object' && c.name) return c.name;
-    return String(c ?? '—');
   }
 }

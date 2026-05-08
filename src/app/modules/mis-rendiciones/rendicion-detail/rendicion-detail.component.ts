@@ -767,6 +767,16 @@ export class RendicionDetailComponent implements OnInit {
     return '—';
   }
 
+  get reportDateRange(): string {
+    const fmt = (d: string) =>
+      new Date(d).toLocaleDateString('es-PE', { day: 'numeric', month: 'long', year: 'numeric' });
+    const r = this.report;
+    if (!r) return '';
+    if (r.startDate && r.endDate) return `${fmt(r.startDate)} al ${fmt(r.endDate)}`;
+    if (r.startDate) return fmt(r.startDate);
+    return '';
+  }
+
   private mapExpenseStatusExport(status?: string): string {
     const s = String(status || 'pending').toLowerCase();
     const labels: Record<string, string> = {

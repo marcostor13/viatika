@@ -209,6 +209,14 @@ export const routes: Routes = [
         canActivate: [AuthViaticosGuard],
       },
       {
+        path: 'viaticos/:id',
+        loadComponent: () =>
+          import('./modules/viaticos/viaticos-detail/viaticos-detail.component').then(
+            (m) => m.ViaticosDetailComponent
+          ),
+        canActivate: [AuthViaticosGuard],
+      },
+      {
         path: 'tesoreria',
         loadComponent: () =>
           import('./modules/tesoreria/tesoreria.component').then(

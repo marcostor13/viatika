@@ -113,6 +113,14 @@ export class SidebarComponent implements OnInit, OnDestroy {
     return this.userStateService.isColaborador();
   }
 
+  isContabilidad(): boolean {
+    return this.userStateService.isContabilidad();
+  }
+
+  isCoordinador(): boolean {
+    return this.userStateService.isCoordinador();
+  }
+
   canAccessTesoreria(): boolean {
     return this.userStateService.canAccessTesoreria();
   }
@@ -121,6 +129,7 @@ export class SidebarComponent implements OnInit, OnDestroy {
     return (
       this.userStateService.isAdmin() ||
       this.userStateService.isSuperAdmin() ||
+      this.userStateService.isCoordinador() ||
       this.userStateService.canApproveL1()
     );
   }

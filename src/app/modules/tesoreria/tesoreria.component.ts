@@ -120,7 +120,7 @@ export class TesoreriaComponent implements OnInit {
       next: (advances) => {
         this.allAdvances = advances;
         this.pendingAdvances = advances.filter(a =>
-          ['pending_l1', 'pending_l2', 'approved'].includes(a.status)
+          ['pending_l2', 'approved'].includes(a.status)
         );
         this.isLoading.set(false);
         this.loadPendingReimbursements();
@@ -165,7 +165,7 @@ export class TesoreriaComponent implements OnInit {
   get filteredAdvances(): IAdvance[] {
     switch (this.activeTab()) {
       case 'pendientes':
-        return this.allAdvances.filter(a => ['pending_l1', 'pending_l2'].includes(a.status));
+        return this.allAdvances.filter(a => ['pending_l2', 'approved'].includes(a.status));
       case 'aprobados':
         return this.allAdvances.filter(a => ['approved', 'paid'].includes(a.status));
       case 'historial':
@@ -175,26 +175,11 @@ export class TesoreriaComponent implements OnInit {
     }
   }
 
-  approveL1(advance: IAdvance) {
-    this.isActing.set(true);
-    this.advanceService.approveL1(advance._id, {}).subscribe({
-      next: () => {
-        this.notificationService.show('Anticipo aprobado (Nivel 1)', 'success');
-        this.loadData();
-        this.isActing.set(false);
-      },
-      error: (e) => {
-        this.notificationService.show(e.error?.message || 'Error al aprobar', 'error');
-        this.isActing.set(false);
-      },
-    });
-  }
-
   approveL2(advance: IAdvance) {
     this.isActing.set(true);
     this.advanceService.approveL2(advance._id, {}).subscribe({
       next: () => {
-        this.notificationService.show('Anticipo aprobado (Nivel 2 — Tesorería)', 'success');
+        this.notificationService.show('Viático aprobado (Nivel 2 — Tesorería)', 'success');
         this.loadData();
         this.isActing.set(false);
       },
@@ -216,7 +201,7 @@ export class TesoreriaComponent implements OnInit {
     this.isActing.set(true);
     this.advanceService.reject(this.selectedAdvance._id, this.rejectForm.value).subscribe({
       next: () => {
-        this.notificationService.show('Anticipo rechazado', 'success');
+        this.notificationService.show('Viático rechazado', 'success');
         this.showRejectModal = false;
         this.loadData();
         this.isActing.set(false);

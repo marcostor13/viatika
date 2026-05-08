@@ -67,6 +67,7 @@ export class CreateUserComponent implements OnInit {
           const roleName = u.role?.name;
           return (
             roleName === 'Administrador' ||
+            roleName === 'Coordinador' ||
             u.permissions?.canApproveL1 === true ||
             u.permissions?.canApproveL2 === true
           );
@@ -97,7 +98,7 @@ export class CreateUserComponent implements OnInit {
     ];
   }
 
-  readonly allowedRoles = ['Administrador', 'Colaborador'];
+  readonly allowedRoles = ['Administrador', 'Colaborador', 'Contabilidad', 'Coordinador'];
 
   getRoles() {
     this.adminUsersService.getRoles().subscribe((roles) => {
