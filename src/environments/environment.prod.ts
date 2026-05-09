@@ -1,6 +1,6 @@
 export const environment = {
     production: true,
-    api: 'https://viatika-back.marcostorresalarcon.com/api',
+    api: 'https://apiviatika.marcostorresalarcon.com/api',
     storage: 'user-data-ls-gastos',
     storagePath: 'gastos-images',
     googleMapsApiKey: 'AIzaSyAvrXNy1gUBO_kyYtOmAmgRB8IP2zl-OgM',

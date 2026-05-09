@@ -7,7 +7,10 @@
       "Bash(npx tsc *)",
       "Bash(node_modules\\\\.bin\\\\ngc --noEmit)",
       "Bash(node_modules/.bin/ng build *)",
-      "Bash(npx ng *)"
+      "Bash(npx ng *)",
+      "Bash(Get-ChildItem *)",
+      "Bash(Test-Path \"C:\\\\Marcos\\\\Proyectos\\\\Datalia\\\\code-viatika\\\\viatika-back\\\\.git\")",
+      "Bash(Test-Path \"C:\\\\Marcos\\\\Proyectos\\\\Datalia\\\\code-viatika\\\\.git\")"
     ]
   }
 }
