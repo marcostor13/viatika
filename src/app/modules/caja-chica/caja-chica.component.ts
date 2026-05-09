@@ -5,6 +5,8 @@ import { PettyCashService } from '../../services/petty-cash.service';
 import { UploadService } from '../../services/upload.service';
 import { UserStateService } from '../../services/user-state.service';
 import { NotificationService } from '../../services/notification.service';
+import { AdminUsersService } from '../admin-users/services/admin-users.service';
+import { IUserResponse } from '../../interfaces/user.interface';
 import {
   IPettyCash,
   PETTY_CASH_STATUS_LABELS,
@@ -24,6 +26,7 @@ export class CajaChicaComponent implements OnInit {
   private uploadService = inject(UploadService);
   private userState = inject(UserStateService);
   private notif = inject(NotificationService);
+  private adminUsersService = inject(AdminUsersService);
   private fb = inject(FormBuilder);
 
   activeTab = signal<Tab>('mis');
@@ -32,6 +35,7 @@ export class CajaChicaComponent implements OnInit {
 
   myCajas: IPettyCash[] = [];
   allCajas: IPettyCash[] = [];
+  users: IUserResponse[] = [];
   selectedCaja: IPettyCash | null = null;
 
   showCreateModal = signal(false);
@@ -84,6 +88,10 @@ export class CajaChicaComponent implements OnInit {
     if (this.isAdmin) {
       this.service.findAllByClient().subscribe({
         next: rows => { this.allCajas = rows; },
+        error: () => {},
+      });
+      this.adminUsersService.getUsers().subscribe({
+        next: users => { this.users = users; },
         error: () => {},
       });
     }

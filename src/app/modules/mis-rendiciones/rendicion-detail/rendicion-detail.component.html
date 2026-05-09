@@ -633,10 +633,19 @@
         </div>
         <div class="divide-y divide-gray-100">
           @for(adv of advances; track adv._id) {
-          <div class="px-4 sm:px-6 py-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <p class="text-sm font-medium text-gray-900">{{ adv.description }}</p>
-              <p class="text-xs text-gray-500 mt-0.5">Solicitado: {{ adv.createdAt | date:'dd/MM/yyyy' }}</p>
+          <div class="px-4 sm:px-6 py-4 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+            <div class="flex-1 min-w-0">
+              <p class="text-sm font-semibold text-gray-900">{{ adv.place || adv.description }}</p>
+              @if (adv.startDate || adv.endDate) {
+              <p class="text-xs text-gray-500 mt-0.5">
+                {{ adv.startDate | date:'dd/MM/yyyy' }}
+                @if (adv.endDate) { &mdash; {{ adv.endDate | date:'dd/MM/yyyy' }} }
+              </p>
+              }
+              @if (adv.observations) {
+              <p class="text-xs text-gray-400 mt-0.5 italic">{{ adv.observations }}</p>
+              }
+              <p class="text-xs text-gray-400 mt-1">Solicitado el {{ adv.createdAt | date:'dd/MM/yyyy' }}</p>
             </div>
             <div class="flex flex-wrap items-center gap-2 sm:gap-3 sm:justify-end">
               <span class="text-sm font-bold text-gray-900">S/ {{ adv.amount | number:'1.2-2' }}</span>
@@ -879,7 +888,7 @@
                     <button
                       type="button"
                       [disabled]="approvingExpenseId() === expense._id"
-                      (click)="approveExpense(expense._id)"
+                      (click)="confirmApproveExpense(expense._id)"
                       class="flex-1 inline-flex items-center justify-center gap-2 min-h-[44px] px-4 rounded-xl text-sm font-bold border-2 border-green-200 bg-green-50 text-green-800 hover:bg-green-100 disabled:opacity-50 transition-all active:scale-[0.98] touch-manipulation"
                     >
                       @if (approvingExpenseId() === expense._id) {
@@ -1022,7 +1031,7 @@
                             <button
                               type="button"
                               [disabled]="approvingExpenseId() === expense._id"
-                              (click)="approveExpense(expense._id)"
+                              (click)="confirmApproveExpense(expense._id)"
                               class="p-3 rounded-xl text-green-600 hover:bg-green-50 transition-all hover:scale-110 active:scale-95 disabled:opacity-50"
                               title="Aprobar documento"
                             >

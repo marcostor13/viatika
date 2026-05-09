@@ -102,9 +102,14 @@
     <h3 class="text-lg font-bold text-gray-900 mb-4">Nueva caja chica</h3>
     <form [formGroup]="createForm" class="space-y-3">
       <div class="flex flex-col gap-1">
-        <label class="text-xs font-medium text-gray-600">ID del responsable <span class="text-red-500">*</span></label>
-        <input type="text" formControlName="responsibleId"
-          class="w-full h-[38px] px-3 rounded-lg border border-gray-200 text-sm" />
+        <label class="text-xs font-medium text-gray-600">Responsable <span class="text-red-500">*</span></label>
+        <select formControlName="responsibleId"
+          class="w-full h-[38px] px-3 rounded-lg border border-gray-200 text-sm bg-white">
+          <option value="">Seleccionar colaborador...</option>
+          @for (u of users; track u._id) {
+          <option [value]="u._id">{{ u.name }}</option>
+          }
+        </select>
       </div>
       <div class="grid grid-cols-2 gap-3">
         <div class="flex flex-col gap-1">
