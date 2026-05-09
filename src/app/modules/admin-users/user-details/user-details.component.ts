@@ -126,6 +126,10 @@ export class UserDetailsComponent implements OnInit {
     this.router.navigate([`/admin-users/${this.id}/permisos`]);
   }
 
+  goToRendiciones() {
+    this.router.navigate(['/rendiciones'], { queryParams: { userId: this.id } });
+  }
+
   goToEdit() {
     this.router.navigate([`/admin-users/create-user/${this.id}`]);
   }

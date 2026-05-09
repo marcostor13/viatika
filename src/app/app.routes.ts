@@ -143,6 +143,14 @@ export const routes: Routes = [
         canActivate: [AuthAdmin2Guard],
       },
       {
+        path: 'rendiciones',
+        loadComponent: () =>
+          import('./modules/admin-users/rendiciones-admin/rendiciones-admin.component').then(
+            (m) => m.RendicionesAdminComponent
+          ),
+        canActivate: [AuthAdmin2Guard],
+      },
+      {
         path: 'configuracion',
         loadComponent: () =>
           import('./modules/configuracion/configuracion.component').then(

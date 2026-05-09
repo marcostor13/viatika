@@ -37,6 +37,16 @@ export class SidebarComponent implements OnInit, OnDestroy {
 
   companyConfig: ICompanyConfig | null = null;
   currentPath = '';
+  configOpen = false;
+
+  isConfigSection(): boolean {
+    return ['/configuracion', '/mi-firma', '/categorias', '/centros-de-costo', '/audit-log']
+      .some(p => this.currentPath.startsWith(p));
+  }
+
+  toggleConfig(): void {
+    this.configOpen = !this.configOpen;
+  }
 
   constructor() {
     this.detectPath();

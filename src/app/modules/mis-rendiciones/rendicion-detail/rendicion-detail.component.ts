@@ -6,6 +6,7 @@ import { ExpenseReportsService } from '../../../services/expense-reports.service
 import { AdvanceService } from '../../../services/advance.service';
 import { NotificationService } from '../../../services/notification.service';
 import { UserStateService } from '../../../services/user-state.service';
+import { ConfirmationService } from '../../../services/confirmation.service';
 import { InvoicesService } from '../../invoices/services/invoices.service';
 import { UploadService } from '../../../services/upload.service';
 import { IExpenseReport } from '../../../interfaces/expense-report.interface';
@@ -41,6 +42,7 @@ export class RendicionDetailComponent implements OnInit {
   private advanceService = inject(AdvanceService);
   private notificationService = inject(NotificationService);
   private userStateService = inject(UserStateService);
+  private confirmationService = inject(ConfirmationService);
   private invoicesService = inject(InvoicesService);
   private rendicionExportService = inject(RendicionExportService);
   private uploadService = inject(UploadService);
@@ -58,7 +60,7 @@ export class RendicionDetailComponent implements OnInit {
   totalGastado = 0;
 
   get saldoLibre(): number {
-    return (this.report?.budget ?? 0) + this.totalAnticipado - this.totalGastado;
+    return this.totalAnticipado - this.totalGastado;
   }
 
   ngOnInit(): void {
@@ -75,7 +77,11 @@ export class RendicionDetailComponent implements OnInit {
   }
 
   loadAdvances() {
-    this.advanceService.findMy().subscribe({
+    const request$ = this.isAdminView
+      ? this.advanceService.findAll()
+      : this.advanceService.findMy();
+
+    request$.subscribe({
       next: (advances) => {
         this.advances = advances.filter(a => {
           const rid = typeof a.expenseReportId === 'object' ? a.expenseReportId?._id : a.expenseReportId;
@@ -134,7 +140,7 @@ export class RendicionDetailComponent implements OnInit {
     
     // For now, assume expenseIds returns full objects due to mongoose populate
     if (this.report.expenseIds && this.report.expenseIds.length > 0) {
-      this.totalGastado = this.report.expenseIds.reduce((sum, exp: any) => sum + (exp.total || 0), 0);
+      this.totalGastado = this.report.expenseIds.reduce((sum, exp: any) => sum + (parseFloat(exp.total) || 0), 0);
     }
     
   }
@@ -381,6 +387,13 @@ export class RendicionDetailComponent implements OnInit {
   /** Cantidad total de documentos. */
   get totalDocCount(): number {
     return this.report?.expenseIds?.length ?? 0;
+  }
+
+  confirmApproveExpense(expenseId: string): void {
+    this.confirmationService.show(
+      '¿Aprobar este comprobante? Esta acción no se puede deshacer.',
+      () => this.approveExpense(expenseId)
+    );
   }
 
   approveExpense(expenseId: string): void {
