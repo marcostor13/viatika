@@ -1,7 +1,7 @@
 import { Injectable, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '../../environments/environment';
-import { Observable, tap } from 'rxjs';
+import { Observable, map, tap } from 'rxjs';
 
 export interface AppNotification {
   _id: string;
@@ -28,7 +28,8 @@ export class AppNotificationService {
   constructor(private http: HttpClient) {}
 
   fetchNotifications(): Observable<AppNotification[]> {
-    return this.http.get<AppNotification[]>(this.apiUrl).pipe(
+    return this.http.get<AppNotification[] | null>(this.apiUrl).pipe(
+      map(notifs => (Array.isArray(notifs) ? notifs : [])),
       tap(notifs => {
         this.notifications.set(notifs);
         this.updateUnreadCount(notifs);
@@ -65,8 +66,9 @@ export class AppNotificationService {
     );
   }
 
-  private updateUnreadCount(notifs: AppNotification[]) {
-    const count = notifs.filter(n => !n.isRead).length;
+  private updateUnreadCount(notifs: AppNotification[] | null | undefined) {
+    const safeNotifs = Array.isArray(notifs) ? notifs : [];
+    const count = safeNotifs.filter(n => !n.isRead).length;
     this.unreadCount.set(count);
   }
 }

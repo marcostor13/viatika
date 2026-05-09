@@ -3,10 +3,8 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { NotificationService } from '../../../services/notification.service';
-import { InvoicesService } from '../../invoices/services/invoices.service';
-import { HttpErrorResponse } from '@angular/common/http';
+import { CategoriaService } from '../../../services/categoria.service';
 import { ICategory } from '../../invoices/interfaces/category.interface';
-import { UserStateService } from '../../../services/user-state.service';
 
 @Component({
   selector: 'app-add-category',
@@ -18,8 +16,7 @@ export class AddCategoryComponent implements OnInit {
   private router = inject(Router);
   private route = inject(ActivatedRoute);
   private notificationService = inject(NotificationService);
-  private invoicesService = inject(InvoicesService);
-  private userStateService = inject(UserStateService);
+  private categoriaService = inject(CategoriaService);
 
   category: ICategory = {
     name: '',
@@ -37,16 +34,16 @@ export class AddCategoryComponent implements OnInit {
   }
 
   loadCategory(id: string) {
-    this.invoicesService
-      .getCategoryById(id)
-      .subscribe((category: ICategory) => {
-        this.category = category;
-        this.router.navigate(['/consolidated-invoices']);
-      });
+    this.categoriaService.getAllFlat().subscribe((categories: ICategory[]) => {
+      const found = categories.find((c) => c._id === id);
+      if (found) {
+        this.category = found;
+      }
+    });
   }
 
   back() {
-    this.router.navigate(['/consolidated-invoices']);
+    this.router.navigate(['/categorias']);
   }
 
   save() {
@@ -72,16 +69,14 @@ export class AddCategoryComponent implements OnInit {
     if (!this.validateName()) {
       return;
     }
-    // No necesitamos crear un objeto ICategory completo, solo enviar el nombre
-    // El interceptor HTTP agregará automáticamente el clientId
-    this.invoicesService
-      .createCategory({ name: this.category.name })
+    this.categoriaService
+      .create({ name: this.category.name })
       .subscribe(() => {
         this.notificationService.show(
           'Categoría creada exitosamente',
           'success'
         );
-        this.router.navigate(['/consolidated-invoices']);
+        this.router.navigate(['/categorias']);
       });
   }
 
@@ -89,17 +84,14 @@ export class AddCategoryComponent implements OnInit {
     if (!this.validateName()) {
       return;
     }
-    const updateData: Partial<ICategory> = {
-      name: this.category.name,
-    };
-    this.invoicesService
-      .updateCategory(this.categoryId!, updateData)
+    this.categoriaService
+      .update(this.categoryId!, { name: this.category.name })
       .subscribe(() => {
         this.notificationService.show(
           'Categoría actualizada exitosamente',
           'success'
         );
-        this.router.navigate(['/consolidated-invoices']);
+        this.router.navigate(['/categorias']);
       });
   }
 }

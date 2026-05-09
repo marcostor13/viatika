@@ -37,9 +37,9 @@ export class ButtonComponent {
     };
     
     const sizes = {
-      sm: 'px-4 py-2 text-sm rounded-lg',
-      md: 'px-6 py-3 text-base rounded-xl',
-      lg: 'px-8 py-4 text-lg rounded-xl',
+      sm: 'h-9 px-4 text-sm rounded-lg',
+      md: 'h-[42px] px-5 text-sm rounded-xl',
+      lg: 'h-12 px-6 text-base rounded-xl',
     };
     
     const width = this.fullWidth() ? 'w-full' : '';

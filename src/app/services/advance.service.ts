@@ -10,6 +10,7 @@ import {
   IApproveAdvancePayload,
   IRejectAdvancePayload,
   IPayAdvancePayload,
+  IReturnProof,
 } from '../interfaces/advance.interface';
 
 @Injectable({ providedIn: 'root' })
@@ -74,5 +75,46 @@ export class AdvanceService {
 
   registerReturn(id: string, returnedAmount: number): Observable<IAdvance> {
     return this.http.patch<IAdvance>(`${this.url}/${id}/return`, { returnedAmount });
+  }
+
+  /** Fase 3 — corrección y reenvío tras rechazo (solo el colaborador dueño). */
+  resubmit(id: string, payload: ICreateAdvancePayload): Observable<IAdvance> {
+    return this.http.patch<IAdvance>(`${this.url}/${id}/resubmit`, payload);
+  }
+
+  cancelAdvance(id: string): Observable<IAdvance> {
+    return this.http.patch<IAdvance>(`${this.url}/${id}/cancel`, {});
+  }
+
+  // ─── Fase 7 — devolución de saldo ──────────────────────────────────────────
+
+  initiateReturn(id: string): Observable<IAdvance> {
+    return this.http.patch<IAdvance>(`${this.url}/${id}/return/initiate`, {});
+  }
+
+  uploadReturnProof(id: string, proof: Omit<IReturnProof, 'uploadedAt'>): Observable<IAdvance> {
+    return this.http.patch<IAdvance>(`${this.url}/${id}/return/proof`, proof);
+  }
+
+  validateReturn(id: string, approved: boolean, rejectionReason?: string): Observable<IAdvance> {
+    return this.http.patch<IAdvance>(`${this.url}/${id}/return/validate`, { approved, rejectionReason });
+  }
+
+  findPendingReturns(clientId: string): Observable<IAdvance[]> {
+    return this.http.get<IAdvance[]>(`${this.url}/pending-returns/client/${clientId}`);
+  }
+
+  findForViaticosPage(filters: {
+    status?: string;
+    dateFrom?: string;
+    dateTo?: string;
+  } = {}): Observable<IAdvance[]> {
+    let params = '';
+    const parts: string[] = [];
+    if (filters.status) parts.push(`status=${encodeURIComponent(filters.status)}`);
+    if (filters.dateFrom) parts.push(`dateFrom=${encodeURIComponent(filters.dateFrom)}`);
+    if (filters.dateTo) parts.push(`dateTo=${encodeURIComponent(filters.dateTo)}`);
+    if (parts.length) params = '?' + parts.join('&');
+    return this.http.get<IAdvance[]>(`${this.url}/viaticos/list${params}`);
   }
 }

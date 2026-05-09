@@ -1,24 +1,37 @@
 import { Component, OnInit, inject, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormsModule, FormBuilder, FormGroup, Validators, FormArray } from '@angular/forms';
-import { ActivatedRoute, Router } from '@angular/router';
+import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { ExpenseReportsService } from '../../../services/expense-reports.service';
 import { AdvanceService } from '../../../services/advance.service';
 import { NotificationService } from '../../../services/notification.service';
 import { UserStateService } from '../../../services/user-state.service';
+import { ConfirmationService } from '../../../services/confirmation.service';
 import { InvoicesService } from '../../invoices/services/invoices.service';
+import { UploadService } from '../../../services/upload.service';
 import { IExpenseReport } from '../../../interfaces/expense-report.interface';
 import { IAdvance, ADVANCE_STATUS_LABELS, ADVANCE_STATUS_COLORS } from '../../../interfaces/advance.interface';
 import { ButtonComponent } from '../../../design-system/button/button.component';
 import {
+  CashVoucherExportData,
+  MobilitySheetExportData,
   RendicionExportService,
+  AffidavitExportData,
   RendicionExportData,
 } from '../../../services/rendicion-export.service';
+import { SolicitudViaticosModalComponent } from '../solicitud-viaticos-modal/solicitud-viaticos-modal.component';
 
 @Component({
   selector: 'app-rendicion-detail',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, FormsModule, ButtonComponent],
+  imports: [
+    CommonModule,
+    ReactiveFormsModule,
+    FormsModule,
+    ButtonComponent,
+    SolicitudViaticosModalComponent,
+    RouterModule,
+  ],
   templateUrl: './rendicion-detail.component.html',
   styleUrls: ['./rendicion-detail.component.scss']
 })
@@ -29,8 +42,10 @@ export class RendicionDetailComponent implements OnInit {
   private advanceService = inject(AdvanceService);
   private notificationService = inject(NotificationService);
   private userStateService = inject(UserStateService);
+  private confirmationService = inject(ConfirmationService);
   private invoicesService = inject(InvoicesService);
   private rendicionExportService = inject(RendicionExportService);
+  private uploadService = inject(UploadService);
   private fb = inject(FormBuilder);
 
   id: string = this.route.snapshot.params['id'];
@@ -38,8 +53,6 @@ export class RendicionDetailComponent implements OnInit {
   isLoading = true;
   advances: IAdvance[] = [];
   showAdvanceModal = false;
-  isRequestingAdvance = signal(false);
-  advanceForm!: FormGroup;
 
   readonly ADVANCE_STATUS_LABELS = ADVANCE_STATUS_LABELS;
   readonly ADVANCE_STATUS_COLORS = ADVANCE_STATUS_COLORS;
@@ -47,22 +60,28 @@ export class RendicionDetailComponent implements OnInit {
   totalGastado = 0;
 
   get saldoLibre(): number {
-    return (this.report?.budget ?? 0) + this.totalAnticipado - this.totalGastado;
+    return this.totalAnticipado - this.totalGastado;
   }
 
   ngOnInit(): void {
-    this.advanceForm = this.fb.group({
-      amount: [null, [Validators.required, Validators.min(1)]],
-      description: ['', Validators.required],
-    });
     if (this.id) {
       this.loadReport();
       this.loadAdvances();
     }
   }
 
+  get reportProjectId(): string | null {
+    const p = this.report?.projectId;
+    if (!p) return null;
+    return typeof p === 'object' && p !== null ? p._id ?? null : String(p);
+  }
+
   loadAdvances() {
-    this.advanceService.findMy().subscribe({
+    const request$ = this.isAdminView
+      ? this.advanceService.findAll()
+      : this.advanceService.findMy();
+
+    request$.subscribe({
       next: (advances) => {
         this.advances = advances.filter(a => {
           const rid = typeof a.expenseReportId === 'object' ? a.expenseReportId?._id : a.expenseReportId;
@@ -79,33 +98,21 @@ export class RendicionDetailComponent implements OnInit {
       .reduce((sum, a) => sum + a.amount, 0);
   }
 
+  get hasPaidAdvanceForReport(): boolean {
+    return this.advances.some(a => ['paid', 'settled'].includes(a.status));
+  }
+
   get settlement(): any {
     return (this.report as any)?.settlement;
   }
 
   openAdvanceModal() {
-    this.advanceForm.reset();
     this.showAdvanceModal = true;
   }
 
-  submitAdvance() {
-    if (this.advanceForm.invalid) return;
-    this.isRequestingAdvance.set(true);
-    this.advanceService.create({
-      ...this.advanceForm.value,
-      expenseReportId: this.id,
-    }).subscribe({
-      next: () => {
-        this.notificationService.show('Solicitud de anticipo enviada correctamente', 'success');
-        this.showAdvanceModal = false;
-        this.loadAdvances();
-        this.isRequestingAdvance.set(false);
-      },
-      error: (e) => {
-        this.notificationService.show(e.error?.message || 'Error al solicitar anticipo', 'error');
-        this.isRequestingAdvance.set(false);
-      },
-    });
+  onSolicitudViaticosClosed(success: boolean): void {
+    this.showAdvanceModal = false;
+    if (success) this.loadAdvances();
   }
 
   loadReport() {
@@ -133,7 +140,7 @@ export class RendicionDetailComponent implements OnInit {
     
     // For now, assume expenseIds returns full objects due to mongoose populate
     if (this.report.expenseIds && this.report.expenseIds.length > 0) {
-      this.totalGastado = this.report.expenseIds.reduce((sum, exp: any) => sum + (exp.total || 0), 0);
+      this.totalGastado = this.report.expenseIds.reduce((sum, exp: any) => sum + (parseFloat(exp.total) || 0), 0);
     }
     
   }
@@ -179,7 +186,7 @@ export class RendicionDetailComponent implements OnInit {
   /** Colaborador puede agregar gastos (rendición ya aprobada/abierta). */
   get canAddExpenses(): boolean {
     if (!this.report || this.isAdminView) return false;
-    return this.report.status === 'open';
+    return this.report.status === 'open' && this.hasPaidAdvanceForReport;
   }
 
   /** Colaborador puede re-enviar la solicitud inicial (fue rechazada antes de agregar gastos). */
@@ -197,6 +204,20 @@ export class RendicionDetailComponent implements OnInit {
   /** Colaborador puede agregar gastos y enviar (abierta o rechazada en fase de gastos). */
   get collaboratorCanEdit(): boolean {
     return this.canAddExpenses || this.canResubmitReport;
+  }
+
+  get canSubmitReport(): boolean {
+    if (!this.report || this.isAdminView) return false;
+    if (!(this.report.status === 'open' || this.report.status === 'rejected')) return false;
+    const expenses = this.report.expenseIds || [];
+    if (expenses.length === 0) return false;
+    const hasRejected = expenses.some((exp: any) => exp?.status === 'rejected');
+    if (hasRejected) return false;
+    const hasMissingFile = expenses.some((exp: any) => {
+      const file = exp?.file;
+      return typeof file !== 'string' || !file.trim();
+    });
+    return !hasMissingFile;
   }
 
   openAdminApproveModal(): void {
@@ -271,23 +292,25 @@ export class RendicionDetailComponent implements OnInit {
   resendSolicitud(): void {
     if (!this.editSolicitudForm || this.editSolicitudForm.invalid) return;
     this.isResendingSolicitud.set(true);
-    // Use getRawValue() because budget might be disabled
     const val = this.editSolicitudForm.getRawValue();
-    this.expenseReportsService.update(this.id, { 
-      ...val, 
-      status: 'solicited',
-      rejectionReason: '' // Clear rejection reason on resubmit
-    }).subscribe({
+    const isRejected = this.report?.status === 'rejected';
+    const payload = isRejected
+      ? { ...val, status: 'solicited' as const, rejectionReason: '' }
+      : { ...val };
+    this.expenseReportsService.update(this.id, payload).subscribe({
       next: (res) => {
         this.report = res;
         this.calculateTotals();
         this.showEditSolicitudForm.set(false);
         this.isResendingSolicitud.set(false);
-        this.notificationService.show('Solicitud reenviada correctamente', 'success');
+        this.notificationService.show(
+          isRejected ? 'Solicitud reenviada correctamente' : 'Solicitud actualizada correctamente',
+          'success'
+        );
       },
       error: () => {
         this.isResendingSolicitud.set(false);
-        this.notificationService.show('Error al reenviar la solicitud', 'error');
+        this.notificationService.show('Error al guardar los cambios', 'error');
       },
     });
   }
@@ -330,6 +353,10 @@ export class RendicionDetailComponent implements OnInit {
   deletingExpenseId = signal<string | null>(null);
   isExportingExcel = signal(false);
   isExportingPdf = signal(false);
+  showAffidavitModal = signal(false);
+  isGeneratingAffidavit = signal(false);
+  affidavitType = signal<'viaticos_nacionales' | 'viajes_exterior'>('viaticos_nacionales');
+  affidavitSelectedExpenseIds = signal<string[]>([]);
 
   // --- Aprobación documento por documento ---
   approvingExpenseId = signal<string | null>(null);
@@ -360,6 +387,13 @@ export class RendicionDetailComponent implements OnInit {
   /** Cantidad total de documentos. */
   get totalDocCount(): number {
     return this.report?.expenseIds?.length ?? 0;
+  }
+
+  confirmApproveExpense(expenseId: string): void {
+    this.confirmationService.show(
+      '¿Aprobar este comprobante? Esta acción no se puede deshacer.',
+      () => this.approveExpense(expenseId)
+    );
   }
 
   approveExpense(expenseId: string): void {
@@ -415,6 +449,13 @@ export class RendicionDetailComponent implements OnInit {
   }
 
   openSubmitModal() {
+    if (!this.canSubmitReport) {
+      this.notificationService.show(
+        'Para enviar la rendición debes tener gastos adjuntos y sin comprobantes rechazados.',
+        'warning'
+      );
+      return;
+    }
     this.showSubmitModal = true;
   }
 
@@ -462,6 +503,8 @@ export class RendicionDetailComponent implements OnInit {
     const type = expense?.expenseType;
     if (type === 'planilla_movilidad') return 'Planilla Movilidad';
     if (type === 'otros_gastos') return 'Otros Gastos';
+    if (type === 'recibo_caja') return 'Recibo de Caja';
+    if (type === 'comprobante_caja') return 'Comprobante de Caja';
     return 'Factura';
   }
 
@@ -497,6 +540,9 @@ export class RendicionDetailComponent implements OnInit {
     }
     if (type === 'otros_gastos') {
       return expense?.description || 'DJ firmada';
+    }
+    if (type === 'comprobante_caja') {
+      return expense?.description || 'Comprobante interno';
     }
     try {
       const data = typeof expense?.data === 'string' ? JSON.parse(expense.data) : expense?.data || {};
@@ -573,8 +619,11 @@ export class RendicionDetailComponent implements OnInit {
     return String(v);
   }
 
-  getExpenseStatusForUi(status: unknown): string {
-    return this.mapExpenseStatusExport(typeof status === 'string' ? status : undefined);
+  getExpenseStatusForUi(expense: Record<string, unknown>): string {
+    if (expense['observado'] === true) return 'Observado';
+    return this.mapExpenseStatusExport(
+      typeof expense['status'] === 'string' ? expense['status'] : undefined
+    );
   }
 
   getPopulatedName(field: unknown): string {
@@ -584,10 +633,13 @@ export class RendicionDetailComponent implements OnInit {
     return '—';
   }
 
-  getExpenseTypeKey(exp: Record<string, unknown>): 'factura' | 'planilla_movilidad' | 'otros_gastos' {
+  getExpenseTypeKey(
+    exp: Record<string, unknown>
+  ): 'factura' | 'planilla_movilidad' | 'otros_gastos' | 'comprobante_caja' {
     const t = exp['expenseType'];
     if (t === 'planilla_movilidad') return 'planilla_movilidad';
     if (t === 'otros_gastos') return 'otros_gastos';
+    if (t === 'comprobante_caja') return 'comprobante_caja';
     return 'factura';
   }
 
@@ -601,6 +653,29 @@ export class RendicionDetailComponent implements OnInit {
     const s = d['sunatValidation'];
     if (s && typeof s === 'object') return s as Record<string, unknown>;
     return null;
+  }
+
+  reviewHistory(exp: Record<string, unknown>): Record<string, unknown>[] {
+    const raw = exp['reviewHistory'];
+    if (!Array.isArray(raw)) return [];
+    return raw.filter(item => item && typeof item === 'object') as Record<string, unknown>[];
+  }
+
+  reviewActionLabel(action: unknown): string {
+    return action === 'rejected' ? 'Rechazado' : 'Aprobado';
+  }
+
+  reviewDateText(value: unknown): string {
+    if (typeof value !== 'string' || !value.trim()) return '—';
+    const d = new Date(value);
+    if (Number.isNaN(d.getTime())) return value;
+    return d.toLocaleString('es-PE', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
   }
 
   trackMobilityRow(index: number, row: Record<string, unknown>): string {
@@ -652,7 +727,9 @@ export class RendicionDetailComponent implements OnInit {
       submitted: 'Enviada',
       approved: 'Aprobada',
       rejected: 'Rechazada',
+      reimbursed: 'Reembolsado',
       closed: 'Cerrada',
+      cancelled: 'Cancelada',
     };
     return labels[this.report.status] ?? this.report.status;
   }
@@ -701,6 +778,16 @@ export class RendicionDetailComponent implements OnInit {
       return (p as { name?: string }).name || '—';
     }
     return '—';
+  }
+
+  get reportDateRange(): string {
+    const fmt = (d: string) =>
+      new Date(d).toLocaleDateString('es-PE', { day: 'numeric', month: 'long', year: 'numeric' });
+    const r = this.report;
+    if (!r) return '';
+    if (r.startDate && r.endDate) return `${fmt(r.startDate)} al ${fmt(r.endDate)}`;
+    if (r.startDate) return fmt(r.startDate);
+    return '';
   }
 
   private mapExpenseStatusExport(status?: string): string {
@@ -848,6 +935,501 @@ export class RendicionDetailComponent implements OnInit {
     } finally {
       this.isExportingPdf.set(false);
     }
+  }
+
+  affidavitCandidates(): Array<Record<string, unknown> & { _id: string }> {
+    const expenses = (this.report?.expenseIds || []) as Array<Record<string, unknown>>;
+    return expenses
+      .filter(e => this.getExpenseTypeKey(e) === 'otros_gastos')
+      .filter(e => typeof e['_id'] === 'string' && !!String(e['_id']).trim())
+      .map(e => e as Record<string, unknown> & { _id: string });
+  }
+
+  canGenerateAffidavit(): boolean {
+    return this.isAdminView && this.report?.status === 'closed';
+  }
+
+  openAffidavitModal(): void {
+    if (!this.canGenerateAffidavit()) {
+      this.notificationService.show(
+        'La declaracion jurada solo se habilita cuando la rendicion esta cerrada.',
+        'warning'
+      );
+      return;
+    }
+    const preselected = this.affidavitCandidates().map(e => e._id);
+    this.affidavitSelectedExpenseIds.set(preselected);
+    this.affidavitType.set('viaticos_nacionales');
+    this.showAffidavitModal.set(true);
+  }
+
+  closeAffidavitModal(): void {
+    if (this.isGeneratingAffidavit()) return;
+    this.showAffidavitModal.set(false);
+  }
+
+  toggleAffidavitExpense(expenseId: string): void {
+    const current = this.affidavitSelectedExpenseIds();
+    if (current.includes(expenseId)) {
+      this.affidavitSelectedExpenseIds.set(current.filter(id => id !== expenseId));
+    } else {
+      this.affidavitSelectedExpenseIds.set([...current, expenseId]);
+    }
+  }
+
+  isAffidavitExpenseSelected(expenseId: string): boolean {
+    return this.affidavitSelectedExpenseIds().includes(expenseId);
+  }
+
+  private buildAffidavitExportData(
+    selectedExpenses: Array<Record<string, unknown> & { _id: string }>
+  ): AffidavitExportData {
+    const rows = selectedExpenses.map(exp => ({
+      fecha: this.getExpenseDate(exp),
+      documento: `${this.dataText(exp, 'serie')} - ${this.dataText(exp, 'correlativo')}`,
+      concepto: this.getExpenseDescription(exp),
+      categoria: this.getPopulatedName(exp['categoryId']),
+      monto: this.getExpenseTotal(exp),
+    }));
+    const total = rows.reduce((sum, r) => sum + (r.monto || 0), 0);
+    return {
+      fileBaseName: `declaracion_jurada_${this.id}_${new Date().getTime()}`,
+      tipo: this.affidavitType(),
+      empresaNombre: 'TEMA LITOCLEAN SAC',
+      empresaRuc: '—',
+      colaborador: this.getCollaboratorDisplayName(),
+      documentoColaborador: this.report?.idDocument,
+      fechaGeneracion: new Date().toLocaleString('es-PE', {
+        dateStyle: 'short',
+        timeStyle: 'short',
+      }),
+      total,
+      rows,
+      signature: this.getCollaboratorSignature(),
+    };
+  }
+
+  generateAffidavit(): void {
+    const selectedIds = this.affidavitSelectedExpenseIds();
+    if (selectedIds.length === 0) {
+      this.notificationService.show(
+        'Selecciona al menos un comprobante para generar la declaracion jurada.',
+        'warning'
+      );
+      return;
+    }
+
+    const selectedExpenses = this.affidavitCandidates().filter(e =>
+      selectedIds.includes(e._id)
+    );
+    if (selectedExpenses.length === 0) {
+      this.notificationService.show('No se encontraron comprobantes seleccionados.', 'error');
+      return;
+    }
+
+    this.isGeneratingAffidavit.set(true);
+    this.expenseReportsService
+      .createAffidavit(this.id, {
+        type: this.affidavitType(),
+        expenseIds: selectedIds,
+      })
+      .subscribe({
+        next: () => {
+          const data = this.buildAffidavitExportData(selectedExpenses);
+          this.rendicionExportService.exportAffidavitToPdf(data);
+          this.isGeneratingAffidavit.set(false);
+          this.showAffidavitModal.set(false);
+          this.notificationService.show(
+            'Declaracion jurada generada y registrada correctamente.',
+            'success'
+          );
+        },
+        error: (err) => {
+          this.isGeneratingAffidavit.set(false);
+          const raw = err?.error?.message;
+          const msg = Array.isArray(raw) ? raw.join(', ') : raw;
+          this.notificationService.show(
+            msg || 'No se pudo generar la declaracion jurada.',
+            'error'
+          );
+        },
+      });
+  }
+
+  // ─── Fase 7 — Devolución de saldo ─────────────────────────────────────────
+
+  showReturnProofModal = signal(false);
+  returnProofAdvanceId = signal<string | null>(null);
+  isUploadingReturnProof = signal(false);
+  isSubmittingReturnProof = signal(false);
+  returnProofUrl = signal<string | null>(null);
+  returnProofFileName = signal<string | null>(null);
+  returnProofDepositDate = signal(new Date().toISOString().split('T')[0]);
+  returnProofAmount = signal<number | null>(null);
+  returnProofBank = signal('');
+  returnProofOperation = signal('');
+  returnProofNote = signal('');
+
+  get advancesWithPendingReturn(): typeof this.advances {
+    return this.advances.filter(
+      a => a.returnRecord && ['pending', 'rejected'].includes(a.returnRecord.status)
+    );
+  }
+
+  returnRecordStatusLabel(status: string): string {
+    const map: Record<string, string> = {
+      pending: 'Pendiente',
+      proof_uploaded: 'Comprobante enviado',
+      validated: 'Validado',
+      rejected: 'Rechazado',
+    };
+    return map[status] ?? status;
+  }
+
+  returnRecordStatusColor(status: string): string {
+    const map: Record<string, string> = {
+      pending: 'bg-yellow-100 text-yellow-700',
+      proof_uploaded: 'bg-blue-100 text-blue-700',
+      validated: 'bg-green-100 text-green-700',
+      rejected: 'bg-red-100 text-red-700',
+    };
+    return map[status] ?? 'bg-gray-100 text-gray-600';
+  }
+
+  openReturnProofModal(advanceId: string, amountDue: number): void {
+    this.returnProofAdvanceId.set(advanceId);
+    this.returnProofAmount.set(amountDue);
+    this.returnProofUrl.set(null);
+    this.returnProofFileName.set(null);
+    this.returnProofDepositDate.set(new Date().toISOString().split('T')[0]);
+    this.returnProofBank.set('');
+    this.returnProofOperation.set('');
+    this.returnProofNote.set('');
+    this.showReturnProofModal.set(true);
+  }
+
+  onReturnProofFileSelected(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    if (!file) return;
+    const allowed = ['application/pdf', 'image/jpeg', 'image/png'];
+    if (!allowed.includes(file.type)) {
+      this.notificationService.show('Formato invalido. Usa PDF, JPG o PNG.', 'error');
+      input.value = '';
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      this.notificationService.show('El archivo no puede superar 10MB.', 'error');
+      input.value = '';
+      return;
+    }
+    this.isUploadingReturnProof.set(true);
+    this.uploadService.upload(file).subscribe({
+      next: (res) => {
+        this.returnProofUrl.set(res.url);
+        this.returnProofFileName.set(file.name);
+        this.notificationService.show('Comprobante subido', 'success');
+        this.isUploadingReturnProof.set(false);
+      },
+      error: () => {
+        this.notificationService.show('No se pudo subir el comprobante', 'error');
+        this.isUploadingReturnProof.set(false);
+      },
+    });
+  }
+
+  submitReturnProof(): void {
+    const id = this.returnProofAdvanceId();
+    const fileUrl = this.returnProofUrl();
+    const amountReturned = this.returnProofAmount();
+    if (!id || !fileUrl || !amountReturned || !this.returnProofBank() || !this.returnProofOperation()) {
+      this.notificationService.show('Completa todos los campos obligatorios', 'warning');
+      return;
+    }
+    this.isSubmittingReturnProof.set(true);
+    this.advanceService.uploadReturnProof(id, {
+      depositDate: this.returnProofDepositDate() as any,
+      amountReturned,
+      bankOrigin: this.returnProofBank(),
+      operationNumber: this.returnProofOperation(),
+      fileUrl,
+      note: this.returnProofNote() || undefined,
+    }).subscribe({
+      next: () => {
+        this.notificationService.show('Comprobante enviado correctamente', 'success');
+        this.showReturnProofModal.set(false);
+        this.isSubmittingReturnProof.set(false);
+        this.loadAdvances();
+      },
+      error: (err) => {
+        this.isSubmittingReturnProof.set(false);
+        const raw = err?.error?.message;
+        const msg = Array.isArray(raw) ? raw.join(', ') : raw;
+        this.notificationService.show(msg || 'Error al enviar comprobante', 'error');
+      },
+    });
+  }
+
+  // ─── Fase 8 — Cierre Definitivo ────────────────────────────────────────────
+
+  showCloseModal = signal(false);
+  isClosing = signal(false);
+  closureErrors = signal<string[]>([]);
+  isValidatingClosure = signal(false);
+
+  showReopenRequestModal = signal(false);
+  reopenReason = signal('');
+  isRequestingReopen = signal(false);
+
+  showReopenApproveModal = signal(false);
+  isApprovingReopen = signal(false);
+
+  get closureRecord(): any {
+    return (this.report as any)?.closureRecord;
+  }
+
+  get isClosed(): boolean {
+    return this.report?.status === 'closed';
+  }
+
+  get canClose(): boolean {
+    if (!this.isAdminView) return false;
+    return this.report?.status === 'approved' || this.report?.status === 'reimbursed';
+  }
+
+  get canRequestReopen(): boolean {
+    return this.isAdminView && this.isClosed &&
+      this.closureRecord?.reopeningStatus === 'none';
+  }
+
+  get canApproveReopen(): boolean {
+    return this.isAdminView && this.isClosed &&
+      this.closureRecord?.reopeningStatus === 'requested';
+  }
+
+  openCloseModal(): void {
+    this.closureErrors.set([]);
+    this.isValidatingClosure.set(true);
+    this.expenseReportsService.validateClosure(this.id).subscribe({
+      next: (errors) => {
+        this.closureErrors.set(errors);
+        this.isValidatingClosure.set(false);
+        this.showCloseModal.set(true);
+      },
+      error: () => {
+        this.isValidatingClosure.set(false);
+        this.notificationService.show('Error al validar condiciones de cierre', 'error');
+      },
+    });
+  }
+
+  closeCloseModal(): void {
+    if (this.isClosing()) return;
+    this.showCloseModal.set(false);
+  }
+
+  confirmClose(): void {
+    if (this.closureErrors().length > 0) return;
+    this.isClosing.set(true);
+    this.expenseReportsService.close(this.id).subscribe({
+      next: (res) => {
+        this.report = res;
+        this.isClosing.set(false);
+        this.showCloseModal.set(false);
+        this.notificationService.show('Rendicion cerrada definitivamente', 'success');
+      },
+      error: (err) => {
+        this.isClosing.set(false);
+        const raw = err?.error?.message;
+        const msg = Array.isArray(raw) ? raw.join(', ') : raw;
+        this.notificationService.show(msg || 'Error al cerrar la rendicion', 'error');
+      },
+    });
+  }
+
+  openReopenRequestModal(): void {
+    this.reopenReason.set('');
+    this.showReopenRequestModal.set(true);
+  }
+
+  submitReopenRequest(): void {
+    const reason = this.reopenReason().trim();
+    if (reason.length < 200) {
+      this.notificationService.show('El motivo debe tener al menos 200 caracteres', 'warning');
+      return;
+    }
+    this.isRequestingReopen.set(true);
+    this.expenseReportsService.requestReopening(this.id, reason).subscribe({
+      next: (res) => {
+        this.report = res;
+        this.isRequestingReopen.set(false);
+        this.showReopenRequestModal.set(false);
+        this.notificationService.show('Solicitud de reapertura enviada', 'success');
+      },
+      error: (err) => {
+        this.isRequestingReopen.set(false);
+        const raw = err?.error?.message;
+        const msg = Array.isArray(raw) ? raw.join(', ') : raw;
+        this.notificationService.show(msg || 'Error al solicitar reapertura', 'error');
+      },
+    });
+  }
+
+  confirmReopenApproval(approve: boolean): void {
+    this.isApprovingReopen.set(true);
+    this.expenseReportsService.approveReopening(this.id, approve).subscribe({
+      next: (res) => {
+        this.report = res;
+        this.isApprovingReopen.set(false);
+        this.showReopenApproveModal.set(false);
+        this.notificationService.show(
+          approve ? 'Reapertura aprobada' : 'Solicitud de reapertura rechazada',
+          'success'
+        );
+      },
+      error: (err) => {
+        this.isApprovingReopen.set(false);
+        const raw = err?.error?.message;
+        const msg = Array.isArray(raw) ? raw.join(', ') : raw;
+        this.notificationService.show(msg || 'Error al procesar reapertura', 'error');
+      },
+    });
+  }
+
+  // ─── Editar / Cancelar / Eliminar solicitud de viáticos pendiente ────────────
+
+  editingAdvance = signal<IAdvance | null>(null);
+  showEditAdvanceModal = signal(false);
+  showCancelAdvanceModal = signal(false);
+  cancellingAdvanceId = signal<string | null>(null);
+  isCancellingAdvance = signal(false);
+
+  openEditAdvanceModal(adv: IAdvance): void {
+    this.editingAdvance.set(adv);
+    this.showEditAdvanceModal.set(true);
+  }
+
+  onEditAdvanceClosed(success: boolean): void {
+    this.editingAdvance.set(null);
+    this.showEditAdvanceModal.set(false);
+    if (success) this.loadAdvances();
+  }
+
+  openCancelAdvanceModal(adv: IAdvance): void {
+    this.cancellingAdvanceId.set(adv._id);
+    this.showCancelAdvanceModal.set(true);
+  }
+
+  confirmCancelAdvance(): void {
+    const id = this.cancellingAdvanceId();
+    if (!id) return;
+    this.isCancellingAdvance.set(true);
+    this.advanceService.cancelAdvance(id).subscribe({
+      next: () => {
+        this.isCancellingAdvance.set(false);
+        this.showCancelAdvanceModal.set(false);
+        this.cancellingAdvanceId.set(null);
+        this.notificationService.show('Solicitud de viaticos cancelada', 'success');
+        this.loadAdvances();
+      },
+      error: (err) => {
+        this.isCancellingAdvance.set(false);
+        const raw = err?.error?.message;
+        const msg = Array.isArray(raw) ? raw.join(', ') : raw;
+        this.notificationService.show(msg || 'Error al cancelar la solicitud', 'error');
+      },
+    });
+  }
+
+  // ─── Cancelar / Eliminar rendición solicitada ────────────────────────────────
+
+  /** Colaborador puede cancelar o eliminar solo cuando la rendición está pendiente de aprobación. */
+  get canCancelOrDelete(): boolean {
+    return !this.isAdminView && this.report?.status === 'solicited';
+  }
+
+  showCancelModal = signal(false);
+  cancelReason = signal('');
+  isCancelling = signal(false);
+
+  openCancelModal(): void {
+    this.cancelReason.set('');
+    this.showCancelModal.set(true);
+  }
+
+  confirmCancelReport(): void {
+    this.isCancelling.set(true);
+    this.expenseReportsService
+      .cancelRendicion(this.id, this.cancelReason().trim() || undefined)
+      .subscribe({
+        next: (res) => {
+          this.report = res;
+          this.isCancelling.set(false);
+          this.showCancelModal.set(false);
+          this.notificationService.show('Rendicion cancelada correctamente', 'success');
+        },
+        error: (err) => {
+          this.isCancelling.set(false);
+          const raw = err?.error?.message;
+          const msg = Array.isArray(raw) ? raw.join(', ') : raw;
+          this.notificationService.show(msg || 'Error al cancelar la rendicion', 'error');
+        },
+      });
+  }
+
+  exportMobilitySheet(expense: Record<string, unknown>): void {
+    if (this.getExpenseTypeKey(expense) !== 'planilla_movilidad') return;
+    const rows = this.mobilityRows(expense).map(r => ({
+      fecha: String(r['fecha'] || ''),
+      clienteProveedor: String(r['clienteProveedor'] || ''),
+      origen: String(r['origen'] || ''),
+      destino: String(r['destino'] || ''),
+      gestion: String(r['gestion'] || ''),
+      total: this.mobilityRowTotal(r),
+    }));
+    const total = rows.reduce((sum, r) => sum + (r.total || 0), 0);
+    const data: MobilitySheetExportData = {
+      fileBaseName: `planilla_movilidad_${String(expense['_id'] || 'sin_id')}`,
+      collaborator: this.getCollaboratorDisplayName(),
+      collaboratorDni: this.report?.idDocument,
+      internalCode:
+        typeof expense['internalCode'] === 'string' ? expense['internalCode'] : undefined,
+      location: this.report?.location,
+      generatedAt: new Date().toLocaleString('es-PE', {
+        dateStyle: 'short',
+        timeStyle: 'short',
+      }),
+      rows,
+      total,
+      signature: this.getCollaboratorSignature(),
+    };
+    this.rendicionExportService.exportMobilitySheetToPdf(data);
+    this.notificationService.show('Planilla de movilidad descargada en PDF', 'success');
+  }
+
+  exportCashVoucher(expense: Record<string, unknown>): void {
+    if (this.getExpenseTypeKey(expense) !== 'comprobante_caja') return;
+    const rawData = this.getExpenseDataObject(expense);
+    const payload = rawData['payload'];
+    const payloadObj =
+      payload && typeof payload === 'object'
+        ? (payload as Record<string, unknown>)
+        : {};
+    const data: CashVoucherExportData = {
+      fileBaseName: `comprobante_caja_${String(expense['_id'] || 'sin_id')}`,
+      collaborator: this.getCollaboratorDisplayName(),
+      collaboratorDni: this.report?.idDocument,
+      internalCode:
+        typeof expense['internalCode'] === 'string' ? expense['internalCode'] : undefined,
+      entregadoA: String(payloadObj['entregadoA'] || '—'),
+      direccion: String(payloadObj['direccion'] || ''),
+      concepto: String(payloadObj['concepto'] || this.getExpenseDescription(expense)),
+      monto: this.getExpenseTotal(expense),
+      generatedAt: new Date().toLocaleDateString('es-PE'),
+      signature: this.getCollaboratorSignature(),
+    };
+    this.rendicionExportService.exportCashVoucherToPdf(data);
+    this.notificationService.show('Comprobante de caja descargado en PDF', 'success');
   }
 
   confirmDeleteExpense(expense: Record<string, unknown> & { _id?: string }): void {

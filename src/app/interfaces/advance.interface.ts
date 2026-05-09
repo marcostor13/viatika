@@ -6,12 +6,13 @@ export type AdvanceStatus =
   | 'paid'
   | 'settled'
   | 'rejected'
-  | 'returned';
+  | 'returned'
+  | 'cancelled';
 
 export interface IApprovalEntry {
   level: number;
   approvedBy: string;
-  action: 'approved' | 'rejected';
+  action: 'approved' | 'rejected' | 'resubmitted';
   notes?: string;
   date: string;
 }
@@ -23,6 +24,10 @@ export interface IPaymentInfo {
   cci?: string;
   transferDate: string;
   reference?: string;
+  paymentReceiptUrl: string;
+  paymentReceiptFileName?: string;
+  paymentReceiptMimeType?: string;
+  paymentReceiptSizeBytes?: number;
 }
 
 export interface IAdvanceSettlement {
@@ -33,11 +38,69 @@ export interface IAdvanceSettlement {
   settledAt: string;
 }
 
+export interface IAdvanceLine {
+  categoryId: { _id: string; name: string; key?: string } | string;
+  importe: number;
+  peopleCount: number;
+  glpPerDay: number;
+  days: number;
+  lineTotal: number;
+}
+
+export interface ICoordinatorNotification {
+  recipientUserId?: string;
+  sentAt?: string;
+  status: 'sent' | 'failed' | 'skipped';
+  errorMessage?: string;
+}
+
+export type ReturnRecordStatus = 'pending' | 'proof_uploaded' | 'validated' | 'rejected';
+
+export interface IReturnProof {
+  depositDate: string;
+  amountReturned: number;
+  bankOrigin: string;
+  operationNumber: string;
+  fileUrl: string;
+  fileKey?: string;
+  uploadedAt: string;
+  note?: string;
+}
+
+export interface IReturnValidation {
+  validatedBy: string;
+  validatedAt: string;
+  approved: boolean;
+  rejectionReason?: string;
+}
+
+export interface IReturnRecord {
+  status: ReturnRecordStatus;
+  amountDue: number;
+  dueDate: string;
+  proof?: IReturnProof;
+  validation?: IReturnValidation;
+  isOverdue: boolean;
+  remindersSent: number;
+  escalatedAt?: string;
+}
+
 export interface IAdvance {
   _id: string;
   userId: { _id: string; name: string; email: string; bankAccount?: IBankAccount } | string;
   clientId: string;
+  coordinatorId?: string;
   expenseReportId?: { _id: string; title: string; status: string } | string;
+  /** Fase 2 — centro de costo */
+  projectId?:
+    | { _id: string; code?: string; name: string; isActive?: boolean }
+    | string;
+  place?: string;
+  startDate?: string;
+  endDate?: string;
+  lines?: IAdvanceLine[];
+  observations?: string;
+  coordinatorNotification?: ICoordinatorNotification;
   amount: number;
   description: string;
   status: AdvanceStatus;
@@ -49,6 +112,10 @@ export interface IAdvance {
   rejectedBy?: string;
   rejectionReason?: string;
   returnedAmount?: number;
+  returnRecord?: IReturnRecord;
+  /** Reenvíos tras rechazo (Fase 3). */
+  solicitudVersion?: number;
+  budgetCommitmentRecorded?: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -69,10 +136,26 @@ export interface IAdvanceStats {
   totalApprovedAmount: number;
 }
 
+export interface IAdvanceLinePayload {
+  categoryId: string;
+  importe: number;
+  peopleCount: number;
+  glpPerDay: number;
+  days: number;
+  lineTotal: number;
+}
+
+/** Legacy: solo amount + description. Fase 2: lugar, fechas, proyecto, líneas y total coherente. */
 export interface ICreateAdvancePayload {
   amount: number;
   description: string;
   expenseReportId?: string;
+  place?: string;
+  startDate?: string;
+  endDate?: string;
+  projectId?: string;
+  lines?: IAdvanceLinePayload[];
+  observations?: string;
 }
 
 export interface IApproveAdvancePayload {
@@ -90,6 +173,10 @@ export interface IPayAdvancePayload {
   cci?: string;
   transferDate: string;
   reference?: string;
+  paymentReceiptUrl: string;
+  paymentReceiptFileName?: string;
+  paymentReceiptMimeType?: string;
+  paymentReceiptSizeBytes?: number;
 }
 
 export const ADVANCE_STATUS_LABELS: Record<AdvanceStatus, string> = {
@@ -101,6 +188,7 @@ export const ADVANCE_STATUS_LABELS: Record<AdvanceStatus, string> = {
   settled: 'Liquidado',
   rejected: 'Rechazado',
   returned: 'Devuelto',
+  cancelled: 'Cancelado',
 };
 
 export const ADVANCE_STATUS_COLORS: Record<AdvanceStatus, string> = {
@@ -112,4 +200,5 @@ export const ADVANCE_STATUS_COLORS: Record<AdvanceStatus, string> = {
   settled: 'bg-emerald-100 text-emerald-700',
   rejected: 'bg-red-100 text-red-700',
   returned: 'bg-purple-100 text-purple-700',
+  cancelled: 'bg-orange-100 text-orange-700',
 };

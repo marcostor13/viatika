@@ -37,6 +37,16 @@ export class SidebarComponent implements OnInit, OnDestroy {
 
   companyConfig: ICompanyConfig | null = null;
   currentPath = '';
+  configOpen = false;
+
+  isConfigSection(): boolean {
+    return ['/configuracion', '/mi-firma', '/categorias', '/centros-de-costo', '/audit-log']
+      .some(p => this.currentPath.startsWith(p));
+  }
+
+  toggleConfig(): void {
+    this.configOpen = !this.configOpen;
+  }
 
   constructor() {
     this.detectPath();
@@ -45,6 +55,7 @@ export class SidebarComponent implements OnInit, OnDestroy {
 
   ngOnInit() {
     this.loadCompanyConfig();
+    this.companyConfigService.refreshConfig();
   }
 
   ngOnDestroy() {
@@ -112,8 +123,25 @@ export class SidebarComponent implements OnInit, OnDestroy {
     return this.userStateService.isColaborador();
   }
 
+  isContabilidad(): boolean {
+    return this.userStateService.isContabilidad();
+  }
+
+  isCoordinador(): boolean {
+    return this.userStateService.isCoordinador();
+  }
+
   canAccessTesoreria(): boolean {
     return this.userStateService.canAccessTesoreria();
+  }
+
+  canAccessViaticos(): boolean {
+    return (
+      this.userStateService.isAdmin() ||
+      this.userStateService.isSuperAdmin() ||
+      this.userStateService.isCoordinador() ||
+      this.userStateService.canApproveL1()
+    );
   }
 
   hasModulePermission(module: string): boolean {

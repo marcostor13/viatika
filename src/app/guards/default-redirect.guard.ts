@@ -18,6 +18,14 @@ export const defaultRedirectGuard: CanActivateFn = () => {
     return router.createUrlTree(['/clients-admin']);
   }
 
+  if (userState.isContabilidad()) {
+    return router.createUrlTree(['/tesoreria']);
+  }
+
+  if (userState.isCoordinador()) {
+    return router.createUrlTree(['/viaticos']);
+  }
+
   // Administrador
   return router.createUrlTree(['/consolidated-invoices']);
 };

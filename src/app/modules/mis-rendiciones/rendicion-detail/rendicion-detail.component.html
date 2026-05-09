@@ -1,220 +1,338 @@
-<div class="px-4 sm:px-5 py-4 sm:py-6 max-w-7xl mx-auto pb-8">
-  <!-- Header: columna en mobile, fila en desktop -->
-  <div class="flex flex-col gap-4 md:flex-row md:items-start md:justify-between md:gap-6 mb-6 md:mb-8">
-    <div class="flex items-start gap-3 min-w-0">
+<div class="px-4 sm:px-5 py-4 sm:py-6 max-w-7xl mx-auto" [ngClass]="collaboratorCanEdit ? 'pb-24 sm:pb-8' : 'pb-8'">
+  <!-- ── PAGE HEADER ──────────────────────────────────────────────── -->
+  <div class="mb-5 sm:mb-7">
+
+    <!-- Fila 1: botón volver + título + badge -->
+    <div class="flex items-start gap-3">
       <button
         type="button"
         (click)="goBack()"
-        class="shrink-0 mt-0.5 p-1.5 -ml-1.5 rounded-lg text-gray-500 hover:text-gray-900 hover:bg-gray-100 active:scale-95 transition-all"
+        class="shrink-0 mt-1 p-1.5 -ml-1.5 rounded-lg text-gray-500 hover:text-gray-900 hover:bg-gray-100 active:scale-95 transition-all"
         aria-label="Volver"
       >
-        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
           <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5 3 12m0 0 7.5-7.5M3 12h18" />
         </svg>
       </button>
       <div class="min-w-0 flex-1">
-        <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:flex-wrap sm:gap-3 mb-0.5">
-          <h1 class="text-xl sm:text-2xl font-bold text-gray-900 break-words leading-tight">
-            {{ report?.title || 'Detalle de Rendición' }}
-          </h1>
-          @if (report) {
-          <span class="px-2.5 py-1 rounded-full text-xs font-semibold w-fit shrink-0" [ngClass]="{
-            'bg-purple-100 text-purple-700': report.status === 'solicited',
-            'bg-blue-100 text-blue-700': report.status === 'open',
-            'bg-yellow-100 text-yellow-700': report.status === 'submitted',
-            'bg-green-100 text-green-700': report.status === 'approved',
-            'bg-red-100 text-red-700': report.status === 'rejected',
-            'bg-gray-100 text-gray-700': report.status === 'closed'
-          }">
-            {{ report.status === 'solicited' ? 'Solicitada' : report.status === 'open' ? 'Abierta' : report.status === 'submitted' ? 'Enviada' : report.status === 'approved' ? 'Aprobada' : report.status === 'rejected' ? 'Rechazada' : 'Cerrada' }}
-          </span>
-          @if (report.approvedBy) {
-            <p class="text-xs text-gray-500 mt-1">
-              Aprobado por: <span class="font-medium text-gray-700">{{ getApprovedByName() }}</span>
-            </p>
+        <h1 class="text-xl sm:text-2xl font-bold text-gray-900 leading-tight">
+          {{ report?.description || 'Rendición de viáticos' }}
+        </h1>
+        @if (report) {
+          <div class="flex flex-wrap items-center gap-x-3 gap-y-1 mt-2">
+            <span class="px-2.5 py-1 rounded-full text-xs font-semibold shrink-0" [ngClass]="{
+              'bg-purple-100 text-purple-700': report.status === 'solicited',
+              'bg-blue-100 text-blue-700': report.status === 'open',
+              'bg-yellow-100 text-yellow-700': report.status === 'submitted',
+              'bg-green-100 text-green-700': report.status === 'approved',
+              'bg-emerald-100 text-emerald-800': report.status === 'reimbursed',
+              'bg-red-100 text-red-700': report.status === 'rejected',
+              'bg-gray-100 text-gray-700': report.status === 'closed',
+              'bg-orange-100 text-orange-700': report.status === 'cancelled'
+            }">{{ getReportStatusLabel() }}</span>
+            @if (report.approvedBy) {
+              <p class="text-xs text-gray-500">
+                Aprobado por: <span class="font-medium text-gray-700">{{ getApprovedByName() }}</span>
+              </p>
+            }
+          </div>
+          @if (report.location || report.startDate) {
+          <dl class="mt-3 flex flex-col gap-1.5 sm:flex-row sm:flex-wrap sm:gap-x-5 text-sm">
+            @if (report.location) {
+            <div class="flex items-start gap-1.5">
+              <dt class="text-xs font-semibold text-gray-400 uppercase tracking-wide shrink-0 mt-0.5">Destino</dt>
+              <dd class="text-gray-700">{{ report.location }}</dd>
+            </div>
+            }
+            @if (reportDateRange) {
+            <div class="flex items-start gap-1.5">
+              <dt class="text-xs font-semibold text-gray-400 uppercase tracking-wide shrink-0 mt-0.5">Fechas</dt>
+              <dd class="text-gray-700">{{ reportDateRange }}</dd>
+            </div>
+            }
+          </dl>
           }
-          }
-        </div>
-        <p class="text-sm text-gray-500">Gasto total vs Presupuesto asignado</p>
-        @if (report && !isLoading) {
-        <div class="flex flex-wrap gap-2 mt-3" role="group" aria-label="Exportar detalle de rendición">
+        }
+      </div>
+    </div>
+
+    <!-- Fila 2: barra de herramientas (exportar izq. | acciones contextuales der.) -->
+    @if (report && !isLoading) {
+    <div class="mt-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+
+      <!-- Exportar (scrollable en mobile) -->
+      <div class="overflow-x-auto -mx-4 sm:mx-0 px-4 sm:px-0 shrink-0" role="group" aria-label="Exportar">
+        <div class="flex items-center gap-2 w-max pb-0.5">
           <button
             type="button"
             (click)="exportRendicionExcel()"
             [disabled]="isExportingExcel()"
-            class="inline-flex items-center justify-center gap-2 min-h-[40px] px-3 py-2 rounded-lg text-xs sm:text-sm font-semibold border border-emerald-200 bg-emerald-50 text-emerald-900 hover:bg-emerald-100 active:scale-[0.98] disabled:opacity-50 transition-all touch-manipulation"
+            class="inline-flex items-center justify-center gap-2 min-h-[38px] px-3 py-1.5 rounded-lg text-xs font-semibold border border-emerald-200 bg-emerald-50 text-emerald-900 hover:bg-emerald-100 active:scale-[0.98] disabled:opacity-50 transition-all touch-manipulation"
           >
             @if (isExportingExcel()) {
-              <span class="w-4 h-4 border-2 border-emerald-300 border-t-emerald-700 rounded-full animate-spin" aria-hidden="true"></span>
+              <span class="w-3.5 h-3.5 border-2 border-emerald-300 border-t-emerald-700 rounded-full animate-spin" aria-hidden="true"></span>
               Generando…
             } @else {
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 shrink-0" aria-hidden="true">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-3.5 h-3.5 shrink-0" aria-hidden="true">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
               </svg>
-              Descargar Excel
+              Excel
             }
           </button>
           <button
             type="button"
             (click)="exportRendicionPdf()"
             [disabled]="isExportingPdf()"
-            class="inline-flex items-center justify-center gap-2 min-h-[40px] px-3 py-2 rounded-lg text-xs sm:text-sm font-semibold border border-slate-200 bg-slate-50 text-slate-900 hover:bg-slate-100 active:scale-[0.98] disabled:opacity-50 transition-all touch-manipulation"
+            class="inline-flex items-center justify-center gap-2 min-h-[38px] px-3 py-1.5 rounded-lg text-xs font-semibold border border-slate-200 bg-slate-50 text-slate-900 hover:bg-slate-100 active:scale-[0.98] disabled:opacity-50 transition-all touch-manipulation"
           >
             @if (isExportingPdf()) {
-              <span class="w-4 h-4 border-2 border-slate-300 border-t-slate-700 rounded-full animate-spin" aria-hidden="true"></span>
+              <span class="w-3.5 h-3.5 border-2 border-slate-300 border-t-slate-700 rounded-full animate-spin" aria-hidden="true"></span>
               Generando…
             } @else {
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 shrink-0" aria-hidden="true">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-3.5 h-3.5 shrink-0" aria-hidden="true">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
               </svg>
-              Descargar PDF
+              PDF
             }
+          </button>
+          @if (isAdminView) {
+          <button
+            type="button"
+            (click)="openAffidavitModal()"
+            [disabled]="!canGenerateAffidavit() || isGeneratingAffidavit()"
+            class="inline-flex items-center justify-center gap-2 min-h-[38px] px-3 py-1.5 rounded-lg text-xs font-semibold border border-indigo-200 bg-indigo-50 text-indigo-900 hover:bg-indigo-100 disabled:opacity-50 transition-all touch-manipulation"
+          >
+            @if (isGeneratingAffidavit()) {
+              <span class="w-3.5 h-3.5 border-2 border-indigo-300 border-t-indigo-700 rounded-full animate-spin" aria-hidden="true"></span>
+              Generando DJ...
+            } @else {
+              Declaracion Jurada
+            }
+          </button>
+          @if (canClose) {
+          <button
+            type="button"
+            (click)="openCloseModal()"
+            [disabled]="isValidatingClosure()"
+            class="inline-flex items-center justify-center gap-2 min-h-[38px] px-3 py-1.5 rounded-lg text-xs font-semibold border border-gray-400 bg-gray-700 text-white hover:bg-gray-800 disabled:opacity-50 transition-all touch-manipulation"
+          >
+            @if (isValidatingClosure()) {
+              <span class="w-3.5 h-3.5 border-2 border-gray-300 border-t-white rounded-full animate-spin" aria-hidden="true"></span>
+              Validando...
+            } @else {
+              Cerrar Definitivamente
+            }
+          </button>
+          }
+          @if (canRequestReopen) {
+          <button
+            type="button"
+            (click)="openReopenRequestModal()"
+            class="inline-flex items-center justify-center gap-2 min-h-[38px] px-3 py-1.5 rounded-lg text-xs font-semibold border border-orange-300 bg-orange-50 text-orange-900 hover:bg-orange-100 transition-all touch-manipulation"
+          >
+            Solicitar Reapertura
+          </button>
+          }
+          @if (canApproveReopen) {
+          <button
+            type="button"
+            (click)="showReopenApproveModal.set(true)"
+            class="inline-flex items-center justify-center gap-2 min-h-[38px] px-3 py-1.5 rounded-lg text-xs font-semibold border border-blue-300 bg-blue-50 text-blue-900 hover:bg-blue-100 transition-all touch-manipulation"
+          >
+            Revisar Reapertura
+          </button>
+          }
+          }
+        </div>
+      </div>
+
+      <!-- Acciones contextuales (derecha en desktop) -->
+      <div class="flex flex-col gap-2 sm:items-end sm:shrink-0">
+
+        <!-- Colaborador: solicitada — pendiente de aprobación -->
+        @if (report.status === 'solicited' && !isAdminView) {
+        <div class="flex flex-row flex-wrap gap-2">
+          <div class="flex items-center gap-2 px-3 py-2 rounded-lg bg-purple-50 border border-purple-200 text-purple-800 text-sm font-medium">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 shrink-0 text-purple-500">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+            </svg>
+            Pendiente de aprobacion
+          </div>
+          <button
+            type="button"
+            class="inline-flex items-center justify-center gap-2 rounded-lg text-sm font-medium border border-primary bg-white text-primary hover:bg-primary/5 min-h-[40px] px-4 py-2 transition-colors touch-manipulation"
+            (click)="openEditSolicitudForm()"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 shrink-0">
+              <path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125" />
+            </svg>
+            Editar
+          </button>
+          <button
+            type="button"
+            class="inline-flex items-center justify-center gap-2 rounded-lg text-sm font-medium border border-amber-400 bg-amber-50 text-amber-800 hover:bg-amber-100 min-h-[40px] px-4 py-2 transition-colors touch-manipulation"
+            (click)="openCancelModal()"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 shrink-0">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M18.364 18.364A9 9 0 0 0 5.636 5.636m12.728 12.728A9 9 0 0 1 5.636 5.636m12.728 12.728L5.636 5.636" />
+            </svg>
+            Cancelar
           </button>
         </div>
         }
-        @if (report && report.status === 'rejected' && report.rejectionReason) {
-          <p class="text-sm text-red-900 mt-2 border-l-4 border-red-500 pl-3 py-2 bg-red-50 rounded-r-lg">
-            <span class="font-semibold">Motivo de rechazo: </span>
-            <span class="whitespace-pre-wrap break-words">{{ report.rejectionReason }}</span>
-          </p>
+
+        <!-- Colaborador: rechazada en fase de solicitud -->
+        @if (canResendSolicitud) {
+        <div class="flex flex-row flex-wrap gap-2">
+          <button
+            type="button"
+            class="inline-flex items-center justify-center gap-2 rounded-lg text-sm font-medium border border-primary bg-white text-primary hover:bg-primary/5 min-h-[40px] px-4 py-2 transition-colors touch-manipulation"
+            (click)="openEditSolicitudForm()"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 shrink-0">
+              <path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125" />
+            </svg>
+            Editar y re-enviar
+          </button>
+        </div>
         }
-      </div>
-    </div>
 
-    <!-- Colaborador: solicitada (pendiente de aprobación) -->
-    @if (report && report.status === 'solicited' && !isAdminView) {
-    <div class="rendicion-actions flex items-center gap-3 w-full md:w-auto md:justify-end md:shrink-0">
-      <div class="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-purple-50 border border-purple-200 text-purple-800 text-sm font-medium">
-        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 shrink-0 text-purple-500">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
-        </svg>
-        Pendiente de aprobación
-      </div>
-    </div>
-    }
-
-    <!-- Colaborador: rendición rechazada en fase de solicitud (puede editar y re-enviar) -->
-    @if (report && canResendSolicitud) {
-    <div class="rendicion-actions flex flex-col gap-2 w-full md:w-auto md:flex-row md:flex-wrap md:justify-end md:shrink-0">
-      <button
-        type="button"
-        class="inline-flex items-center justify-center gap-2 rounded-lg text-sm font-medium border border-primary bg-white text-primary hover:bg-primary/5 active:bg-primary/10 min-h-[44px] w-full md:w-auto px-4 py-2.5 transition-colors touch-manipulation"
-        (click)="openEditSolicitudForm()"
-      >
-        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 shrink-0">
-          <path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125" />
-        </svg>
-        Editar y re-enviar solicitud
-      </button>
-    </div>
-    }
-
-    <!-- Colaborador: abierta o rechazada en fase de gastos (puede agregar y reenviar) -->
-    @if (report && collaboratorCanEdit) {
-    <div class="rendicion-actions flex flex-row flex-wrap items-center gap-2 w-full md:w-auto md:justify-end md:shrink-0">
-      @if (canAddExpenses) {
-      <app-button
-        label="Solicitar más viáticos"
-        variant="secondary"
-        size="sm"
-        [fullWidth]="false"
-        (clicked)="openAdvanceModal()"
-      >
-        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 -ml-1 shrink-0">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 18.75a60.07 60.07 0 0 1 15.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 0 1 3 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25M2.25 6v9m18-10.5v.75c0 .414.336.75.75.75h.75m-1.5-1.5h.375c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125h-.375m1.5-1.5H21a.75.75 0 0 0-.75.75v.75m0 0H3.75m0 0h-.375a1.125 1.125-0 0 1-1.125-1.125V15m1.5 1.5v-.75A.75.75 0 0 0 3 15h-.75M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Zm3 0h.008v.008H18V10.5Zm-12 0h.008v.008H6V10.5Z" />
-        </svg>
-      </app-button>
-      <app-button
-        label="Añadir Gasto"
-        variant="primary"
-        size="sm"
-        [fullWidth]="false"
-        (clicked)="openAddExpenseModal()"
-      >
-        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 -ml-1 shrink-0">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-        </svg>
-      </app-button>
-      }
-      <app-button
-        [label]="report.status === 'rejected' ? 'Volver a enviar rendición' : 'Enviar Rendición'"
-        variant="secondary"
-        size="sm"
-        [fullWidth]="false"
-        (clicked)="openSubmitModal()"
-      >
-        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 -ml-1 shrink-0">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M6 12 3.269 3.125A59.769 59.769 0 0 1 21.485 12 59.768 59.768 0 0 1 3.27 20.875L5.999 12Zm0 0h7.5" />
-        </svg>
-      </app-button>
-    </div>
-    }
-
-    <!-- Admin: Aprobar solicitud inicial -->
-    @if (report && report.status === 'solicited' && isAdminView) {
-    <div class="rendicion-actions flex flex-row flex-wrap items-center gap-2 w-full md:w-auto md:justify-end md:shrink-0">
-      <app-button
-        label="Aprobar solicitud"
-        variant="primary"
-        size="sm"
-        [fullWidth]="false"
-        (clicked)="openAdminApproveModal()"
-      >
-        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 -ml-1 shrink-0">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
-        </svg>
-      </app-button>
-      <app-button
-        label="Rechazar solicitud"
-        variant="secondary"
-        size="sm"
-        [fullWidth]="false"
-        (clicked)="openAdminRejectModal()"
-      >
-        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 -ml-1 shrink-0">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 3.75h.008v.008H12v-.008Z" />
-        </svg>
-      </app-button>
-    </div>
-    }
-
-    <!-- Admin: Aprobar rendición final (requiere todos los documentos aprobados) -->
-    @if (report && report.status === 'submitted' && isAdminView) {
-    <div class="flex flex-col gap-2 w-full md:w-auto md:items-end md:shrink-0">
-      @if (!allDocumentsApproved) {
-        <p class="text-sm text-amber-700 bg-amber-50 border border-amber-200 px-4 py-2 rounded-lg leading-snug">
-          ⚠️ Debes aprobar todos los comprobantes antes de poder aprobar la rendición.
-          <span class="font-semibold block mt-0.5">{{ approvedDocCount }} de {{ totalDocCount }} aprobados.</span>
-        </p>
-      }
-      <div class="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:justify-end">
-        <app-button
-          [label]="canFinalApprove ? 'Aprobar Rendición' : 'Pendiente de revisión'"
-          variant="primary"
-          size="sm"
-          [fullWidth]="true"
-          [disabled]="!canFinalApprove"
-          (clicked)="openAdminApproveModal()"
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 mr-1 -ml-1 shrink-0">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
-          </svg>
-        </app-button>
-        <app-button
-          label="Rechazar rendición"
-          variant="danger"
-          size="sm"
-          [fullWidth]="true"
-          (clicked)="openAdminRejectModal()"
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 mr-1 -ml-1 shrink-0">
+        <!-- Colaborador: cancelada -->
+        @if (report.status === 'cancelled' && !isAdminView) {
+        <div class="flex items-center gap-2 px-3 py-2 rounded-lg bg-orange-50 border border-orange-200 text-orange-800 text-sm font-medium">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 shrink-0 text-orange-500">
             <path stroke-linecap="round" stroke-linejoin="round" d="M18.364 18.364A9 9 0 0 0 5.636 5.636m12.728 12.728A9 9 0 0 1 5.636 5.636m12.728 12.728L5.636 5.636" />
           </svg>
-        </app-button>
+          Solicitud cancelada
+        </div>
+        }
+
+        <!-- Colaborador: abierta / rechazada con gastos — hidden en mobile (sticky bar) -->
+        @if (collaboratorCanEdit) {
+        <div class="hidden sm:flex flex-wrap items-center gap-2 justify-end">
+          @if (canAddExpenses) {
+          <app-button
+            label="Solicitar más viáticos"
+            variant="secondary"
+            size="sm"
+            [fullWidth]="false"
+            (clicked)="openAdvanceModal()"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 -ml-1 shrink-0">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 18.75a60.07 60.07 0 0 1 15.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 0 1 3 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25M2.25 6v9m18-10.5v.75c0 .414.336.75.75.75h.75m-1.5-1.5h.375c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125h-.375m1.5-1.5H21a.75.75 0 0 0-.75.75v.75m0 0H3.75m0 0h-.375a1.125 1.125-0 0 1-1.125-1.125V15m1.5 1.5v-.75A.75.75 0 0 0 3 15h-.75M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Zm3 0h.008v.008H18V10.5Zm-12 0h.008v.008H6V10.5Z" />
+            </svg>
+          </app-button>
+          <app-button
+            label="Añadir Gasto"
+            variant="primary"
+            size="sm"
+            [fullWidth]="false"
+            (clicked)="openAddExpenseModal()"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 -ml-1 shrink-0">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+            </svg>
+          </app-button>
+          }
+          <div class="relative group/submit">
+            <app-button
+              [label]="report.status === 'rejected' ? 'Volver a enviar rendición' : 'Enviar Rendición'"
+              variant="secondary"
+              size="sm"
+              [fullWidth]="false"
+              [disabled]="!canSubmitReport"
+              (clicked)="openSubmitModal()"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 -ml-1 shrink-0">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M6 12 3.269 3.125A59.769 59.769 0 0 1 21.485 12 59.768 59.768 0 0 1 3.27 20.875L5.999 12Zm0 0h7.5" />
+              </svg>
+            </app-button>
+            @if (!canSubmitReport) {
+            <div class="absolute bottom-full right-0 mb-2 w-64 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 shadow-sm opacity-0 group-hover/submit:opacity-100 pointer-events-none transition-opacity duration-150 z-50">
+              Debes tener comprobantes registrados, con archivo adjunto y sin ítems rechazados para enviar la rendición.
+            </div>
+            }
+          </div>
+        </div>
+        }
+
+        <!-- Colaborador: abierta sin pago registrado -->
+        @if (!isAdminView && report.status === 'open' && !hasPaidAdvanceForReport) {
+        <p class="max-w-xs text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+          Debes esperar que Contabilidad registre el pago del viático para habilitar el registro de gastos.
+        </p>
+        }
+
+        <!-- Admin: solicitud inicial -->
+        @if (report.status === 'solicited' && isAdminView) {
+        <div class="flex flex-row flex-wrap gap-2 justify-end">
+          <app-button
+            label="Aprobar solicitud"
+            variant="primary"
+            size="sm"
+            [fullWidth]="false"
+            (clicked)="openAdminApproveModal()"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 -ml-1 shrink-0">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+            </svg>
+          </app-button>
+          <app-button
+            label="Rechazar solicitud"
+            variant="secondary"
+            size="sm"
+            [fullWidth]="false"
+            (clicked)="openAdminRejectModal()"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 -ml-1 shrink-0">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 3.75h.008v.008H12v-.008Z" />
+            </svg>
+          </app-button>
+        </div>
+        }
+
+        <!-- Admin: rendición enviada — aprobar o rechazar -->
+        @if (report.status === 'submitted' && isAdminView) {
+        <div class="flex flex-col gap-2 items-end">
+          @if (!allDocumentsApproved) {
+            <p class="text-sm text-amber-700 bg-amber-50 border border-amber-200 px-3 py-2 rounded-lg max-w-xs leading-snug">
+              Aprueba todos los comprobantes antes de poder aprobar la rendición.
+              <span class="font-semibold block mt-0.5">{{ approvedDocCount }} / {{ totalDocCount }} aprobados.</span>
+            </p>
+          }
+          <div class="flex flex-row flex-wrap gap-2 justify-end">
+            <app-button
+              [label]="canFinalApprove ? 'Aprobar Rendición' : 'Pendiente de revisión'"
+              variant="primary"
+              size="sm"
+              [fullWidth]="false"
+              [disabled]="!canFinalApprove"
+              (clicked)="openAdminApproveModal()"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 mr-1 -ml-1 shrink-0">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+              </svg>
+            </app-button>
+            <app-button
+              label="Rechazar rendición"
+              variant="danger"
+              size="sm"
+              [fullWidth]="false"
+              (clicked)="openAdminRejectModal()"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 mr-1 -ml-1 shrink-0">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M18.364 18.364A9 9 0 0 0 5.636 5.636m12.728 12.728A9 9 0 0 1 5.636 5.636m12.728 12.728L5.636 5.636" />
+              </svg>
+            </app-button>
+          </div>
+        </div>
+        }
+
       </div>
     </div>
     }
   </div>
+  <!-- ── END PAGE HEADER ──────────────────────────────────────────── -->
 
   @if(isLoading) {
     <div class="flex justify-center p-12">
@@ -241,7 +359,7 @@
               <p class="mt-3 text-xs font-medium text-red-800/90">Puedes editar los datos de la solicitud y volver a enviarla para aprobación.</p>
             }
             @if (canResubmitReport) {
-              <p class="mt-3 text-xs font-medium text-red-800/90">Puedes añadir gastos o solicitar anticipo y luego volver a enviar la rendición.</p>
+              <p class="mt-3 text-xs font-medium text-red-800/90">Puedes añadir gastos o solicitar viático y luego volver a enviar la rendición.</p>
             }
           </div>
         </div>
@@ -263,8 +381,8 @@
       </div>
       }
 
-      <!-- Edit-solicitud form (shown when rejected at solicitud phase) -->
-      @if (canResendSolicitud && showEditSolicitudForm()) {
+      <!-- Edit-solicitud form (shown when rejected or pending solicitud phase) -->
+      @if ((canResendSolicitud || canCancelOrDelete) && showEditSolicitudForm()) {
       <div class="mb-6 rounded-xl border border-gray-200 bg-white p-4 sm:p-5">
         <h3 class="font-semibold text-gray-900 mb-4">Editar solicitud</h3>
         @if (editSolicitudForm) {
@@ -363,12 +481,12 @@
             >
               @if (isResendingSolicitud()) {
                 <span class="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
-                Enviando...
+                Guardando...
               } @else {
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
                   <path stroke-linecap="round" stroke-linejoin="round" d="M6 12 3.269 3.125A59.769 59.769 0 0 1 21.485 12 59.768 59.768 0 0 1 3.27 20.875L5.999 12Zm0 0h7.5" />
                 </svg>
-                Re-enviar solicitud
+                {{ canResendSolicitud ? 'Re-enviar solicitud' : 'Guardar cambios' }}
               }
             </button>
           </div>
@@ -378,7 +496,7 @@
       }
 
       <!-- Progress and Summary Cards -->
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6 mb-6 md:mb-8">
+      <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6 mb-6 md:mb-8">
         <!-- Budget assigned -->
         <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4 sm:p-6">
           <div class="flex items-center gap-3 mb-2">
@@ -472,9 +590,9 @@
                       <tr class="bg-gray-50 text-gray-600 font-semibold border-b border-gray-100">
                         <th class="px-4 py-3">Viáticos</th>
                         <th class="px-4 py-3 text-center">Importe</th>
-                        <th class="px-4 py-3 text-center">Cantidad de personas</th>
-                        <th class="px-4 py-3 text-center">Cantidad combustible GLP x dia</th>
-                        <th class="px-4 py-3 text-center">Cantidad de dias</th>
+                        <th class="px-4 py-3 text-center">Personas</th>
+                        <th class="px-4 py-3 text-center">GLP / dia</th>
+                        <th class="px-4 py-3 text-center">Dias</th>
                         <th class="px-4 py-3 text-right">Total</th>
                       </tr>
                     </thead>
@@ -508,27 +626,95 @@
       @if(advances.length > 0) {
       <div class="bg-white rounded-xl shadow-sm border border-gray-200 mb-6">
         <div class="px-4 sm:px-6 py-4 border-b border-gray-200 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-          <h2 class="text-base font-bold text-gray-900">Anticipos Solicitados</h2>
+          <h2 class="text-base font-bold text-gray-900">Viáticos Solicitados</h2>
           <span class="text-sm font-semibold text-blue-700 bg-blue-50 px-3 py-1.5 rounded-full w-fit">
             Total aprobado: S/ {{ totalAnticipado | number:'1.2-2' }}
           </span>
         </div>
         <div class="divide-y divide-gray-100">
           @for(adv of advances; track adv._id) {
-          <div class="px-4 sm:px-6 py-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <p class="text-sm font-medium text-gray-900">{{ adv.description }}</p>
-              <p class="text-xs text-gray-500 mt-0.5">Solicitado: {{ adv.createdAt | date:'dd/MM/yyyy' }}</p>
+          <div class="px-4 sm:px-6 py-4 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+            <div class="flex-1 min-w-0">
+              <p class="text-sm font-semibold text-gray-900">{{ adv.place || adv.description }}</p>
+              @if (adv.startDate || adv.endDate) {
+              <p class="text-xs text-gray-500 mt-0.5">
+                {{ adv.startDate | date:'dd/MM/yyyy' }}
+                @if (adv.endDate) { &mdash; {{ adv.endDate | date:'dd/MM/yyyy' }} }
+              </p>
+              }
+              @if (adv.observations) {
+              <p class="text-xs text-gray-400 mt-0.5 italic">{{ adv.observations }}</p>
+              }
+              <p class="text-xs text-gray-400 mt-1">Solicitado el {{ adv.createdAt | date:'dd/MM/yyyy' }}</p>
             </div>
             <div class="flex flex-wrap items-center gap-2 sm:gap-3 sm:justify-end">
               <span class="text-sm font-bold text-gray-900">S/ {{ adv.amount | number:'1.2-2' }}</span>
               <span [class]="ADVANCE_STATUS_COLORS[adv.status]" class="inline-flex px-2 py-0.5 rounded text-xs font-medium">
                 {{ ADVANCE_STATUS_LABELS[adv.status] }}
               </span>
+              @if (!isAdminView && adv.status === 'pending_l1') {
+              <button
+                type="button"
+                title="Editar solicitud"
+                (click)="openEditAdvanceModal(adv)"
+                class="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded-lg border border-primary bg-white text-primary hover:bg-primary/5 transition-colors"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-3.5 h-3.5">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125" />
+                </svg>
+                Editar
+              </button>
+              <button
+                type="button"
+                title="Cancelar solicitud"
+                (click)="openCancelAdvanceModal(adv)"
+                class="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded-lg border border-amber-400 bg-amber-50 text-amber-800 hover:bg-amber-100 transition-colors"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-3.5 h-3.5">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M18.364 18.364A9 9 0 0 0 5.636 5.636m12.728 12.728A9 9 0 0 1 5.636 5.636m12.728 12.728L5.636 5.636" />
+                </svg>
+                Cancelar
+              </button>
+              }
             </div>
           </div>
           }
         </div>
+      </div>
+      }
+
+      <!-- Devoluciones pendientes (Fase 7) -->
+      @for (adv of advancesWithPendingReturn; track adv._id) {
+      <div class="rounded-xl border border-red-200 bg-red-50/80 p-4 mb-4">
+        <div class="flex items-center justify-between mb-2">
+          <h3 class="font-semibold text-red-800 text-sm">Devolucion de saldo pendiente</h3>
+          <span [class]="returnRecordStatusColor(adv.returnRecord?.status || '')"
+            class="text-xs px-2 py-0.5 rounded font-medium">
+            {{ returnRecordStatusLabel(adv.returnRecord?.status || '') }}
+          </span>
+        </div>
+        <p class="text-xs text-gray-700 mb-1">
+          Viático: <strong>{{ adv.description }}</strong> — Monto a devolver:
+          <strong class="text-red-700">S/ {{ adv.returnRecord?.amountDue | number:'1.2-2' }}</strong>
+        </p>
+        <p class="text-xs text-gray-600">
+          Vencimiento: {{ adv.returnRecord?.dueDate | date:'dd/MM/yyyy' }}
+          @if (adv.returnRecord?.isOverdue) {
+          <span class="ml-1 font-semibold text-red-600">VENCIDO</span>
+          }
+        </p>
+        @if (adv.returnRecord?.status === 'rejected' && adv.returnRecord?.validation?.rejectionReason) {
+        <p class="text-xs text-red-700 mt-1">
+          Rechazo: {{ adv.returnRecord?.validation?.rejectionReason }}
+        </p>
+        }
+        @if (!isAdminView && (adv.returnRecord?.status === 'pending' || adv.returnRecord?.status === 'rejected')) {
+        <button type="button"
+          (click)="openReturnProofModal(adv._id, adv.returnRecord?.amountDue || 0)"
+          class="mt-2 text-xs px-3 py-1.5 bg-red-700 text-white rounded-lg hover:bg-red-800 font-medium">
+          Cargar comprobante de deposito
+        </button>
+        }
       </div>
       }
 
@@ -544,7 +730,7 @@
         </div>
         <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 text-center">
           <div>
-            <p class="text-xs text-gray-500">Anticipo entregado</p>
+            <p class="text-xs text-gray-500">Viático entregado</p>
             <p class="text-lg font-bold text-gray-900">S/ {{ settlement.advanceTotal | number:'1.2-2' }}</p>
           </div>
           <div>
@@ -562,6 +748,31 @@
               S/ {{ (settlement.type === 'reembolso' ? settlement.difference * -1 : settlement.difference) | number:'1.2-2' }}
             </p>
           </div>
+        </div>
+      </div>
+      }
+
+      @if (report.reimbursementPaymentInfo) {
+      <div class="rounded-xl border border-emerald-200 bg-emerald-50/90 p-5 mb-6">
+        <h3 class="font-bold text-gray-900 mb-2 flex items-center gap-2">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 text-emerald-700">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12c0 1.268-.63 2.39-1.593 3.068a3.745 3.745 0 0 1-1.043 3.296 3.745 3.745 0 0 1-3.296 1.043A3.745 3.745 0 0 1 12 21c-1.268 0-2.39-.63-3.068-1.593a3.746 3.746 0 0 1-3.296-1.043 3.745 3.745 0 0 1-1.043-3.296A3.745 3.745 0 0 1 3 12c0-1.268.63-2.39 1.593-3.068a3.745 3.745 0 0 1 1.043-3.296 3.746 3.746 0 0 1 3.296-1.043A3.746 3.746 0 0 1 12 3c1.268 0 2.39.63 3.068 1.593a3.746 3.746 0 0 1 3.296 1.043 3.746 3.746 0 0 1 1.043 3.296A3.745 3.745 0 0 1 21 12Z" />
+          </svg>
+          Reembolso registrado
+        </h3>
+        <p class="text-sm text-gray-700 mb-3">
+          El pago al colaborador fue registrado por tesorería. Podés descargar el comprobante también desde <a routerLink="/mis-documentos" class="text-primary font-semibold underline-offset-2 hover:underline">Mis documentos</a>.
+        </p>
+        <div class="flex flex-wrap gap-3 text-sm">
+          <a [href]="report.reimbursementPaymentInfo.paymentReceiptUrl" target="_blank" rel="noopener noreferrer"
+            class="inline-flex items-center px-4 py-2 rounded-lg bg-emerald-700 text-white font-semibold hover:bg-emerald-800">
+            Ver comprobante de reembolso
+          </a>
+          @if (report.reimbursedAt) {
+          <span class="text-gray-600 self-center">
+            Fecha registro: {{ report.reimbursedAt | date:'mediumDate' }}
+          </span>
+          }
         </div>
       </div>
       }
@@ -591,11 +802,23 @@
         </div>
 
         @if(!report.expenseIds || report.expenseIds.length === 0) {
-          <div class="p-8 sm:p-12 text-center text-gray-500">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-12 h-12 mx-auto text-gray-300 mb-3">
+          <div class="p-8 sm:p-12 text-center text-gray-500 flex flex-col items-center gap-4">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-12 h-12 text-gray-300">
               <path stroke-linecap="round" stroke-linejoin="round" d="m9 13.5 3 2.25 3-2.25m0-6v6h-6v-6h6Z" />
             </svg>
             <p class="text-sm">No has subido ningún comprobante para esta rendición aún.</p>
+            @if (canAddExpenses) {
+            <button
+              type="button"
+              (click)="openAddExpenseModal()"
+              class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold bg-primary text-white hover:bg-primary/90 active:scale-[0.98] transition-all touch-manipulation"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4 shrink-0">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+              </svg>
+              Añadir primer comprobante
+            </button>
+            }
           </div>
         } @else {
           <!-- Mobile: tarjetas -->
@@ -614,9 +837,10 @@
                   <span [ngClass]="{
                     'bg-yellow-100 text-yellow-700': expense.status === 'pending' || !expense.status,
                     'bg-green-100 text-green-700': expense.status === 'approved',
-                    'bg-red-100 text-red-700': expense.status === 'rejected'
+                    'bg-red-100 text-red-700': expense.status === 'rejected',
+                    'bg-amber-100 text-amber-800': expense.observado === true
                   }" class="inline-flex px-2 py-0.5 rounded text-xs font-medium">
-                    {{ expense.status === 'approved' ? 'Aprobado' : expense.status === 'rejected' ? 'Rechazado' : 'Pendiente' }}
+                    {{ expense.observado ? 'Observado' : expense.status === 'approved' ? 'Aprobado' : expense.status === 'rejected' ? 'Rechazado' : 'Pendiente' }}
                   </span>
                   <p class="text-base font-semibold text-gray-900 tabular-nums">
                     {{ expense.total | currency:'S/.' }}
@@ -664,7 +888,7 @@
                     <button
                       type="button"
                       [disabled]="approvingExpenseId() === expense._id"
-                      (click)="approveExpense(expense._id)"
+                      (click)="confirmApproveExpense(expense._id)"
                       class="flex-1 inline-flex items-center justify-center gap-2 min-h-[44px] px-4 rounded-xl text-sm font-bold border-2 border-green-200 bg-green-50 text-green-800 hover:bg-green-100 disabled:opacity-50 transition-all active:scale-[0.98] touch-manipulation"
                     >
                       @if (approvingExpenseId() === expense._id) {
@@ -760,9 +984,10 @@
                       <span [ngClass]="{
                         'bg-yellow-100 text-yellow-700': expense.status === 'pending' || !expense.status,
                         'bg-green-100 text-green-700': expense.status === 'approved',
-                        'bg-red-100 text-red-700': expense.status === 'rejected'
+                        'bg-red-100 text-red-700': expense.status === 'rejected',
+                        'bg-amber-100 text-amber-800': expense.observado === true
                       }" class="inline-flex px-2 py-0.5 rounded text-xs font-medium whitespace-nowrap">
-                        {{ expense.status === 'approved' ? 'Aprobado' : expense.status === 'rejected' ? 'Rechazado' : 'Pendiente' }}
+                        {{ expense.observado ? 'Observado' : expense.status === 'approved' ? 'Aprobado' : expense.status === 'rejected' ? 'Rechazado' : 'Pendiente' }}
                       </span>
                       @if (expense.status === 'rejected' && expense.rejectionReason) {
                         <span class="text-xs text-red-500 max-w-[120px] truncate" [title]="expense.rejectionReason">
@@ -806,7 +1031,7 @@
                             <button
                               type="button"
                               [disabled]="approvingExpenseId() === expense._id"
-                              (click)="approveExpense(expense._id)"
+                              (click)="confirmApproveExpense(expense._id)"
                               class="p-3 rounded-xl text-green-600 hover:bg-green-50 transition-all hover:scale-110 active:scale-95 disabled:opacity-50"
                               title="Aprobar documento"
                             >
@@ -885,6 +1110,42 @@
   }
 </div>
 
+<!-- Sticky bottom bar (mobile only) — colaborador con rendición editable -->
+@if (report && collaboratorCanEdit) {
+<div class="fixed bottom-0 left-0 right-0 z-30 sm:hidden bg-white border-t border-gray-200 shadow-[0_-4px_16px_rgba(0,0,0,0.08)] px-4 py-3 flex gap-3">
+  @if (canAddExpenses) {
+  <button
+    type="button"
+    (click)="openAddExpenseModal()"
+    class="flex-1 inline-flex items-center justify-center gap-2 min-h-[48px] rounded-xl text-sm font-bold bg-primary text-white hover:bg-primary/90 active:scale-[0.98] transition-all touch-manipulation"
+  >
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5 shrink-0">
+      <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+    </svg>
+    Añadir Gasto
+  </button>
+  }
+  <div class="relative group/submit flex-1">
+    <button
+      type="button"
+      (click)="openSubmitModal()"
+      [disabled]="!canSubmitReport"
+      class="w-full inline-flex items-center justify-center gap-2 min-h-[48px] rounded-xl text-sm font-bold border-2 border-primary text-primary bg-white hover:bg-primary/5 disabled:opacity-40 active:scale-[0.98] transition-all touch-manipulation"
+    >
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 shrink-0">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M6 12 3.269 3.125A59.769 59.769 0 0 1 21.485 12 59.768 59.768 0 0 1 3.27 20.875L5.999 12Zm0 0h7.5" />
+      </svg>
+      {{ report.status === 'rejected' ? 'Reenviar' : 'Enviar' }}
+    </button>
+    @if (!canSubmitReport) {
+    <div class="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-64 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 shadow-sm opacity-0 group-hover/submit:opacity-100 pointer-events-none transition-opacity duration-150 z-50">
+      Debes tener comprobantes registrados, con archivo adjunto y sin ítems rechazados para enviar la rendición.
+    </div>
+    }
+  </div>
+</div>
+}
+
 <!-- Modal: Ficha completa del comprobante (documento + datos) -->
 @if (showExpenseDetailModal() && selectedExpense(); as exp) {
 <div
@@ -933,6 +1194,24 @@
             </svg>
             Abrir documento en nueva pestaña
           </button>
+          @if (getExpenseTypeKey(exp) === 'planilla_movilidad') {
+          <button
+            type="button"
+            (click)="exportMobilitySheet(exp)"
+            class="inline-flex items-center gap-2 min-h-[40px] px-4 rounded-xl text-sm font-semibold bg-indigo-600 text-white hover:bg-indigo-700 transition-colors"
+          >
+            Descargar planilla PDF
+          </button>
+          }
+          @if (getExpenseTypeKey(exp) === 'comprobante_caja') {
+          <button
+            type="button"
+            (click)="exportCashVoucher(exp)"
+            class="inline-flex items-center gap-2 min-h-[40px] px-4 rounded-xl text-sm font-semibold bg-indigo-600 text-white hover:bg-indigo-700 transition-colors"
+          >
+            Descargar comprobante PDF
+          </button>
+          }
         </div>
         @if (isPreviewableImage(exp)) {
         <div class="rounded-lg border border-gray-200 bg-white p-2 flex justify-center">
@@ -958,7 +1237,7 @@
         </div>
         <div>
           <p class="text-xs text-gray-400">Estado del comprobante</p>
-          <p class="font-medium text-gray-900">{{ getExpenseStatusForUi(exp['status']) }}</p>
+          <p class="font-medium text-gray-900">{{ getExpenseStatusForUi(exp) }}</p>
         </div>
         <div>
           <p class="text-xs text-gray-400">Categoría</p>
@@ -978,6 +1257,25 @@
       <div class="rounded-xl bg-red-50 border border-red-200 p-4 text-sm text-red-900">
         <span class="font-semibold">Motivo de rechazo: </span>
         <span class="whitespace-pre-wrap break-words">{{ exp['rejectionReason'] }}</span>
+      </div>
+      }
+
+      @if (exp['observado']) {
+      <div class="rounded-xl bg-amber-50 border border-amber-200 p-4 text-sm text-amber-900">
+        <span class="font-semibold">Comprobante observado por plazo: </span>
+        <span class="whitespace-pre-wrap break-words">{{ exp['observacionPlazo'] || 'Se registró fuera del plazo permitido.' }}</span>
+      </div>
+      }
+
+      @if (exp['categoryLimitWarning']) {
+      <div class="rounded-xl bg-yellow-50 border border-yellow-200 p-4 text-sm text-yellow-900">
+        <span class="font-semibold">Alerta de límite por categoría: </span>
+        <span class="whitespace-pre-wrap break-words">
+          {{ exp['categoryLimitWarning'] }}
+          @if (exp['categoryLimitPercent']) {
+            ({{ exp['categoryLimitPercent'] }}%)
+          }
+        </span>
       </div>
       }
 
@@ -1100,6 +1398,29 @@
       </section>
       }
 
+      @if (reviewHistory(exp).length > 0) {
+      <section class="rounded-xl border border-gray-200 bg-gray-50/70 p-4 text-sm">
+        <h4 class="font-semibold text-gray-900 mb-3">Historial de revisiones</h4>
+        <div class="space-y-2">
+          @for (entry of reviewHistory(exp); track $index) {
+          <div class="rounded-lg border border-gray-200 bg-white px-3 py-2">
+            <p class="text-xs text-gray-500">
+              {{ reviewDateText(entry['reviewedAt']) }}
+            </p>
+            <p class="text-sm font-medium text-gray-900">
+              {{ reviewActionLabel(entry['action']) }}
+            </p>
+            @if (entry['reason']) {
+            <p class="text-xs text-gray-700 mt-1 whitespace-pre-wrap break-words">
+              Motivo: {{ entry['reason'] }}
+            </p>
+            }
+          </div>
+          }
+        </div>
+      </section>
+      }
+
       <div class="rounded-xl border border-dashed border-gray-200 p-3">
         <p class="text-xs text-gray-500 mb-1 font-medium">Datos crudos (data)</p>
         <details>
@@ -1122,43 +1443,12 @@
 </div>
 }
 
-<!-- Modal: Solicitar Anticipo -->
-@if(showAdvanceModal) {
-<div class="fixed inset-0 z-50 flex items-center justify-center p-4" (click)="showAdvanceModal=false">
-  <div class="absolute inset-0 bg-black/40 backdrop-blur-sm"></div>
-  <div class="relative bg-white rounded-2xl shadow-xl p-6 w-full max-w-sm" (click)="$event.stopPropagation()">
-    <h3 class="text-lg font-bold text-gray-900 mb-1">Solicitar Anticipo</h3>
-    <p class="text-sm text-gray-500 mb-4">
-      Los anticipos ≤ S/. 500 requieren 1 aprobación. Los mayores requieren aprobación de Tesorería.
-    </p>
-    <form [formGroup]="advanceForm" class="space-y-4">
-      <div class="flex flex-col gap-1">
-        <label class="text-sm font-medium text-gray-700">Monto solicitado S/. <span class="text-red-500">*</span></label>
-        <input type="number" formControlName="amount" min="1" step="0.01" placeholder="0.00"
-          class="w-full h-[42px] px-4 rounded-lg border border-gray-200 bg-gray-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm" />
-        @if(advanceForm.get('amount')?.value > 500) {
-        <p class="text-xs text-orange-600">⚠ Monto mayor a S/. 500 — requiere aprobación de Tesorería (2 niveles)</p>
-        }
-      </div>
-      <div class="flex flex-col gap-1">
-        <label class="text-sm font-medium text-gray-700">Descripción / Motivo <span class="text-red-500">*</span></label>
-        <textarea formControlName="description" rows="3" placeholder="¿Para qué necesitas el anticipo?"
-          class="w-full px-4 py-2 rounded-lg border border-gray-200 bg-gray-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm resize-none"></textarea>
-      </div>
-    </form>
-    <div class="flex gap-3 mt-5">
-      <button type="button" (click)="showAdvanceModal=false"
-        class="flex-1 py-2 border border-gray-200 rounded-xl text-sm text-gray-600 hover:bg-gray-50 transition-colors">
-        Cancelar
-      </button>
-      <button type="button" (click)="submitAdvance()" [disabled]="advanceForm.invalid || isRequestingAdvance()"
-        class="flex-1 py-2 bg-primary text-white rounded-xl text-sm font-medium hover:bg-primary/90 disabled:opacity-50 transition-colors">
-        {{ isRequestingAdvance() ? 'Enviando...' : 'Solicitar' }}
-      </button>
-    </div>
-  </div>
-</div>
-}
+<app-solicitud-viaticos-modal
+  [isOpen]="showAdvanceModal"
+  [expenseReportId]="id"
+  [initialProjectId]="reportProjectId"
+  (closed)="onSolicitudViaticosClosed($event)"
+/>
 
 <!-- Modal: Confirmación de envío de rendición -->
 @if(showSubmitModal && report) {
@@ -1406,6 +1696,18 @@
           <p class="text-xs text-gray-500">Requiere firma de Declaración Jurada</p>
         </div>
       </button>
+      <button type="button" (click)="selectExpenseType('comprobante_caja')"
+        class="flex items-center gap-4 p-4 rounded-xl border-2 border-gray-200 hover:border-primary hover:bg-primary/5 transition-all text-left group">
+        <div class="p-2 rounded-lg bg-indigo-50 text-indigo-600 group-hover:bg-indigo-100 transition-colors">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v12m-3-2.25h6m-7.5 3h9A2.25 2.25 0 0 0 18.75 16.5v-9A2.25 2.25 0 0 0 16.5 5.25h-9A2.25 2.25 0 0 0 5.25 7.5v9A2.25 2.25 0 0 0 7.5 18.75Z" />
+          </svg>
+        </div>
+        <div>
+          <p class="font-semibold text-gray-900 text-sm">Comprobante de Caja</p>
+          <p class="text-xs text-gray-500">Formulario interno con correlativo</p>
+        </div>
+      </button>
     </div>
 
     <button type="button" (click)="closeTypeModal()"
@@ -1446,6 +1748,406 @@
           <span class="inline-block w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin mr-1"></span>
         }
         Rechazar
+      </button>
+    </div>
+  </div>
+</div>
+}
+
+<!-- Modal: Declaración jurada -->
+@if(showAffidavitModal()) {
+<div class="fixed inset-0 z-[70] flex items-center justify-center p-4" (click)="closeAffidavitModal()">
+  <div class="absolute inset-0 bg-black/50 backdrop-blur-sm"></div>
+  <div class="relative bg-white rounded-2xl shadow-xl w-full max-w-xl max-h-[90vh] flex flex-col" (click)="$event.stopPropagation()">
+    <div class="px-6 pt-6 pb-4 border-b border-gray-100">
+      <h3 class="text-lg font-bold text-gray-900">Generar Declaración Jurada</h3>
+      <p class="text-sm text-gray-500 mt-1">Selecciona tipo y comprobantes de caja para registrar y descargar el PDF.</p>
+    </div>
+
+    <div class="px-6 py-4 overflow-y-auto flex-1 space-y-4">
+      <div>
+        <label class="text-sm font-medium text-gray-700 block mb-2">Tipo</label>
+        <select
+          class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+          [ngModel]="affidavitType()"
+          (ngModelChange)="affidavitType.set($event)"
+        >
+          <option value="viaticos_nacionales">Viáticos Nacionales</option>
+          <option value="viajes_exterior">Viajes al Exterior</option>
+        </select>
+      </div>
+
+      <div>
+        <p class="text-sm font-medium text-gray-700 mb-2">Comprobantes de caja (otros gastos)</p>
+        @if (affidavitCandidates().length === 0) {
+          <p class="text-sm text-gray-500">No hay comprobantes elegibles en esta rendición.</p>
+        } @else {
+          <div class="space-y-2 max-h-56 overflow-y-auto pr-1">
+            @for (exp of affidavitCandidates(); track exp._id) {
+            <label class="flex items-start gap-2 p-2 border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50">
+              <input
+                type="checkbox"
+                class="mt-0.5"
+                [checked]="isAffidavitExpenseSelected(exp._id)"
+                (change)="toggleAffidavitExpense(exp._id)"
+              />
+              <div class="min-w-0">
+                <p class="text-sm font-medium text-gray-900">{{ getExpenseDescription(exp) }}</p>
+                <p class="text-xs text-gray-500">
+                  {{ getExpenseDate(exp) }} · {{ getPopulatedName(exp['categoryId']) }} · S/ {{ getExpenseTotal(exp) | number:'1.2-2' }}
+                </p>
+              </div>
+            </label>
+            }
+          </div>
+        }
+      </div>
+    </div>
+
+    <div class="px-6 pb-6 pt-3 border-t border-gray-100 flex gap-3">
+      <button
+        type="button"
+        class="flex-1 py-2.5 border border-gray-200 rounded-xl text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors"
+        [disabled]="isGeneratingAffidavit()"
+        (click)="closeAffidavitModal()"
+      >
+        Cancelar
+      </button>
+      <button
+        type="button"
+        class="flex-1 py-2.5 bg-primary text-white rounded-xl text-sm font-medium hover:bg-primary/90 disabled:opacity-50 transition-colors"
+        [disabled]="isGeneratingAffidavit() || affidavitCandidates().length === 0"
+        (click)="generateAffidavit()"
+      >
+        Generar
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Confirmar cierre definitivo -->
+@if (showCloseModal()) {
+<div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
+  <div class="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
+    <div class="px-6 pt-6 pb-4 border-b border-gray-100">
+      <h3 class="text-lg font-semibold text-gray-900">Cerrar Rendicion Definitivamente</h3>
+      <p class="text-sm text-gray-500 mt-1">Esta accion bloquea toda edicion posterior.</p>
+    </div>
+
+    <div class="px-6 py-4 space-y-3">
+      @if (closureErrors().length > 0) {
+        <div class="rounded-xl border border-red-200 bg-red-50 p-4">
+          <p class="text-sm font-semibold text-red-800 mb-2">No se puede cerrar por las siguientes razones:</p>
+          <ul class="list-disc list-inside space-y-1">
+            @for (err of closureErrors(); track err) {
+              <li class="text-sm text-red-700">{{ err }}</li>
+            }
+          </ul>
+        </div>
+      } @else {
+        <div class="rounded-xl border border-gray-200 bg-gray-50 p-4">
+          <p class="text-sm text-gray-700">Todas las condiciones se cumplen. Al confirmar:</p>
+          <ul class="list-disc list-inside mt-2 space-y-1 text-sm text-gray-600">
+            <li>La rendicion quedara en estado <strong>Cerrada</strong></li>
+            <li>No podra agregar, editar ni eliminar comprobantes</li>
+            <li>Se notificara al colaborador por correo</li>
+          </ul>
+        </div>
+      }
+    </div>
+
+    <div class="px-6 pb-6 pt-2 flex gap-3">
+      <button
+        type="button"
+        class="flex-1 py-2.5 border border-gray-200 rounded-xl text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors"
+        [disabled]="isClosing()"
+        (click)="closeCloseModal()"
+      >
+        Cancelar
+      </button>
+      <button
+        type="button"
+        class="flex-1 py-2.5 bg-gray-800 text-white rounded-xl text-sm font-medium hover:bg-gray-900 disabled:opacity-50 transition-colors"
+        [disabled]="isClosing() || closureErrors().length > 0"
+        (click)="confirmClose()"
+      >
+        @if (isClosing()) {
+          <span class="inline-block w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin mr-1"></span>
+          Cerrando...
+        } @else {
+          Confirmar Cierre
+        }
+      </button>
+    </div>
+  </div>
+</div>
+}
+
+<!-- Modal: Solicitar reapertura -->
+@if (showReopenRequestModal()) {
+<div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
+  <div class="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden">
+    <div class="px-6 pt-6 pb-4 border-b border-gray-100">
+      <h3 class="text-lg font-semibold text-gray-900">Solicitar Reapertura</h3>
+      <p class="text-sm text-gray-500 mt-1">El motivo debe ser detallado (minimo 200 caracteres).</p>
+    </div>
+
+    <div class="px-6 py-4">
+      <label class="block text-sm font-medium text-gray-700 mb-1">
+        Motivo de reapertura
+        <span class="ml-1 text-xs font-normal text-gray-400">({{ reopenReason().length }}/200 min)</span>
+      </label>
+      <textarea
+        rows="5"
+        class="w-full rounded-xl border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary resize-none"
+        placeholder="Describe el motivo por el que se requiere reabrir esta rendicion..."
+        [value]="reopenReason()"
+        (input)="reopenReason.set($any($event.target).value)"
+      ></textarea>
+    </div>
+
+    <div class="px-6 pb-6 pt-2 flex gap-3">
+      <button
+        type="button"
+        class="flex-1 py-2.5 border border-gray-200 rounded-xl text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors"
+        [disabled]="isRequestingReopen()"
+        (click)="showReopenRequestModal.set(false)"
+      >
+        Cancelar
+      </button>
+      <button
+        type="button"
+        class="flex-1 py-2.5 bg-orange-600 text-white rounded-xl text-sm font-medium hover:bg-orange-700 disabled:opacity-50 transition-colors"
+        [disabled]="isRequestingReopen() || reopenReason().trim().length < 200"
+        (click)="submitReopenRequest()"
+      >
+        @if (isRequestingReopen()) {
+          <span class="inline-block w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin mr-1"></span>
+          Enviando...
+        } @else {
+          Enviar Solicitud
+        }
+      </button>
+    </div>
+  </div>
+</div>
+}
+
+<!-- Modal: Aprobar/rechazar reapertura -->
+@if (showReopenApproveModal()) {
+<div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
+  <div class="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
+    <div class="px-6 pt-6 pb-4 border-b border-gray-100">
+      <h3 class="text-lg font-semibold text-gray-900">Solicitud de Reapertura</h3>
+    </div>
+
+    <div class="px-6 py-4 space-y-3">
+      <div class="rounded-xl border border-blue-200 bg-blue-50 p-4">
+        <p class="text-sm font-semibold text-blue-800 mb-1">Motivo indicado:</p>
+        <p class="text-sm text-blue-700 whitespace-pre-wrap">{{ closureRecord?.reopeningReason || 'Sin motivo indicado' }}</p>
+      </div>
+      <p class="text-sm text-gray-600">Aprueba para devolver la rendicion al estado <strong>Aprobada</strong> y permitir edicion.</p>
+    </div>
+
+    <div class="px-6 pb-6 pt-2 flex gap-3">
+      <button
+        type="button"
+        class="flex-1 py-2.5 border border-red-200 bg-red-50 text-red-700 rounded-xl text-sm font-medium hover:bg-red-100 disabled:opacity-50 transition-colors"
+        [disabled]="isApprovingReopen()"
+        (click)="confirmReopenApproval(false)"
+      >
+        Rechazar
+      </button>
+      <button
+        type="button"
+        class="flex-1 py-2.5 bg-blue-600 text-white rounded-xl text-sm font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors"
+        [disabled]="isApprovingReopen()"
+        (click)="confirmReopenApproval(true)"
+      >
+        @if (isApprovingReopen()) {
+          <span class="inline-block w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin mr-1"></span>
+          Procesando...
+        } @else {
+          Aprobar Reapertura
+        }
+      </button>
+    </div>
+  </div>
+
+  <!-- Modal: Editar solicitud de viaticos -->
+  @if (showEditAdvanceModal() && editingAdvance()) {
+  <app-solicitud-viaticos-modal
+    [isOpen]="showEditAdvanceModal()"
+    [expenseReportId]="id"
+    [advanceToResubmit]="editingAdvance()"
+    (closed)="onEditAdvanceClosed($event)"
+  ></app-solicitud-viaticos-modal>
+  }
+
+  <!-- Modal: Cancelar solicitud de viaticos -->
+  @if (showCancelAdvanceModal()) {
+  <div class="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-black/40" (click)="showCancelAdvanceModal.set(false)">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm" (click)="$event.stopPropagation()">
+      <div class="px-6 pt-6 pb-2 flex items-center gap-3">
+        <div class="flex-shrink-0 w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 text-amber-600">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M18.364 18.364A9 9 0 0 0 5.636 5.636m12.728 12.728A9 9 0 0 1 5.636 5.636m12.728 12.728L5.636 5.636" />
+          </svg>
+        </div>
+        <div>
+          <h3 class="text-base font-semibold text-gray-900">Cancelar solicitud de viaticos</h3>
+          <p class="text-xs text-gray-500">La solicitud quedara como cancelada</p>
+        </div>
+      </div>
+      <div class="px-6 py-4">
+        <p class="text-sm text-gray-600">
+          ¿Estas seguro de que deseas cancelar esta solicitud de viaticos? Esta accion no se puede deshacer.
+        </p>
+      </div>
+      <div class="px-6 pb-6 flex gap-3">
+        <button
+          type="button"
+          class="flex-1 py-2.5 border border-gray-200 text-gray-700 rounded-xl text-sm font-medium hover:bg-gray-50 transition-colors"
+          [disabled]="isCancellingAdvance()"
+          (click)="showCancelAdvanceModal.set(false)"
+        >
+          Volver
+        </button>
+        <button
+          type="button"
+          class="flex-1 py-2.5 bg-amber-500 text-white rounded-xl text-sm font-medium hover:bg-amber-600 disabled:opacity-50 transition-colors"
+          [disabled]="isCancellingAdvance()"
+          (click)="confirmCancelAdvance()"
+        >
+          @if (isCancellingAdvance()) {
+            <span class="inline-block w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin mr-1"></span>
+            Cancelando...
+          } @else {
+            Confirmar cancelacion
+          }
+        </button>
+      </div>
+    </div>
+  </div>
+  }
+
+  <!-- Modal: Cancelar solicitud -->
+  @if (showCancelModal()) {
+  <div class="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-black/40" (click)="showCancelModal.set(false)">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm" (click)="$event.stopPropagation()">
+      <div class="px-6 pt-6 pb-2 flex items-center gap-3">
+        <div class="flex-shrink-0 w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 text-amber-600">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M18.364 18.364A9 9 0 0 0 5.636 5.636m12.728 12.728A9 9 0 0 1 5.636 5.636m12.728 12.728L5.636 5.636" />
+          </svg>
+        </div>
+        <div>
+          <h3 class="text-base font-semibold text-gray-900">Cancelar solicitud</h3>
+          <p class="text-xs text-gray-500">Se notificara al administrador</p>
+        </div>
+      </div>
+      <div class="px-6 py-4">
+        <p class="text-sm text-gray-600 mb-4">
+          La solicitud de rendicion <strong>{{ report?.title }}</strong> sera cancelada. Esta accion notificara al coordinador asignado.
+        </p>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Motivo (opcional)</label>
+        <textarea
+          rows="3"
+          [value]="cancelReason()"
+          (input)="cancelReason.set($any($event.target).value)"
+          class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400/50 focus:border-amber-400 resize-none"
+          placeholder="Ej: Ya no realizare el viaje..."
+        ></textarea>
+      </div>
+      <div class="px-6 pb-6 flex gap-3">
+        <button
+          type="button"
+          class="flex-1 py-2.5 border border-gray-200 text-gray-700 rounded-xl text-sm font-medium hover:bg-gray-50 transition-colors"
+          [disabled]="isCancelling()"
+          (click)="showCancelModal.set(false)"
+        >
+          Volver
+        </button>
+        <button
+          type="button"
+          class="flex-1 py-2.5 bg-amber-500 text-white rounded-xl text-sm font-medium hover:bg-amber-600 disabled:opacity-50 transition-colors"
+          [disabled]="isCancelling()"
+          (click)="confirmCancelReport()"
+        >
+          @if (isCancelling()) {
+            <span class="inline-block w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin mr-1"></span>
+            Cancelando...
+          } @else {
+            Confirmar cancelacion
+          }
+        </button>
+      </div>
+    </div>
+  </div>
+  }
+</div>
+}
+}
+
+<!-- Modal: Cargar comprobante de devolución (Fase 7) -->
+@if (showReturnProofModal()) {
+<div class="fixed inset-0 z-50 flex items-center justify-center p-4" (click)="showReturnProofModal.set(false)">
+  <div class="absolute inset-0 bg-black/40 backdrop-blur-sm"></div>
+  <div class="relative bg-white rounded-2xl shadow-xl p-6 w-full max-w-md" (click)="$event.stopPropagation()">
+    <h3 class="text-lg font-bold text-gray-900 mb-1">Cargar comprobante de deposito</h3>
+    <p class="text-sm text-gray-500 mb-4">Adjunta el comprobante del deposito que realizaste para devolver el saldo del viático.</p>
+    <div class="space-y-3">
+      <div class="grid grid-cols-2 gap-3">
+        <div class="flex flex-col gap-1">
+          <label class="text-xs font-medium text-gray-600">Fecha de deposito <span class="text-red-500">*</span></label>
+          <input type="date" [value]="returnProofDepositDate()" (input)="returnProofDepositDate.set($any($event.target).value)"
+            class="w-full h-[38px] px-3 rounded-lg border border-gray-200 text-sm" />
+        </div>
+        <div class="flex flex-col gap-1">
+          <label class="text-xs font-medium text-gray-600">Monto devuelto S/ <span class="text-red-500">*</span></label>
+          <input type="number" [value]="returnProofAmount()" (input)="returnProofAmount.set(+$any($event.target).value)"
+            min="0" step="0.01" class="w-full h-[38px] px-3 rounded-lg border border-gray-200 text-sm" />
+        </div>
+      </div>
+      <div class="flex flex-col gap-1">
+        <label class="text-xs font-medium text-gray-600">Banco de origen <span class="text-red-500">*</span></label>
+        <input type="text" [value]="returnProofBank()" (input)="returnProofBank.set($any($event.target).value)"
+          placeholder="BCP, Interbank, BBVA..." class="w-full h-[38px] px-3 rounded-lg border border-gray-200 text-sm" />
+      </div>
+      <div class="flex flex-col gap-1">
+        <label class="text-xs font-medium text-gray-600">N° de operacion <span class="text-red-500">*</span></label>
+        <input type="text" [value]="returnProofOperation()" (input)="returnProofOperation.set($any($event.target).value)"
+          placeholder="Numero de transaccion" class="w-full h-[38px] px-3 rounded-lg border border-gray-200 text-sm" />
+      </div>
+      <div class="flex flex-col gap-1">
+        <label class="text-xs font-medium text-gray-600">Nota (opcional)</label>
+        <textarea [value]="returnProofNote()" (input)="returnProofNote.set($any($event.target).value)"
+          rows="2" class="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm resize-none"></textarea>
+      </div>
+      <div class="flex flex-col gap-1">
+        <label class="text-xs font-medium text-gray-600">Comprobante adjunto <span class="text-red-500">*</span></label>
+        <input type="file" accept=".pdf,.jpg,.jpeg,.png"
+          (change)="onReturnProofFileSelected($event)"
+          class="w-full px-2 py-1.5 rounded-lg border border-gray-200 text-sm bg-white file:mr-2 file:px-2 file:py-1 file:rounded file:border-0 file:bg-gray-100 file:text-gray-700" />
+        @if (isUploadingReturnProof()) {
+        <p class="text-xs text-blue-600">Subiendo...</p>
+        } @else if (returnProofFileName()) {
+        <p class="text-xs text-green-700">Adjunto: {{ returnProofFileName() }}</p>
+        } @else {
+        <p class="text-xs text-gray-400">PDF/JPG/PNG (max 10MB)</p>
+        }
+      </div>
+    </div>
+    <div class="flex gap-3 mt-5">
+      <button type="button" (click)="showReturnProofModal.set(false)"
+        [disabled]="isSubmittingReturnProof()"
+        class="flex-1 py-2 border border-gray-200 rounded-xl text-sm text-gray-600 hover:bg-gray-50 disabled:opacity-50">
+        Cancelar
+      </button>
+      <button type="button" (click)="submitReturnProof()"
+        [disabled]="!returnProofUrl() || isSubmittingReturnProof() || isUploadingReturnProof()"
+        class="flex-1 py-2 bg-red-700 text-white rounded-xl text-sm font-medium hover:bg-red-800 disabled:opacity-50">
+        {{ isSubmittingReturnProof() ? 'Enviando...' : 'Enviar comprobante' }}
       </button>
     </div>
   </div>

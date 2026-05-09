@@ -61,6 +61,11 @@ export class LoginComponent {
 
         this.userStateService.setUser(res);
         this.companyConfigService.reloadConfigOnAuth();
+        if (res.mustChangePassword) {
+          this.notificationService.show('Debes cambiar tu contraseña antes de continuar', 'warning');
+          this.router.navigate(['/cambiar-contrasena']);
+          return;
+        }
         this.notificationService.show('Bienvenid@ ' + res.name, 'success');
         this.redirect();
       });

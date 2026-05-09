@@ -1,4 +1,4 @@
-import { Component, inject, OnInit } from '@angular/core';
+import { Component, inject, OnInit, signal } from '@angular/core';
 import { FileDownloadComponent } from '../../components/file-download/file-download.component';
 import { InvoicesService } from './services/invoices.service';
 import { Router } from '@angular/router';
@@ -15,13 +15,15 @@ import { DataComponent } from '../../components/data/data.component';
 import { UserStateService } from '../../services/user-state.service';
 import { ButtonComponent } from '../../design-system/button/button.component';
 import { ExportButtonComponent } from '../../design-system/export-button/export-button.component';
+import { PaginatorComponent } from '../../design-system/paginator/paginator.component';
 import { ExpenseReportsService } from '../../services/expense-reports.service';
 import { CommonModule } from '@angular/common';
+import { IPaginatedResult } from '../../interfaces/paginated-result.interface';
 
 @Component({
   selector: 'app-invoices',
   standalone: true,
-  imports: [DataComponent, FileDownloadComponent, ButtonComponent, ExportButtonComponent, CommonModule],
+  imports: [DataComponent, FileDownloadComponent, ButtonComponent, ExportButtonComponent, PaginatorComponent, CommonModule],
   templateUrl: './invoices.component.html',
   styleUrl: './invoices.component.scss',
 })
@@ -35,6 +37,9 @@ export default class InvoicesComponent implements OnInit {
 
   hasRendiciones = true;
 
+  result = signal<IPaginatedResult<IInvoiceResponse>>({ data: [], total: 0, page: 1, pages: 0, limit: 20 });
+  page = signal(1);
+  limit = signal(20);
   invoices: IInvoiceResponse[] = [];
   projects: IProject[] = [];
 
@@ -116,11 +121,15 @@ export default class InvoicesComponent implements OnInit {
       : undefined;
 
     this.agentService
-      .getInvoices(filters, 'createdAt', 'desc')
+      .getInvoices(filters, 'createdAt', 'desc', this.page(), this.limit())
       .subscribe((res) => {
-        this.invoices = this.formatResponse(res || []);
+        this.result.set(res);
+        this.invoices = this.formatResponse(res.data || []);
       });
   }
+
+  onPageChange(p: number) { this.page.set(p); this.getInvoices(); }
+  onLimitChange(l: number) { this.limit.set(l); this.page.set(1); this.getInvoices(); }
 
   downloadInvoice(_id: string) {
     const url = this.invoices.find((invoice) => invoice._id === _id)?.file;

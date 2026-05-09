@@ -2,12 +2,13 @@ import { Component, inject, OnDestroy } from '@angular/core';
 import { Router, RouterOutlet, NavigationEnd } from '@angular/router';
 import { SidebarComponent } from '../../components/sidebar/sidebar.component';
 import { NotificationBellComponent } from '../../components/notification-bell/notification-bell.component';
+import { AiAssistantComponent } from '../../modules/ai-assistant/ai-assistant.component';
 import { Subscription } from 'rxjs';
 
 @Component({
   selector: 'app-main',
   standalone: true,
-  imports: [RouterOutlet, SidebarComponent, NotificationBellComponent],
+  imports: [RouterOutlet, SidebarComponent, NotificationBellComponent, AiAssistantComponent],
   templateUrl: './main.component.html',
   styleUrl: './main.component.scss',
 })
@@ -52,6 +53,8 @@ export class MainComponent implements OnDestroy {
       return 'Proyectos';
     } else if (path.includes('/mis-rendiciones')) {
       return 'Mis Rendiciones';
+    } else if (path.includes('/mis-documentos')) {
+      return 'Mis Documentos';
     } else if (path.includes('/tesoreria')) {
       return 'Tesorería';
     }

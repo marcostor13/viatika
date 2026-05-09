@@ -72,6 +72,59 @@ export interface RendicionExportData {
   projectName?: string;
 }
 
+export interface AffidavitExportRow {
+  fecha: string;
+  documento: string;
+  concepto: string;
+  categoria: string;
+  monto: number;
+}
+
+export interface AffidavitExportData {
+  fileBaseName: string;
+  tipo: 'viaticos_nacionales' | 'viajes_exterior';
+  empresaNombre: string;
+  empresaRuc: string;
+  colaborador: string;
+  documentoColaborador?: string;
+  fechaGeneracion: string;
+  total: number;
+  rows: AffidavitExportRow[];
+  signature?: string;
+}
+
+export interface MobilitySheetExportData {
+  fileBaseName: string;
+  collaborator: string;
+  collaboratorDni?: string;
+  internalCode?: string;
+  location?: string;
+  generatedAt: string;
+  rows: Array<{
+    fecha: string;
+    clienteProveedor: string;
+    origen: string;
+    destino: string;
+    gestion: string;
+    total: number;
+  }>;
+  total: number;
+  signature?: string;
+}
+
+export interface CashVoucherExportData {
+  fileBaseName: string;
+  collaborator: string;
+  collaboratorDni?: string;
+  internalCode?: string;
+  entregadoA: string;
+  direccion?: string;
+  concepto: string;
+  monto: number;
+  generatedAt: string;
+  signature?: string;
+}
+
 const RED_HEADER = 'FF912f2c'; // Dark red for headers
 const YELLOW_CELL = 'FFFFFF00'; // Yellow for summary cell
 
@@ -536,6 +589,124 @@ export class RendicionExportService {
     doc.text(data.colaborador.toUpperCase(), centerPage, lineY + 4, { align: 'center' });
     if (data.idDocument) {
       doc.text(`DNI N° ${data.idDocument}`, centerPage, lineY + 8, { align: 'center' });
+    }
+
+    doc.save(`${data.fileBaseName}.pdf`);
+  }
+
+  exportAffidavitToPdf(data: AffidavitExportData): void {
+    const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(13);
+    doc.text('DECLARACION JURADA', 105, 16, { align: 'center' });
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(10);
+    doc.text(`Tipo: ${data.tipo === 'viajes_exterior' ? 'Viajes al Exterior' : 'Viaticos Nacionales'}`, 14, 26);
+    doc.text(`Empresa: ${data.empresaNombre}`, 14, 32);
+    doc.text(`RUC: ${data.empresaRuc}`, 14, 38);
+    doc.text(`Colaborador: ${data.colaborador}`, 14, 44);
+    doc.text(`Documento: ${data.documentoColaborador || '-'}`, 14, 50);
+
+    autoTable(doc, {
+      startY: 58,
+      head: [['Fecha', 'Documento', 'Concepto', 'Categoria', 'Monto (S/)']],
+      body: data.rows.map(r => [r.fecha, r.documento, r.concepto, r.categoria, r.monto.toFixed(2)]),
+      theme: 'grid',
+      headStyles: { fillColor: [145, 47, 44], textColor: 255 },
+      styles: { fontSize: 9 },
+      columnStyles: { 4: { halign: 'right' } },
+      margin: { left: 14, right: 14 },
+    });
+
+    const y = afterTable(doc) + 8;
+    doc.setFont('helvetica', 'bold');
+    doc.text(`Total declarado: S/ ${data.total.toFixed(2)}`, 196, y, { align: 'right' });
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Fecha de generacion: ${data.fechaGeneracion}`, 14, y + 8);
+
+    if (data.signature) {
+      doc.addImage(data.signature, 'PNG', 74, y + 16, 60, 24);
+      doc.line(60, y + 44, 150, y + 44);
+      doc.text(data.colaborador.toUpperCase(), 105, y + 49, { align: 'center' });
+    }
+
+    doc.save(`${data.fileBaseName}.pdf`);
+  }
+
+  exportMobilitySheetToPdf(data: MobilitySheetExportData): void {
+    const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(12);
+    doc.text('PLANILLA DE MOVILIDAD', 105, 16, { align: 'center' });
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(10);
+    doc.text(`Colaborador: ${data.collaborator}`, 14, 26);
+    doc.text(`DNI: ${data.collaboratorDni || '-'}`, 14, 32);
+    doc.text(`Correlativo: ${data.internalCode || '-'}`, 14, 38);
+    doc.text(`Lugar de generacion: ${data.location || '-'}`, 14, 44);
+    doc.text(`Fecha de generacion: ${data.generatedAt}`, 14, 50);
+
+    autoTable(doc, {
+      startY: 58,
+      head: [['Fecha', 'Cliente/Proveedor', 'Origen', 'Destino', 'Gestion', 'Total (S/)']],
+      body: data.rows.map(r => [
+        r.fecha,
+        r.clienteProveedor || '-',
+        r.origen || '-',
+        r.destino || '-',
+        r.gestion || '-',
+        r.total.toFixed(2),
+      ]),
+      theme: 'grid',
+      headStyles: { fillColor: [145, 47, 44], textColor: 255 },
+      styles: { fontSize: 8 },
+      columnStyles: { 5: { halign: 'right' } },
+      margin: { left: 14, right: 14 },
+    });
+
+    const y = afterTable(doc) + 10;
+    doc.setFont('helvetica', 'bold');
+    doc.text(`Total general: S/ ${data.total.toFixed(2)}`, 196, y, { align: 'right' });
+    doc.setFont('helvetica', 'normal');
+
+    if (data.signature) {
+      doc.addImage(data.signature, 'PNG', 74, y + 10, 60, 22);
+      doc.line(60, y + 36, 150, y + 36);
+      doc.text(data.collaborator.toUpperCase(), 105, y + 41, { align: 'center' });
+    }
+
+    doc.save(`${data.fileBaseName}.pdf`);
+  }
+
+  exportCashVoucherToPdf(data: CashVoucherExportData): void {
+    const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(13);
+    doc.text('COMPROBANTE DE CAJA', 105, 18, { align: 'center' });
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(10);
+    doc.text(`Correlativo: ${data.internalCode || '-'}`, 14, 30);
+    doc.text(`Fecha: ${data.generatedAt}`, 14, 36);
+    doc.text(`Entregado a: ${data.entregadoA}`, 14, 42);
+    doc.text(`DNI colaborador: ${data.collaboratorDni || '-'}`, 14, 48);
+    doc.text(`Direccion: ${data.direccion || '-'}`, 14, 54);
+
+    autoTable(doc, {
+      startY: 64,
+      head: [['Concepto', 'Monto (S/)']],
+      body: [[data.concepto, data.monto.toFixed(2)]],
+      theme: 'grid',
+      headStyles: { fillColor: [145, 47, 44], textColor: 255 },
+      styles: { fontSize: 10 },
+      columnStyles: { 1: { halign: 'right', cellWidth: 40 } },
+      margin: { left: 14, right: 14 },
+    });
+
+    if (data.signature) {
+      const y = afterTable(doc) + 24;
+      doc.addImage(data.signature, 'PNG', 74, y - 20, 60, 20);
+      doc.line(60, y + 6, 150, y + 6);
+      doc.text(data.collaborator.toUpperCase(), 105, y + 11, { align: 'center' });
     }
 
     doc.save(`${data.fileBaseName}.pdf`);

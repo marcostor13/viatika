@@ -39,6 +39,14 @@
   [data]="invoices"
   (clickOptionsEvent)="clickOptions($event)"
 ></app-data>
+<app-paginator
+  [total]="result().total"
+  [page]="result().page"
+  [pages]="result().pages"
+  [limit]="result().limit"
+  (pageChange)="onPageChange($event)"
+  (limitChange)="onLimitChange($event)"
+/>
 
 <div class="hidden">
   <app-file-download

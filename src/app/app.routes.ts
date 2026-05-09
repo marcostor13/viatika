@@ -5,6 +5,7 @@ import { AuthColaboradorGuard } from './guards/auth-colaborador.guard';
 import { AuthAdmin2Guard } from './guards/auth-admin2.guard';
 import { AuthSuperGuard } from './guards/auth-super.guard';
 import { AuthTesoreroGuard } from './guards/auth-tesorero.guard';
+import { AuthViaticosGuard } from './guards/auth-viaticos.guard';
 import { defaultRedirectGuard } from './guards/default-redirect.guard';
 import { authModuleGuard } from './guards/auth-module.guard';
 import { MainComponent } from './layouts/main/main.component';
@@ -134,6 +135,22 @@ export const routes: Routes = [
         canActivate: [AuthAdmin2Guard],
       },
       {
+        path: 'admin-users/bulk-import',
+        loadComponent: () =>
+          import('./modules/admin-users/bulk-import/admin-users-bulk-import.component').then(
+            (m) => m.AdminUsersBulkImportComponent
+          ),
+        canActivate: [AuthAdmin2Guard],
+      },
+      {
+        path: 'rendiciones',
+        loadComponent: () =>
+          import('./modules/admin-users/rendiciones-admin/rendiciones-admin.component').then(
+            (m) => m.RendicionesAdminComponent
+          ),
+        canActivate: [AuthAdmin2Guard],
+      },
+      {
         path: 'configuracion',
         loadComponent: () =>
           import('./modules/configuracion/configuracion.component').then(
@@ -177,11 +194,35 @@ export const routes: Routes = [
           ),
       },
       {
+        path: 'mis-documentos',
+        loadComponent: () =>
+          import('./modules/mis-documentos/mis-documentos.component').then(
+            (m) => m.MisDocumentosComponent
+          ),
+        canActivate: [AuthColaboradorGuard],
+      },
+      {
         path: 'mi-firma',
         loadComponent: () =>
           import('./modules/firma-digital/firma-digital.component').then(
             (m) => m.FirmaDigitalComponent
           ),
+      },
+      {
+        path: 'viaticos',
+        loadComponent: () =>
+          import('./modules/viaticos/viaticos.component').then(
+            (m) => m.ViaticosComponent
+          ),
+        canActivate: [AuthViaticosGuard],
+      },
+      {
+        path: 'viaticos/:id',
+        loadComponent: () =>
+          import('./modules/viaticos/viaticos-detail/viaticos-detail.component').then(
+            (m) => m.ViaticosDetailComponent
+          ),
+        canActivate: [AuthViaticosGuard],
       },
       {
         path: 'tesoreria',
@@ -192,12 +233,68 @@ export const routes: Routes = [
         canActivate: [AuthTesoreroGuard],
       },
       {
+        path: 'centros-de-costo',
+        loadComponent: () =>
+          import('./modules/centros-de-costo/centros-de-costo.component').then(
+            (m) => m.CentrosDeCostoComponent
+          ),
+        canActivate: [AuthAdmin2Guard],
+      },
+      {
+        path: 'centros-de-costo/form',
+        loadComponent: () =>
+          import('./modules/centros-de-costo/form/centros-de-costo-form.component').then(
+            (m) => m.CentrosDeCostoFormComponent
+          ),
+        canActivate: [AuthAdmin2Guard],
+      },
+      {
+        path: 'centros-de-costo/form/:id',
+        loadComponent: () =>
+          import('./modules/centros-de-costo/form/centros-de-costo-form.component').then(
+            (m) => m.CentrosDeCostoFormComponent
+          ),
+        canActivate: [AuthAdmin2Guard],
+      },
+      {
+        path: 'centros-de-costo/bulk-import',
+        loadComponent: () =>
+          import('./modules/centros-de-costo/bulk-import/centros-de-costo-bulk-import.component').then(
+            (m) => m.CentrosDeCostoBulkImportComponent
+          ),
+        canActivate: [AuthAdmin2Guard],
+      },
+      {
+        path: 'categorias',
+        loadComponent: () =>
+          import('./modules/categorias/categorias.component').then(
+            (m) => m.CategoriasComponent
+          ),
+        canActivate: [AuthAdmin2Guard],
+      },
+      {
         path: 'audit-log',
         loadComponent: () =>
           import('./modules/audit-log/audit-log.component').then(
             (m) => m.AuditLogComponent
           ),
         canActivate: [authModuleGuard('audit-log', true)],
+      },
+      {
+        path: 'reembolso-directo',
+        loadComponent: () =>
+          import('./modules/reembolso-directo/reembolso-directo.component').then(
+            (m) => m.ReembolsoDirectoComponent
+          ),
+        canActivate: [AuthColaboradorGuard],
+      },
+      {
+        path: 'caja-chica',
+        loadComponent: () =>
+          import('./modules/caja-chica/caja-chica.component').then(
+            (m) => m.CajaChicaComponent
+          ),
+        canActivate: [AuthColaboradorGuard],
       },
     ],
   },
@@ -210,6 +307,13 @@ export const routes: Routes = [
     path: 'login',
     loadComponent: () =>
       import('./modules/login/login.component').then((m) => m.LoginComponent),
+  },
+  {
+    path: 'cambiar-contrasena',
+    loadComponent: () =>
+      import('./modules/cambiar-contrasena/cambiar-contrasena.component').then(
+        (m) => m.CambiarContrasenaComponent
+      ),
   },
   {
     path: '**',

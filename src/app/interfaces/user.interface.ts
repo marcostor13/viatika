@@ -5,6 +5,7 @@ export interface IUser {
   lastName?: string;
   email: string;
   password?: string;
+  coordinatorId?: string | null;
   roleId?: string;
   role?: string;
   roleName?: string;
@@ -83,9 +84,17 @@ export interface IUserResponse {
   permissions?: IUserPermissions;
   dni?: string;
   employeeCode?: string;
+  /** Fase 3 — notificaciones viáticos. */
+  area?: string;
+  cargo?: string;
   address?: string;
   phone?: string;
   signature?: string;
+  /** Coordinador para notificaciones de solicitud de viáticos (Fase 2). */
+  coordinatorId?:
+    | string
+    | { _id: string; name?: string; email?: string };
+  mustChangePassword?: boolean;
 }
 
 

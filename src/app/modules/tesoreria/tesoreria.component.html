@@ -1,214 +1,595 @@
-<div class="px-5 py-6 max-w-7xl mx-auto">
+<div class="p-5 max-w-7xl mx-auto flex flex-col gap-6">
 
   <!-- Header -->
-  <div class="flex items-center justify-between mb-8">
-    <div>
-      <h1 class="text-2xl font-bold text-gray-900">Tesorería — Gestión de Anticipos</h1>
-      <p class="text-sm text-gray-500 mt-1">Aprobación, pago y liquidación de anticipos</p>
-    </div>
+  <div>
+    <h1 class="text-2xl font-bold text-secondary">Pagos</h1>
+    <p class="text-sm text-tertiary mt-0.5">Gestión de viáticos y comprobantes de pago</p>
   </div>
 
   <!-- Stats Cards -->
   @if(stats) {
-  <div class="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
-    <div class="bg-white rounded-xl border border-gray-200 p-4 text-center">
-      <p class="text-2xl font-bold text-yellow-600">{{ stats.pending_l1 }}</p>
-      <p class="text-xs text-gray-500 mt-1">Pendiente L1</p>
+  <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+    <div class="bg-quaternary rounded-2xl border border-tertiary/20 shadow-soft p-4 flex flex-col gap-1">
+      <p class="text-xs font-semibold text-tertiary uppercase tracking-wider">Pend. Pago</p>
+      <p class="text-2xl font-bold text-orange-600">{{ stats.pending_l2 + stats.approved }}</p>
     </div>
-    <div class="bg-white rounded-xl border border-gray-200 p-4 text-center">
-      <p class="text-2xl font-bold text-orange-600">{{ stats.pending_l2 }}</p>
-      <p class="text-xs text-gray-500 mt-1">Pendiente Tesorería</p>
+    <div class="bg-quaternary rounded-2xl border border-tertiary/20 shadow-soft p-4 flex flex-col gap-1">
+      <p class="text-xs font-semibold text-tertiary uppercase tracking-wider">Pagados</p>
+      <p class="text-2xl font-bold text-blue-600">{{ stats.paid }}</p>
     </div>
-    <div class="bg-white rounded-xl border border-gray-200 p-4 text-center">
-      <p class="text-2xl font-bold text-blue-600">{{ stats.approved }}</p>
-      <p class="text-xs text-gray-500 mt-1">Aprobados</p>
+    <div class="bg-quaternary rounded-2xl border border-tertiary/20 shadow-soft p-4 flex flex-col gap-1">
+      <p class="text-xs font-semibold text-tertiary uppercase tracking-wider">Liquidados</p>
+      <p class="text-2xl font-bold text-green-600">{{ stats.settled }}</p>
     </div>
-    <div class="bg-white rounded-xl border border-gray-200 p-4 text-center">
-      <p class="text-2xl font-bold text-green-600">{{ stats.paid }}</p>
-      <p class="text-xs text-gray-500 mt-1">Pagados</p>
+    <div class="bg-quaternary rounded-2xl border border-tertiary/20 shadow-soft p-4 flex flex-col gap-1 sm:col-span-3 lg:col-span-1 col-span-2">
+      <p class="text-xs font-semibold text-tertiary uppercase tracking-wider">Total desembolsado</p>
+      <p class="text-xl font-bold text-secondary">S/ {{ stats.totalApprovedAmount | number:'1.2-2' }}</p>
     </div>
-    <div class="bg-white rounded-xl border border-gray-200 p-4 text-center">
-      <p class="text-2xl font-bold text-gray-900">S/ {{ stats.totalApprovedAmount | number:'1.2-2' }}</p>
-      <p class="text-xs text-gray-500 mt-1">Total Desembolsado</p>
+  </div>
+  }
+
+  <!-- Reembolsos pendientes -->
+  @if (canPayAndSettle && pendingReimbursements.length > 0) {
+  <div class="rounded-2xl border border-amber-200 bg-amber-50/60 p-5">
+    <h2 class="text-sm font-bold text-secondary mb-1">Reembolsos pendientes</h2>
+    <p class="text-xs text-tertiary mb-4">Rendiciones liquidadas con saldo a favor del colaborador — pendiente de transferencia.</p>
+    <!-- Desktop -->
+    <div class="hidden sm:block overflow-x-auto rounded-xl border border-amber-100 bg-quaternary">
+      <table class="min-w-full text-sm">
+        <thead class="border-b border-tertiary/20">
+          <tr>
+            <th class="px-4 py-3 text-left text-xs font-semibold text-tertiary uppercase tracking-wider">Colaborador</th>
+            <th class="px-4 py-3 text-left text-xs font-semibold text-tertiary uppercase tracking-wider">Rendición</th>
+            <th class="px-4 py-3 text-right text-xs font-semibold text-tertiary uppercase tracking-wider">A reembolsar</th>
+            <th class="px-4 py-3 text-right text-xs font-semibold text-tertiary uppercase tracking-wider">Acción</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-tertiary/10">
+          @for (rep of pendingReimbursements; track rep._id) {
+          <tr class="hover:bg-background/60 transition-colors">
+            <td class="px-4 py-3 font-medium text-secondary">{{ collaboratorReportName(rep) }}</td>
+            <td class="px-4 py-3 text-tertiary">{{ rep.title }}</td>
+            <td class="px-4 py-3 text-right font-bold text-green-700">S/ {{ reimbursementAmount(rep) }}</td>
+            <td class="px-4 py-3 text-right">
+              <button type="button" (click)="openReimbursementModal(rep)" [disabled]="isActing()"
+                class="text-xs px-3 py-1.5 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 font-medium transition-colors">
+                Registrar pago
+              </button>
+            </td>
+          </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+    <!-- Mobile cards -->
+    <div class="sm:hidden flex flex-col gap-3">
+      @for (rep of pendingReimbursements; track rep._id) {
+      <div class="bg-quaternary rounded-xl border border-amber-100 p-4">
+        <div class="flex items-start justify-between gap-2 mb-2">
+          <div>
+            <p class="text-sm font-semibold text-secondary">{{ collaboratorReportName(rep) }}</p>
+            <p class="text-xs text-tertiary mt-0.5 truncate max-w-[180px]">{{ rep.title }}</p>
+          </div>
+          <span class="text-base font-bold text-green-700 shrink-0">S/ {{ reimbursementAmount(rep) }}</span>
+        </div>
+        <button type="button" (click)="openReimbursementModal(rep)" [disabled]="isActing()"
+          class="w-full h-10 text-sm font-medium bg-green-600 text-white rounded-xl hover:bg-green-700 disabled:opacity-50 transition-colors">
+          Registrar pago
+        </button>
+      </div>
+      }
     </div>
   </div>
   }
 
   <!-- Tabs -->
-  <div class="flex gap-1 bg-gray-100 rounded-xl p-1 mb-6 w-fit">
-    <button type="button" (click)="activeTab.set('pendientes')"
-      [class]="activeTab() === 'pendientes' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'"
-      class="px-4 py-2 rounded-lg text-sm font-medium transition-all">
-      Pendientes
-    </button>
-    <button type="button" (click)="activeTab.set('aprobados')"
-      [class]="activeTab() === 'aprobados' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'"
-      class="px-4 py-2 rounded-lg text-sm font-medium transition-all">
-      Aprobados / En pago
-    </button>
-    <button type="button" (click)="activeTab.set('historial')"
-      [class]="activeTab() === 'historial' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'"
-      class="px-4 py-2 rounded-lg text-sm font-medium transition-all">
-      Historial
-    </button>
+  <div class="overflow-x-auto -mx-5 px-5">
+    <div class="flex gap-1 bg-background rounded-xl p-1 w-fit min-w-full sm:min-w-0">
+      <button type="button" (click)="activeTab.set('pendientes')"
+        [class]="activeTab() === 'pendientes' ? 'bg-quaternary text-secondary shadow-soft' : 'text-tertiary hover:text-secondary'"
+        class="px-4 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap">
+        Pendientes
+      </button>
+      <button type="button" (click)="activeTab.set('aprobados')"
+        [class]="activeTab() === 'aprobados' ? 'bg-quaternary text-secondary shadow-soft' : 'text-tertiary hover:text-secondary'"
+        class="px-4 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap">
+        En pago
+      </button>
+      @if (canPayAndSettle) {
+      <button type="button" (click)="activeTab.set('devoluciones')"
+        [class]="activeTab() === 'devoluciones' ? 'bg-quaternary text-secondary shadow-soft' : 'text-tertiary hover:text-secondary'"
+        class="px-4 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap flex items-center gap-1.5">
+        Devoluciones
+        @if (pendingReturns.length > 0) {
+        <span class="inline-flex items-center justify-center w-5 h-5 rounded-full bg-error text-white text-[10px] font-bold">
+          {{ pendingReturns.length }}
+        </span>
+        }
+      </button>
+      }
+      <button type="button" (click)="activeTab.set('historial')"
+        [class]="activeTab() === 'historial' ? 'bg-quaternary text-secondary shadow-soft' : 'text-tertiary hover:text-secondary'"
+        class="px-4 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap">
+        Historial
+      </button>
+    </div>
   </div>
 
-  <!-- Table -->
-  <div class="bg-white rounded-xl border border-gray-200 overflow-hidden">
+  <!-- Devoluciones tab -->
+  @if (activeTab() === 'devoluciones') {
+  <div class="bg-quaternary rounded-2xl border border-tertiary/20 shadow-soft overflow-hidden">
+    @if (pendingReturns.length === 0) {
+    <div class="p-12 text-center text-tertiary text-sm">No hay devoluciones pendientes.</div>
+    } @else {
+    <!-- Desktop table -->
+    <div class="hidden sm:block overflow-x-auto">
+      <table class="min-w-full text-sm">
+        <thead class="border-b border-tertiary/20 bg-background">
+          <tr>
+            <th class="px-5 py-3 text-left text-xs font-semibold text-tertiary uppercase tracking-wider">Colaborador</th>
+            <th class="px-5 py-3 text-right text-xs font-semibold text-tertiary uppercase tracking-wider">Monto S/</th>
+            <th class="px-5 py-3 text-center text-xs font-semibold text-tertiary uppercase tracking-wider">Vencimiento</th>
+            <th class="px-5 py-3 text-center text-xs font-semibold text-tertiary uppercase tracking-wider">Estado</th>
+            <th class="px-5 py-3 text-right text-xs font-semibold text-tertiary uppercase tracking-wider">Acción</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-tertiary/10">
+          @for (adv of pendingReturns; track adv._id) {
+          <tr class="hover:bg-background/60 transition-colors" [ngClass]="adv.returnRecord?.isOverdue ? 'bg-red-50' : ''">
+            <td class="px-5 py-3.5 font-medium text-secondary">{{ getUserName(adv) }}</td>
+            <td class="px-5 py-3.5 text-right font-bold text-error">S/ {{ adv.returnRecord?.amountDue | number:'1.2-2' }}</td>
+            <td class="px-5 py-3.5 text-center text-sm text-secondary">
+              {{ adv.returnRecord?.dueDate | date:'dd/MM/yyyy' }}
+              @if (adv.returnRecord?.isOverdue) {
+              <span class="ml-1.5 text-xs font-bold text-error">VENCIDO</span>
+              }
+            </td>
+            <td class="px-5 py-3.5 text-center">
+              <span [class]="returnStatusColor(adv.returnRecord?.status || '')"
+                class="inline-flex px-2.5 py-1 rounded-full text-xs font-medium">
+                {{ returnStatusLabel(adv.returnRecord?.status || '') }}
+              </span>
+            </td>
+            <td class="px-5 py-3.5 text-right">
+              @if (adv.returnRecord?.status === 'proof_uploaded') {
+              <button type="button" (click)="openValidateReturnModal(adv)"
+                class="text-xs px-3 py-1.5 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium transition-colors">
+                Revisar comprobante
+              </button>
+              } @else if (adv.returnRecord?.status === 'rejected') {
+              <span class="text-xs text-tertiary">Esperando nuevo comprobante</span>
+              }
+            </td>
+          </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+    <!-- Mobile cards -->
+    <div class="sm:hidden divide-y divide-tertiary/10">
+      @for (adv of pendingReturns; track adv._id) {
+      <div class="p-4" [ngClass]="adv.returnRecord?.isOverdue ? 'bg-red-50' : ''">
+        <div class="flex items-start justify-between gap-3 mb-3">
+          <div>
+            <p class="text-sm font-semibold text-secondary">{{ getUserName(adv) }}</p>
+            <p class="text-xs text-tertiary mt-0.5">Vence: {{ adv.returnRecord?.dueDate | date:'dd/MM/yyyy' }}
+              @if (adv.returnRecord?.isOverdue) {
+              <span class="ml-1 text-error font-bold">VENCIDO</span>
+              }
+            </p>
+          </div>
+          <div class="text-right">
+            <p class="text-base font-bold text-error">S/ {{ adv.returnRecord?.amountDue | number:'1.2-2' }}</p>
+            <span [class]="returnStatusColor(adv.returnRecord?.status || '')"
+              class="inline-flex px-2 py-0.5 rounded-full text-xs font-medium mt-1">
+              {{ returnStatusLabel(adv.returnRecord?.status || '') }}
+            </span>
+          </div>
+        </div>
+        @if (adv.returnRecord?.status === 'proof_uploaded') {
+        <button type="button" (click)="openValidateReturnModal(adv)"
+          class="w-full h-10 text-sm font-medium bg-green-600 text-white rounded-xl hover:bg-green-700 transition-colors">
+          Revisar comprobante
+        </button>
+        } @else if (adv.returnRecord?.status === 'rejected') {
+        <p class="text-xs text-tertiary text-center py-2">Esperando nuevo comprobante del colaborador</p>
+        }
+      </div>
+      }
+    </div>
+    }
+  </div>
+  }
+
+  <!-- Main advances table -->
+  @if (activeTab() !== 'devoluciones') {
+  <div class="bg-quaternary rounded-2xl border border-tertiary/20 shadow-soft overflow-hidden">
     @if(isLoading()) {
     <div class="flex justify-center p-12">
       <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
     </div>
     } @else if(filteredAdvances.length === 0) {
-    <div class="p-12 text-center text-gray-400 text-sm">No hay anticipos en esta sección.</div>
+    <div class="p-12 text-center text-tertiary text-sm">No hay viáticos en esta sección.</div>
     } @else {
-    <table class="min-w-full divide-y divide-gray-200">
-      <thead class="bg-gray-50 text-xs font-medium text-gray-500 uppercase tracking-wider">
-        <tr>
-          <th class="px-4 py-3 text-left">Colaborador</th>
-          <th class="px-4 py-3 text-left">Rendición</th>
-          <th class="px-4 py-3 text-left">Descripción</th>
-          <th class="px-4 py-3 text-right">Monto S/.</th>
-          <th class="px-4 py-3 text-center">Niveles</th>
-          <th class="px-4 py-3 text-center">Estado</th>
-          <th class="px-4 py-3 text-right">Acciones</th>
-        </tr>
-      </thead>
-      <tbody class="divide-y divide-gray-200">
-        @for(adv of filteredAdvances; track adv._id) {
-        <tr class="hover:bg-gray-50">
-          <td class="px-4 py-3 text-sm font-medium text-gray-900">{{ getUserName(adv) }}</td>
-          <td class="px-4 py-3 text-sm text-gray-500">{{ getReportTitle(adv) }}</td>
-          <td class="px-4 py-3 text-sm text-gray-700 max-w-[200px] truncate">{{ adv.description }}</td>
-          <td class="px-4 py-3 text-sm font-bold text-gray-900 text-right">{{ adv.amount | number:'1.2-2' }}</td>
-          <td class="px-4 py-3 text-center">
-            <span class="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded font-medium">{{ getLevelsBadge(adv) }}</span>
-          </td>
-          <td class="px-4 py-3 text-center">
-            <span [class]="STATUS_COLORS[adv.status]" class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium">
-              {{ STATUS_LABELS[adv.status] }}
-            </span>
-          </td>
-          <td class="px-4 py-3 text-right">
-            <div class="flex items-center justify-end gap-2">
-              @if(adv.status === 'pending_l1') {
-              <button type="button" (click)="approveL1(adv)" [disabled]="isActing()"
-                class="text-xs px-3 py-1 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 transition-colors">
-                Aprobar L1
-              </button>
-              <button type="button" (click)="openRejectModal(adv)" [disabled]="isActing()"
-                class="text-xs px-3 py-1 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 disabled:opacity-50 transition-colors">
-                Rechazar
-              </button>
+
+    <!-- Desktop table (md+) -->
+    <div class="hidden md:block overflow-x-auto">
+      <table class="min-w-full text-sm">
+        <thead class="border-b border-tertiary/20 bg-background">
+          <tr>
+            <th class="px-5 py-3 text-left text-xs font-semibold text-tertiary uppercase tracking-wider">Colaborador</th>
+            <th class="px-5 py-3 text-left text-xs font-semibold text-tertiary uppercase tracking-wider">Rendición</th>
+            <th class="px-5 py-3 text-right text-xs font-semibold text-tertiary uppercase tracking-wider">Monto S/</th>
+            <th class="px-5 py-3 text-center text-xs font-semibold text-tertiary uppercase tracking-wider">Estado</th>
+            <th class="px-5 py-3 text-center text-xs font-semibold text-tertiary uppercase tracking-wider">Historial</th>
+            <th class="px-5 py-3 text-right text-xs font-semibold text-tertiary uppercase tracking-wider">Acciones</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-tertiary/10">
+          @for(adv of filteredAdvances; track adv._id) {
+          <tr class="hover:bg-background/60 transition-colors">
+            <td class="px-5 py-3.5">
+              <p class="font-medium text-secondary">{{ getUserName(adv) }}</p>
+              @if(adv.description) {
+              <p class="text-xs text-tertiary mt-0.5 max-w-[180px] truncate">{{ adv.description }}</p>
               }
-              @if(adv.status === 'pending_l2' && canPayAndSettle) {
-              <button type="button" (click)="approveL2(adv)" [disabled]="isActing()"
-                class="text-xs px-3 py-1 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 transition-colors">
-                Aprobar L2
+            </td>
+            <td class="px-5 py-3.5 text-tertiary max-w-[160px] truncate">{{ getReportTitle(adv) }}</td>
+            <td class="px-5 py-3.5 text-right font-bold text-secondary">S/ {{ adv.amount | number:'1.2-2' }}</td>
+            <td class="px-5 py-3.5 text-center">
+              <span [class]="STATUS_COLORS[adv.status]" class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium">
+                {{ STATUS_LABELS[adv.status] }}
+              </span>
+            </td>
+            <td class="px-5 py-3.5 text-center">
+              @if (adv.approvalHistory.length > 0) {
+              <button type="button" (click)="openHistoryModal(adv)"
+                class="text-xs text-tertiary hover:text-primary underline-offset-2 hover:underline transition-colors">
+                Ver ({{ adv.approvalHistory.length }})
               </button>
-              <button type="button" (click)="openRejectModal(adv)" [disabled]="isActing()"
-                class="text-xs px-3 py-1 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 disabled:opacity-50 transition-colors">
-                Rechazar
-              </button>
+              } @else {
+              <span class="text-xs text-tertiary">—</span>
               }
-              @if(adv.status === 'approved' && canPayAndSettle) {
-              <button type="button" (click)="openPaymentModal(adv)" [disabled]="isActing()"
-                class="text-xs px-3 py-1 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors">
-                Registrar Pago
-              </button>
-              }
-              @if(adv.status === 'paid' && canPayAndSettle) {
-              <button type="button" (click)="settle(adv)" [disabled]="isActing()"
-                class="text-xs px-3 py-1 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-50 transition-colors">
-                Liquidar
-              </button>
-              }
-              @if(adv.status === 'settled' && adv.settlement?.type === 'devolucion' && canPayAndSettle) {
-              <button type="button" (click)="openReturnModal(adv)" [disabled]="isActing()"
-                class="text-xs px-3 py-1 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 transition-colors">
-                Registrar Devolución
-              </button>
-              }
-              @if(adv.status === 'settled') {
-              <div class="text-xs text-gray-500">
-                @if(adv.settlement?.type === 'devolucion') {
-                <span class="text-red-600 font-medium">Dev. S/ {{ adv.settlement?.difference | number:'1.2-2' }}</span>
-                } @else if(adv.settlement?.type === 'reembolso') {
-                <span class="text-green-600 font-medium">Reimb. S/ {{ (adv.settlement?.difference! * -1) | number:'1.2-2' }}</span>
-                } @else {
-                <span class="text-gray-500">Equilibrado</span>
+            </td>
+            <td class="px-5 py-3.5 text-right">
+              <div class="flex items-center justify-end gap-2">
+                @if(adv.status === 'pending_l2') {
+                  @if(canPayAndSettle) {
+                  <button type="button" (click)="openPaymentModal(adv)" [disabled]="isActing()"
+                    class="text-xs px-3 py-1.5 bg-primary text-white rounded-lg hover:bg-primary/90 disabled:opacity-50 transition-colors font-medium">
+                    Registrar pago
+                  </button>
+                  } @else {
+                  <button type="button" (click)="approveL2(adv)" [disabled]="isActing()"
+                    class="text-xs px-3 py-1.5 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 transition-colors font-medium">
+                    Aprobar L2
+                  </button>
+                  }
+                <button type="button" (click)="openRejectModal(adv)" [disabled]="isActing()"
+                  class="text-xs px-3 py-1.5 border border-error/30 text-error rounded-lg hover:bg-error hover:text-white disabled:opacity-50 transition-colors font-medium">
+                  Rechazar
+                </button>
+                }
+                @if(adv.status === 'approved' && canPayAndSettle) {
+                <button type="button" (click)="openPaymentModal(adv)" [disabled]="isActing()"
+                  class="text-xs px-3 py-1.5 bg-primary text-white rounded-lg hover:bg-primary/90 disabled:opacity-50 transition-colors font-medium">
+                  Registrar pago
+                </button>
+                }
+                @if(adv.status === 'paid' && canPayAndSettle) {
+                <button type="button" (click)="settle(adv)" [disabled]="isActing()"
+                  class="text-xs px-3 py-1.5 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 transition-colors font-medium">
+                  Liquidar
+                </button>
+                }
+                @if(adv.status === 'settled' && adv.settlement?.type === 'devolucion' && canPayAndSettle) {
+                <button type="button" (click)="openReturnModal(adv)" [disabled]="isActing()"
+                  class="text-xs px-3 py-1.5 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 transition-colors font-medium">
+                  Registrar devolución
+                </button>
+                }
+                @if(adv.status === 'settled') {
+                <span class="text-xs font-medium"
+                  [class.text-error]="adv.settlement?.type === 'devolucion'"
+                  [class.text-green-600]="adv.settlement?.type === 'reembolso'"
+                  [class.text-tertiary]="adv.settlement?.type === 'equilibrado'">
+                  @if(adv.settlement?.type === 'devolucion') { Dev. S/ {{ adv.settlement?.difference | number:'1.2-2' }}
+                  } @else if(adv.settlement?.type === 'reembolso') { Reimb. S/ {{ (adv.settlement?.difference! * -1) | number:'1.2-2' }}
+                  } @else { Equilibrado }
+                </span>
                 }
               </div>
-              }
-            </div>
-          </td>
-        </tr>
-        }
-      </tbody>
-    </table>
+            </td>
+          </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Mobile cards (< md) -->
+    <div class="md:hidden divide-y divide-tertiary/10">
+      @for(adv of filteredAdvances; track adv._id) {
+      <div class="p-4">
+        <div class="flex items-start justify-between gap-3 mb-3">
+          <div class="min-w-0">
+            <p class="text-sm font-semibold text-secondary truncate">{{ getUserName(adv) }}</p>
+            <p class="text-xs text-tertiary mt-0.5 truncate">{{ getReportTitle(adv) }}</p>
+            @if(adv.description) {
+            <p class="text-xs text-tertiary mt-0.5 truncate">{{ adv.description }}</p>
+            }
+          </div>
+          <div class="text-right shrink-0">
+            <p class="text-base font-bold text-secondary">S/ {{ adv.amount | number:'1.2-2' }}</p>
+            <span [class]="STATUS_COLORS[adv.status]" class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium mt-1">
+              {{ STATUS_LABELS[adv.status] }}
+            </span>
+          </div>
+        </div>
+        <div class="flex flex-wrap gap-2">
+          @if (adv.approvalHistory.length > 0) {
+          <button type="button" (click)="openHistoryModal(adv)"
+            class="text-xs px-3 py-1.5 border border-tertiary/30 text-tertiary rounded-lg hover:bg-background transition-colors">
+            Historial ({{ adv.approvalHistory.length }})
+          </button>
+          }
+          @if(adv.status === 'pending_l2') {
+            @if(canPayAndSettle) {
+            <button type="button" (click)="openPaymentModal(adv)" [disabled]="isActing()"
+              class="text-xs px-3 py-1.5 bg-primary text-white rounded-lg hover:bg-primary/90 disabled:opacity-50 transition-colors font-medium">
+              Registrar pago
+            </button>
+            } @else {
+            <button type="button" (click)="approveL2(adv)" [disabled]="isActing()"
+              class="text-xs px-3 py-1.5 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 transition-colors font-medium">
+              Aprobar L2
+            </button>
+            }
+          <button type="button" (click)="openRejectModal(adv)" [disabled]="isActing()"
+            class="text-xs px-3 py-1.5 border border-error/30 text-error rounded-lg hover:bg-error hover:text-white disabled:opacity-50 transition-colors font-medium">
+            Rechazar
+          </button>
+          }
+          @if(adv.status === 'approved' && canPayAndSettle) {
+          <button type="button" (click)="openPaymentModal(adv)" [disabled]="isActing()"
+            class="text-xs px-3 py-1.5 bg-primary text-white rounded-lg hover:bg-primary/90 disabled:opacity-50 transition-colors font-medium">
+            Registrar pago
+          </button>
+          }
+          @if(adv.status === 'paid' && canPayAndSettle) {
+          <button type="button" (click)="settle(adv)" [disabled]="isActing()"
+            class="text-xs px-3 py-1.5 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 transition-colors font-medium">
+            Liquidar
+          </button>
+          }
+          @if(adv.status === 'settled' && adv.settlement?.type === 'devolucion' && canPayAndSettle) {
+          <button type="button" (click)="openReturnModal(adv)" [disabled]="isActing()"
+            class="text-xs px-3 py-1.5 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 transition-colors font-medium">
+            Registrar devolución
+          </button>
+          }
+          @if(adv.status === 'settled') {
+          <span class="text-xs font-medium px-3 py-1.5 rounded-lg bg-background"
+            [class.text-error]="adv.settlement?.type === 'devolucion'"
+            [class.text-green-600]="adv.settlement?.type === 'reembolso'"
+            [class.text-tertiary]="adv.settlement?.type === 'equilibrado'">
+            @if(adv.settlement?.type === 'devolucion') { Dev. S/ {{ adv.settlement?.difference | number:'1.2-2' }}
+            } @else if(adv.settlement?.type === 'reembolso') { Reimb. S/ {{ (adv.settlement?.difference! * -1) | number:'1.2-2' }}
+            } @else { Equilibrado }
+          </span>
+          }
+        </div>
+      </div>
+      }
+    </div>
+
     }
   </div>
+  }
+
 </div>
 
 <!-- Modal: Registrar Pago -->
 @if(showPaymentModal && selectedAdvance) {
-<div class="fixed inset-0 z-50 flex items-center justify-center p-4" (click)="showPaymentModal=false">
-  <div class="absolute inset-0 bg-black/40 backdrop-blur-sm"></div>
-  <div class="relative bg-white rounded-2xl shadow-xl p-6 w-full max-w-md" (click)="$event.stopPropagation()">
-    <h3 class="text-lg font-bold text-gray-900 mb-1">Registrar Transferencia Bancaria</h3>
-    <p class="text-sm text-gray-500 mb-4">Anticipo: <strong>S/ {{ selectedAdvance.amount | number:'1.2-2' }}</strong> — {{ getUserName(selectedAdvance) }}</p>
+<div class="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4" (click)="showPaymentModal=false">
+  <div class="absolute inset-0 bg-secondary/50 backdrop-blur-sm"></div>
+  <div class="relative bg-quaternary rounded-t-2xl sm:rounded-2xl shadow-soft border border-tertiary/20 w-full sm:max-w-md max-h-[90vh] overflow-y-auto"
+       (click)="$event.stopPropagation()">
+    <div class="p-6">
+      <h3 class="text-lg font-bold text-secondary mb-0.5">Registrar comprobante de pago</h3>
+      <p class="text-sm text-tertiary mb-5">
+        <span class="font-semibold text-secondary">{{ getUserName(selectedAdvance) }}</span>
+        &nbsp;·&nbsp;S/ {{ selectedAdvance.amount | number:'1.2-2' }}
+      </p>
 
-    <form [formGroup]="paymentForm" class="space-y-3">
-      <div class="flex flex-col gap-1">
-        <label class="text-xs font-medium text-gray-600">Método de pago</label>
-        <select formControlName="method" class="w-full h-[38px] px-3 rounded-lg border border-gray-200 text-sm bg-white">
-          <option value="transferencia_bancaria">Transferencia Bancaria</option>
-          <option value="efectivo">Efectivo</option>
-          <option value="cheque">Cheque</option>
-        </select>
-      </div>
-      @if(paymentForm.get('method')?.value === 'transferencia_bancaria') {
-      <div class="grid grid-cols-2 gap-3">
-        <div class="flex flex-col gap-1">
-          <label class="text-xs font-medium text-gray-600">Banco</label>
-          <input type="text" formControlName="bankName" placeholder="BCP, Interbank..."
-            class="w-full h-[38px] px-3 rounded-lg border border-gray-200 text-sm" />
+      <form [formGroup]="paymentForm" class="space-y-4">
+        <div class="flex flex-col gap-1.5">
+          <label class="text-xs font-semibold text-tertiary uppercase tracking-wider">Método de pago</label>
+          <select formControlName="method"
+            class="w-full h-[42px] px-3 rounded-xl border border-tertiary/30 text-sm text-secondary bg-quaternary focus:outline-none focus:ring-2 focus:ring-primary/30">
+            <option value="transferencia_bancaria">Transferencia Bancaria</option>
+            <option value="efectivo">Efectivo</option>
+            <option value="cheque">Cheque</option>
+          </select>
         </div>
-        <div class="flex flex-col gap-1">
-          <label class="text-xs font-medium text-gray-600">N° Cuenta</label>
-          <input type="text" formControlName="accountNumber"
-            class="w-full h-[38px] px-3 rounded-lg border border-gray-200 text-sm" />
+        @if(paymentForm.get('method')?.value === 'transferencia_bancaria') {
+        <div class="grid grid-cols-2 gap-3">
+          <div class="flex flex-col gap-1.5">
+            <label class="text-xs font-semibold text-tertiary uppercase tracking-wider">Banco</label>
+            <input type="text" formControlName="bankName" placeholder="BCP, Interbank..."
+              class="w-full h-[42px] px-3 rounded-xl border border-tertiary/30 text-sm text-secondary bg-quaternary focus:outline-none focus:ring-2 focus:ring-primary/30" />
+          </div>
+          <div class="flex flex-col gap-1.5">
+            <label class="text-xs font-semibold text-tertiary uppercase tracking-wider">N° Cuenta</label>
+            <input type="text" formControlName="accountNumber"
+              class="w-full h-[42px] px-3 rounded-xl border border-tertiary/30 text-sm text-secondary bg-quaternary focus:outline-none focus:ring-2 focus:ring-primary/30" />
+          </div>
+          <div class="flex flex-col gap-1.5 col-span-2">
+            <label class="text-xs font-semibold text-tertiary uppercase tracking-wider">CCI</label>
+            <input type="text" formControlName="cci" placeholder="00320000000000000000"
+              class="w-full h-[42px] px-3 rounded-xl border border-tertiary/30 text-sm text-secondary bg-quaternary font-mono focus:outline-none focus:ring-2 focus:ring-primary/30" />
+          </div>
         </div>
-        <div class="flex flex-col gap-1 col-span-2">
-          <label class="text-xs font-medium text-gray-600">CCI (Código de Cuenta Interbancario)</label>
-          <input type="text" formControlName="cci" placeholder="00320000000000000000"
-            class="w-full h-[38px] px-3 rounded-lg border border-gray-200 text-sm font-mono" />
+        }
+        <div class="grid grid-cols-2 gap-3">
+          <div class="flex flex-col gap-1.5">
+            <label class="text-xs font-semibold text-tertiary uppercase tracking-wider">Fecha <span class="text-error">*</span></label>
+            <input type="date" formControlName="transferDate"
+              class="w-full h-[42px] px-3 rounded-xl border border-tertiary/30 text-sm text-secondary bg-quaternary focus:outline-none focus:ring-2 focus:ring-primary/30" />
+          </div>
+          <div class="flex flex-col gap-1.5">
+            <label class="text-xs font-semibold text-tertiary uppercase tracking-wider">N° Operación</label>
+            <input type="text" formControlName="reference"
+              class="w-full h-[42px] px-3 rounded-xl border border-tertiary/30 text-sm text-secondary bg-quaternary focus:outline-none focus:ring-2 focus:ring-primary/30" />
+          </div>
         </div>
-      </div>
-      }
-      <div class="grid grid-cols-2 gap-3">
-        <div class="flex flex-col gap-1">
-          <label class="text-xs font-medium text-gray-600">Fecha de transferencia <span class="text-red-500">*</span></label>
-          <input type="date" formControlName="transferDate"
-            class="w-full h-[38px] px-3 rounded-lg border border-gray-200 text-sm" />
-        </div>
-        <div class="flex flex-col gap-1">
-          <label class="text-xs font-medium text-gray-600">N° de Operación / Referencia</label>
-          <input type="text" formControlName="reference"
-            class="w-full h-[38px] px-3 rounded-lg border border-gray-200 text-sm" />
-        </div>
-      </div>
-    </form>
 
-    <div class="flex gap-3 mt-5">
-      <button type="button" (click)="showPaymentModal=false"
-        class="flex-1 py-2 border border-gray-200 rounded-xl text-sm text-gray-600 hover:bg-gray-50 transition-colors">
-        Cancelar
-      </button>
-      <button type="button" (click)="confirmPayment()" [disabled]="paymentForm.invalid || isActing()"
-        class="flex-1 py-2 bg-blue-600 text-white rounded-xl text-sm font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors">
-        {{ isActing() ? 'Registrando...' : 'Confirmar Pago' }}
-      </button>
+        <div class="flex flex-col gap-1.5">
+          <label class="text-xs font-semibold text-tertiary uppercase tracking-wider">
+            Comprobante de pago <span class="text-error">*</span>
+          </label>
+          @if (!paymentReceiptName) {
+          <label class="flex flex-col items-center justify-center gap-2 h-24 rounded-xl border-2 border-dashed border-tertiary/30 hover:border-primary/40 hover:bg-primary/5 cursor-pointer transition-colors">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6 text-tertiary">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5" />
+            </svg>
+            <span class="text-xs text-tertiary">PDF, JPG o PNG (máx. 10MB)</span>
+            <input type="file" accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png"
+              (change)="onPaymentReceiptSelected($event)" class="hidden" />
+          </label>
+          } @else {
+          <div class="flex items-center gap-3 p-3 rounded-xl bg-green-50 border border-green-200">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 text-green-600 shrink-0">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+            </svg>
+            <span class="text-xs text-green-700 font-medium truncate flex-1">{{ paymentReceiptName }}</span>
+            <button type="button" (click)="paymentReceiptUrl=null; paymentReceiptName=null"
+              class="text-xs text-tertiary hover:text-error transition-colors shrink-0">Quitar</button>
+          </div>
+          }
+          @if (isUploadingReceipt()) {
+          <p class="text-xs text-primary flex items-center gap-1.5">
+            <span class="inline-block w-3 h-3 border-2 border-primary border-t-transparent rounded-full animate-spin"></span>
+            Subiendo comprobante...
+          </p>
+          }
+        </div>
+      </form>
+
+      <div class="flex gap-3 mt-6">
+        <button type="button" (click)="showPaymentModal=false"
+          class="flex-1 h-[42px] border border-tertiary/30 rounded-xl text-sm text-secondary hover:bg-background transition-colors">
+          Cancelar
+        </button>
+        <button type="button" (click)="confirmPayment()"
+          [disabled]="paymentForm.invalid || isActing() || isUploadingReceipt() || !paymentReceiptUrl"
+          class="flex-1 h-[42px] bg-primary text-white rounded-xl text-sm font-medium hover:bg-primary/90 disabled:opacity-50 transition-colors">
+          {{ isActing() ? 'Registrando...' : 'Enviar aprobación de viáticos' }}
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+}
+
+<!-- Modal: Registrar reembolso de rendición -->
+@if(showReimbursementModal && selectedReportReimbursement) {
+<div class="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4" (click)="showReimbursementModal=false">
+  <div class="absolute inset-0 bg-secondary/50 backdrop-blur-sm"></div>
+  <div class="relative bg-quaternary rounded-t-2xl sm:rounded-2xl shadow-soft border border-tertiary/20 w-full sm:max-w-md max-h-[90vh] overflow-y-auto"
+       (click)="$event.stopPropagation()">
+    <div class="p-6">
+      <h3 class="text-lg font-bold text-secondary mb-0.5">Registrar reembolso</h3>
+      <p class="text-sm text-tertiary mb-5">
+        <span class="font-semibold text-secondary">{{ collaboratorReportName(selectedReportReimbursement) }}</span>
+        &nbsp;·&nbsp;S/ {{ reimbursementAmount(selectedReportReimbursement) }}
+        <br><span class="text-xs">{{ selectedReportReimbursement.title }}</span>
+      </p>
+
+      <form [formGroup]="paymentForm" class="space-y-4">
+        <div class="flex flex-col gap-1.5">
+          <label class="text-xs font-semibold text-tertiary uppercase tracking-wider">Método de pago</label>
+          <select formControlName="method"
+            class="w-full h-[42px] px-3 rounded-xl border border-tertiary/30 text-sm text-secondary bg-quaternary focus:outline-none focus:ring-2 focus:ring-primary/30">
+            <option value="transferencia_bancaria">Transferencia Bancaria</option>
+            <option value="efectivo">Efectivo</option>
+            <option value="cheque">Cheque</option>
+          </select>
+        </div>
+        @if(paymentForm.get('method')?.value === 'transferencia_bancaria') {
+        <div class="grid grid-cols-2 gap-3">
+          <div class="flex flex-col gap-1.5">
+            <label class="text-xs font-semibold text-tertiary uppercase tracking-wider">Banco destino</label>
+            <input type="text" formControlName="bankName" placeholder="BCP, Interbank..."
+              class="w-full h-[42px] px-3 rounded-xl border border-tertiary/30 text-sm text-secondary bg-quaternary focus:outline-none focus:ring-2 focus:ring-primary/30" />
+          </div>
+          <div class="flex flex-col gap-1.5">
+            <label class="text-xs font-semibold text-tertiary uppercase tracking-wider">N° Cuenta</label>
+            <input type="text" formControlName="accountNumber"
+              class="w-full h-[42px] px-3 rounded-xl border border-tertiary/30 text-sm text-secondary bg-quaternary focus:outline-none focus:ring-2 focus:ring-primary/30" />
+          </div>
+          <div class="flex flex-col gap-1.5 col-span-2">
+            <label class="text-xs font-semibold text-tertiary uppercase tracking-wider">CCI</label>
+            <input type="text" formControlName="cci"
+              class="w-full h-[42px] px-3 rounded-xl border border-tertiary/30 text-sm text-secondary bg-quaternary font-mono focus:outline-none focus:ring-2 focus:ring-primary/30" />
+          </div>
+        </div>
+        }
+        <div class="grid grid-cols-2 gap-3">
+          <div class="flex flex-col gap-1.5">
+            <label class="text-xs font-semibold text-tertiary uppercase tracking-wider">Fecha <span class="text-error">*</span></label>
+            <input type="date" formControlName="transferDate"
+              class="w-full h-[42px] px-3 rounded-xl border border-tertiary/30 text-sm text-secondary bg-quaternary focus:outline-none focus:ring-2 focus:ring-primary/30" />
+          </div>
+          <div class="flex flex-col gap-1.5">
+            <label class="text-xs font-semibold text-tertiary uppercase tracking-wider">N° Operación</label>
+            <input type="text" formControlName="reference"
+              class="w-full h-[42px] px-3 rounded-xl border border-tertiary/30 text-sm text-secondary bg-quaternary focus:outline-none focus:ring-2 focus:ring-primary/30" />
+          </div>
+        </div>
+
+        <div class="flex flex-col gap-1.5">
+          <label class="text-xs font-semibold text-tertiary uppercase tracking-wider">
+            Comprobante <span class="text-error">*</span>
+          </label>
+          @if (!reimbursementReceiptName) {
+          <label class="flex flex-col items-center justify-center gap-2 h-24 rounded-xl border-2 border-dashed border-tertiary/30 hover:border-primary/40 hover:bg-primary/5 cursor-pointer transition-colors">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6 text-tertiary">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5" />
+            </svg>
+            <span class="text-xs text-tertiary">PDF, JPG o PNG (máx. 10MB)</span>
+            <input type="file" accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png"
+              (change)="onReimbursementReceiptSelected($event)" class="hidden" />
+          </label>
+          } @else {
+          <div class="flex items-center gap-3 p-3 rounded-xl bg-green-50 border border-green-200">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 text-green-600 shrink-0">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+            </svg>
+            <span class="text-xs text-green-700 font-medium truncate flex-1">{{ reimbursementReceiptName }}</span>
+            <button type="button" (click)="reimbursementReceiptUrl=null; reimbursementReceiptName=null"
+              class="text-xs text-tertiary hover:text-error transition-colors shrink-0">Quitar</button>
+          </div>
+          }
+          @if (isUploadingReceipt()) {
+          <p class="text-xs text-primary flex items-center gap-1.5">
+            <span class="inline-block w-3 h-3 border-2 border-primary border-t-transparent rounded-full animate-spin"></span>
+            Subiendo comprobante...
+          </p>
+          }
+        </div>
+      </form>
+
+      <div class="flex gap-3 mt-6">
+        <button type="button" (click)="showReimbursementModal=false"
+          class="flex-1 h-[42px] border border-tertiary/30 rounded-xl text-sm text-secondary hover:bg-background transition-colors">
+          Cancelar
+        </button>
+        <button type="button" (click)="confirmReimbursementPayment()"
+          [disabled]="paymentForm.invalid || isActing() || isUploadingReceipt() || !reimbursementReceiptUrl"
+          class="flex-1 h-[42px] bg-green-600 text-white rounded-xl text-sm font-medium hover:bg-green-700 disabled:opacity-50 transition-colors">
+          {{ isActing() ? 'Registrando...' : 'Confirmar reembolso' }}
+        </button>
+      </div>
     </div>
   </div>
 </div>
@@ -216,24 +597,140 @@
 
 <!-- Modal: Rechazar -->
 @if(showRejectModal && selectedAdvance) {
-<div class="fixed inset-0 z-50 flex items-center justify-center p-4" (click)="showRejectModal=false">
-  <div class="absolute inset-0 bg-black/40 backdrop-blur-sm"></div>
-  <div class="relative bg-white rounded-2xl shadow-xl p-6 w-full max-w-sm" (click)="$event.stopPropagation()">
-    <h3 class="text-lg font-bold text-gray-900 mb-4">Rechazar anticipo</h3>
-    <form [formGroup]="rejectForm" class="space-y-3">
-      <div class="flex flex-col gap-1">
-        <label class="text-xs font-medium text-gray-600">Motivo de rechazo <span class="text-red-500">*</span></label>
-        <textarea formControlName="rejectionReason" rows="3" placeholder="Explica el motivo..."
-          class="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm resize-none"></textarea>
+<div class="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4" (click)="showRejectModal=false">
+  <div class="absolute inset-0 bg-secondary/50 backdrop-blur-sm"></div>
+  <div class="relative bg-quaternary rounded-t-2xl sm:rounded-2xl shadow-soft border border-tertiary/20 w-full sm:max-w-sm"
+       (click)="$event.stopPropagation()">
+    <div class="p-6">
+      <h3 class="text-lg font-bold text-secondary mb-1">Rechazar viático</h3>
+      <p class="text-sm text-tertiary mb-5">{{ getUserName(selectedAdvance) }} · S/ {{ selectedAdvance.amount | number:'1.2-2' }}</p>
+      <form [formGroup]="rejectForm" class="space-y-3">
+        <div class="flex flex-col gap-1.5">
+          <label class="text-xs font-semibold text-tertiary uppercase tracking-wider">
+            Motivo de rechazo <span class="text-error">*</span>
+          </label>
+          <textarea formControlName="rejectionReason" rows="4"
+            placeholder="Explica el motivo del rechazo (mín. 10 caracteres)..."
+            class="w-full border border-tertiary/30 rounded-xl px-3 py-2 text-sm text-secondary bg-background focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none"></textarea>
+          @if (rejectForm.get('rejectionReason')?.invalid && rejectForm.get('rejectionReason')?.touched) {
+          <p class="text-xs text-error">El motivo debe tener al menos 10 caracteres.</p>
+          }
+        </div>
+      </form>
+      <div class="flex gap-3 mt-5">
+        <button type="button" (click)="showRejectModal=false"
+          class="flex-1 h-[42px] border border-tertiary/30 rounded-xl text-sm text-secondary hover:bg-background transition-colors">
+          Cancelar
+        </button>
+        <button type="button" (click)="confirmReject()" [disabled]="rejectForm.invalid || isActing()"
+          class="flex-1 h-[42px] bg-error text-white rounded-xl text-sm font-medium hover:bg-error/90 disabled:opacity-50 transition-colors">
+          {{ isActing() ? 'Rechazando...' : 'Confirmar rechazo' }}
+        </button>
       </div>
-    </form>
-    <div class="flex gap-3 mt-4">
-      <button type="button" (click)="showRejectModal=false"
-        class="flex-1 py-2 border border-gray-200 rounded-xl text-sm text-gray-600 hover:bg-gray-50">Cancelar</button>
-      <button type="button" (click)="confirmReject()" [disabled]="rejectForm.invalid || isActing()"
-        class="flex-1 py-2 bg-red-600 text-white rounded-xl text-sm font-medium hover:bg-red-700 disabled:opacity-50">
-        {{ isActing() ? 'Rechazando...' : 'Rechazar' }}
+    </div>
+  </div>
+</div>
+}
+
+<!-- Modal: Historial de solicitud -->
+@if(showHistoryModal && selectedAdvance) {
+<div class="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4" (click)="closeHistoryModal()">
+  <div class="absolute inset-0 bg-secondary/50 backdrop-blur-sm"></div>
+  <div class="relative bg-quaternary rounded-t-2xl sm:rounded-2xl shadow-soft border border-tertiary/20 w-full sm:max-w-lg max-h-[80vh] overflow-y-auto"
+       (click)="$event.stopPropagation()">
+    <div class="p-6">
+      <h3 class="text-lg font-bold text-secondary mb-0.5">Historial de aprobaciones</h3>
+      <p class="text-xs text-tertiary mb-5">{{ getUserName(selectedAdvance) }} · S/ {{ selectedAdvance.amount | number:'1.2-2' }}</p>
+      <ul class="space-y-3">
+        @for (entry of selectedAdvance.approvalHistory; track $index) {
+        <li class="rounded-xl border border-tertiary/20 bg-background p-4">
+          <div class="flex justify-between gap-2 mb-1">
+            <span class="text-sm font-semibold text-secondary">{{ approvalActionLabel(entry.action) }}</span>
+            <span class="text-xs text-tertiary shrink-0">{{ formatHistoryDate(entry.date) }}</span>
+          </div>
+          <p class="text-xs text-tertiary">Nivel {{ entry.level }} · {{ entry.approvedBy }}</p>
+          @if (entry.notes) {
+          <p class="text-xs text-secondary mt-2 whitespace-pre-wrap border-t border-tertiary/10 pt-2">{{ entry.notes }}</p>
+          }
+        </li>
+        }
+      </ul>
+      <button type="button" (click)="closeHistoryModal()"
+        class="mt-5 w-full h-[42px] border border-tertiary/30 rounded-xl text-sm text-secondary hover:bg-background transition-colors">
+        Cerrar
       </button>
+    </div>
+  </div>
+</div>
+}
+
+<!-- Modal: Validar comprobante de devolución -->
+@if (showValidateReturnModal && selectedReturnAdvance) {
+<div class="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4" (click)="showValidateReturnModal=false">
+  <div class="absolute inset-0 bg-secondary/50 backdrop-blur-sm"></div>
+  <div class="relative bg-quaternary rounded-t-2xl sm:rounded-2xl shadow-soft border border-tertiary/20 w-full sm:max-w-md max-h-[90vh] overflow-y-auto"
+       (click)="$event.stopPropagation()">
+    <div class="p-6">
+      <h3 class="text-lg font-bold text-secondary mb-1">Revisar comprobante de devolución</h3>
+      <p class="text-sm text-tertiary mb-5">
+        <span class="font-semibold text-secondary">{{ getUserName(selectedReturnAdvance) }}</span>
+        &nbsp;·&nbsp;S/ {{ selectedReturnAdvance.returnRecord?.amountDue | number:'1.2-2' }}
+      </p>
+      @if (selectedReturnAdvance.returnRecord?.proof) {
+      <div class="rounded-xl bg-background border border-tertiary/20 p-4 mb-5 space-y-2 text-sm">
+        <div class="flex justify-between">
+          <span class="text-tertiary text-xs uppercase tracking-wider font-semibold">Fecha depósito</span>
+          <span class="text-secondary font-medium">{{ selectedReturnAdvance.returnRecord?.proof?.depositDate | date:'dd/MM/yyyy' }}</span>
+        </div>
+        <div class="flex justify-between">
+          <span class="text-tertiary text-xs uppercase tracking-wider font-semibold">Monto devuelto</span>
+          <span class="text-secondary font-medium">S/ {{ selectedReturnAdvance.returnRecord?.proof?.amountReturned | number:'1.2-2' }}</span>
+        </div>
+        <div class="flex justify-between">
+          <span class="text-tertiary text-xs uppercase tracking-wider font-semibold">Banco origen</span>
+          <span class="text-secondary font-medium">{{ selectedReturnAdvance.returnRecord?.proof?.bankOrigin }}</span>
+        </div>
+        <div class="flex justify-between">
+          <span class="text-tertiary text-xs uppercase tracking-wider font-semibold">N° Operación</span>
+          <span class="text-secondary font-medium">{{ selectedReturnAdvance.returnRecord?.proof?.operationNumber }}</span>
+        </div>
+        @if (selectedReturnAdvance.returnRecord?.proof?.note) {
+        <div class="pt-2 border-t border-tertiary/10">
+          <p class="text-xs text-tertiary">{{ selectedReturnAdvance.returnRecord?.proof?.note }}</p>
+        </div>
+        }
+        <a [href]="selectedReturnAdvance.returnRecord?.proof?.fileUrl" target="_blank"
+          class="flex items-center gap-1.5 text-xs text-primary font-semibold hover:underline pt-1">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 6H5.25A2.25 2.25 0 0 0 3 8.25v10.5A2.25 2.25 0 0 0 5.25 21h10.5A2.25 2.25 0 0 0 18 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
+          </svg>
+          Ver documento adjunto
+        </a>
+      </div>
+      }
+      <div class="flex flex-col gap-1.5 mb-5">
+        <label class="text-xs font-semibold text-tertiary uppercase tracking-wider">Motivo de rechazo (mín. 50 caracteres)</label>
+        <textarea [value]="returnRejectReason()" (input)="returnRejectReason.set($any($event.target).value)"
+          rows="3" placeholder="Describe por qué rechazas este comprobante..."
+          class="w-full border border-tertiary/30 rounded-xl px-3 py-2 text-sm text-secondary bg-background focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none"></textarea>
+        <p class="text-xs text-tertiary">{{ returnRejectReason().length }} / 50</p>
+      </div>
+      <div class="flex gap-3">
+        <button type="button" (click)="showValidateReturnModal=false"
+          class="flex-1 h-[42px] border border-tertiary/30 rounded-xl text-sm text-secondary hover:bg-background transition-colors">
+          Cancelar
+        </button>
+        <button type="button" (click)="confirmValidateReturn(false)"
+          [disabled]="isValidatingReturn() || returnRejectReason().trim().length < 50"
+          class="flex-1 h-[42px] bg-error text-white rounded-xl text-sm font-medium hover:bg-error/90 disabled:opacity-50 transition-colors">
+          Rechazar
+        </button>
+        <button type="button" (click)="confirmValidateReturn(true)"
+          [disabled]="isValidatingReturn()"
+          class="flex-1 h-[42px] bg-green-600 text-white rounded-xl text-sm font-medium hover:bg-green-700 disabled:opacity-50 transition-colors">
+          {{ isValidatingReturn() ? 'Procesando...' : 'Aprobar' }}
+        </button>
+      </div>
     </div>
   </div>
 </div>
@@ -241,25 +738,30 @@
 
 <!-- Modal: Registrar Devolución -->
 @if(showReturnModal && selectedAdvance) {
-<div class="fixed inset-0 z-50 flex items-center justify-center p-4" (click)="showReturnModal=false">
-  <div class="absolute inset-0 bg-black/40 backdrop-blur-sm"></div>
-  <div class="relative bg-white rounded-2xl shadow-xl p-6 w-full max-w-sm" (click)="$event.stopPropagation()">
-    <h3 class="text-lg font-bold text-gray-900 mb-1">Registrar Devolución</h3>
-    <p class="text-sm text-gray-500 mb-4">El colaborador devuelve el excedente del anticipo.</p>
-    <form [formGroup]="returnForm" class="space-y-3">
-      <div class="flex flex-col gap-1">
-        <label class="text-xs font-medium text-gray-600">Monto devuelto S/. <span class="text-red-500">*</span></label>
-        <input type="number" formControlName="returnedAmount" min="0" step="0.01"
-          class="w-full h-[38px] px-3 rounded-lg border border-gray-200 text-sm" />
+<div class="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4" (click)="showReturnModal=false">
+  <div class="absolute inset-0 bg-secondary/50 backdrop-blur-sm"></div>
+  <div class="relative bg-quaternary rounded-t-2xl sm:rounded-2xl shadow-soft border border-tertiary/20 w-full sm:max-w-sm"
+       (click)="$event.stopPropagation()">
+    <div class="p-6">
+      <h3 class="text-lg font-bold text-secondary mb-1">Registrar devolución</h3>
+      <p class="text-sm text-tertiary mb-5">{{ getUserName(selectedAdvance) }} devuelve el excedente del viático.</p>
+      <form [formGroup]="returnForm" class="space-y-4">
+        <div class="flex flex-col gap-1.5">
+          <label class="text-xs font-semibold text-tertiary uppercase tracking-wider">Monto devuelto S/ <span class="text-error">*</span></label>
+          <input type="number" formControlName="returnedAmount" min="0" step="0.01"
+            class="w-full h-[42px] px-3 rounded-xl border border-tertiary/30 text-sm text-secondary bg-quaternary focus:outline-none focus:ring-2 focus:ring-primary/30" />
+        </div>
+      </form>
+      <div class="flex gap-3 mt-5">
+        <button type="button" (click)="showReturnModal=false"
+          class="flex-1 h-[42px] border border-tertiary/30 rounded-xl text-sm text-secondary hover:bg-background transition-colors">
+          Cancelar
+        </button>
+        <button type="button" (click)="confirmReturn()" [disabled]="returnForm.invalid || isActing()"
+          class="flex-1 h-[42px] bg-purple-600 text-white rounded-xl text-sm font-medium hover:bg-purple-700 disabled:opacity-50 transition-colors">
+          {{ isActing() ? 'Guardando...' : 'Confirmar devolución' }}
+        </button>
       </div>
-    </form>
-    <div class="flex gap-3 mt-4">
-      <button type="button" (click)="showReturnModal=false"
-        class="flex-1 py-2 border border-gray-200 rounded-xl text-sm text-gray-600 hover:bg-gray-50">Cancelar</button>
-      <button type="button" (click)="confirmReturn()" [disabled]="returnForm.invalid || isActing()"
-        class="flex-1 py-2 bg-purple-600 text-white rounded-xl text-sm font-medium hover:bg-purple-700 disabled:opacity-50">
-        {{ isActing() ? 'Guardando...' : 'Confirmar Devolución' }}
-      </button>
     </div>
   </div>
 </div>
