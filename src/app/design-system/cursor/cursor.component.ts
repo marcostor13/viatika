@@ -11,7 +11,7 @@ import { DOCUMENT } from '@angular/common';
       width: 12px;
       height: 12px;
       border-radius: 50%;
-      background-color: #0e8ee1;
+      background-color: #D31212;
       pointer-events: none;
       z-index: 9999;
       transform: translate(-50%, -50%);
@@ -23,14 +23,14 @@ import { DOCUMENT } from '@angular/common';
       width: 40px;
       height: 40px;
       opacity: 0.3;
-      background-color: #0e8ee1;
+      background-color: #D31212;
     }
     
     .custom-cursor.text {
       width: 2px;
       height: 20px;
       border-radius: 0;
-      background-color: #0e8ee1;
+      background-color: #D31212;
     }
     
     .custom-cursor.hidden {
