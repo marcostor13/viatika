@@ -41,8 +41,8 @@ export class InputComponent implements ControlValueAccessor {
   private onTouched = () => { };
 
   inputClasses = computed(() => {
-    const base = 'w-full bg-background border-none border-0 shadow-none rounded-[16px] px-4 py-3 text-secondary placeholder-tertiary focus:outline-none focus:ring-2 focus:ring-primary transition-all duration-200';
-    const errorState = this.error() ? 'border-error focus:ring-error' : '';
+    const base = 'w-full bg-quaternary border border-divider rounded px-4 py-3 text-secondary placeholder-tertiary focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all duration-200';
+    const errorState = this.error() ? 'border-accent focus:ring-accent/20' : '';
     const disabledState = this.disabled() ? 'opacity-50 cursor-not-allowed' : '';
 
     return `${base} ${errorState} ${disabledState}`;

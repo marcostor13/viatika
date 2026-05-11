@@ -30,16 +30,16 @@ export class ButtonComponent {
     const base = 'font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2';
     
     const variants = {
-      primary: 'bg-primary text-quaternary hover:bg-primary/90 shadow-soft hover:shadow-lg',
-      secondary: 'bg-transparent border border-tertiary text-secondary hover:bg-background hover:border-primary',
+      primary: 'bg-primary text-quaternary hover:bg-accent shadow-soft hover:shadow-lg',
+      secondary: 'bg-transparent border border-divider text-secondary hover:bg-background hover:border-primary hover:text-primary',
       ghost: 'bg-transparent text-tertiary hover:text-primary hover:bg-background',
       danger: 'bg-error text-quaternary hover:bg-error/90 shadow-soft hover:shadow-lg',
     };
-    
+
     const sizes = {
-      sm: 'h-9 px-4 text-sm rounded-lg',
-      md: 'h-[42px] px-5 text-sm rounded-xl',
-      lg: 'h-12 px-6 text-base rounded-xl',
+      sm: 'h-9 px-4 text-sm rounded',
+      md: 'h-[42px] px-5 text-sm rounded',
+      lg: 'h-12 px-6 text-base rounded',
     };
     
     const width = this.fullWidth() ? 'w-full' : '';

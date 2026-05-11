@@ -4,18 +4,39 @@
 @tailwind utilities;
 
 :root {
-  --font-primary: "DM Sans", sans-serif;
-  --color-background: #f4f7fe;
+  /* TEMA Brand */
+  --tema-primary: #D31212;
+  --tema-accent: #9B1B22;
+  --tema-text-main: #4F4F4F;
+  --tema-text-body: #6B6B6B;
+  --tema-bg-surface: #F5F7FA;
+  --tema-white: #FFFFFF;
+  --tema-border: #E0E0E0;
+
+  /* Fonts */
+  --font-header: 'Zilla Slab', serif;
+  --font-body: 'Inter', sans-serif;
+
+  /* Effects */
+  --radius-standard: 4px;
+  --shadow-sm: 0 2px 4px rgba(0,0,0,0.05);
+
+  --color-background: #F5F7FA;
 }
 
 body {
-  font-family: var(--font-primary);
+  font-family: var(--font-body);
   background-color: var(--color-background);
-  color: #1b2559; /* Secondary color by default for text */
+  color: var(--tema-text-main);
   margin: 0;
   padding: 0;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+h1, h2, h3 {
+  font-family: var(--font-header);
+  color: var(--tema-text-main);
 }
 
 /* Custom Scrollbar for Webkit */
@@ -29,12 +50,12 @@ body {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #a3aed0; /* Tertiary */
+  background: #6B6B6B;
   border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #4318ff; /* Primary */
+  background: #D31212;
 }
 
 /* Utility classes to match design system */
@@ -56,7 +77,7 @@ body {
 select:not([multiple]) {
   appearance: none;
   -webkit-appearance: none;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke-width='1.5' stroke='%23a3aed0'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='m19.5 8.25-7.5 7.5-7.5-7.5'/%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke-width='1.5' stroke='%236B6B6B'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='m19.5 8.25-7.5 7.5-7.5-7.5'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
   background-position: right 0.5rem center;
   background-size: 1.125rem 1.125rem;
