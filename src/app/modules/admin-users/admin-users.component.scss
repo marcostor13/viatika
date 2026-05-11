@@ -1,6 +1,6 @@
 .admin-users {
   min-height: 100vh;
-  background-color: #f9fafb;
+  background-color: #F5F7FA;
 
   button {
     transition: all 0.2s ease;
@@ -18,8 +18,8 @@
     transition: all 0.2s ease;
 
     &:focus {
-      border-color: #4f46e5;
-      box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.1);
+      border-color: #D31212;
+      box-shadow: 0 0 0 2px rgba(211, 18, 18, 0.1);
     }
   }
 
@@ -46,11 +46,11 @@
     width: 100%;
     border-collapse: collapse;
     th, td {
-      border: 1px solid #ddd;
+      border: 1px solid #E0E0E0;
       padding: 8px;
     }
     th {
-      background: #f4f4f4;
+      background: #F5F7FA;
     }
   }
 }

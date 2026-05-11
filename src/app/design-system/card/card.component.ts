@@ -19,9 +19,9 @@ export class CardComponent {
     const base = 'bg-quaternary rounded-xl transition-all duration-300';
     
     const variants = {
-      default: 'shadow-soft',
+      default: 'shadow-soft border border-divider',
       elevated: 'shadow-lg hover:shadow-xl',
-      outlined: 'border border-tertiary/20 shadow-none',
+      outlined: 'border border-divider shadow-none',
     };
     
     const paddings = {

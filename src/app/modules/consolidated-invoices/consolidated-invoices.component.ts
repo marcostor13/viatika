@@ -165,6 +165,14 @@ export class ConsolidatedInvoicesComponent implements OnInit {
   filterAmountMax = signal('');
   filterStatus = signal('');
 
+  activeFilterCount = computed(() =>
+    [this.filterProject(), this.filterCategory(), this.filterStatus(),
+     this.filterDateFrom(), this.filterDateTo(), this.filterAmountMin(), this.filterAmountMax()]
+      .filter(v => !!v).length
+  );
+
+  projectAccentColors = ['#D31212', '#9B1B22', '#FFB547', '#05CD99', '#3B82F6', '#8B5CF6', '#EC4899', '#14B8A6'];
+
   exportFileType: 'excel' | 'pdf' = 'excel';
   exportColumns = [
     { header: 'Proyecto', field: 'proyect' },
@@ -702,5 +710,17 @@ export class ConsolidatedInvoicesComponent implements OnInit {
 
   getCurrentDate(): string {
     return new Date().toISOString().split('T')[0];
+  }
+
+  clearFilters() {
+    this.filterProject.set('');
+    this.filterCategory.set('');
+    this.filterStatus.set('');
+    this.filterDateFrom.set('');
+    this.filterDateTo.set('');
+    this.filterAmountMin.set('');
+    this.filterAmountMax.set('');
+    this.page.set(1);
+    this.getInvoices();
   }
 }
