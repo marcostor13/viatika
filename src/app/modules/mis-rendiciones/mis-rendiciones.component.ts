@@ -165,6 +165,10 @@ export class MisRendicionesComponent implements OnInit {
     return !!this.getExpenseReportId(adv);
   }
 
+  get pendingAdvances(): IAdvance[] {
+    return this.myAdvances.filter(adv => !this.hasExpenseReportLink(adv));
+  }
+
   getExpenseReportId(adv: IAdvance): string | null {
     if (!adv.expenseReportId) return null;
     if (typeof adv.expenseReportId === 'object' && '_id' in adv.expenseReportId) {
