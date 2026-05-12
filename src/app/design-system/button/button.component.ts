@@ -21,6 +21,8 @@ export class ButtonComponent {
   disabled = input<boolean>(false);
   fullWidth = input<boolean>(false);
   type = input<'button' | 'submit' | 'reset'>('button');
+  loading = input<boolean>(false);
+  loadingLabel = input<string>('Cargando…');
   
   // Outputs
   clicked = output<void>();
@@ -48,7 +50,7 @@ export class ButtonComponent {
   });
 
   onClick(): void {
-    if (!this.disabled()) {
+    if (!this.disabled() && !this.loading()) {
       this.clicked.emit();
     }
   }

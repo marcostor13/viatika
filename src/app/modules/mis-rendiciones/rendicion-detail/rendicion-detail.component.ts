@@ -288,8 +288,8 @@ export class RendicionDetailComponent implements OnInit {
     if (!this.editSolicitudForm || this.editSolicitudForm.invalid) return;
     this.isResendingSolicitud.set(true);
     const val = this.editSolicitudForm.getRawValue();
-    const isRejected = this.report?.status === 'rejected';
-    const payload = isRejected
+    const isSolicitudRephase = this.canResendSolicitud;
+    const payload = isSolicitudRephase
       ? { ...val, status: 'solicited' as const, rejectionReason: '' }
       : { ...val };
     this.expenseReportsService.update(this.id, payload).subscribe({
@@ -299,7 +299,7 @@ export class RendicionDetailComponent implements OnInit {
         this.showEditSolicitudForm.set(false);
         this.isResendingSolicitud.set(false);
         this.notificationService.show(
-          isRejected ? 'Solicitud reenviada correctamente' : 'Solicitud actualizada correctamente',
+          isSolicitudRephase ? 'Solicitud reenviada correctamente' : 'Cambios guardados correctamente',
           'success'
         );
       },
@@ -503,6 +503,19 @@ export class RendicionDetailComponent implements OnInit {
     return 'Factura';
   }
 
+  formatShortDate(raw: string | null | undefined): string {
+    if (!raw) return '-';
+    let d: Date;
+    if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) {
+      const [y, m, day] = raw.split('-').map(Number);
+      d = new Date(y, m - 1, day);
+    } else {
+      d = new Date(raw);
+    }
+    if (isNaN(d.getTime())) return raw;
+    return d.toLocaleDateString('es-PE', { day: '2-digit', month: 'short', year: 'numeric' });
+  }
+
   getExpenseDate(expense: any): string {
     const type = expense?.expenseType;
     if (type === 'planilla_movilidad') {
@@ -510,21 +523,12 @@ export class RendicionDetailComponent implements OnInit {
       if (rows.length === 0) return '-';
       const dates = rows.map((r: any) => r.fecha).filter(Boolean);
       if (dates.length === 0) return '-';
-      if (dates.length === 1) return dates[0];
-      // If multiple rows, show range
-      const sorted = [...dates].sort();
-      return sorted[0] === sorted[sorted.length - 1] ? sorted[0] : `${sorted[0]} – ${sorted[sorted.length - 1]}`;
+      return this.formatShortDate([...dates].sort()[0]);
     }
     if (type === 'otros_gastos') {
-      const raw = expense?.createdAt;
-      if (!raw) return '-';
-      const d = new Date(raw);
-      if (isNaN(d.getTime())) return '-';
-      const dd = String(d.getDate()).padStart(2, '0');
-      const mm = String(d.getMonth() + 1).padStart(2, '0');
-      return `${dd}/${mm}/${d.getFullYear()}`;
+      return this.formatShortDate(expense?.createdAt);
     }
-    return expense?.fechaEmision || '-';
+    return this.formatShortDate(expense?.fechaEmision);
   }
 
   getExpenseDescription(expense: any): string {
