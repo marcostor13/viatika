@@ -125,6 +125,33 @@ export interface CashVoucherExportData {
   signature?: string;
 }
 
+export interface ReceiptExportData {
+  fileBaseName: string;
+  collaborator: string;
+  collaboratorDni?: string;
+  razonSocial: string;
+  ruc?: string;
+  numeroDocumento?: string;
+  concepto: string;
+  fecha: string;
+  monto: number;
+  signature?: string;
+}
+
+export interface SingleExpenseAffidavitData {
+  fileBaseName: string;
+  titulo: string;
+  colaborador: string;
+  colaboradorDni?: string;
+  empresaNombre?: string;
+  fechaGeneracion: string;
+  total: number;
+  mobilityRows?: MobilitySheetExportData['rows'];
+  receiptFields?: Array<{ label: string; value: string }>;
+  descripcion?: string;
+  signature?: string;
+}
+
 const RED_HEADER = 'FF912f2c'; // Dark red for headers
 const YELLOW_CELL = 'FFFFFF00'; // Yellow for summary cell
 
@@ -707,6 +734,226 @@ export class RendicionExportService {
       doc.addImage(data.signature, 'PNG', 74, y - 20, 60, 20);
       doc.line(60, y + 6, 150, y + 6);
       doc.text(data.collaborator.toUpperCase(), 105, y + 11, { align: 'center' });
+    }
+
+    doc.save(`${data.fileBaseName}.pdf`);
+  }
+
+  exportReceiptToPdf(data: ReceiptExportData): void {
+    const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(13);
+    doc.text('RECIBO DE CAJA', 105, 18, { align: 'center' });
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(10);
+
+    let y = 30;
+    doc.text(`Fecha: ${data.fecha}`, 14, y); y += 6;
+    doc.text(`Proveedor: ${data.razonSocial}`, 14, y); y += 6;
+    if (data.ruc) { doc.text(`RUC: ${data.ruc}`, 14, y); y += 6; }
+    if (data.numeroDocumento) { doc.text(`N° Documento: ${data.numeroDocumento}`, 14, y); y += 6; }
+    doc.text(`Colaborador: ${data.collaborator}`, 14, y); y += 6;
+    if (data.collaboratorDni) { doc.text(`DNI: ${data.collaboratorDni}`, 14, y); y += 6; }
+    y += 4;
+
+    autoTable(doc, {
+      startY: y,
+      head: [['Concepto', 'Monto (S/)']],
+      body: [[data.concepto, data.monto.toFixed(2)]],
+      theme: 'grid',
+      headStyles: { fillColor: [145, 47, 44], textColor: 255 },
+      styles: { fontSize: 10 },
+      columnStyles: { 1: { halign: 'right', cellWidth: 40 } },
+      margin: { left: 14, right: 14 },
+    });
+
+    const sigY = afterTable(doc) + 24;
+    if (data.signature) {
+      doc.addImage(data.signature, 'PNG', 74, sigY - 20, 60, 20);
+    }
+    doc.line(60, sigY + 6, 150, sigY + 6);
+    doc.setFontSize(9);
+    doc.text(data.collaborator.toUpperCase(), 105, sigY + 11, { align: 'center' });
+    if (data.collaboratorDni) {
+      doc.text(`DNI N° ${data.collaboratorDni}`, 105, sigY + 16, { align: 'center' });
+    }
+
+    doc.save(`${data.fileBaseName}.pdf`);
+  }
+
+  async exportMobilitySheetToExcel(data: MobilitySheetExportData): Promise<void> {
+    const wb = new ExcelJS.Workbook();
+    wb.creator = 'Viatika';
+    wb.created = new Date();
+    const ws = wb.addWorksheet('Planilla Movilidad', { views: [{ showGridLines: false }] });
+
+    ws.columns = [
+      { width: 14 },
+      { width: 30 },
+      { width: 30 },
+      { width: 30 },
+      { width: 20 },
+      { width: 14 },
+    ];
+
+    ws.mergeCells('A1:F1');
+    const titleCell = ws.getCell('A1');
+    titleCell.value = 'PLANILLA DE MOVILIDAD';
+    titleCell.font = { bold: true, size: 12 };
+    titleCell.alignment = { horizontal: 'center' };
+
+    ws.getCell('A3').value = 'Colaborador:';
+    ws.mergeCells('B3:F3');
+    ws.getCell('B3').value = data.collaborator;
+    ws.getCell('A4').value = 'DNI:';
+    ws.getCell('B4').value = data.collaboratorDni || '';
+    ws.getCell('A5').value = 'Correlativo:';
+    ws.getCell('B5').value = data.internalCode || '';
+    ws.getCell('A6').value = 'Lugar:';
+    ws.getCell('B6').value = data.location || '';
+    ws.getCell('A7').value = 'Fecha generación:';
+    ws.getCell('B7').value = data.generatedAt;
+
+    let r = 9;
+    const headers = ['Fecha', 'Cliente / Proveedor', 'Origen', 'Destino', 'Gestión', 'Total (S/)'];
+    headers.forEach((h, i) => {
+      const c = ws.getCell(r, i + 1);
+      c.value = h;
+      c.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+      c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: RED_HEADER } };
+      c.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
+      c.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
+    });
+    ws.getRow(r).height = 24;
+    r++;
+
+    let total = 0;
+    data.rows.forEach(row => {
+      ws.getCell(r, 1).value = row.fecha;
+      ws.getCell(r, 2).value = row.clienteProveedor || '';
+      ws.getCell(r, 3).value = row.origen || '';
+      ws.getCell(r, 4).value = row.destino || '';
+      ws.getCell(r, 5).value = row.gestion || '';
+      ws.getCell(r, 6).value = row.total;
+      ws.getCell(r, 6).numFmt = '#,##0.00';
+      ws.getCell(r, 6).alignment = { horizontal: 'right' };
+      for (let i = 1; i <= 6; i++) {
+        ws.getCell(r, i).border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
+      }
+      total += row.total || 0;
+      r++;
+    });
+
+    ws.mergeCells(r, 1, r, 5);
+    const cLabel = ws.getCell(r, 1);
+    cLabel.value = 'TOTAL GENERAL';
+    cLabel.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+    cLabel.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: RED_HEADER } };
+    cLabel.alignment = { horizontal: 'right' };
+    const cTotal = ws.getCell(r, 6);
+    cTotal.value = total;
+    cTotal.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+    cTotal.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: RED_HEADER } };
+    cTotal.numFmt = '#,##0.00';
+    cTotal.alignment = { horizontal: 'right' };
+    for (let i = 1; i <= 6; i++) {
+      ws.getCell(r, i).border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
+    }
+    r += 3;
+
+    if (data.signature) {
+      const sigImgId = wb.addImage({ base64: data.signature, extension: 'png' });
+      ws.addImage(sigImgId, { tl: { col: 1, row: r - 1 }, ext: { width: 150, height: 50 } });
+    }
+    ws.getRow(r).height = 55;
+    ws.mergeCells(r, 2, r, 4);
+    ws.getCell(r, 2).border = { bottom: { style: 'medium' } };
+    r++;
+    ws.mergeCells(r, 2, r, 4);
+    ws.getCell(r, 2).value = data.collaborator.toUpperCase();
+    ws.getCell(r, 2).alignment = { horizontal: 'center' };
+    ws.getCell(r, 2).font = { size: 9 };
+    if (data.collaboratorDni) {
+      r++;
+      ws.mergeCells(r, 2, r, 4);
+      ws.getCell(r, 2).value = `DNI N° ${data.collaboratorDni}`;
+      ws.getCell(r, 2).alignment = { horizontal: 'center' };
+      ws.getCell(r, 2).font = { size: 9 };
+    }
+
+    const buf = await wb.xlsx.writeBuffer();
+    this.triggerDownload(
+      new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }),
+      `${data.fileBaseName}.xlsx`,
+    );
+  }
+
+  exportSingleExpenseAffidavitToPdf(data: SingleExpenseAffidavitData): void {
+    const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(13);
+    doc.text('DECLARACIÓN JURADA', 105, 16, { align: 'center' });
+    doc.setFontSize(10);
+    doc.text(data.titulo, 105, 23, { align: 'center' });
+    doc.setFont('helvetica', 'normal');
+
+    let y = 33;
+    if (data.empresaNombre) { doc.text(`Empresa: ${data.empresaNombre}`, 14, y); y += 6; }
+    doc.text(`Colaborador: ${data.colaborador}`, 14, y); y += 6;
+    if (data.colaboradorDni) { doc.text(`DNI: ${data.colaboradorDni}`, 14, y); y += 6; }
+    doc.text(`Fecha: ${data.fechaGeneracion}`, 14, y); y += 10;
+
+    let tableRendered = false;
+
+    if (data.mobilityRows && data.mobilityRows.length > 0) {
+      autoTable(doc, {
+        startY: y,
+        head: [['Fecha', 'Cliente / Proveedor', 'Origen', 'Destino', 'Gestión', 'Total (S/)']],
+        body: data.mobilityRows.map(r => [r.fecha, r.clienteProveedor || '—', r.origen || '—', r.destino || '—', r.gestion || '—', r.total.toFixed(2)]),
+        theme: 'grid',
+        headStyles: { fillColor: [145, 47, 44], textColor: 255 },
+        styles: { fontSize: 8 },
+        columnStyles: { 5: { halign: 'right' } },
+        margin: { left: 14, right: 14 },
+      });
+      tableRendered = true;
+    } else if (data.receiptFields && data.receiptFields.length > 0) {
+      autoTable(doc, {
+        startY: y,
+        body: data.receiptFields.map(f => [f.label, f.value]),
+        theme: 'plain',
+        styles: { fontSize: 10 },
+        columnStyles: { 0: { fontStyle: 'bold', cellWidth: 55 } },
+        margin: { left: 14, right: 14 },
+      });
+      tableRendered = true;
+    } else if (data.descripcion) {
+      const lines = doc.splitTextToSize(`Descripción: ${data.descripcion}`, 182);
+      doc.text(lines, 14, y);
+      y += (lines.length + 1) * 6;
+    }
+
+    if (tableRendered) {
+      y = afterTable(doc) + 8;
+    }
+
+    doc.setFont('helvetica', 'bold');
+    doc.text(`Total declarado: S/ ${data.total.toFixed(2)}`, 196, y, { align: 'right' });
+    doc.setFont('helvetica', 'normal');
+
+    y += 20;
+    const center = 105;
+    if (data.signature) {
+      doc.addImage(data.signature, 'PNG', center - 30, y - 18, 60, 18);
+    }
+    doc.line(center - 40, y, center + 40, y);
+    y += 4;
+    doc.setFontSize(9);
+    doc.text(data.colaborador.toUpperCase(), center, y, { align: 'center' });
+    if (data.colaboradorDni) {
+      y += 4;
+      doc.text(`DNI N° ${data.colaboradorDni}`, center, y, { align: 'center' });
     }
 
     doc.save(`${data.fileBaseName}.pdf`);
