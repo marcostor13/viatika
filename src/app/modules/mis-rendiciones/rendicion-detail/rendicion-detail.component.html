@@ -37,17 +37,17 @@
             }
           </div>
           @if (report.location || report.startDate) {
-          <dl class="mt-3 flex flex-col gap-1.5 sm:flex-row sm:flex-wrap sm:gap-x-5 text-sm">
+          <dl class="mt-3 flex flex-col gap-2 text-sm">
             @if (report.location) {
-            <div class="flex items-start gap-1.5">
-              <dt class="text-xs font-semibold text-gray-400 uppercase tracking-wide shrink-0 mt-0.5">Destino</dt>
-              <dd class="text-gray-700">{{ report.location }}</dd>
+            <div>
+              <dt class="text-xs font-semibold text-gray-400 uppercase tracking-wide">Destino</dt>
+              <dd class="text-gray-800 font-medium mt-0.5">{{ report.location }}</dd>
             </div>
             }
             @if (reportDateRange) {
-            <div class="flex items-start gap-1.5">
-              <dt class="text-xs font-semibold text-gray-400 uppercase tracking-wide shrink-0 mt-0.5">Fechas</dt>
-              <dd class="text-gray-700">{{ reportDateRange }}</dd>
+            <div>
+              <dt class="text-xs font-semibold text-gray-400 uppercase tracking-wide">Fechas</dt>
+              <dd class="text-gray-800 font-medium mt-0.5">{{ reportDateRange }}</dd>
             </div>
             }
           </dl>
@@ -60,146 +60,151 @@
     @if (report && !isLoading) {
     <div class="mt-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
 
-      <!-- Exportar (scrollable en mobile) -->
-      <div class="overflow-x-auto -mx-4 sm:mx-0 px-4 sm:px-0 shrink-0" role="group" aria-label="Exportar">
-        <div class="flex items-center gap-2 w-max pb-0.5">
-          <button
-            type="button"
-            (click)="exportRendicionExcel()"
-            [disabled]="isExportingExcel()"
-            class="inline-flex items-center justify-center gap-2 min-h-[38px] px-3 py-1.5 rounded-lg text-xs font-semibold border border-emerald-200 bg-emerald-50 text-emerald-900 hover:bg-emerald-100 active:scale-[0.98] disabled:opacity-50 transition-all touch-manipulation"
-          >
-            @if (isExportingExcel()) {
-              <span class="w-3.5 h-3.5 border-2 border-emerald-300 border-t-emerald-700 rounded-full animate-spin" aria-hidden="true"></span>
-              Generando…
-            } @else {
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-3.5 h-3.5 shrink-0" aria-hidden="true">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
-              </svg>
-              Excel
-            }
-          </button>
-          <button
-            type="button"
-            (click)="exportRendicionPdf()"
-            [disabled]="isExportingPdf()"
-            class="inline-flex items-center justify-center gap-2 min-h-[38px] px-3 py-1.5 rounded-lg text-xs font-semibold border border-slate-200 bg-slate-50 text-slate-900 hover:bg-slate-100 active:scale-[0.98] disabled:opacity-50 transition-all touch-manipulation"
-          >
-            @if (isExportingPdf()) {
-              <span class="w-3.5 h-3.5 border-2 border-slate-300 border-t-slate-700 rounded-full animate-spin" aria-hidden="true"></span>
-              Generando…
-            } @else {
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-3.5 h-3.5 shrink-0" aria-hidden="true">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
-              </svg>
-              PDF
-            }
-          </button>
-          @if (isAdminView) {
-          <button
-            type="button"
-            (click)="openAffidavitModal()"
-            [disabled]="!canGenerateAffidavit() || isGeneratingAffidavit()"
-            class="inline-flex items-center justify-center gap-2 min-h-[38px] px-3 py-1.5 rounded-lg text-xs font-semibold border border-indigo-200 bg-indigo-50 text-indigo-900 hover:bg-indigo-100 disabled:opacity-50 transition-all touch-manipulation"
-          >
-            @if (isGeneratingAffidavit()) {
-              <span class="w-3.5 h-3.5 border-2 border-indigo-300 border-t-indigo-700 rounded-full animate-spin" aria-hidden="true"></span>
-              Generando DJ...
-            } @else {
-              Declaracion Jurada
-            }
-          </button>
-          @if (canClose) {
-          <button
-            type="button"
-            (click)="openCloseModal()"
-            [disabled]="isValidatingClosure()"
-            class="inline-flex items-center justify-center gap-2 min-h-[38px] px-3 py-1.5 rounded-lg text-xs font-semibold border border-gray-400 bg-gray-700 text-white hover:bg-gray-800 disabled:opacity-50 transition-all touch-manipulation"
-          >
-            @if (isValidatingClosure()) {
-              <span class="w-3.5 h-3.5 border-2 border-gray-300 border-t-white rounded-full animate-spin" aria-hidden="true"></span>
-              Validando...
-            } @else {
-              Cerrar Definitivamente
-            }
-          </button>
-          }
-          @if (canRequestReopen) {
-          <button
-            type="button"
-            (click)="openReopenRequestModal()"
-            class="inline-flex items-center justify-center gap-2 min-h-[38px] px-3 py-1.5 rounded-lg text-xs font-semibold border border-orange-300 bg-orange-50 text-orange-900 hover:bg-orange-100 transition-all touch-manipulation"
-          >
-            Solicitar Reapertura
-          </button>
-          }
-          @if (canApproveReopen) {
-          <button
-            type="button"
-            (click)="showReopenApproveModal.set(true)"
-            class="inline-flex items-center justify-center gap-2 min-h-[38px] px-3 py-1.5 rounded-lg text-xs font-semibold border border-blue-300 bg-blue-50 text-blue-900 hover:bg-blue-100 transition-all touch-manipulation"
-          >
-            Revisar Reapertura
-          </button>
-          }
-          }
-        </div>
+      <!-- Exportar -->
+      <div class="flex items-center gap-2 flex-wrap shrink-0" role="group" aria-label="Exportar">
+        <app-button
+          label="Excel"
+          variant="secondary"
+          size="sm"
+          [fullWidth]="false"
+          [loading]="isExportingExcel()"
+          loadingLabel="Generando…"
+          [disabled]="isExportingExcel()"
+          (clicked)="exportRendicionExcel()"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 shrink-0">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
+          </svg>
+        </app-button>
+        <app-button
+          label="PDF"
+          variant="secondary"
+          size="sm"
+          [fullWidth]="false"
+          [loading]="isExportingPdf()"
+          loadingLabel="Generando…"
+          [disabled]="isExportingPdf()"
+          (clicked)="exportRendicionPdf()"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 shrink-0">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
+          </svg>
+        </app-button>
       </div>
 
       <!-- Acciones contextuales (derecha en desktop) -->
       <div class="flex flex-col gap-2 sm:items-end sm:shrink-0">
 
+        <!-- Admin: acciones de ciclo de vida -->
+        @if (isAdminView) {
+        <div class="flex flex-row flex-wrap gap-2 justify-end">
+          <app-button
+            label="Declaración Jurada"
+            variant="secondary"
+            size="sm"
+            [fullWidth]="false"
+            [loading]="isGeneratingAffidavit()"
+            loadingLabel="Generando…"
+            [disabled]="!canGenerateAffidavit() || isGeneratingAffidavit()"
+            (clicked)="openAffidavitModal()"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 shrink-0">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
+            </svg>
+          </app-button>
+          @if (canClose) {
+          <app-button
+            label="Cerrar Definitivamente"
+            variant="danger"
+            size="sm"
+            [fullWidth]="false"
+            [loading]="isValidatingClosure()"
+            loadingLabel="Validando…"
+            [disabled]="isValidatingClosure()"
+            (clicked)="openCloseModal()"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 shrink-0">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 1 0-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 0 0 2.25-2.25v-6.75a2.25 2.25 0 0 0-2.25-2.25H6.75a2.25 2.25 0 0 0-2.25 2.25v6.75a2.25 2.25 0 0 0 2.25 2.25Z" />
+            </svg>
+          </app-button>
+          }
+          @if (canRequestReopen) {
+          <app-button
+            label="Solicitar Reapertura"
+            variant="secondary"
+            size="sm"
+            [fullWidth]="false"
+            (clicked)="openReopenRequestModal()"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 shrink-0">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 10.5V6.75a4.5 4.5 0 0 1 9 0v3.75M3.75 21.75h10.5a2.25 2.25 0 0 0 2.25-2.25v-6.75a2.25 2.25 0 0 0-2.25-2.25H3.75a2.25 2.25 0 0 0-2.25 2.25v6.75a2.25 2.25 0 0 0 2.25 2.25Z" />
+            </svg>
+          </app-button>
+          }
+          @if (canApproveReopen) {
+          <app-button
+            label="Revisar Reapertura"
+            variant="secondary"
+            size="sm"
+            [fullWidth]="false"
+            (clicked)="showReopenApproveModal.set(true)"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 shrink-0">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z" />
+              <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+            </svg>
+          </app-button>
+          }
+        </div>
+        }
+
         <!-- Colaborador: solicitada — pendiente de aprobación -->
         @if (report.status === 'solicited' && !isAdminView) {
         <div class="flex flex-row flex-wrap gap-2">
-          <div class="flex items-center gap-2 px-3 py-2 rounded-lg bg-purple-50 border border-purple-200 text-purple-800 text-sm font-medium">
+          <div class="flex items-center gap-2 px-3 py-2 rounded bg-purple-50 border border-purple-200 text-purple-800 text-sm font-medium">
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 shrink-0 text-purple-500">
               <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
             </svg>
-            Pendiente de aprobacion
+            Pendiente de aprobación
           </div>
-          <button
-            type="button"
-            class="inline-flex items-center justify-center gap-2 rounded-lg text-sm font-medium border border-primary bg-white text-primary hover:bg-primary/5 min-h-[40px] px-4 py-2 transition-colors touch-manipulation"
-            (click)="openEditSolicitudForm()"
-          >
+          <app-button label="Editar" variant="secondary" size="sm" [fullWidth]="false" (clicked)="openEditSolicitudForm()">
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 shrink-0">
               <path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125" />
             </svg>
-            Editar
-          </button>
-          <button
-            type="button"
-            class="inline-flex items-center justify-center gap-2 rounded-lg text-sm font-medium border border-amber-400 bg-amber-50 text-amber-800 hover:bg-amber-100 min-h-[40px] px-4 py-2 transition-colors touch-manipulation"
-            (click)="openCancelModal()"
-          >
+          </app-button>
+          <app-button label="Cancelar solicitud" variant="danger" size="sm" [fullWidth]="false" (clicked)="openCancelModal()">
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 shrink-0">
               <path stroke-linecap="round" stroke-linejoin="round" d="M18.364 18.364A9 9 0 0 0 5.636 5.636m12.728 12.728A9 9 0 0 1 5.636 5.636m12.728 12.728L5.636 5.636" />
             </svg>
-            Cancelar
-          </button>
+          </app-button>
         </div>
         }
 
         <!-- Colaborador: rechazada en fase de solicitud -->
         @if (canResendSolicitud) {
         <div class="flex flex-row flex-wrap gap-2">
-          <button
-            type="button"
-            class="inline-flex items-center justify-center gap-2 rounded-lg text-sm font-medium border border-primary bg-white text-primary hover:bg-primary/5 min-h-[40px] px-4 py-2 transition-colors touch-manipulation"
-            (click)="openEditSolicitudForm()"
-          >
+          <app-button label="Editar y re-enviar" variant="secondary" size="sm" [fullWidth]="false" (clicked)="openEditSolicitudForm()">
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 shrink-0">
               <path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125" />
             </svg>
-            Editar y re-enviar
-          </button>
+          </app-button>
+        </div>
+        }
+
+        <!-- Colaborador: rechazada con gastos -->
+        @if (canResubmitReport) {
+        <div class="flex flex-row flex-wrap gap-2">
+          <app-button label="Editar rendición" variant="secondary" size="sm" [fullWidth]="false" (clicked)="openEditSolicitudForm()">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 shrink-0">
+              <path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125" />
+            </svg>
+          </app-button>
         </div>
         }
 
         <!-- Colaborador: cancelada -->
         @if (report.status === 'cancelled' && !isAdminView) {
-        <div class="flex items-center gap-2 px-3 py-2 rounded-lg bg-orange-50 border border-orange-200 text-orange-800 text-sm font-medium">
+        <div class="flex items-center gap-2 px-3 py-2 rounded bg-orange-50 border border-orange-200 text-orange-800 text-sm font-medium">
           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 shrink-0 text-orange-500">
             <path stroke-linecap="round" stroke-linejoin="round" d="M18.364 18.364A9 9 0 0 0 5.636 5.636m12.728 12.728A9 9 0 0 1 5.636 5.636m12.728 12.728L5.636 5.636" />
           </svg>
@@ -211,29 +216,17 @@
         @if (collaboratorCanEdit) {
         <div class="hidden sm:flex flex-wrap items-center gap-2 justify-end">
           @if (canAddExpenses) {
-          <app-button
-            label="Solicitar más viáticos"
-            variant="secondary"
-            size="sm"
-            [fullWidth]="false"
-            (clicked)="openAdvanceModal()"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 -ml-1 shrink-0">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 18.75a60.07 60.07 0 0 1 15.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 0 1 3 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25M2.25 6v9m18-10.5v.75c0 .414.336.75.75.75h.75m-1.5-1.5h.375c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125h-.375m1.5-1.5H21a.75.75 0 0 0-.75.75v.75m0 0H3.75m0 0h-.375a1.125 1.125-0 0 1-1.125-1.125V15m1.5 1.5v-.75A.75.75 0 0 0 3 15h-.75M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Zm3 0h.008v.008H18V10.5Zm-12 0h.008v.008H6V10.5Z" />
-            </svg>
-          </app-button>
-          <app-button
-            label="Añadir Gasto"
-            variant="primary"
-            size="sm"
-            [fullWidth]="false"
-            (clicked)="openAddExpenseModal()"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 -ml-1 shrink-0">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+          <app-button label="Solicitar más viáticos" variant="secondary" size="sm" [fullWidth]="false" (clicked)="openAdvanceModal()">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 shrink-0">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 18.75a60.07 60.07 0 0 1 15.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 0 1 3 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25M2.25 6v9m18-10.5v.75c0 .414.336.75.75.75h.75m-1.5-1.5h.375c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125h-.375m1.5-1.5H21a.75.75 0 0 0-.75.75v.75m0 0H3.75m0 0h-.375a1.125 1.125 0 0 1-1.125-1.125V15m1.5 1.5v-.75A.75.75 0 0 0 3 15h-.75M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Zm3 0h.008v.008H18V10.5Zm-12 0h.008v.008H6V10.5Z" />
             </svg>
           </app-button>
           }
+          <app-button label="Añadir Gasto" variant="primary" size="sm" [fullWidth]="false" (clicked)="openAddExpenseModal()">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 shrink-0">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+            </svg>
+          </app-button>
           <div class="relative group/submit">
             <app-button
               [label]="report.status === 'rejected' ? 'Volver a enviar rendición' : 'Enviar Rendición'"
@@ -243,7 +236,7 @@
               [disabled]="!canSubmitReport"
               (clicked)="openSubmitModal()"
             >
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 -ml-1 shrink-0">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 shrink-0">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M6 12 3.269 3.125A59.769 59.769 0 0 1 21.485 12 59.768 59.768 0 0 1 3.27 20.875L5.999 12Zm0 0h7.5" />
               </svg>
             </app-button>
@@ -266,25 +259,13 @@
         <!-- Admin: solicitud inicial -->
         @if (report.status === 'solicited' && isAdminView) {
         <div class="flex flex-row flex-wrap gap-2 justify-end">
-          <app-button
-            label="Aprobar solicitud"
-            variant="primary"
-            size="sm"
-            [fullWidth]="false"
-            (clicked)="openAdminApproveModal()"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 -ml-1 shrink-0">
+          <app-button label="Aprobar solicitud" variant="primary" size="sm" [fullWidth]="false" (clicked)="openAdminApproveModal()">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 shrink-0">
               <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
             </svg>
           </app-button>
-          <app-button
-            label="Rechazar solicitud"
-            variant="secondary"
-            size="sm"
-            [fullWidth]="false"
-            (clicked)="openAdminRejectModal()"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 -ml-1 shrink-0">
+          <app-button label="Rechazar solicitud" variant="secondary" size="sm" [fullWidth]="false" (clicked)="openAdminRejectModal()">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 shrink-0">
               <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 3.75h.008v.008H12v-.008Z" />
             </svg>
           </app-button>
@@ -309,18 +290,12 @@
               [disabled]="!canFinalApprove"
               (clicked)="openAdminApproveModal()"
             >
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 mr-1 -ml-1 shrink-0">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 shrink-0">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
               </svg>
             </app-button>
-            <app-button
-              label="Rechazar rendición"
-              variant="danger"
-              size="sm"
-              [fullWidth]="false"
-              (clicked)="openAdminRejectModal()"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 mr-1 -ml-1 shrink-0">
+            <app-button label="Rechazar rendición" variant="danger" size="sm" [fullWidth]="false" (clicked)="openAdminRejectModal()">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 shrink-0">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M18.364 18.364A9 9 0 0 0 5.636 5.636m12.728 12.728A9 9 0 0 1 5.636 5.636m12.728 12.728L5.636 5.636" />
               </svg>
             </app-button>
@@ -382,7 +357,7 @@
       }
 
       <!-- Edit-solicitud form (shown when rejected or pending solicitud phase) -->
-      @if ((canResendSolicitud || canCancelOrDelete) && showEditSolicitudForm()) {
+      @if ((canResendSolicitud || canCancelOrDelete || canResubmitReport) && showEditSolicitudForm()) {
       <div class="mb-6 rounded-xl border border-gray-200 bg-white p-4 sm:p-5">
         <h3 class="font-semibold text-gray-900 mb-4">Editar solicitud</h3>
         @if (editSolicitudForm) {
@@ -574,7 +549,7 @@
                 <div>
                   <p class="text-xs font-semibold text-gray-400 uppercase mb-1">Periodo</p>
                   <p class="text-sm text-gray-900 font-medium">
-                    {{ report.startDate | date:'dd/MM/yyyy' }} — {{ report.endDate | date:'dd/MM/yyyy' }}
+                    {{ formatShortDate(report.startDate) }} — {{ formatShortDate(report.endDate) }}
                   </p>
                 </div>
               }
@@ -770,7 +745,7 @@
           </a>
           @if (report.reimbursedAt) {
           <span class="text-gray-600 self-center">
-            Fecha registro: {{ report.reimbursedAt | date:'mediumDate' }}
+            Fecha registro: {{ report.reimbursedAt | date:'dd/MM/yyyy' }}
           </span>
           }
         </div>
@@ -955,7 +930,7 @@
                   <th class="px-4 lg:px-6 py-3">Tipo</th>
                   <th class="px-4 lg:px-6 py-3">Fecha</th>
                   <th class="px-4 lg:px-6 py-3">Descripción</th>
-                  <th class="px-4 lg:px-6 py-3 text-right">Monto (S/)</th>
+                  <th class="px-4 lg:px-6 py-3 text-right">S/ Monto</th>
                   <th class="px-4 lg:px-6 py-3 text-center whitespace-nowrap">Estado</th>
                   <th class="px-4 lg:px-6 py-3 text-center whitespace-nowrap">Documento</th>
                   <th class="px-4 lg:px-6 py-3 text-center whitespace-nowrap">Ficha</th>
@@ -977,7 +952,7 @@
                   <td class="px-4 lg:px-6 py-3 text-sm text-gray-900 whitespace-nowrap">{{ getExpenseDate(expense) }}</td>
                   <td class="px-4 lg:px-6 py-3 text-sm text-gray-900">{{ getExpenseDescription(expense) }}</td>
                   <td class="px-4 lg:px-6 py-3 text-sm font-medium text-gray-900 text-right tabular-nums">
-                    {{ expense.total | currency:'S/.' }}
+                    S/ {{ expense.total | number:'1.2-2' }}
                   </td>
                   <td class="px-4 lg:px-6 py-3 text-center">
                     <div class="flex flex-col items-center gap-1">
@@ -997,21 +972,85 @@
                     </div>
                   </td>
                   <td class="px-4 lg:px-6 py-3 text-center">
-                    @if (hasExpenseFile(expense)) {
-                    <button
-                      type="button"
-                      (click)="openExpenseFile(expense)"
-                      class="inline-flex items-center justify-center p-2 rounded-lg text-primary hover:bg-primary/10 transition-colors"
-                      title="Abrir documento adjunto"
-                      aria-label="Abrir documento adjunto"
-                    >
-                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m6 9.75H8.25m0 0H12m-3.75 0h3.75m-3.75 0v-3.75m0 3.75v3.75" />
-                      </svg>
-                    </button>
-                    } @else {
-                    <span class="text-xs text-gray-400">—</span>
-                    }
+                    <div class="flex items-center justify-center gap-0.5">
+
+                      <!-- Adjunto (todos los tipos que tengan archivo) -->
+                      @if (hasExpenseFile(expense)) {
+                      <div class="relative group/attach">
+                        <button type="button" (click)="openExpenseFile(expense)"
+                          class="inline-flex items-center justify-center w-8 h-8 rounded-lg text-primary hover:bg-primary/10 transition-colors">
+                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M18.375 12.739l-7.693 7.693a4.5 4.5 0 0 1-6.364-6.364l10.94-10.94A3 3 0 1 1 19.5 7.372L8.552 18.32m.009-.01-.01.01m5.699-9.941-7.81 7.81a1.5 1.5 0 0 0 2.112 2.13" />
+                          </svg>
+                        </button>
+                        <div class="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 px-2 py-1 bg-gray-800 text-white text-[11px] font-medium rounded whitespace-nowrap opacity-0 group-hover/attach:opacity-100 pointer-events-none transition-opacity z-10">
+                          Ver adjunto
+                        </div>
+                      </div>
+                      }
+
+                      <!-- PDF: planilla de movilidad -->
+                      @if (expense['expenseType'] === 'planilla_movilidad') {
+                      <div class="relative group/pmob-pdf">
+                        <button type="button" (click)="exportMobilitySheet(expense)"
+                          class="inline-flex items-center justify-center w-8 h-8 rounded-lg text-indigo-600 hover:bg-indigo-50 transition-colors">
+                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
+                          </svg>
+                        </button>
+                        <div class="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 px-2 py-1 bg-gray-800 text-white text-[11px] font-medium rounded whitespace-nowrap opacity-0 group-hover/pmob-pdf:opacity-100 pointer-events-none transition-opacity z-10">
+                          Descargar PDF
+                        </div>
+                      </div>
+                      <div class="relative group/pmob-xls">
+                        <button type="button" (click)="exportMobilitySheetExcel(expense)"
+                          class="inline-flex items-center justify-center w-8 h-8 rounded-lg text-emerald-600 hover:bg-emerald-50 transition-colors">
+                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M3.375 19.5h17.25m-17.25 0a1.125 1.125 0 0 1-1.125-1.125M3.375 19.5h7.5c.621 0 1.125-.504 1.125-1.125m-9.75 0V5.625m0 12.75v-1.5c0-.621.504-1.125 1.125-1.125m18.375 2.625V5.625m0 12.75c0 .621-.504 1.125-1.125 1.125m1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125m0 3.75h-7.5A1.125 1.125 0 0 1 12 18.375m9.75-12.75c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125m19.5 0v1.5c0 .621-.504 1.125-1.125 1.125M2.25 5.625v1.5c0 .621.504 1.125 1.125 1.125m0 0h17.25m-17.25 0c0 .621.504 1.125 1.125 1.125h15c.621 0 1.125-.504 1.125-1.125m-17.25 0v1.5c0 .621.504 1.125 1.125 1.125m15 0c.621 0 1.125-.504 1.125-1.125m0 0v1.5c0 .621-.504 1.125-1.125 1.125m-15 0h15m-15 0c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125h15c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125" />
+                          </svg>
+                        </button>
+                        <div class="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 px-2 py-1 bg-gray-800 text-white text-[11px] font-medium rounded whitespace-nowrap opacity-0 group-hover/pmob-xls:opacity-100 pointer-events-none transition-opacity z-10">
+                          Descargar Excel
+                        </div>
+                      </div>
+                      }
+
+                      <!-- PDF: recibo de caja -->
+                      @if (expense['expenseType'] === 'recibo_caja') {
+                      <div class="relative group/rcaja-pdf">
+                        <button type="button" (click)="exportReceiptPdf(expense)"
+                          class="inline-flex items-center justify-center w-8 h-8 rounded-lg text-indigo-600 hover:bg-indigo-50 transition-colors">
+                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
+                          </svg>
+                        </button>
+                        <div class="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 px-2 py-1 bg-gray-800 text-white text-[11px] font-medium rounded whitespace-nowrap opacity-0 group-hover/rcaja-pdf:opacity-100 pointer-events-none transition-opacity z-10">
+                          Descargar PDF
+                        </div>
+                      </div>
+                      }
+
+                      <!-- PDF: comprobante de caja -->
+                      @if (expense['expenseType'] === 'comprobante_caja') {
+                      <div class="relative group/ccaja-pdf">
+                        <button type="button" (click)="exportCashVoucher(expense)"
+                          class="inline-flex items-center justify-center w-8 h-8 rounded-lg text-indigo-600 hover:bg-indigo-50 transition-colors">
+                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
+                          </svg>
+                        </button>
+                        <div class="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 px-2 py-1 bg-gray-800 text-white text-[11px] font-medium rounded whitespace-nowrap opacity-0 group-hover/ccaja-pdf:opacity-100 pointer-events-none transition-opacity z-10">
+                          Descargar PDF
+                        </div>
+                      </div>
+                      }
+
+                      <!-- Sin documento ni descarga -->
+                      @if (!hasExpenseFile(expense) && expense['expenseType'] !== 'planilla_movilidad' && expense['expenseType'] !== 'recibo_caja' && expense['expenseType'] !== 'comprobante_caja') {
+                      <span class="text-xs text-gray-400">—</span>
+                      }
+
+                    </div>
                   </td>
                   <td class="px-4 lg:px-6 py-3 text-center">
                     <button
@@ -1113,7 +1152,6 @@
 <!-- Sticky bottom bar (mobile only) — colaborador con rendición editable -->
 @if (report && collaboratorCanEdit) {
 <div class="fixed bottom-0 left-0 right-0 z-30 sm:hidden bg-white border-t border-gray-200 shadow-[0_-4px_16px_rgba(0,0,0,0.08)] px-4 py-3 flex gap-3">
-  @if (canAddExpenses) {
   <button
     type="button"
     (click)="openAddExpenseModal()"
@@ -1124,7 +1162,6 @@
     </svg>
     Añadir Gasto
   </button>
-  }
   <div class="relative group/submit flex-1">
     <button
       type="button"
@@ -1200,15 +1237,17 @@
           @if (getExpenseTypeKey(exp) === 'planilla_movilidad') {
           <button type="button" (click)="exportMobilitySheet(exp)"
             class="inline-flex items-center gap-1.5 min-h-[36px] px-3 rounded-lg text-sm font-medium bg-indigo-600 text-white hover:bg-indigo-700 transition-colors">
-            PDF planilla
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4 shrink-0">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
+            </svg>
+            Descargar PDF
           </button>
           <button type="button" (click)="exportMobilitySheetExcel(exp)"
             class="inline-flex items-center gap-1.5 min-h-[36px] px-3 rounded-lg text-sm font-medium bg-emerald-600 text-white hover:bg-emerald-700 transition-colors">
-            Excel planilla
-          </button>
-          <button type="button" (click)="exportMobilityAffidavit(exp)"
-            class="inline-flex items-center gap-1.5 min-h-[36px] px-3 rounded-lg text-sm font-medium bg-amber-600 text-white hover:bg-amber-700 transition-colors">
-            Declaración jurada
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4 shrink-0">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
+            </svg>
+            Descargar Excel
           </button>
           }
 
@@ -1234,12 +1273,6 @@
           </button>
           }
 
-          @if (getExpenseTypeKey(exp) === 'otros_gastos') {
-          <button type="button" (click)="exportOtherExpenseAffidavit(exp)"
-            class="inline-flex items-center gap-1.5 min-h-[36px] px-3 rounded-lg text-sm font-medium bg-amber-600 text-white hover:bg-amber-700 transition-colors">
-            Declaración jurada
-          </button>
-          }
         </div>
 
         @if (hasExpenseFile(exp)) {
@@ -1312,7 +1345,7 @@
       @switch (getExpenseTypeKey(exp)) {
         @case ('planilla_movilidad') {
         <section class="rounded-xl border border-gray-200 overflow-hidden">
-          <h4 class="text-xs font-semibold text-gray-500 uppercase tracking-wide px-4 py-3 bg-amber-50 border-b border-amber-100">Planilla de movilidad — filas</h4>
+          <h4 class="text-xs font-semibold text-gray-500 uppercase tracking-wide px-4 py-3 bg-amber-50 border-b border-amber-100">Detalle</h4>
           <div class="overflow-x-auto">
             <table class="min-w-full text-xs sm:text-sm">
               <thead class="bg-gray-50 text-left text-gray-500">
@@ -1329,7 +1362,7 @@
               <tbody class="divide-y divide-gray-100">
                 @for (row of mobilityRows(exp); track trackMobilityRow($index, row)) {
                 <tr class="hover:bg-gray-50/80">
-                  <td class="px-3 py-2 whitespace-nowrap">{{ row['fecha'] || '—' }}</td>
+                  <td class="px-3 py-2 whitespace-nowrap">{{ formatShortDate($any(row['fecha'])) }}</td>
                   <td class="px-3 py-2 max-w-[200px] break-words">{{ row['concepto'] || '—' }}</td>
                   <td class="px-3 py-2 text-right tabular-nums font-medium">{{ mobilityRowTotal(row) | number:'1.2-2' }}</td>
                   <td class="px-3 py-2 hidden lg:table-cell break-words">{{ row['clienteProveedor'] || '—' }}</td>
@@ -1854,6 +1887,7 @@
     </div>
   </div>
 </div>
+}
 
 <!-- Modal: Confirmar cierre definitivo -->
 @if (showCloseModal()) {
@@ -2116,7 +2150,6 @@
   </div>
   }
 </div>
-}
 }
 
 <!-- Modal: Cargar comprobante de devolución (Fase 7) -->
