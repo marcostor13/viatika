@@ -1,54 +1,85 @@
 <div class="p-5 flex flex-col gap-6">
 
   <!-- Header -->
-  <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-    <div>
-      <h1 class="text-2xl font-bold text-secondary">Viáticos</h1>
-      <p class="text-sm text-tertiary mt-0.5">{{ filtered().length }} solicitud{{ filtered().length !== 1 ? 'es' : '' }} encontrada{{ filtered().length !== 1 ? 's' : '' }}</p>
-    </div>
+  <div>
+    <h1 class="text-2xl font-bold text-secondary">Viáticos</h1>
+    <p class="text-sm text-tertiary mt-0.5">{{ filtered().length }} solicitud{{ filtered().length !== 1 ? 'es' : '' }} encontrada{{ filtered().length !== 1 ? 's' : '' }}</p>
+  </div>
 
-    <!-- Search + filters inline -->
-    <div class="flex gap-2 flex-wrap items-center">
-      <input
-        type="text"
-        [value]="filterSearch()"
-        (input)="onSearchChange($event)"
-        placeholder="Buscar colaborador, lugar..."
-        class="h-[42px] px-3 rounded-xl border border-tertiary/30 bg-background text-sm text-secondary focus:outline-none focus:ring-2 focus:ring-primary/30 w-56"
-      />
-      <select
-        [value]="filterStatus()"
-        (change)="onStatusChange($event)"
-        class="h-[42px] px-3 rounded-xl border border-tertiary/30 bg-background text-sm text-secondary focus:outline-none focus:ring-2 focus:ring-primary/30"
-      >
-        @for (s of ALL_STATUSES; track s.value) {
-          <option [value]="s.value">{{ s.label }}</option>
-        }
-      </select>
-      <input
-        type="date"
-        [value]="filterDateFrom()"
-        (change)="onDateFromChange($event)"
-        class="h-[42px] px-3 rounded-xl border border-tertiary/30 bg-background text-sm text-secondary focus:outline-none focus:ring-2 focus:ring-primary/30"
-      />
-      <input
-        type="date"
-        [value]="filterDateTo()"
-        (change)="onDateToChange($event)"
-        class="h-[42px] px-3 rounded-xl border border-tertiary/30 bg-background text-sm text-secondary focus:outline-none focus:ring-2 focus:ring-primary/30"
-      />
-      <button
-        (click)="applyFilters()"
-        class="h-[42px] px-4 text-sm rounded-xl bg-primary text-white hover:bg-primary/90 transition-colors font-medium"
-      >
-        Buscar
-      </button>
-      <button
-        (click)="clearFilters()"
-        class="h-[42px] px-4 text-sm rounded-xl border border-tertiary/30 text-secondary hover:bg-background transition-colors"
-      >
-        Limpiar
-      </button>
+  <!-- Filtros -->
+  <div class="bg-quaternary rounded-2xl border border-tertiary/20 shadow-soft px-5 py-4">
+    <div class="flex flex-wrap gap-4 items-end">
+
+      <!-- Búsqueda -->
+      <div class="flex flex-col gap-1.5 flex-1 min-w-[180px]">
+        <label class="text-xs font-semibold text-tertiary uppercase tracking-wider">Buscar</label>
+        <div class="relative">
+          <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-tertiary/40 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+          </svg>
+          <input
+            type="text"
+            [value]="filterSearch()"
+            (input)="onSearchChange($event)"
+            placeholder="Colaborador o destino..."
+            class="h-9 pl-9 pr-3 w-full rounded-lg border border-tertiary/30 bg-background text-sm text-secondary placeholder:text-tertiary/40 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/40"
+          />
+        </div>
+      </div>
+
+      <!-- Estado -->
+      <div class="flex flex-col gap-1.5 w-44">
+        <label class="text-xs font-semibold text-tertiary uppercase tracking-wider">Estado</label>
+        <select
+          [value]="filterStatus()"
+          (change)="onStatusChange($event)"
+          class="h-9 px-3 w-full rounded-lg border border-tertiary/30 bg-background text-sm text-secondary focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/40"
+        >
+          @for (s of ALL_STATUSES; track s.value) {
+            <option [value]="s.value">{{ s.label }}</option>
+          }
+        </select>
+      </div>
+
+      <!-- Período -->
+      <div class="flex flex-col gap-1.5">
+        <label class="text-xs font-semibold text-tertiary uppercase tracking-wider">Período</label>
+        <div class="flex items-center gap-2">
+          <input
+            type="date"
+            [value]="filterDateFrom()"
+            (change)="onDateFromChange($event)"
+            class="h-9 px-3 rounded-lg border border-tertiary/30 bg-background text-sm text-secondary focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/40"
+          />
+          <span class="text-tertiary/40 text-xs select-none">—</span>
+          <input
+            type="date"
+            [value]="filterDateTo()"
+            (change)="onDateToChange($event)"
+            class="h-9 px-3 rounded-lg border border-tertiary/30 bg-background text-sm text-secondary focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/40"
+          />
+        </div>
+      </div>
+
+      <!-- Acciones -->
+      <div class="flex items-center gap-2 ml-auto">
+        <button
+          (click)="clearFilters()"
+          class="h-9 px-3 flex items-center gap-1.5 text-sm rounded-lg border border-tertiary/30 text-tertiary hover:text-secondary hover:border-tertiary/50 transition-colors"
+        >
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+          </svg>
+          Limpiar
+        </button>
+        <button
+          (click)="applyFilters()"
+          class="h-9 px-5 text-sm rounded-lg bg-primary text-white hover:bg-primary/90 transition-colors font-medium"
+        >
+          Aplicar
+        </button>
+      </div>
+
     </div>
   </div>
 
@@ -97,7 +128,8 @@
         <thead class="bg-background border-b border-tertiary/20">
           <tr>
             <th class="text-left px-5 py-3 text-xs font-semibold text-tertiary uppercase tracking-wider">Colaborador</th>
-            <th class="text-left px-5 py-3 text-xs font-semibold text-tertiary uppercase tracking-wider">Lugar / Centro de costo</th>
+            <th class="text-left px-5 py-3 text-xs font-semibold text-tertiary uppercase tracking-wider">Destino</th>
+            <th class="text-left px-5 py-3 text-xs font-semibold text-tertiary uppercase tracking-wider">Centro de costo</th>
             <th class="text-left px-5 py-3 text-xs font-semibold text-tertiary uppercase tracking-wider">Fechas</th>
             <th class="text-right px-5 py-3 text-xs font-semibold text-tertiary uppercase tracking-wider">Monto</th>
             <th class="text-left px-5 py-3 text-xs font-semibold text-tertiary uppercase tracking-wider">Estado</th>
@@ -118,7 +150,10 @@
 
               <td class="px-5 py-3.5">
                 <div class="text-secondary">{{ a.place || '—' }}</div>
-                <div class="text-xs text-tertiary">{{ projectLabel(a) }}</div>
+              </td>
+
+              <td class="px-5 py-3.5">
+                <div class="text-secondary">{{ projectLabel(a) }}</div>
               </td>
 
               <td class="px-5 py-3.5 text-tertiary text-xs">{{ dateRange(a) }}</td>
@@ -208,6 +243,9 @@
               <div class="min-w-0">
                 <p class="font-medium text-secondary truncate">{{ collaboratorName(a) }}</p>
                 <p class="text-xs text-tertiary mt-0.5">{{ a.place || '—' }}</p>
+                @if (projectLabel(a) !== '—') {
+                  <p class="text-xs text-tertiary/70 mt-0.5">{{ projectLabel(a) }}</p>
+                }
               </div>
               <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium border shrink-0"
                     [ngClass]="STATUS_COLORS[a.status]">
