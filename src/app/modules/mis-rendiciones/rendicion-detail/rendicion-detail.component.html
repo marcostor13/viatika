@@ -574,38 +574,6 @@
       }
 
       <!-- Liquidación -->
-      @if(settlement) {
-      <div [class]="settlement.type === 'devolucion' ? 'bg-red-50 border-red-200' : settlement.type === 'reembolso' ? 'bg-green-50 border-green-200' : 'bg-gray-50 border-gray-200'"
-           class="rounded-xl border p-5 mb-6">
-        <div class="flex items-center gap-2 mb-3">
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
-          </svg>
-          <h3 class="font-bold text-gray-900">Liquidación de Rendición</h3>
-        </div>
-        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 text-center">
-          <div>
-            <p class="text-xs text-gray-500">Viático entregado</p>
-            <p class="text-lg font-bold text-gray-900">S/ {{ settlement.advanceTotal | number:'1.2-2' }}</p>
-          </div>
-          <div>
-            <p class="text-xs text-gray-500">Gastos reales</p>
-            <p class="text-lg font-bold text-gray-900">S/ {{ settlement.expenseTotal | number:'1.2-2' }}</p>
-          </div>
-          <div>
-            <p class="text-xs text-gray-500">
-              @if(settlement.type === 'devolucion') { A devolver }
-              @else if(settlement.type === 'reembolso') { A reembolsar }
-              @else { Diferencia }
-            </p>
-            <p [class]="settlement.type === 'devolucion' ? 'text-red-600' : settlement.type === 'reembolso' ? 'text-green-600' : 'text-gray-600'"
-               class="text-lg font-bold">
-              S/ {{ (settlement.type === 'reembolso' ? settlement.difference * -1 : settlement.difference) | number:'1.2-2' }}
-            </p>
-          </div>
-        </div>
-      </div>
-      }
 
       @if (report.reimbursementPaymentInfo) {
       <div class="rounded-xl border border-emerald-200 bg-emerald-50/90 p-5 mb-6">
@@ -664,7 +632,7 @@
         <h3 class="font-bold text-red-800 mb-1 text-sm">Devolución de saldo pendiente</h3>
         <p class="text-sm text-gray-700 mb-4">
           La rendición fue cerrada con un saldo a tu cargo de
-          <strong class="text-red-700">S/ {{ (settlement?.difference ?? 0) | number:'1.2-2' }}</strong>.
+          <strong class="text-red-700">S/ {{ saldoLibre | number:'1.2-2' }}</strong>.
           Por favor, realiza el depósito a la cuenta de la empresa y adjunta el comprobante.
         </p>
         <button (click)="openReturnVoucherModal()"
@@ -680,7 +648,7 @@
         <h3 class="font-bold text-emerald-800 mb-1 text-sm">Reembolso al colaborador pendiente</h3>
         <p class="text-sm text-gray-700 mb-4">
           La rendición fue cerrada con un saldo a favor del colaborador de
-          <strong class="text-emerald-700">S/ {{ ((settlement?.difference ?? 0) < 0 ? (settlement?.difference ?? 0) * -1 : (settlement?.difference ?? 0)) | number:'1.2-2' }}</strong>.
+          <strong class="text-emerald-700">S/ {{ (saldoLibre < 0 ? saldoLibre * -1 : saldoLibre) | number:'1.2-2' }}</strong>.
           Adjunta el comprobante de pago una vez realizada la transferencia.
         </p>
         <button (click)="openAdminReembolsoModal()"
