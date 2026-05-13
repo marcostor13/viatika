@@ -236,6 +236,14 @@ export const routes: Routes = [
         canActivate: [AuthTesoreroGuard],
       },
       {
+        path: 'tesoreria/:id',
+        loadComponent: () =>
+          import('./modules/tesoreria/tesoreria-detalle/tesoreria-detalle.component').then(
+            (m) => m.TesoreriaDetalleComponent
+          ),
+        canActivate: [AuthTesoreroGuard],
+      },
+      {
         path: 'centros-de-costo',
         loadComponent: () =>
           import('./modules/centros-de-costo/centros-de-costo.component').then(

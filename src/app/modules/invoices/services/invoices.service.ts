@@ -208,6 +208,7 @@ export class InvoicesService {
         companyId: client._id,
         name: client.comercialName || client.businessName,
         businessName: client.comercialName || client.businessName,
+        businessId: client.businessId,
         logo: client.logo
       }))
     );
