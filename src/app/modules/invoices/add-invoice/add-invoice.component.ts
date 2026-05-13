@@ -401,7 +401,6 @@ export default class AddInvoiceComponent implements OnInit {
           this.form.get('proyectId')?.valid === true &&
           this.form.get('categoryId')?.valid === true &&
           !!this.form.get('declaracionJurada')?.value &&
-          !!(this.form.get('declaracionJuradaFirmante')?.value || '').trim() &&
           (this.form.get('totalOtros')?.value > 0)
         );
       case 'recibo_caja':
@@ -593,7 +592,6 @@ export default class AddInvoiceComponent implements OnInit {
 
   saveOtherExpense() {
     const declaracionJurada = this.form.get('declaracionJurada')?.value;
-    const firmante = (this.form.get('declaracionJuradaFirmante')?.value || '').trim();
     const total = this.form.get('totalOtros')?.value;
     const description = this.form.get('description')?.value;
 
@@ -613,10 +611,7 @@ export default class AddInvoiceComponent implements OnInit {
       this.notificationService.show('Debes aceptar y firmar la declaración jurada', 'error');
       return;
     }
-    if (!firmante) {
-      this.notificationService.show('Ingresa el nombre del firmante', 'error');
-      return;
-    }
+    const firmante = (currentUser?.name || '').trim();
     if (!total || total <= 0) {
       this.notificationService.show('Ingresa un monto válido', 'error');
       return;

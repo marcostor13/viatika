@@ -18,6 +18,8 @@ import {
   RendicionExportService,
   AffidavitExportData,
   RendicionExportData,
+  ReceiptExportData,
+  SingleExpenseAffidavitData,
 } from '../../../services/rendicion-export.service';
 import { SolicitudViaticosModalComponent } from '../solicitud-viaticos-modal/solicitud-viaticos-modal.component';
 
@@ -210,14 +212,7 @@ export class RendicionDetailComponent implements OnInit {
     if (!this.report || this.isAdminView) return false;
     if (!(this.report.status === 'open' || this.report.status === 'rejected')) return false;
     const expenses = this.report.expenseIds || [];
-    if (expenses.length === 0) return false;
-    const hasRejected = expenses.some((exp: any) => exp?.status === 'rejected');
-    if (hasRejected) return false;
-    const hasMissingFile = expenses.some((exp: any) => {
-      const file = exp?.file;
-      return typeof file !== 'string' || !file.trim();
-    });
-    return !hasMissingFile;
+    return expenses.length > 0;
   }
 
   openAdminApproveModal(): void {
@@ -293,8 +288,8 @@ export class RendicionDetailComponent implements OnInit {
     if (!this.editSolicitudForm || this.editSolicitudForm.invalid) return;
     this.isResendingSolicitud.set(true);
     const val = this.editSolicitudForm.getRawValue();
-    const isRejected = this.report?.status === 'rejected';
-    const payload = isRejected
+    const isSolicitudRephase = this.canResendSolicitud;
+    const payload = isSolicitudRephase
       ? { ...val, status: 'solicited' as const, rejectionReason: '' }
       : { ...val };
     this.expenseReportsService.update(this.id, payload).subscribe({
@@ -304,7 +299,7 @@ export class RendicionDetailComponent implements OnInit {
         this.showEditSolicitudForm.set(false);
         this.isResendingSolicitud.set(false);
         this.notificationService.show(
-          isRejected ? 'Solicitud reenviada correctamente' : 'Solicitud actualizada correctamente',
+          isSolicitudRephase ? 'Solicitud reenviada correctamente' : 'Cambios guardados correctamente',
           'success'
         );
       },
@@ -451,7 +446,7 @@ export class RendicionDetailComponent implements OnInit {
   openSubmitModal() {
     if (!this.canSubmitReport) {
       this.notificationService.show(
-        'Para enviar la rendición debes tener gastos adjuntos y sin comprobantes rechazados.',
+        'Debes agregar al menos un gasto antes de enviar la rendición.',
         'warning'
       );
       return;
@@ -508,6 +503,19 @@ export class RendicionDetailComponent implements OnInit {
     return 'Factura';
   }
 
+  formatShortDate(raw: string | null | undefined): string {
+    if (!raw) return '-';
+    let d: Date;
+    if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) {
+      const [y, m, day] = raw.split('-').map(Number);
+      d = new Date(y, m - 1, day);
+    } else {
+      d = new Date(raw);
+    }
+    if (isNaN(d.getTime())) return raw;
+    return d.toLocaleDateString('es-PE', { day: '2-digit', month: 'short', year: 'numeric' });
+  }
+
   getExpenseDate(expense: any): string {
     const type = expense?.expenseType;
     if (type === 'planilla_movilidad') {
@@ -515,21 +523,12 @@ export class RendicionDetailComponent implements OnInit {
       if (rows.length === 0) return '-';
       const dates = rows.map((r: any) => r.fecha).filter(Boolean);
       if (dates.length === 0) return '-';
-      if (dates.length === 1) return dates[0];
-      // If multiple rows, show range
-      const sorted = [...dates].sort();
-      return sorted[0] === sorted[sorted.length - 1] ? sorted[0] : `${sorted[0]} – ${sorted[sorted.length - 1]}`;
+      return this.formatShortDate([...dates].sort()[0]);
     }
     if (type === 'otros_gastos') {
-      const raw = expense?.createdAt;
-      if (!raw) return '-';
-      const d = new Date(raw);
-      if (isNaN(d.getTime())) return '-';
-      const dd = String(d.getDate()).padStart(2, '0');
-      const mm = String(d.getMonth() + 1).padStart(2, '0');
-      return `${dd}/${mm}/${d.getFullYear()}`;
+      return this.formatShortDate(expense?.createdAt);
     }
-    return expense?.fechaEmision || '-';
+    return this.formatShortDate(expense?.fechaEmision);
   }
 
   getExpenseDescription(expense: any): string {
@@ -1430,6 +1429,156 @@ export class RendicionDetailComponent implements OnInit {
     };
     this.rendicionExportService.exportCashVoucherToPdf(data);
     this.notificationService.show('Comprobante de caja descargado en PDF', 'success');
+  }
+
+  exportMobilitySheetExcel(expense: Record<string, unknown>): void {
+    if (this.getExpenseTypeKey(expense) !== 'planilla_movilidad') return;
+    const rows = this.mobilityRows(expense).map(r => ({
+      fecha: String(r['fecha'] || ''),
+      clienteProveedor: String(r['clienteProveedor'] || ''),
+      origen: String(r['origen'] || ''),
+      destino: String(r['destino'] || ''),
+      gestion: String(r['gestion'] || ''),
+      total: this.mobilityRowTotal(r),
+    }));
+    const total = rows.reduce((sum, r) => sum + (r.total || 0), 0);
+    const data: MobilitySheetExportData = {
+      fileBaseName: `planilla_movilidad_${String(expense['_id'] || 'sin_id')}`,
+      collaborator: this.getCollaboratorDisplayName(),
+      collaboratorDni: this.report?.idDocument,
+      internalCode: typeof expense['internalCode'] === 'string' ? expense['internalCode'] : undefined,
+      location: this.report?.location,
+      generatedAt: new Date().toLocaleString('es-PE', { dateStyle: 'short', timeStyle: 'short' }),
+      rows,
+      total,
+      signature: this.getCollaboratorSignature(),
+    };
+    this.rendicionExportService.exportMobilitySheetToExcel(data);
+    this.notificationService.show('Planilla de movilidad descargada en Excel', 'success');
+  }
+
+  exportMobilityAffidavit(expense: Record<string, unknown>): void {
+    if (this.getExpenseTypeKey(expense) !== 'planilla_movilidad') return;
+    const rows = this.mobilityRows(expense).map(r => ({
+      fecha: String(r['fecha'] || ''),
+      clienteProveedor: String(r['clienteProveedor'] || ''),
+      origen: String(r['origen'] || ''),
+      destino: String(r['destino'] || ''),
+      gestion: String(r['gestion'] || ''),
+      total: this.mobilityRowTotal(r),
+    }));
+    const total = rows.reduce((sum, r) => sum + (r.total || 0), 0);
+    const client = this.userStateService.getUser()?.client;
+    const data: SingleExpenseAffidavitData = {
+      fileBaseName: `dj_planilla_movilidad_${String(expense['_id'] || 'sin_id')}`,
+      titulo: 'PLANILLA DE MOVILIDAD',
+      colaborador: this.getCollaboratorDisplayName(),
+      colaboradorDni: this.report?.idDocument,
+      empresaNombre: client?.businessName,
+      fechaGeneracion: new Date().toLocaleDateString('es-PE'),
+      total,
+      mobilityRows: rows,
+      signature: this.getCollaboratorSignature(),
+    };
+    this.rendicionExportService.exportSingleExpenseAffidavitToPdf(data);
+    this.notificationService.show('Declaración jurada descargada', 'success');
+  }
+
+  exportReceiptPdf(expense: Record<string, unknown>): void {
+    if (expense['expenseType'] !== 'recibo_caja') return;
+    const dataObj = this.getExpenseDataObject(expense);
+    const rawDate = expense['fechaEmision'];
+    const fecha = typeof rawDate === 'string' && rawDate
+      ? new Date(rawDate).toLocaleDateString('es-PE')
+      : new Date().toLocaleDateString('es-PE');
+    const data: ReceiptExportData = {
+      fileBaseName: `recibo_caja_${String(expense['_id'] || 'sin_id')}`,
+      collaborator: this.getCollaboratorDisplayName(),
+      collaboratorDni: this.report?.idDocument,
+      razonSocial: String(dataObj['razonSocial'] || '—'),
+      ruc: dataObj['ruc'] ? String(dataObj['ruc']) : undefined,
+      numeroDocumento: dataObj['numeroDocumento'] ? String(dataObj['numeroDocumento']) : undefined,
+      concepto: String(dataObj['concepto'] || this.getExpenseDescription(expense)),
+      fecha,
+      monto: this.getExpenseTotal(expense),
+      signature: this.getCollaboratorSignature(),
+    };
+    this.rendicionExportService.exportReceiptToPdf(data);
+    this.notificationService.show('Recibo de caja descargado en PDF', 'success');
+  }
+
+  exportReceiptAffidavit(expense: Record<string, unknown>): void {
+    if (expense['expenseType'] !== 'recibo_caja') return;
+    const dataObj = this.getExpenseDataObject(expense);
+    const rawDate = expense['fechaEmision'];
+    const fecha = typeof rawDate === 'string' && rawDate
+      ? new Date(rawDate).toLocaleDateString('es-PE')
+      : new Date().toLocaleDateString('es-PE');
+    const client = this.userStateService.getUser()?.client;
+    const receiptFields = [
+      { label: 'Proveedor', value: String(dataObj['razonSocial'] || '—') },
+      { label: 'RUC', value: String(dataObj['ruc'] || '—') },
+      { label: 'N° Documento', value: String(dataObj['numeroDocumento'] || '—') },
+      { label: 'Concepto', value: String(dataObj['concepto'] || '—') },
+      { label: 'Fecha', value: fecha },
+    ];
+    const data: SingleExpenseAffidavitData = {
+      fileBaseName: `dj_recibo_caja_${String(expense['_id'] || 'sin_id')}`,
+      titulo: 'RECIBO DE CAJA',
+      colaborador: this.getCollaboratorDisplayName(),
+      colaboradorDni: this.report?.idDocument,
+      empresaNombre: client?.businessName,
+      fechaGeneracion: new Date().toLocaleDateString('es-PE'),
+      total: this.getExpenseTotal(expense),
+      receiptFields,
+      signature: this.getCollaboratorSignature(),
+    };
+    this.rendicionExportService.exportSingleExpenseAffidavitToPdf(data);
+    this.notificationService.show('Declaración jurada descargada', 'success');
+  }
+
+  exportCashVoucherAffidavit(expense: Record<string, unknown>): void {
+    if (this.getExpenseTypeKey(expense) !== 'comprobante_caja') return;
+    const rawData = this.getExpenseDataObject(expense);
+    const payload = rawData['payload'];
+    const payloadObj = payload && typeof payload === 'object' ? (payload as Record<string, unknown>) : {};
+    const client = this.userStateService.getUser()?.client;
+    const receiptFields = [
+      { label: 'Entregado a', value: String(payloadObj['entregadoA'] || '—') },
+      { label: 'Dirección', value: String(payloadObj['direccion'] || '—') },
+      { label: 'Concepto', value: String(payloadObj['concepto'] || this.getExpenseDescription(expense)) },
+    ];
+    const data: SingleExpenseAffidavitData = {
+      fileBaseName: `dj_comprobante_caja_${String(expense['_id'] || 'sin_id')}`,
+      titulo: 'COMPROBANTE DE CAJA',
+      colaborador: this.getCollaboratorDisplayName(),
+      colaboradorDni: this.report?.idDocument,
+      empresaNombre: client?.businessName,
+      fechaGeneracion: new Date().toLocaleDateString('es-PE'),
+      total: this.getExpenseTotal(expense),
+      receiptFields,
+      signature: this.getCollaboratorSignature(),
+    };
+    this.rendicionExportService.exportSingleExpenseAffidavitToPdf(data);
+    this.notificationService.show('Declaración jurada descargada', 'success');
+  }
+
+  exportOtherExpenseAffidavit(expense: Record<string, unknown>): void {
+    if (this.getExpenseTypeKey(expense) !== 'otros_gastos') return;
+    const client = this.userStateService.getUser()?.client;
+    const data: SingleExpenseAffidavitData = {
+      fileBaseName: `dj_otros_gastos_${String(expense['_id'] || 'sin_id')}`,
+      titulo: 'OTROS GASTOS',
+      colaborador: String(expense['declaracionJuradaFirmante'] || this.getCollaboratorDisplayName()),
+      colaboradorDni: this.report?.idDocument,
+      empresaNombre: client?.businessName,
+      fechaGeneracion: new Date().toLocaleDateString('es-PE'),
+      total: this.getExpenseTotal(expense),
+      descripcion: String(expense['description'] || '—'),
+      signature: this.getCollaboratorSignature(),
+    };
+    this.rendicionExportService.exportSingleExpenseAffidavitToPdf(data);
+    this.notificationService.show('Declaración jurada descargada', 'success');
   }
 
   confirmDeleteExpense(expense: Record<string, unknown> & { _id?: string }): void {
