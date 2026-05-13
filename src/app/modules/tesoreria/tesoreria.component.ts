@@ -14,6 +14,8 @@ import {
 import { ExpenseReportsService } from '../../services/expense-reports.service';
 import { IExpenseReport } from '../../interfaces/expense-report.interface';
 import { RouterModule } from '@angular/router';
+import { DirectReimbursementService } from '../../services/direct-reimbursement.service';
+import { IDirectReimbursement, DIRECT_REIMBURSEMENT_STATUS_LABELS, DIRECT_REIMBURSEMENT_STATUS_COLORS } from '../../interfaces/direct-reimbursement.interface';
 type Tab = 'pendientes' | 'aprobados' | 'devoluciones';
 
 @Component({
@@ -25,6 +27,7 @@ type Tab = 'pendientes' | 'aprobados' | 'devoluciones';
 export class TesoreriaComponent implements OnInit {
   private advanceService = inject(AdvanceService);
   private expenseReportsService = inject(ExpenseReportsService);
+  private directReimbursementService = inject(DirectReimbursementService);
   private userStateService = inject(UserStateService);
   private notificationService = inject(NotificationService);
   private uploadService = inject(UploadService);
@@ -39,6 +42,10 @@ export class TesoreriaComponent implements OnInit {
   pendingAdvances: IAdvance[] = [];
   /** Rendiciones aprobadas con reembolso al colaborador pendiente de comprobante (Fase 6) */
   pendingReimbursements: IExpenseReport[] = [];
+  pendingDirectReimbursements: IDirectReimbursement[] = [];
+
+  readonly DR_STATUS_LABELS = DIRECT_REIMBURSEMENT_STATUS_LABELS;
+  readonly DR_STATUS_COLORS = DIRECT_REIMBURSEMENT_STATUS_COLORS;
 
   selectedAdvance: IAdvance | null = null;
   selectedReportReimbursement: IExpenseReport | null = null;
@@ -76,6 +83,7 @@ export class TesoreriaComponent implements OnInit {
 
   get isSuperAdmin() { return this.userStateService.isSuperAdmin(); }
   get isAdmin() { return this.userStateService.isAdmin(); }
+  get isContabilidad() { return this.userStateService.isContabilidad(); }
   get canPayAndSettle() { return this.userStateService.canApproveL2(); }
 
   ngOnInit() {
@@ -125,11 +133,13 @@ export class TesoreriaComponent implements OnInit {
         this.isLoading.set(false);
         this.loadPendingReimbursements();
         this.loadPendingReturns();
+        this.loadPendingDirectReimbursements();
       },
       error: () => {
         this.isLoading.set(false);
         this.loadPendingReimbursements();
         this.loadPendingReturns();
+        this.loadPendingDirectReimbursements();
       },
     });
   }
@@ -147,6 +157,13 @@ export class TesoreriaComponent implements OnInit {
       error: () => {
         this.pendingReimbursements = [];
       },
+    });
+  }
+
+  private loadPendingDirectReimbursements(): void {
+    this.directReimbursementService.findPendingPayments().subscribe({
+      next: rows => { this.pendingDirectReimbursements = rows ?? []; },
+      error: () => { this.pendingDirectReimbursements = []; },
     });
   }
 
@@ -360,6 +377,14 @@ export class TesoreriaComponent implements OnInit {
           this.isActing.set(false);
         },
       });
+  }
+
+  drCollaboratorName(dr: IDirectReimbursement): string {
+    const c = dr.collaboratorId;
+    if (c && typeof c === 'object' && 'name' in c) return (c as { name: string }).name;
+    const coord = dr.coordinatorId;
+    if (coord && typeof coord === 'object' && 'name' in coord) return (coord as { name: string }).name;
+    return '—';
   }
 
   collaboratorReportName(report: IExpenseReport): string {

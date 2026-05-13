@@ -49,6 +49,10 @@ export class MisRendicionesComponent implements OnInit {
     return (this.userStateService.getUser() as any)?._id ?? '';
   }
 
+  get canCreateRendicion(): boolean {
+    return this.userStateService.canCreateRendicion();
+  }
+
   ngOnInit(): void {
     this.loadMyReports();
     this.loadMyAdvances();

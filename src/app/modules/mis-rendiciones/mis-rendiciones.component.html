@@ -28,6 +28,7 @@
         </svg>
         Solicitud de viáticos
       </button>
+      @if (canCreateRendicion) {
       <button
         type="button"
         (click)="openCreateModal()"
@@ -38,6 +39,7 @@
         </svg>
         Nueva Rendición
       </button>
+      }
     </div>
   </div>
 

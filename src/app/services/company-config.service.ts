@@ -30,7 +30,7 @@ export class CompanyConfigService {
 
   initCompanyConfig() {
     const user = this.userStateService.getUser();
-    const clientId = user?.client?._id || '';
+    const clientId = user?.client?._id || (user as any)?.companyId || '';
 
     const defaultConfig: ICompanyConfig = {
       _id: clientId,
@@ -149,6 +149,23 @@ export class CompanyConfigService {
       subs.push(urlSub);
 
       return () => subs.forEach((s) => s.unsubscribe());
+    });
+  }
+
+  updateLimits(companyId: string, limits: { movilidadDiario?: number }): Observable<ICompanyConfig> {
+    return new Observable((observer) => {
+      this.invoicesService
+        .updateCompanyConfig(companyId, { limits })
+        .subscribe({
+          next: (config) => {
+            this.companyConfigSubject.next(config);
+            observer.next(config);
+            observer.complete();
+          },
+          error: (err) => {
+            observer.error(err);
+          },
+        });
     });
   }
 

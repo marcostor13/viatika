@@ -166,6 +166,10 @@ export class UserStateService {
     return this.canAccessTesoreria();
   }
 
+  canCreateRendicion(): boolean {
+    return this.hasModulePermission('nueva-rendicion');
+  }
+
   /** True when Contabilidad has selected a company (companyId is set) */
   isContabilidadInCompany(): boolean {
     if (!this.isContabilidad()) return false;
