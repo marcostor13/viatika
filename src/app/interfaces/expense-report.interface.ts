@@ -70,6 +70,14 @@ export interface IExpenseReport {
   settlement?: IExpenseReportSettlement;
   reimbursementPaymentInfo?: IReimbursementPaymentInfo;
   reimbursedAt?: string;
+  returnVoucher?: {
+    url: string;
+    fileName?: string;
+    depositDate: string;
+    bankOrigin?: string;
+    operationNumber?: string;
+    uploadedAt: string;
+  };
   closureRecord?: IClosureRecord;
 }
 

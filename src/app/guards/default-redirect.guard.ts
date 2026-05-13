@@ -19,7 +19,11 @@ export const defaultRedirectGuard: CanActivateFn = () => {
   }
 
   if (userState.isContabilidad()) {
-    return router.createUrlTree(['/tesoreria']);
+    // If a company has been selected (companyId set), go to the main view
+    if (userState.isContabilidadInCompany()) {
+      return router.createUrlTree(['/consolidated-invoices']);
+    }
+    return router.createUrlTree(['/hub']);
   }
 
   if (userState.isCoordinador()) {

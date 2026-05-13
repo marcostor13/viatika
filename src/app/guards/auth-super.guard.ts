@@ -7,22 +7,16 @@ export class AuthSuperGuard implements CanActivate {
     constructor(private userState: UserStateService, private router: Router) { }
 
     canActivate(): boolean {
-        const user = this.userState.getUser();
-
         if (!this.userState.isAuthenticated()) {
             this.router.navigate(['/login']);
             return false;
         }
 
-        const role = user?.role?.name;
-
-        if (role !== 'Superadministrador') {
-            this.router.navigate(['/login']);
-            return false;
+        if (this.userState.isSuperAdmin() || this.userState.isContabilidad()) {
+            return true;
         }
 
-        return true;
+        this.router.navigate(['/login']);
+        return false;
     }
 }
-
-
