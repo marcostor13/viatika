@@ -53,8 +53,20 @@
       </a>
       }
 
-      <!-- Admin: páginas fijas -->
-      @if (isAdmin()) {
+      <!-- Admin / Contabilidad (dentro de empresa): páginas fijas -->
+      @if (isAdmin() || isContabilidadInCompany()) {
+      @if (isContabilidadInCompany()) {
+      <button
+        (click)="goBackToHub()"
+        class="flex items-center gap-2 w-full px-4 py-3 text-secondary rounded-xl hover:bg-background hover:text-primary transition-all duration-200 text-left"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 flex-shrink-0">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M9 15 3 9m0 0 6-6M3 9h12a6 6 0 0 1 0 12h-3" />
+        </svg>
+        <span class="font-medium text-sm">Volver al Hub</span>
+      </button>
+      <div class="border-t border-tertiary/20 my-1"></div>
+      }
       <a
         [routerLink]="['/consolidated-invoices']"
         routerLinkActive="bg-primary text-white"
@@ -133,7 +145,7 @@
       }
 
       <!-- Módulos opcionales: controlados 100% por permisos (visibles para cualquier rol que los tenga asignados) -->
-      @if (!isAdmin() && !isSuper() && !isColaborador() && hasModulePermission('mis-rendiciones')) {
+      @if (!isAdmin() && !isSuper() && !isColaborador() && !isContabilidadInCompany() && hasModulePermission('mis-rendiciones')) {
       <a
         [routerLink]="['/mis-rendiciones']"
         routerLinkActive="bg-primary text-white"
@@ -144,7 +156,7 @@
         <span class="font-medium">Mis Rendiciones</span>
       </a>
       }
-      @if (!isAdmin() && !isSuper() && hasModulePermission('invoice-approval')) {
+      @if (!isAdmin() && !isSuper() && !isContabilidadInCompany() && hasModulePermission('invoice-approval')) {
       <a
         [routerLink]="['/invoice-approval']"
         routerLinkActive="bg-primary text-white"
@@ -155,7 +167,7 @@
         <span class="font-medium">Aprobación de Facturas</span>
       </a>
       }
-      @if (!isAdmin() && !isSuper() && hasModulePermission('consolidated-invoices')) {
+      @if (!isAdmin() && !isSuper() && !isContabilidadInCompany() && hasModulePermission('consolidated-invoices')) {
       <a
         [routerLink]="['/consolidated-invoices']"
         routerLinkActive="bg-primary text-white"
@@ -166,7 +178,7 @@
         <span class="font-medium">Consolidado</span>
       </a>
       }
-      @if (!isSuper() && !isAdmin() && hasModulePermission('configuracion')) {
+      @if (!isSuper() && !isAdmin() && !isContabilidadInCompany() && hasModulePermission('configuracion')) {
       <a
         [routerLink]="['/configuracion']"
         routerLinkActive="bg-primary text-white"
@@ -177,7 +189,7 @@
         <span class="font-medium">Configuración</span>
       </a>
       }
-      @if (!isAdmin() && !isSuper() && hasModulePermission('audit-log')) {
+      @if (!isAdmin() && !isSuper() && !isContabilidadInCompany() && hasModulePermission('audit-log')) {
       <a
         [routerLink]="['/audit-log']"
         routerLinkActive="bg-primary text-white"
@@ -228,7 +240,7 @@
       >
         <span class="font-medium">Caja Chica</span>
       </a>
-      @if (isAdmin()) {
+      @if (isAdmin() || isContabilidadInCompany()) {
       <!-- Configuración (grupo colapsable) -->
       <div>
         <button
@@ -289,7 +301,7 @@
         }
       </div>
       }
-      @if (!isAdmin() && !isSuper()) {
+      @if (!isAdmin() && !isSuper() && !isContabilidadInCompany()) {
       <a
         [routerLink]="['/mi-firma']"
         routerLinkActive="bg-primary text-white"
@@ -435,8 +447,20 @@
         </a>
         }
 
-        <!-- Admin: páginas fijas -->
-        @if (isAdmin()) {
+        <!-- Admin / Contabilidad (dentro de empresa): páginas fijas -->
+        @if (isAdmin() || isContabilidadInCompany()) {
+        @if (isContabilidadInCompany()) {
+        <button
+          (click)="goBackToHub(); toggleSidebar()"
+          class="flex items-center gap-2 w-full px-4 py-4 text-secondary rounded-xl hover:bg-background hover:text-primary transition-all duration-200 text-left"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 flex-shrink-0">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9 15 3 9m0 0 6-6M3 9h12a6 6 0 0 1 0 12h-3" />
+          </svg>
+          <span class="font-medium text-lg">Volver al Hub</span>
+        </button>
+        <div class="border-t border-tertiary/20 my-1"></div>
+        }
         <a
           [routerLink]="['/consolidated-invoices']"
           (click)="toggleSidebar()"
@@ -515,7 +539,7 @@
         }
 
         <!-- Módulos opcionales: controlados 100% por permisos -->
-        @if (!isAdmin() && !isSuper() && !isColaborador() && hasModulePermission('mis-rendiciones')) {
+        @if (!isAdmin() && !isSuper() && !isColaborador() && !isContabilidadInCompany() && hasModulePermission('mis-rendiciones')) {
         <a
           [routerLink]="['/mis-rendiciones']"
           (click)="toggleSidebar()"
@@ -526,7 +550,7 @@
           <span class="font-medium text-lg">Mis Rendiciones</span>
         </a>
         }
-        @if (!isAdmin() && !isSuper() && hasModulePermission('invoice-approval')) {
+        @if (!isAdmin() && !isSuper() && !isContabilidadInCompany() && hasModulePermission('invoice-approval')) {
         <a
           [routerLink]="['/invoice-approval']"
           (click)="toggleSidebar()"
@@ -537,7 +561,7 @@
           <span class="font-medium text-lg">Aprobación de Facturas</span>
         </a>
         }
-        @if (!isAdmin() && !isSuper() && hasModulePermission('consolidated-invoices')) {
+        @if (!isAdmin() && !isSuper() && !isContabilidadInCompany() && hasModulePermission('consolidated-invoices')) {
         <a
           [routerLink]="['/consolidated-invoices']"
           (click)="toggleSidebar()"
@@ -548,7 +572,7 @@
           <span class="font-medium text-lg">Consolidado</span>
         </a>
         }
-        @if (!isSuper() && !isAdmin() && hasModulePermission('configuracion')) {
+        @if (!isSuper() && !isAdmin() && !isContabilidadInCompany() && hasModulePermission('configuracion')) {
         <a
           [routerLink]="['/configuracion']"
           (click)="toggleSidebar()"
@@ -559,7 +583,7 @@
           <span class="font-medium text-lg">Configuración</span>
         </a>
         }
-        @if (!isAdmin() && !isSuper() && hasModulePermission('audit-log')) {
+        @if (!isAdmin() && !isSuper() && !isContabilidadInCompany() && hasModulePermission('audit-log')) {
         <a
           [routerLink]="['/audit-log']"
           (click)="toggleSidebar()"
@@ -610,7 +634,7 @@
         >
           <span class="font-medium text-lg">Caja Chica</span>
         </a>
-        @if (isAdmin()) {
+        @if (isAdmin() || isContabilidadInCompany()) {
         <!-- Configuración (grupo colapsable) -->
         <div>
           <button
@@ -675,7 +699,7 @@
           }
         </div>
         }
-        @if (!isAdmin() && !isSuper()) {
+        @if (!isAdmin() && !isSuper() && !isContabilidadInCompany()) {
         <a
           [routerLink]="['/mi-firma']"
           (click)="toggleSidebar()"

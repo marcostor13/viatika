@@ -1,6 +1,6 @@
 import { Component, OnInit, inject, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { ReactiveFormsModule, FormsModule, FormBuilder, FormGroup, Validators, FormArray } from '@angular/forms';
+import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { ExpenseReportsService } from '../../../services/expense-reports.service';
 import { AdvanceService } from '../../../services/advance.service';
@@ -29,7 +29,6 @@ import { SolicitudViaticosModalComponent } from '../solicitud-viaticos-modal/sol
   standalone: true,
   imports: [
     CommonModule,
-    ReactiveFormsModule,
     FormsModule,
     ButtonComponent,
     SolicitudViaticosModalComponent,
@@ -50,8 +49,6 @@ export class RendicionDetailComponent implements OnInit {
   private rendicionExportService = inject(RendicionExportService);
   private companyConfigService = inject(CompanyConfigService);
   private uploadService = inject(UploadService);
-  private fb = inject(FormBuilder);
-
   id: string = this.route.snapshot.params['id'];
   report: IExpenseReport | null = null;
   isLoading = true;
@@ -248,66 +245,20 @@ export class RendicionDetailComponent implements OnInit {
     });
   }
 
-  // Edit-solicitud form (shown when rejected at solicitud phase)
-  showEditSolicitudForm = signal(false);
-  editSolicitudForm!: FormGroup;
   isResendingSolicitud = signal(false);
 
-  get peopleNames(): FormArray {
-    return this.editSolicitudForm.get('peopleNames') as FormArray;
-  }
-
-  addPersonName() {
-    this.peopleNames.push(this.fb.control(''));
-  }
-
-  removePersonName(index: number) {
-    if (this.peopleNames.length > 1) {
-      this.peopleNames.removeAt(index);
-    } else {
-      this.peopleNames.at(0).setValue('');
-    }
-  }
-
-  openEditSolicitudForm(): void {
-    if (!this.report) return;
-    const names = Array.isArray(this.report.peopleNames) ? this.report.peopleNames : [this.report.peopleNames || ''];
-    this.editSolicitudForm = this.fb.group({
-      title: [this.report.title, Validators.required],
-      description: [this.report.description ?? ''],
-      budget: [{ value: this.report.budget ?? 0, disabled: true }, [Validators.required, Validators.min(0)]], 
-      accountNumber: [this.report.accountNumber ?? ''],
-      idDocument: [this.report.idDocument ?? ''],
-      peopleNames: this.fb.array(names.map(n => this.fb.control(n))),
-      location: [this.report.location ?? ''],
-      startDate: [this.report.startDate ? new Date(this.report.startDate).toISOString().split('T')[0] : ''],
-      endDate: [this.report.endDate ? new Date(this.report.endDate).toISOString().split('T')[0] : ''],
-    });
-    this.showEditSolicitudForm.set(true);
-  }
-
-  resendSolicitud(): void {
-    if (!this.editSolicitudForm || this.editSolicitudForm.invalid) return;
+  reenviarSolicitudDirecto(): void {
     this.isResendingSolicitud.set(true);
-    const val = this.editSolicitudForm.getRawValue();
-    const isSolicitudRephase = this.canResendSolicitud;
-    const payload = isSolicitudRephase
-      ? { ...val, status: 'solicited' as const, rejectionReason: '' }
-      : { ...val };
-    this.expenseReportsService.update(this.id, payload).subscribe({
+    this.expenseReportsService.update(this.id, { status: 'solicited', rejectionReason: '' }).subscribe({
       next: (res) => {
         this.report = res;
         this.calculateTotals();
-        this.showEditSolicitudForm.set(false);
         this.isResendingSolicitud.set(false);
-        this.notificationService.show(
-          isSolicitudRephase ? 'Solicitud reenviada correctamente' : 'Cambios guardados correctamente',
-          'success'
-        );
+        this.notificationService.show('Solicitud reenviada correctamente', 'success');
       },
       error: () => {
         this.isResendingSolicitud.set(false);
-        this.notificationService.show('Error al guardar los cambios', 'error');
+        this.notificationService.show('Error al reenviar la solicitud', 'error');
       },
     });
   }
@@ -1064,6 +1015,185 @@ export class RendicionDetailComponent implements OnInit {
           );
         },
       });
+  }
+
+  // ─── Cierre: voucher de devolucion (colaborador) ──────────────────────────
+
+  showReturnVoucherModal = signal(false);
+  isUploadingReturnVoucher = signal(false);
+  isSubmittingReturnVoucher = signal(false);
+  returnVoucherUrl = signal<string | null>(null);
+  returnVoucherFileName = signal<string | null>(null);
+  returnVoucherDepositDate = signal(new Date().toISOString().split('T')[0]);
+  returnVoucherBank = signal('');
+  returnVoucherOperation = signal('');
+
+  /** Colaborador puede cargar su comprobante de devolución cuando la rendición está cerrada con saldo a devolver. */
+  get canUploadReturnVoucher(): boolean {
+    if (this.isAdminView) return false;
+    if (!this.isClosed) return false;
+    if ((this.report as any)?.settlement?.type !== 'devolucion') return false;
+    return !(this.report as any)?.returnVoucher;
+  }
+
+  /** Admin puede registrar el reembolso al colaborador cuando la rendición está cerrada con saldo a reembolsar. */
+  get canAdminRegisterReembolso(): boolean {
+    if (!this.isAdminView) return false;
+    if (!this.isClosed) return false;
+    if ((this.report as any)?.settlement?.type !== 'reembolso') return false;
+    return !this.report?.reimbursementPaymentInfo;
+  }
+
+  openReturnVoucherModal(): void {
+    this.returnVoucherUrl.set(null);
+    this.returnVoucherFileName.set(null);
+    this.returnVoucherDepositDate.set(new Date().toISOString().split('T')[0]);
+    this.returnVoucherBank.set('');
+    this.returnVoucherOperation.set('');
+    this.showReturnVoucherModal.set(true);
+  }
+
+  onReturnVoucherFileSelected(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    if (!file) return;
+    const allowed = ['application/pdf', 'image/jpeg', 'image/png'];
+    if (!allowed.includes(file.type)) {
+      this.notificationService.show('Formato invalido. Usa PDF, JPG o PNG.', 'error');
+      input.value = '';
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      this.notificationService.show('El archivo no puede superar 10MB.', 'error');
+      input.value = '';
+      return;
+    }
+    this.isUploadingReturnVoucher.set(true);
+    this.uploadService.upload(file).subscribe({
+      next: (res) => {
+        this.returnVoucherUrl.set(res.url);
+        this.returnVoucherFileName.set(file.name);
+        this.notificationService.show('Comprobante subido', 'success');
+        this.isUploadingReturnVoucher.set(false);
+      },
+      error: () => {
+        this.notificationService.show('No se pudo subir el comprobante', 'error');
+        this.isUploadingReturnVoucher.set(false);
+      },
+    });
+  }
+
+  submitReturnVoucher(): void {
+    const fileUrl = this.returnVoucherUrl();
+    if (!fileUrl || !this.returnVoucherDepositDate()) {
+      this.notificationService.show('Sube el comprobante e ingresa la fecha de deposito', 'warning');
+      return;
+    }
+    this.isSubmittingReturnVoucher.set(true);
+    this.expenseReportsService.registerReturnVoucher(this.id, {
+      depositDate: this.returnVoucherDepositDate(),
+      bankOrigin: this.returnVoucherBank() || undefined,
+      operationNumber: this.returnVoucherOperation() || undefined,
+      fileUrl,
+      fileName: this.returnVoucherFileName() || undefined,
+    }).subscribe({
+      next: (res) => {
+        this.report = res;
+        this.calculateTotals();
+        this.showReturnVoucherModal.set(false);
+        this.isSubmittingReturnVoucher.set(false);
+        this.notificationService.show('Comprobante de devolucion enviado correctamente', 'success');
+      },
+      error: (err) => {
+        this.isSubmittingReturnVoucher.set(false);
+        const raw = err?.error?.message;
+        const msg = Array.isArray(raw) ? raw.join(', ') : raw;
+        this.notificationService.show(msg || 'Error al enviar el comprobante', 'error');
+      },
+    });
+  }
+
+  // ─── Cierre: reembolso al colaborador (admin) ─────────────────────────────
+
+  showAdminReembolsoModal = signal(false);
+  isUploadingAdminReembolso = signal(false);
+  isSubmittingAdminReembolso = signal(false);
+  adminReembolsoUrl = signal<string | null>(null);
+  adminReembolsoFileName = signal<string | null>(null);
+  adminReembolsoDate = signal(new Date().toISOString().split('T')[0]);
+  adminReembolsoBank = signal('');
+  adminReembolsoRef = signal('');
+  adminReembolsoMethod = signal<'transferencia_bancaria' | 'efectivo' | 'cheque'>('transferencia_bancaria');
+
+  openAdminReembolsoModal(): void {
+    this.adminReembolsoUrl.set(null);
+    this.adminReembolsoFileName.set(null);
+    this.adminReembolsoDate.set(new Date().toISOString().split('T')[0]);
+    this.adminReembolsoBank.set('');
+    this.adminReembolsoRef.set('');
+    this.adminReembolsoMethod.set('transferencia_bancaria');
+    this.showAdminReembolsoModal.set(true);
+  }
+
+  onAdminReembolsoFileSelected(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    if (!file) return;
+    const allowed = ['application/pdf', 'image/jpeg', 'image/png'];
+    if (!allowed.includes(file.type)) {
+      this.notificationService.show('Formato invalido. Usa PDF, JPG o PNG.', 'error');
+      input.value = '';
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      this.notificationService.show('El archivo no puede superar 10MB.', 'error');
+      input.value = '';
+      return;
+    }
+    this.isUploadingAdminReembolso.set(true);
+    this.uploadService.upload(file).subscribe({
+      next: (res) => {
+        this.adminReembolsoUrl.set(res.url);
+        this.adminReembolsoFileName.set(file.name);
+        this.notificationService.show('Comprobante subido', 'success');
+        this.isUploadingAdminReembolso.set(false);
+      },
+      error: () => {
+        this.notificationService.show('No se pudo subir el comprobante', 'error');
+        this.isUploadingAdminReembolso.set(false);
+      },
+    });
+  }
+
+  submitAdminReembolso(): void {
+    const fileUrl = this.adminReembolsoUrl();
+    if (!fileUrl || !this.adminReembolsoDate()) {
+      this.notificationService.show('Sube el comprobante e ingresa la fecha de pago', 'warning');
+      return;
+    }
+    this.isSubmittingAdminReembolso.set(true);
+    this.expenseReportsService.registerReimbursementPayment(this.id, {
+      method: this.adminReembolsoMethod(),
+      bankName: this.adminReembolsoBank() || undefined,
+      transferDate: this.adminReembolsoDate(),
+      reference: this.adminReembolsoRef() || undefined,
+      paymentReceiptUrl: fileUrl,
+      paymentReceiptFileName: this.adminReembolsoFileName() || undefined,
+    }).subscribe({
+      next: (res) => {
+        this.report = res;
+        this.calculateTotals();
+        this.showAdminReembolsoModal.set(false);
+        this.isSubmittingAdminReembolso.set(false);
+        this.notificationService.show('Reembolso registrado correctamente', 'success');
+      },
+      error: (err) => {
+        this.isSubmittingAdminReembolso.set(false);
+        const raw = err?.error?.message;
+        const msg = Array.isArray(raw) ? raw.join(', ') : raw;
+        this.notificationService.show(msg || 'Error al registrar el reembolso', 'error');
+      },
+    });
   }
 
   // ─── Fase 7 — Devolución de saldo ─────────────────────────────────────────

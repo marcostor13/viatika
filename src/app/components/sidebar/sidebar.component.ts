@@ -111,6 +111,15 @@ export class SidebarComponent implements OnInit, OnDestroy {
     return this.userStateService.isAnyAdmin();
   }
 
+  isContabilidadInCompany(): boolean {
+    return this.userStateService.isContabilidadInCompany();
+  }
+
+  goBackToHub() {
+    this.userStateService.restoreHubState();
+    this.router.navigate(['/hub']);
+  }
+
   isSuperAdmin(): boolean {
     return this.userStateService.isSuperAdmin();
   }

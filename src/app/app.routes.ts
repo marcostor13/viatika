@@ -175,11 +175,6 @@ export const routes: Routes = [
         canActivate: [AuthAdmin2Guard],
       },
       {
-        path: 'clients-admin',
-        component: ClientsAdminComponent,
-        canActivate: [AuthSuperGuard],
-      },
-      {
         path: 'inicio',
         loadComponent: () =>
           import('./modules/inicio/inicio.component').then(
@@ -310,6 +305,16 @@ export const routes: Routes = [
     path: 'super/client-onboarding',
     component: ClientOnboardingComponent,
     canActivate: [AuthSuperGuard],
+  },
+  {
+    path: 'clients-admin',
+    component: ClientsAdminComponent,
+    canActivate: [AuthSuperGuard],
+  },
+  {
+    path: 'hub',
+    loadComponent: () =>
+      import('./modules/hub/hub.component').then((m) => m.HubComponent),
   },
   {
     path: 'login',

@@ -52,13 +52,6 @@ export default class AdminUsersComponent implements OnInit {
   }
 
   loadUsers() {
-    if (this.isSuperAdmin) {
-      this.adminUsersService.getUsers().subscribe((users) => {
-        const data = users.map((u) => ({ ...u, roleName: ERoles[u.role.name as keyof typeof ERoles] ?? u.role.name }));
-        this.result.set({ data, total: data.length, page: 1, pages: 1, limit: data.length });
-      });
-      return;
-    }
     this.adminUsersService.getUsersPaginated({
       page: this.page(),
       limit: this.limit(),
