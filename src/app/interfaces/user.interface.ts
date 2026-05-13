@@ -96,6 +96,12 @@ export interface IUserResponse {
     | { _id: string; name?: string; email?: string };
   mustChangePassword?: boolean;
   profilePic?: string;
+  bankAccount?: {
+    bankName?: string;
+    accountNumber?: string;
+    cci?: string;
+    accountType?: 'ahorros' | 'corriente';
+  };
 }
 
 

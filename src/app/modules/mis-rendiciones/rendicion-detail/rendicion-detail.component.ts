@@ -61,10 +61,14 @@ export class RendicionDetailComponent implements OnInit {
   totalGastado = 0;
 
   get saldoLibre(): number {
+    if (this.settlement?.difference !== undefined && this.settlement.difference !== null) {
+      return this.settlement.difference;
+    }
     return this.totalAnticipado - this.totalGastado;
   }
 
   ngOnInit(): void {
+    this.companyConfigService.refreshConfig();
     if (this.id) {
       this.loadReport();
       this.loadAdvances();
@@ -148,8 +152,11 @@ export class RendicionDetailComponent implements OnInit {
 
   goBack() {
     const ownerId = typeof this.report?.userId === 'object' ? this.report?.userId?._id : this.report?.userId;
-    if (this.isAdminView && ownerId) {
+    const canViewAdminUsers = this.userStateService.isAdmin() || this.userStateService.isSuperAdmin();
+    if (this.isAdminView && ownerId && canViewAdminUsers) {
       this.router.navigate(['/admin-users', ownerId, 'details']);
+    } else if (this.isAdminView) {
+      this.router.navigate(['/tesoreria']);
     } else {
       this.router.navigate(['/mis-rendiciones']);
     }
@@ -172,7 +179,7 @@ export class RendicionDetailComponent implements OnInit {
   adminRejectionReason = signal('');
 
   get isAdminView(): boolean {
-    return this.userStateService.isAdmin() || this.userStateService.isSuperAdmin();
+    return this.userStateService.isAdmin() || this.userStateService.isSuperAdmin() || this.userStateService.isContabilidad() || this.userStateService.canApproveL2();
   }
 
   /** La rendición está en fase de solicitud inicial (creada por colaborador, aún no aprobada). */
@@ -956,8 +963,8 @@ export class RendicionDetailComponent implements OnInit {
     return {
       fileBaseName: `declaracion_jurada_${this.id}_${new Date().getTime()}`,
       tipo: this.affidavitType(),
-      empresaNombre: 'TEMA LITOCLEAN SAC',
-      empresaRuc: '—',
+      empresaNombre: this.companyConfigService.getCompanyConfig()?.businessName ?? '',
+      empresaRuc: this.companyConfigService.getCompanyConfig()?.businessId ?? '',
       colaborador: this.getCollaboratorDisplayName(),
       documentoColaborador: this.report?.idDocument,
       fechaGeneracion: new Date().toLocaleString('es-PE', {
@@ -1032,7 +1039,10 @@ export class RendicionDetailComponent implements OnInit {
   get canUploadReturnVoucher(): boolean {
     if (this.isAdminView) return false;
     if (!this.isClosed) return false;
-    if ((this.report as any)?.settlement?.type !== 'devolucion') return false;
+    const settlementType = (this.report as any)?.settlement?.type;
+    const isDevolucion = settlementType === 'devolucion' ||
+      (!settlementType && this.saldoLibre > 0.01);
+    if (!isDevolucion) return false;
     return !(this.report as any)?.returnVoucher;
   }
 
@@ -1333,7 +1343,8 @@ export class RendicionDetailComponent implements OnInit {
   }
 
   get canClose(): boolean {
-    if (!this.isAdminView) return false;
+    const hasClosePermission = this.userStateService.isContabilidad() || this.userStateService.isSuperAdmin();
+    if (!hasClosePermission) return false;
     return this.report?.status === 'approved' || this.report?.status === 'reimbursed';
   }
 
@@ -1372,11 +1383,11 @@ export class RendicionDetailComponent implements OnInit {
     if (this.closureErrors().length > 0) return;
     this.isClosing.set(true);
     this.expenseReportsService.close(this.id).subscribe({
-      next: (res) => {
-        this.report = res;
+      next: () => {
         this.isClosing.set(false);
         this.showCloseModal.set(false);
         this.notificationService.show('Rendicion cerrada definitivamente', 'success');
+        this.loadReport();
       },
       error: (err) => {
         this.isClosing.set(false);

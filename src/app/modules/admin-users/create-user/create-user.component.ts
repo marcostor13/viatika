@@ -41,6 +41,10 @@ export class CreateUserComponent implements OnInit {
     address: [''],
     phone: [''],
     coordinatorId: [''],
+    bankName: [''],
+    accountNumber: [''],
+    cci: [''],
+    accountType: [''],
   });
   roles: IRoleResponse[] = [];
   enumRoles = ERoles;
@@ -122,6 +126,10 @@ export class CreateUserComponent implements OnInit {
       address: user.address || '',
       phone: user.phone || '',
       coordinatorId: this.coordinatorIdFromUser(user),
+      bankName: user.bankAccount?.bankName || '',
+      accountNumber: user.bankAccount?.accountNumber || '',
+      cci: user.bankAccount?.cci || '',
+      accountType: user.bankAccount?.accountType || '',
     });
   }
 
@@ -133,10 +141,13 @@ export class CreateUserComponent implements OnInit {
 
   createUser() {
     if (this.form.valid) {
-      const raw = this.form.value as IUser & { coordinatorId?: string };
-      const payload = { ...raw } as IUser & { coordinatorId?: string };
-      if (!this.selectedRoleIsCollaborador || !raw.coordinatorId?.trim()) {
+      const { bankName, accountNumber, cci, accountType, ...rest } = this.form.value;
+      const payload: any = { ...rest };
+      if (!this.selectedRoleIsCollaborador || !rest.coordinatorId?.trim()) {
         delete payload.coordinatorId;
+      }
+      if (bankName || accountNumber || cci) {
+        payload.bankAccount = { bankName, accountNumber, cci, accountType: accountType || undefined };
       }
       this.adminUsersService.createUser(payload).subscribe((res) => {
         this.temporaryPassword = res.temporaryPassword;
@@ -159,13 +170,18 @@ export class CreateUserComponent implements OnInit {
 
   updateUser() {
     if (this.form.valid) {
-      const updateData = { ...this.form.value } as Record<string, unknown>;
+      const { bankName, accountNumber, cci, accountType, ...rest } = this.form.value;
+      const updateData: any = { ...rest };
       delete updateData['password'];
 
       if (!this.selectedRoleIsCollaborador) {
         delete updateData['coordinatorId'];
       } else if (!updateData['coordinatorId']) {
         updateData['coordinatorId'] = null;
+      }
+
+      if (bankName || accountNumber || cci) {
+        updateData.bankAccount = { bankName, accountNumber, cci, accountType: accountType || undefined };
       }
 
       this.adminUsersService
