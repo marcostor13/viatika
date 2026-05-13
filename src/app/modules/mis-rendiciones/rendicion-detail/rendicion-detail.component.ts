@@ -6,6 +6,7 @@ import { ExpenseReportsService } from '../../../services/expense-reports.service
 import { AdvanceService } from '../../../services/advance.service';
 import { NotificationService } from '../../../services/notification.service';
 import { UserStateService } from '../../../services/user-state.service';
+import { CompanyConfigService } from '../../../services/company-config.service';
 import { ConfirmationService } from '../../../services/confirmation.service';
 import { InvoicesService } from '../../invoices/services/invoices.service';
 import { UploadService } from '../../../services/upload.service';
@@ -47,6 +48,7 @@ export class RendicionDetailComponent implements OnInit {
   private confirmationService = inject(ConfirmationService);
   private invoicesService = inject(InvoicesService);
   private rendicionExportService = inject(RendicionExportService);
+  private companyConfigService = inject(CompanyConfigService);
   private uploadService = inject(UploadService);
   private fb = inject(FormBuilder);
 
@@ -534,14 +536,23 @@ export class RendicionDetailComponent implements OnInit {
   getExpenseDescription(expense: any): string {
     const type = expense?.expenseType;
     if (type === 'planilla_movilidad') {
-      const rows = expense?.mobilityRows?.length || 0;
-      return `${rows} fila${rows !== 1 ? 's' : ''}`;
+      const firstRow = expense?.mobilityRows?.[0];
+      return firstRow?.concepto || firstRow?.gestion || `${expense?.mobilityRows?.length || 0} filas`;
     }
     if (type === 'otros_gastos') {
       return expense?.description || 'DJ firmada';
     }
     if (type === 'comprobante_caja') {
-      return expense?.description || 'Comprobante interno';
+      try {
+        const parsed = typeof expense?.description === 'string' ? JSON.parse(expense.description) : null;
+        return parsed?.concepto || 'Comprobante interno';
+      } catch { return 'Comprobante interno'; }
+    }
+    if (type === 'recibo_caja') {
+      try {
+        const data = typeof expense?.data === 'string' ? JSON.parse(expense.data) : expense?.data || {};
+        return data.concepto || data.razonSocial || 'N/A';
+      } catch { return 'N/A'; }
     }
     try {
       const data = typeof expense?.data === 'string' ? JSON.parse(expense.data) : expense?.data || {};
@@ -1409,23 +1420,36 @@ export class RendicionDetailComponent implements OnInit {
   exportCashVoucher(expense: Record<string, unknown>): void {
     if (this.getExpenseTypeKey(expense) !== 'comprobante_caja') return;
     const rawData = this.getExpenseDataObject(expense);
-    const payload = rawData['payload'];
-    const payloadObj =
-      payload && typeof payload === 'object'
-        ? (payload as Record<string, unknown>)
-        : {};
+    const payloadRaw = rawData['payload'];
+    let payloadObj: Record<string, unknown> = {};
+    if (payloadRaw && typeof payloadRaw === 'string') {
+      try { payloadObj = JSON.parse(payloadRaw); } catch { /* empty */ }
+    } else if (payloadRaw && typeof payloadRaw === 'object') {
+      payloadObj = payloadRaw as Record<string, unknown>;
+    }
+    // Fallback: if payload was not nested, concepto may be in description (stored as JSON)
+    if (!payloadObj['concepto'] && expense['description']) {
+      try {
+        const descParsed = JSON.parse(String(expense['description']));
+        if (descParsed?.concepto) payloadObj = descParsed;
+      } catch { /* empty */ }
+    }
+    const companyName = this.companyConfigService.getCompanyConfig()?.businessName
+      || this.userStateService.getUser()?.client?.businessName;
     const data: CashVoucherExportData = {
       fileBaseName: `comprobante_caja_${String(expense['_id'] || 'sin_id')}`,
       collaborator: this.getCollaboratorDisplayName(),
       collaboratorDni: this.report?.idDocument,
-      internalCode:
-        typeof expense['internalCode'] === 'string' ? expense['internalCode'] : undefined,
+      internalCode: typeof expense['internalCode'] === 'string' ? expense['internalCode'] : undefined,
       entregadoA: String(payloadObj['entregadoA'] || '—'),
       direccion: String(payloadObj['direccion'] || ''),
       concepto: String(payloadObj['concepto'] || this.getExpenseDescription(expense)),
       monto: this.getExpenseTotal(expense),
       generatedAt: new Date().toLocaleDateString('es-PE'),
       signature: this.getCollaboratorSignature(),
+      projectName: this.getProjectName(),
+      clientName: companyName,
+      fechaEmision: typeof expense['fechaEmision'] === 'string' ? expense['fechaEmision'] : undefined,
     };
     this.rendicionExportService.exportCashVoucherToPdf(data);
     this.notificationService.show('Comprobante de caja descargado en PDF', 'success');

@@ -159,6 +159,14 @@ export const routes: Routes = [
         canActivate: [authModuleGuard('configuracion')],
       },
       {
+        path: 'mi-perfil',
+        loadComponent: () =>
+          import('./modules/mi-perfil/mi-perfil.component').then(
+            (m) => m.MiPerfilComponent
+          ),
+        canActivate: [AuthColaboradorGuard],
+      },
+      {
         path: 'clients',
         loadComponent: () =>
           import('./modules/clients/clients.component').then(

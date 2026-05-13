@@ -1,7 +1,8 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import ExcelJS from 'exceljs';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import { CompanyConfigService } from './company-config.service';
 
 type JsPdfWithAutoTable = jsPDF & { lastAutoTable?: { finalY: number } };
 
@@ -123,6 +124,9 @@ export interface CashVoucherExportData {
   monto: number;
   generatedAt: string;
   signature?: string;
+  projectName?: string;
+  clientName?: string;
+  fechaEmision?: string;
 }
 
 export interface ReceiptExportData {
@@ -157,10 +161,13 @@ const YELLOW_CELL = 'FFFFFF00'; // Yellow for summary cell
 
 @Injectable({ providedIn: 'root' })
 export class RendicionExportService {
-  
+  private companyConfigService = inject(CompanyConfigService);
+
   private async getLogoBase64(): Promise<string | null> {
+    const logoUrl = this.companyConfigService.getCompanyConfig()?.logo;
+    const url = logoUrl || '/logo_header.png';
     try {
-      const response = await fetch('/logo_header.png');
+      const response = await fetch(url);
       const blob = await response.blob();
       return new Promise((resolve) => {
         const reader = new FileReader();
@@ -168,7 +175,18 @@ export class RendicionExportService {
         reader.readAsDataURL(blob);
       });
     } catch (e) {
-      console.warn('Could not load logo', e);
+      if (logoUrl) {
+        // Retry with fallback
+        try {
+          const response = await fetch('/logo_header.png');
+          const blob = await response.blob();
+          return new Promise((resolve) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(reader.result as string);
+            reader.readAsDataURL(blob);
+          });
+        } catch { return null; }
+      }
       return null;
     }
   }
@@ -705,36 +723,112 @@ export class RendicionExportService {
     doc.save(`${data.fileBaseName}.pdf`);
   }
 
-  exportCashVoucherToPdf(data: CashVoucherExportData): void {
-    const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+  async exportCashVoucherToPdf(data: CashVoucherExportData): Promise<void> {
+    // Quarter A4: 105 x 148 mm
+    const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: [105, 148] });
+    const pageW = 105;
+    const lm = 7;
+    const rm = 98;
+
+    // Title
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(13);
-    doc.text('COMPROBANTE DE CAJA', 105, 18, { align: 'center' });
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(10);
-    doc.text(`Correlativo: ${data.internalCode || '-'}`, 14, 30);
-    doc.text(`Fecha: ${data.generatedAt}`, 14, 36);
-    doc.text(`Entregado a: ${data.entregadoA}`, 14, 42);
-    doc.text(`DNI colaborador: ${data.collaboratorDni || '-'}`, 14, 48);
-    doc.text(`Direccion: ${data.direccion || '-'}`, 14, 54);
+    doc.setFontSize(11);
+    doc.text('COMPROBANTE DE CAJA', pageW / 2, 10, { align: 'center' });
 
-    autoTable(doc, {
-      startY: 64,
-      head: [['Concepto', 'Monto (S/)']],
-      body: [[data.concepto, data.monto.toFixed(2)]],
-      theme: 'grid',
-      headStyles: { fillColor: [145, 47, 44], textColor: 255 },
-      styles: { fontSize: 10 },
-      columnStyles: { 1: { halign: 'right', cellWidth: 40 } },
-      margin: { left: 14, right: 14 },
-    });
-
-    if (data.signature) {
-      const y = afterTable(doc) + 24;
-      doc.addImage(data.signature, 'PNG', 74, y - 20, 60, 20);
-      doc.line(60, y + 6, 150, y + 6);
-      doc.text(data.collaborator.toUpperCase(), 105, y + 11, { align: 'center' });
+    // Logo + company name + N°
+    const logoB64 = await this.getLogoBase64();
+    const headerY = 19;
+    if (logoB64) {
+      doc.addImage(logoB64, 'PNG', lm, headerY - 5, 14, 8);
     }
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(8);
+    doc.text(data.clientName || '', logoB64 ? lm + 17 : lm, headerY);
+    doc.setTextColor(145, 47, 44);
+    doc.text(`Nº  ${data.internalCode || '-'}`, rm, headerY, { align: 'right' });
+    doc.setTextColor(0, 0, 0);
+
+    // Separator
+    doc.setLineWidth(0.3);
+    let y = headerY + 5;
+    doc.line(lm, y, rm, y);
+    y += 6;
+
+    // Entregado a / Dirección
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8);
+    const labelW = 24;
+    doc.text('Entregado a:', lm, y);
+    doc.text(data.entregadoA, lm + labelW, y);
+    doc.line(lm + labelW, y + 0.5, rm, y + 0.5);
+    y += 6;
+    doc.text('Dirección:', lm, y);
+    doc.text(data.direccion || '', lm + labelW, y);
+    doc.line(lm + labelW, y + 0.5, rm, y + 0.5);
+    y += 7;
+
+    // Separator
+    doc.line(lm, y, rm, y);
+    y += 5;
+
+    // He recibido de / concepto
+    doc.text(`He recibido de ${data.clientName || ''}`, lm, y);
+    y += 5;
+    const conceptoLabel = 'Por concepto de:  ';
+    doc.text(conceptoLabel, lm, y);
+    const conceptoX = lm + doc.getTextWidth(conceptoLabel);
+    doc.text(data.concepto, conceptoX, y);
+    doc.line(conceptoX, y + 0.5, rm, y + 0.5);
+    y += 7;
+
+    // Separator
+    doc.line(lm, y, rm, y);
+    y += 5;
+
+    // La Suma de / Proyecto
+    const sumaLabel = 'La Suma de:  ';
+    doc.text(sumaLabel, lm, y);
+    const sumaX = lm + doc.getTextWidth(sumaLabel);
+    doc.setFont('helvetica', 'bold');
+    doc.text(`S/ ${data.monto.toFixed(2)}`, sumaX, y);
+    doc.setFont('helvetica', 'normal');
+    doc.line(sumaX, y + 0.5, rm, y + 0.5);
+    y += 6;
+    const proyLabel = 'Proyecto:  ';
+    doc.text(proyLabel, lm, y);
+    const proyX = lm + doc.getTextWidth(proyLabel);
+    doc.text(data.projectName || '-', proyX, y);
+    doc.line(proyX, y + 0.5, rm, y + 0.5);
+    y += 12;
+
+    // Signature block (right side)
+    const sigX1 = 58;
+    const sigX2 = rm;
+    const sigCX = (sigX1 + sigX2) / 2;
+    if (data.signature) {
+      doc.addImage(data.signature, 'PNG', sigCX - 16, y - 10, 32, 10);
+    }
+    doc.line(sigX1, y, sigX2, y);
+    doc.setFontSize(7);
+    doc.text('Firma', sigCX, y + 4, { align: 'center' });
+    doc.text(`DNI: ${data.collaboratorDni || ''}`, sigCX, y + 8, { align: 'center' });
+    y += 14;
+
+    // Date
+    doc.setFontSize(8);
+    const dateObj = data.fechaEmision ? new Date(data.fechaEmision) : new Date();
+    const day = dateObj.getDate();
+    const month = dateObj.getMonth() + 1;
+    const year = dateObj.getFullYear();
+    doc.text(`Lima,   ${day}   de   ${month}   de   ${year}`, lm, y);
+
+    // Footer
+    doc.setLineWidth(0.2);
+    doc.line(lm, 140, rm, 140);
+    doc.setFontSize(6);
+    doc.setTextColor(100, 100, 100);
+    doc.text(data.clientName || '', pageW / 2, 144, { align: 'center' });
+    doc.setTextColor(0, 0, 0);
 
     doc.save(`${data.fileBaseName}.pdf`);
   }

@@ -40,7 +40,7 @@ export class SidebarComponent implements OnInit, OnDestroy {
   configOpen = false;
 
   isConfigSection(): boolean {
-    return ['/configuracion', '/mi-firma', '/categorias', '/centros-de-costo', '/audit-log']
+    return ['/configuracion', '/mi-firma', '/categorias', '/centros-de-costo', '/audit-log', '/mi-perfil']
       .some(p => this.currentPath.startsWith(p));
   }
 
