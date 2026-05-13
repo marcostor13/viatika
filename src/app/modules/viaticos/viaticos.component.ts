@@ -48,6 +48,11 @@ export class ViaticosComponent implements OnInit {
   filterDateFrom = signal('');
   filterDateTo = signal('');
 
+  // Modal aprobación
+  showApproveModal = signal(false);
+  pendingApproveAdvance = signal<IAdvance | null>(null);
+  pendingApproveLevel = signal<1 | 2>(1);
+
   // Modal rechazo
   showRejectModal = signal(false);
   selectedAdvance = signal<IAdvance | null>(null);
@@ -136,6 +141,11 @@ export class ViaticosComponent implements OnInit {
     return typeof a.userId === 'object' ? a.userId.name : '—';
   }
 
+  collaboratorInitials(a: IAdvance): string {
+    const name = this.collaboratorName(a);
+    return name.split(' ').slice(0, 2).map(w => w[0] ?? '').join('').toUpperCase() || '?';
+  }
+
   projectLabel(a: IAdvance): string {
     const p = a.projectId;
     if (!p || typeof p === 'string') return '—';
@@ -171,11 +181,24 @@ export class ViaticosComponent implements OnInit {
     );
   }
 
-  approveL1(a: IAdvance) {
+  openApproveModal(a: IAdvance, level: 1 | 2) {
+    this.pendingApproveAdvance.set(a);
+    this.pendingApproveLevel.set(level);
+    this.showApproveModal.set(true);
+  }
+
+  confirmApprove() {
+    const a = this.pendingApproveAdvance();
+    if (!a) return;
+    const level = this.pendingApproveLevel();
+    this.showApproveModal.set(false);
     this.isActing.set(true);
-    this.advanceService.approveL1(a._id, {}).subscribe({
+    const action$ = level === 1
+      ? this.advanceService.approveL1(a._id, {})
+      : this.advanceService.approveL2(a._id, {});
+    action$.subscribe({
       next: () => {
-        this.notifications.show('Solicitud aprobada (Nivel 1)', 'success');
+        this.notifications.show(`Solicitud aprobada (Nivel ${level})`, 'success');
         this.isActing.set(false);
         this.load();
       },
@@ -186,20 +209,8 @@ export class ViaticosComponent implements OnInit {
     });
   }
 
-  approveL2(a: IAdvance) {
-    this.isActing.set(true);
-    this.advanceService.approveL2(a._id, {}).subscribe({
-      next: () => {
-        this.notifications.show('Solicitud aprobada (Nivel 2)', 'success');
-        this.isActing.set(false);
-        this.load();
-      },
-      error: (e) => {
-        this.notifications.show(e?.error?.message || 'Error al aprobar', 'error');
-        this.isActing.set(false);
-      },
-    });
-  }
+  approveL1(a: IAdvance) { this.openApproveModal(a, 1); }
+  approveL2(a: IAdvance) { this.openApproveModal(a, 2); }
 
   openDetail(a: IAdvance) {
     this.router.navigate(['/viaticos', a._id]);

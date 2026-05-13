@@ -9,6 +9,9 @@ export interface ICompanyConfig {
   comercialName?: string;
   email?: string;
   phone?: string;
+  limits?: {
+    movilidadDiario?: number | null;
+  };
   createdAt?: Date;
   updatedAt?: Date;
 }

@@ -1035,22 +1035,40 @@ export class RendicionDetailComponent implements OnInit {
   returnVoucherBank = signal('');
   returnVoucherOperation = signal('');
 
-  /** Colaborador puede cargar su comprobante de devolución cuando la rendición está cerrada con saldo a devolver. */
+  /** Devuelve true cuando el saldo esperado corresponde a una devolución del colaborador. */
+  private get isDevolucionExpected(): boolean {
+    const settlementType = (this.report as any)?.settlement?.type;
+    return settlementType === 'devolucion' || (!settlementType && this.saldoLibre > 0.01);
+  }
+
+  /** Colaborador puede cargar su comprobante de devolución en cuanto la rendición está aprobada y tiene saldo a devolver. */
   get canUploadReturnVoucher(): boolean {
     if (this.isAdminView) return false;
-    if (!this.isClosed) return false;
-    const settlementType = (this.report as any)?.settlement?.type;
-    const isDevolucion = settlementType === 'devolucion' ||
-      (!settlementType && this.saldoLibre > 0.01);
-    if (!isDevolucion) return false;
+    const status = this.report?.status;
+    if (status !== 'approved' && status !== 'closed') return false;
+    if (!this.isDevolucionExpected) return false;
     return !(this.report as any)?.returnVoucher;
   }
 
-  /** Admin puede registrar el reembolso al colaborador cuando la rendición está cerrada con saldo a reembolsar. */
+  /** Panel informativo para contabilidad: la rendición está aprobada con saldo a devolver pero el colaborador aún no adjuntó el comprobante. */
+  get approvedPendingVoucher(): boolean {
+    if (!this.isAdminView) return false;
+    if (this.report?.status !== 'approved') return false;
+    return this.isDevolucionExpected && !(this.report as any)?.returnVoucher;
+  }
+
+  /** Devuelve true cuando el saldo esperado corresponde a un reembolso al colaborador. */
+  private get isReembolsoExpected(): boolean {
+    const settlementType = (this.report as any)?.settlement?.type;
+    return settlementType === 'reembolso' || (!settlementType && this.saldoLibre < -0.01);
+  }
+
+  /** Admin puede registrar el reembolso al colaborador cuando la rendición está aprobada o cerrada con saldo a reembolsar. */
   get canAdminRegisterReembolso(): boolean {
     if (!this.isAdminView) return false;
-    if (!this.isClosed) return false;
-    if ((this.report as any)?.settlement?.type !== 'reembolso') return false;
+    const status = this.report?.status;
+    if (status !== 'approved' && status !== 'reimbursed' && status !== 'closed') return false;
+    if (!this.isReembolsoExpected) return false;
     return !this.report?.reimbursementPaymentInfo;
   }
 
@@ -1345,7 +1363,10 @@ export class RendicionDetailComponent implements OnInit {
   get canClose(): boolean {
     const hasClosePermission = this.userStateService.isContabilidad() || this.userStateService.isSuperAdmin();
     if (!hasClosePermission) return false;
-    return this.report?.status === 'approved' || this.report?.status === 'reimbursed';
+    if (this.report?.status !== 'approved' && this.report?.status !== 'reimbursed') return false;
+    if (this.isDevolucionExpected && !(this.report as any)?.returnVoucher) return false;
+    if (this.isReembolsoExpected && !this.report?.reimbursementPaymentInfo) return false;
+    return true;
   }
 
   get canRequestReopen(): boolean {

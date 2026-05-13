@@ -1,30 +1,37 @@
-import { Injectable, ApplicationRef } from '@angular/core';
+import { Injectable } from '@angular/core';
 import { BehaviorSubject } from 'rxjs';
 
-@Injectable({
-  providedIn: 'root',
-})
+@Injectable({ providedIn: 'root' })
 export class LoaderService {
+  private activeRequests = 0;
+  private hideTimer: ReturnType<typeof setTimeout> | null = null;
   private loadingSubject = new BehaviorSubject<boolean>(false);
-  public loading$ = this.loadingSubject.asObservable();
+  readonly loading$ = this.loadingSubject.asObservable();
 
-  constructor(private appRef: ApplicationRef) {}
-
-  show() {
-    Promise.resolve().then(() => {
-      this.loadingSubject.next(true);
-      this.appRef.tick();
-    });
+  show(): void {
+    this.activeRequests++;
+    if (this.hideTimer) {
+      clearTimeout(this.hideTimer);
+      this.hideTimer = null;
+    }
+    if (!this.loadingSubject.value) {
+      Promise.resolve().then(() => this.loadingSubject.next(true));
+    }
   }
 
-  hide() {
-    Promise.resolve().then(() => {
-      this.loadingSubject.next(false);
-      this.appRef.tick();
-    });
+  hide(): void {
+    if (this.activeRequests > 0) this.activeRequests--;
+    if (this.activeRequests === 0) {
+      this.hideTimer = setTimeout(() => {
+        if (this.activeRequests === 0) {
+          this.loadingSubject.next(false);
+        }
+        this.hideTimer = null;
+      }, 200);
+    }
   }
 
-  isLoading() {
-    return this.loadingSubject.getValue();
+  isLoading(): boolean {
+    return this.loadingSubject.value;
   }
 }
