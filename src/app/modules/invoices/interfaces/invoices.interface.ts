@@ -19,8 +19,14 @@ export interface IMobilityRow {
   total: number;
   clienteProveedor: string;
   origen: string;
+  origenDepartamento?: string;
+  origenProvincia?: string;
+  origenDistrito?: string;
   origenCoords?: IMobilityRowCoords;
   destino: string;
+  destinoDepartamento?: string;
+  destinoProvincia?: string;
+  destinoDistrito?: string;
   destinoCoords?: IMobilityRowCoords;
   distanciaKm?: number;
   gestion: string;
