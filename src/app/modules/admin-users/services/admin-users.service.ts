@@ -44,21 +44,23 @@ export class AdminUsersService {
       .pipe(catchError((error: any) => this.handleError(error)));
   }
 
+  private getCompanyId(): string {
+    const companyId = this.userStateService.getUser()?.companyId;
+    if (!companyId) throw new Error('No se encontró companyId para esta sesión');
+    return companyId;
+  }
+
   getUsers(): Observable<IUserResponse[]> {
     const headers = this.getHeaders();
-    let url = this.apiUrl;
-    if (!this.userStateService.isSuperAdmin()) {
-      const companyId = this.userStateService.getUser()?.companyId;
-      if (!companyId) throw new Error('No se encontró companyId');
-      url = `${this.apiUrl}/client/${companyId}`;
-    }
-    return this.http.get<IUserResponse[]>(url, { headers }).pipe(catchError((error: any) => this.handleError(error)));
+    const companyId = this.getCompanyId();
+    return this.http
+      .get<IUserResponse[]>(`${this.apiUrl}/client/${companyId}`, { headers })
+      .pipe(catchError((error: any) => this.handleError(error)));
   }
 
   getUsersPaginated(opts: { page?: number; limit?: number; search?: string; status?: string; roleName?: string } = {}): Observable<IPaginatedResult<IUserResponse>> {
     const headers = this.getHeaders();
-    const companyId = this.userStateService.getUser()?.companyId;
-    if (!companyId) throw new Error('No se encontró companyId');
+    const companyId = this.getCompanyId();
     let params = new HttpParams()
       .set('page', String(opts.page ?? 1))
       .set('limit', String(opts.limit ?? 20));
@@ -71,28 +73,8 @@ export class AdminUsersService {
   }
 
   createUser(user: IUser): Observable<IUserResponse & { temporaryPassword: string }> {
-    const currentUser = this.userStateService.getUser();
-
-    let targetClientId = user.companyId;
-    if (!targetClientId && currentUser) {
-      const uc = currentUser as IUserResponse & { clientId?: string | { _id: string }; client?: { _id: string } };
-      if (typeof uc.clientId === 'string') {
-        targetClientId = uc.clientId;
-      } else if (uc.clientId && typeof uc.clientId === 'object' && '_id' in uc.clientId) {
-        targetClientId = uc.clientId._id;
-      } else if (uc.client?._id) {
-        targetClientId = uc.client._id;
-      } else {
-        targetClientId = uc.companyId;
-      }
-    }
-
-    const userData = {
-      ...user,
-      clientId: targetClientId,
-      companyId: targetClientId,
-    };
-
+    const companyId = user.companyId || this.getCompanyId();
+    const userData = { ...user, clientId: companyId, companyId };
     return this.http
       .post<IUserResponse & { temporaryPassword: string }>(this.apiUrl, userData, {
         headers: this.getHeaders(),

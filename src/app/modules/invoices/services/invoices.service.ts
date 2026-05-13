@@ -207,6 +207,7 @@ export class InvoicesService {
         _id: client._id,
         companyId: client._id,
         name: client.comercialName || client.businessName,
+        businessName: client.comercialName || client.businessName,
         logo: client.logo
       }))
     );
@@ -218,6 +219,7 @@ export class InvoicesService {
   ): Observable<ICompanyConfig> {
     const payload: Record<string, unknown> = {};
     if (config.name) payload['comercialName'] = config.name;
+    if (config.businessName) payload['businessName'] = config.businessName;
     if (config.logo) payload['logo'] = config.logo;
 
     return this.http.patch<any>(
@@ -228,6 +230,7 @@ export class InvoicesService {
         _id: client._id,
         companyId: client._id,
         name: client.comercialName || client.businessName,
+        businessName: client.comercialName || client.businessName,
         logo: client.logo
       }))
     );

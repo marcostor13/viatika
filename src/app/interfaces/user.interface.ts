@@ -95,6 +95,7 @@ export interface IUserResponse {
     | string
     | { _id: string; name?: string; email?: string };
   mustChangePassword?: boolean;
+  profilePic?: string;
 }
 
 
