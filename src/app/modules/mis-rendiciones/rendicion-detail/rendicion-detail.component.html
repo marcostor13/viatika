@@ -167,11 +167,6 @@
             </svg>
             Pendiente de aprobación
           </div>
-          <app-button label="Editar" variant="secondary" size="sm" [fullWidth]="false" (clicked)="openEditSolicitudForm()">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 shrink-0">
-              <path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125" />
-            </svg>
-          </app-button>
           <app-button label="Cancelar solicitud" variant="danger" size="sm" [fullWidth]="false" (clicked)="openCancelModal()">
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 shrink-0">
               <path stroke-linecap="round" stroke-linejoin="round" d="M18.364 18.364A9 9 0 0 0 5.636 5.636m12.728 12.728A9 9 0 0 1 5.636 5.636m12.728 12.728L5.636 5.636" />
@@ -183,24 +178,22 @@
         <!-- Colaborador: rechazada en fase de solicitud -->
         @if (canResendSolicitud) {
         <div class="flex flex-row flex-wrap gap-2">
-          <app-button label="Editar y re-enviar" variant="secondary" size="sm" [fullWidth]="false" (clicked)="openEditSolicitudForm()">
+          <app-button
+            label="Volver a enviar solicitud"
+            variant="secondary"
+            size="sm"
+            [fullWidth]="false"
+            [loading]="isResendingSolicitud()"
+            loadingLabel="Enviando…"
+            (clicked)="reenviarSolicitudDirecto()"
+          >
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 shrink-0">
-              <path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125" />
+              <path stroke-linecap="round" stroke-linejoin="round" d="M6 12 3.269 3.125A59.769 59.769 0 0 1 21.485 12 59.768 59.768 0 0 1 3.27 20.875L5.999 12Zm0 0h7.5" />
             </svg>
           </app-button>
         </div>
         }
 
-        <!-- Colaborador: rechazada con gastos -->
-        @if (canResubmitReport) {
-        <div class="flex flex-row flex-wrap gap-2">
-          <app-button label="Editar rendición" variant="secondary" size="sm" [fullWidth]="false" (clicked)="openEditSolicitudForm()">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 shrink-0">
-              <path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125" />
-            </svg>
-          </app-button>
-        </div>
-        }
 
         <!-- Colaborador: cancelada -->
         @if (report.status === 'cancelled' && !isAdminView) {
@@ -331,7 +324,7 @@
               <p class="mt-2 text-red-900/90">No se registró un motivo en el sistema. Contacta a tu administrador si necesitas más detalle.</p>
             }
             @if (canResendSolicitud) {
-              <p class="mt-3 text-xs font-medium text-red-800/90">Puedes editar los datos de la solicitud y volver a enviarla para aprobación.</p>
+              <p class="mt-3 text-xs font-medium text-red-800/90">Puedes volver a enviar la solicitud para que sea revisada nuevamente.</p>
             }
             @if (canResubmitReport) {
               <p class="mt-3 text-xs font-medium text-red-800/90">Puedes añadir gastos o solicitar viático y luego volver a enviar la rendición.</p>
@@ -356,119 +349,6 @@
       </div>
       }
 
-      <!-- Edit-solicitud form (shown when rejected or pending solicitud phase) -->
-      @if ((canResendSolicitud || canCancelOrDelete || canResubmitReport) && showEditSolicitudForm()) {
-      <div class="mb-6 rounded-xl border border-gray-200 bg-white p-4 sm:p-5">
-        <h3 class="font-semibold text-gray-900 mb-4">Editar solicitud</h3>
-        @if (editSolicitudForm) {
-        <form [formGroup]="editSolicitudForm" (ngSubmit)="resendSolicitud()" class="flex flex-col gap-4">
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Título <span class="text-red-500">*</span></label>
-            <input
-              type="text"
-              formControlName="title"
-              class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary"
-              placeholder="Ej: Viaje a Lima - Junio 2024"
-            />
-          </div>
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Descripción</label>
-            <textarea
-              formControlName="description"
-              rows="2"
-              class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary resize-none"
-              placeholder="Descripción opcional"
-            ></textarea>
-          </div>
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Presupuesto (S/)</label>
-              <input
-                type="number"
-                formControlName="budget"
-                readonly
-                class="w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-500 focus:outline-none"
-              />
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Cta / CCI</label>
-              <input type="text" formControlName="accountNumber" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-primary/40" />
-            </div>
-          </div>
-
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Doc. Identificación</label>
-              <input type="text" formControlName="idDocument" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-primary/40" />
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Lugar</label>
-              <input type="text" formControlName="location" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-primary/40" />
-            </div>
-          </div>
-
-          <div class="flex flex-col gap-1.5">
-            <label class="block text-sm font-medium text-gray-700 mb-1 flex items-center justify-between">
-              Personas (Nombres)
-              <button type="button" (click)="addPersonName()" class="text-xs text-primary hover:underline">+ Añadir</button>
-            </label>
-            <div formArrayName="peopleNames" class="space-y-2">
-              @for (name of peopleNames.controls; track $index) {
-                <div class="flex items-center gap-1">
-                  <input
-                    type="text"
-                    [formControlName]="$index"
-                    class="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-primary/40"
-                    placeholder="Nombre..."
-                  />
-                  <button type="button" (click)="removePersonName($index)" class="text-gray-400 hover:text-red-500">
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4">
-                      <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" />
-                    </svg>
-                  </button>
-                </div>
-              }
-            </div>
-          </div>
-
-          <div class="grid grid-cols-2 gap-4">
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Desde</label>
-              <input type="date" formControlName="startDate" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-primary/40" />
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Hasta</label>
-              <input type="date" formControlName="endDate" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-primary/40" />
-            </div>
-          </div>
-          <div class="flex gap-3 justify-end">
-            <button
-              type="button"
-              (click)="showEditSolicitudForm.set(false)"
-              class="px-4 py-2 text-sm font-medium text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
-            >
-              Cancelar
-            </button>
-            <button
-              type="submit"
-              [disabled]="editSolicitudForm.invalid || isResendingSolicitud()"
-              class="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-primary rounded-lg hover:bg-primary/90 disabled:opacity-50 transition-colors"
-            >
-              @if (isResendingSolicitud()) {
-                <span class="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
-                Guardando...
-              } @else {
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M6 12 3.269 3.125A59.769 59.769 0 0 1 21.485 12 59.768 59.768 0 0 1 3.27 20.875L5.999 12Zm0 0h7.5" />
-                </svg>
-                {{ canResendSolicitud ? 'Re-enviar solicitud' : 'Guardar cambios' }}
-              }
-            </button>
-          </div>
-        </form>
-        }
-      </div>
-      }
 
       <!-- Progress and Summary Cards -->
       <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6 mb-6 md:mb-8">
@@ -752,6 +632,64 @@
       </div>
       }
 
+      <!-- Devolución: comprobante ya cargado por el colaborador -->
+      @if (report.returnVoucher) {
+      <div class="rounded-xl border border-amber-200 bg-amber-50/80 p-5 mb-6">
+        <h3 class="font-bold text-gray-900 mb-2 flex items-center gap-2">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 text-amber-600">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+          </svg>
+          Comprobante de devolución cargado
+        </h3>
+        <div class="text-sm text-gray-700 space-y-1 mb-3">
+          <p><span class="text-gray-500">Fecha de depósito:</span> {{ report.returnVoucher.depositDate }}</p>
+          @if (report.returnVoucher.bankOrigin) {
+            <p><span class="text-gray-500">Banco origen:</span> {{ report.returnVoucher.bankOrigin }}</p>
+          }
+          @if (report.returnVoucher.operationNumber) {
+            <p><span class="text-gray-500">N° Operación:</span> {{ report.returnVoucher.operationNumber }}</p>
+          }
+          <p><span class="text-gray-500">Enviado el:</span> {{ report.returnVoucher.uploadedAt | date:'dd/MM/yyyy HH:mm' }}</p>
+        </div>
+        <a [href]="report.returnVoucher.url" target="_blank" rel="noopener noreferrer"
+          class="inline-flex items-center px-4 py-2 rounded-lg bg-amber-600 text-white font-semibold text-sm hover:bg-amber-700">
+          Ver comprobante
+        </a>
+      </div>
+      }
+
+      <!-- Colaborador: cargar comprobante de devolución -->
+      @if (canUploadReturnVoucher) {
+      <div class="rounded-xl border border-red-200 bg-red-50/80 p-5 mb-6">
+        <h3 class="font-bold text-red-800 mb-1 text-sm">Devolución de saldo pendiente</h3>
+        <p class="text-sm text-gray-700 mb-4">
+          La rendición fue cerrada con un saldo a tu cargo de
+          <strong class="text-red-700">S/ {{ (settlement?.difference ?? 0) | number:'1.2-2' }}</strong>.
+          Por favor, realiza el depósito a la cuenta de la empresa y adjunta el comprobante.
+        </p>
+        <button (click)="openReturnVoucherModal()"
+          class="inline-flex items-center px-4 py-2 rounded-lg bg-red-600 text-white font-semibold text-sm hover:bg-red-700">
+          Adjuntar comprobante de devolución
+        </button>
+      </div>
+      }
+
+      <!-- Admin: registrar reembolso al colaborador (rendición cerrada) -->
+      @if (canAdminRegisterReembolso) {
+      <div class="rounded-xl border border-emerald-200 bg-emerald-50/80 p-5 mb-6">
+        <h3 class="font-bold text-emerald-800 mb-1 text-sm">Reembolso al colaborador pendiente</h3>
+        <p class="text-sm text-gray-700 mb-4">
+          La rendición fue cerrada con un saldo a favor del colaborador de
+          <strong class="text-emerald-700">S/ {{ ((settlement?.difference ?? 0) < 0 ? (settlement?.difference ?? 0) * -1 : (settlement?.difference ?? 0)) | number:'1.2-2' }}</strong>.
+          Adjunta el comprobante de pago una vez realizada la transferencia.
+        </p>
+        <button (click)="openAdminReembolsoModal()"
+          class="inline-flex items-center px-4 py-2 rounded-lg bg-emerald-700 text-white font-semibold text-sm hover:bg-emerald-800">
+          Registrar comprobante de reembolso
+        </button>
+      </div>
+      }
+
       <!-- Expenses: lista en mobile, tabla en md+ -->
       <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
       <div class="px-4 sm:px-6 py-4 sm:py-5 border-b border-gray-200">
@@ -929,7 +867,7 @@
                 <tr>
                   <th class="px-4 lg:px-6 py-3">Tipo</th>
                   <th class="px-4 lg:px-6 py-3">Fecha</th>
-                  <th class="px-4 lg:px-6 py-3">Descripción</th>
+                  <th class="px-4 lg:px-6 py-3">Concepto</th>
                   <th class="px-4 lg:px-6 py-3 text-right">S/ Monto</th>
                   <th class="px-4 lg:px-6 py-3 text-center whitespace-nowrap">Estado</th>
                   <th class="px-4 lg:px-6 py-3 text-center whitespace-nowrap">Documento</th>
@@ -1015,21 +953,6 @@
                       </div>
                       }
 
-                      <!-- PDF: recibo de caja -->
-                      @if (expense['expenseType'] === 'recibo_caja') {
-                      <div class="relative group/rcaja-pdf">
-                        <button type="button" (click)="exportReceiptPdf(expense)"
-                          class="inline-flex items-center justify-center w-8 h-8 rounded-lg text-indigo-600 hover:bg-indigo-50 transition-colors">
-                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
-                          </svg>
-                        </button>
-                        <div class="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 px-2 py-1 bg-gray-800 text-white text-[11px] font-medium rounded whitespace-nowrap opacity-0 group-hover/rcaja-pdf:opacity-100 pointer-events-none transition-opacity z-10">
-                          Descargar PDF
-                        </div>
-                      </div>
-                      }
-
                       <!-- PDF: comprobante de caja -->
                       @if (expense['expenseType'] === 'comprobante_caja') {
                       <div class="relative group/ccaja-pdf">
@@ -1046,7 +969,7 @@
                       }
 
                       <!-- Sin documento ni descarga -->
-                      @if (!hasExpenseFile(expense) && expense['expenseType'] !== 'planilla_movilidad' && expense['expenseType'] !== 'recibo_caja' && expense['expenseType'] !== 'comprobante_caja') {
+                      @if (!hasExpenseFile(expense) && expense['expenseType'] !== 'planilla_movilidad' && expense['expenseType'] !== 'comprobante_caja') {
                       <span class="text-xs text-gray-400">—</span>
                       }
 
@@ -2149,6 +2072,149 @@
     </div>
   </div>
   }
+</div>
+}
+
+<!-- Modal: Adjuntar comprobante de devolución de saldo (colaborador, rendición cerrada) -->
+@if (showReturnVoucherModal()) {
+<div class="fixed inset-0 z-50 flex items-center justify-center p-4" (click)="showReturnVoucherModal.set(false)">
+  <div class="absolute inset-0 bg-black/40 backdrop-blur-sm"></div>
+  <div class="relative bg-white rounded-2xl shadow-xl p-6 w-full max-w-md" (click)="$event.stopPropagation()">
+    <h3 class="text-lg font-bold text-gray-900 mb-1">Comprobante de devolución</h3>
+    <p class="text-sm text-gray-500 mb-4">Adjunta el comprobante del depósito que realizaste a la cuenta de la empresa.</p>
+
+    <div class="space-y-3">
+      <div>
+        <label class="block text-xs font-medium text-gray-700 mb-1">Fecha del depósito *</label>
+        <input type="date" [value]="returnVoucherDepositDate()"
+          (input)="returnVoucherDepositDate.set($any($event.target).value)"
+          [max]="returnVoucherDepositDate()"
+          class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500" />
+      </div>
+      <div>
+        <label class="block text-xs font-medium text-gray-700 mb-1">Banco origen</label>
+        <input type="text" [value]="returnVoucherBank()"
+          (input)="returnVoucherBank.set($any($event.target).value)"
+          placeholder="Ej: BCP, Interbank..."
+          class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500" />
+      </div>
+      <div>
+        <label class="block text-xs font-medium text-gray-700 mb-1">N° de operación</label>
+        <input type="text" [value]="returnVoucherOperation()"
+          (input)="returnVoucherOperation.set($any($event.target).value)"
+          placeholder="Número de operación o referencia"
+          class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500" />
+      </div>
+      <div>
+        <label class="block text-xs font-medium text-gray-700 mb-1">Comprobante (PDF, JPG, PNG — máx 10MB) *</label>
+        @if (returnVoucherFileName()) {
+          <p class="text-xs text-green-600 font-medium mb-1">Archivo cargado: {{ returnVoucherFileName() }}</p>
+        }
+        <label class="flex items-center gap-2 cursor-pointer px-3 py-2 border border-dashed border-gray-300 rounded-lg text-sm text-gray-600 hover:bg-gray-50 transition-colors">
+          <input type="file" accept=".pdf,.jpg,.jpeg,.png" class="hidden" (change)="onReturnVoucherFileSelected($event)">
+          @if (isUploadingReturnVoucher()) {
+            <span class="inline-block w-4 h-4 border-2 border-gray-400/40 border-t-gray-700 rounded-full animate-spin"></span>
+            Subiendo...
+          } @else {
+            Seleccionar archivo
+          }
+        </label>
+      </div>
+    </div>
+
+    <div class="flex gap-3 mt-5">
+      <button type="button" (click)="showReturnVoucherModal.set(false)"
+        class="flex-1 py-2.5 border border-gray-200 rounded-xl text-sm font-medium text-gray-600 hover:bg-gray-50">
+        Cancelar
+      </button>
+      <button type="button" (click)="submitReturnVoucher()"
+        [disabled]="isSubmittingReturnVoucher() || isUploadingReturnVoucher() || !returnVoucherUrl()"
+        class="flex-1 py-2.5 bg-red-600 text-white rounded-xl text-sm font-medium hover:bg-red-700 disabled:opacity-50">
+        @if (isSubmittingReturnVoucher()) {
+          <span class="inline-block w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin mr-1"></span>
+          Enviando...
+        } @else {
+          Enviar comprobante
+        }
+      </button>
+    </div>
+  </div>
+</div>
+}
+
+<!-- Modal: Registrar reembolso al colaborador (admin, rendición cerrada) -->
+@if (showAdminReembolsoModal()) {
+<div class="fixed inset-0 z-50 flex items-center justify-center p-4" (click)="showAdminReembolsoModal.set(false)">
+  <div class="absolute inset-0 bg-black/40 backdrop-blur-sm"></div>
+  <div class="relative bg-white rounded-2xl shadow-xl p-6 w-full max-w-md" (click)="$event.stopPropagation()">
+    <h3 class="text-lg font-bold text-gray-900 mb-1">Registrar reembolso al colaborador</h3>
+    <p class="text-sm text-gray-500 mb-4">Adjunta el comprobante de la transferencia realizada al colaborador.</p>
+
+    <div class="space-y-3">
+      <div>
+        <label class="block text-xs font-medium text-gray-700 mb-1">Método de pago</label>
+        <select [value]="adminReembolsoMethod()"
+          (change)="adminReembolsoMethod.set($any($event.target).value)"
+          class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500">
+          <option value="transferencia_bancaria">Transferencia bancaria</option>
+          <option value="efectivo">Efectivo</option>
+          <option value="cheque">Cheque</option>
+        </select>
+      </div>
+      <div>
+        <label class="block text-xs font-medium text-gray-700 mb-1">Fecha de pago *</label>
+        <input type="date" [value]="adminReembolsoDate()"
+          (input)="adminReembolsoDate.set($any($event.target).value)"
+          class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+      </div>
+      <div>
+        <label class="block text-xs font-medium text-gray-700 mb-1">Banco / Entidad</label>
+        <input type="text" [value]="adminReembolsoBank()"
+          (input)="adminReembolsoBank.set($any($event.target).value)"
+          placeholder="Ej: BCP, Interbank..."
+          class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+      </div>
+      <div>
+        <label class="block text-xs font-medium text-gray-700 mb-1">Referencia / N° operación</label>
+        <input type="text" [value]="adminReembolsoRef()"
+          (input)="adminReembolsoRef.set($any($event.target).value)"
+          placeholder="Número de referencia"
+          class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+      </div>
+      <div>
+        <label class="block text-xs font-medium text-gray-700 mb-1">Comprobante (PDF, JPG, PNG — máx 10MB) *</label>
+        @if (adminReembolsoFileName()) {
+          <p class="text-xs text-green-600 font-medium mb-1">Archivo cargado: {{ adminReembolsoFileName() }}</p>
+        }
+        <label class="flex items-center gap-2 cursor-pointer px-3 py-2 border border-dashed border-gray-300 rounded-lg text-sm text-gray-600 hover:bg-gray-50 transition-colors">
+          <input type="file" accept=".pdf,.jpg,.jpeg,.png" class="hidden" (change)="onAdminReembolsoFileSelected($event)">
+          @if (isUploadingAdminReembolso()) {
+            <span class="inline-block w-4 h-4 border-2 border-gray-400/40 border-t-gray-700 rounded-full animate-spin"></span>
+            Subiendo...
+          } @else {
+            Seleccionar archivo
+          }
+        </label>
+      </div>
+    </div>
+
+    <div class="flex gap-3 mt-5">
+      <button type="button" (click)="showAdminReembolsoModal.set(false)"
+        class="flex-1 py-2.5 border border-gray-200 rounded-xl text-sm font-medium text-gray-600 hover:bg-gray-50">
+        Cancelar
+      </button>
+      <button type="button" (click)="submitAdminReembolso()"
+        [disabled]="isSubmittingAdminReembolso() || isUploadingAdminReembolso() || !adminReembolsoUrl()"
+        class="flex-1 py-2.5 bg-emerald-700 text-white rounded-xl text-sm font-medium hover:bg-emerald-800 disabled:opacity-50">
+        @if (isSubmittingAdminReembolso()) {
+          <span class="inline-block w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin mr-1"></span>
+          Registrando...
+        } @else {
+          Registrar reembolso
+        }
+      </button>
+    </div>
+  </div>
 </div>
 }
 

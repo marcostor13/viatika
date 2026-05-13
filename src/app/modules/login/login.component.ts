@@ -37,10 +37,7 @@ export class LoginComponent {
 
   login() {
     if (!this.email() || !this.password()) {
-      this.notificationService.show(
-        'Por favor ingresa email y contraseña',
-        'error'
-      );
+      this.notificationService.show('Por favor ingresa email y contraseña', 'error');
       return;
     }
 
@@ -52,15 +49,32 @@ export class LoginComponent {
       .pipe(finalize(() => this.loading.set(false)))
       .subscribe((res) => {
         if (res && res.isActive === false) {
-          this.notificationService.show(
-            'Tu usuario aún no ha sido activado. Contacta al administrador.',
-            'error'
-          );
+          this.notificationService.show('Tu usuario aún no ha sido activado. Contacta al administrador.', 'error');
+          return;
+        }
+
+        // Multi-company or Contabilidad hub flow
+        if (res?.requiresClientSelection) {
+          if (res.isContabilidad) {
+            // Store hub token & user state so hub page can use it
+            this.userStateService.saveHubState(res);
+            this.userStateService.setUser(res);
+          }
+          // Navigate to hub, passing companies + credentials via router state
+          this.router.navigate(['/hub'], {
+            state: {
+              companies: res.companies,
+              email: this.email(),
+              password: this.password(),
+              isContabilidad: !!res.isContabilidad,
+            },
+          });
           return;
         }
 
         this.userStateService.setUser(res);
         this.companyConfigService.reloadConfigOnAuth();
+
         if (res.mustChangePassword) {
           this.notificationService.show('Debes cambiar tu contraseña antes de continuar', 'warning');
           this.router.navigate(['/cambiar-contrasena']);

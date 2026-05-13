@@ -159,17 +159,20 @@ export const routes: Routes = [
         canActivate: [authModuleGuard('configuracion')],
       },
       {
+        path: 'mi-perfil',
+        loadComponent: () =>
+          import('./modules/mi-perfil/mi-perfil.component').then(
+            (m) => m.MiPerfilComponent
+          ),
+        canActivate: [AuthColaboradorGuard],
+      },
+      {
         path: 'clients',
         loadComponent: () =>
           import('./modules/clients/clients.component').then(
             (m) => m.ClientsComponent
           ),
         canActivate: [AuthAdmin2Guard],
-      },
-      {
-        path: 'clients-admin',
-        component: ClientsAdminComponent,
-        canActivate: [AuthSuperGuard],
       },
       {
         path: 'inicio',
@@ -302,6 +305,16 @@ export const routes: Routes = [
     path: 'super/client-onboarding',
     component: ClientOnboardingComponent,
     canActivate: [AuthSuperGuard],
+  },
+  {
+    path: 'clients-admin',
+    component: ClientsAdminComponent,
+    canActivate: [AuthSuperGuard],
+  },
+  {
+    path: 'hub',
+    loadComponent: () =>
+      import('./modules/hub/hub.component').then((m) => m.HubComponent),
   },
   {
     path: 'login',

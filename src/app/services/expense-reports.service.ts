@@ -92,6 +92,16 @@ export class ExpenseReportsService {
     );
   }
 
+  registerReturnVoucher(
+    reportId: string,
+    payload: { depositDate: string; bankOrigin?: string; operationNumber?: string; fileUrl: string; fileName?: string }
+  ): Observable<IExpenseReport> {
+    return this.http.post<IExpenseReport>(
+      `${this.apiUrl}/expense-report/${reportId}/return-voucher`,
+      payload
+    );
+  }
+
   createAffidavit(
     reportId: string,
     payload: { type: 'viaticos_nacionales' | 'viajes_exterior'; expenseIds: string[] }

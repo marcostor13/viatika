@@ -156,6 +156,15 @@ export class MisRendicionesComponent implements OnInit {
     return '';
   }
 
+  getTotalGastado(report: IExpenseReport): number {
+    if (!report.expenseIds?.length) return 0;
+    return report.expenseIds.reduce((sum: number, e: any) => sum + (parseFloat(e.total) || 0), 0);
+  }
+
+  getSaldoLibre(report: IExpenseReport): number {
+    return (report.budget ?? 0) - this.getTotalGastado(report);
+  }
+
   advanceStatusText(adv: IAdvance): string {
     if (adv.status === 'paid') return 'En Progreso - Registrando Gastos';
     return this.ADVANCE_STATUS_LABELS[adv.status];
