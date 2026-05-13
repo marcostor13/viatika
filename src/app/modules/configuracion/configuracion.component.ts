@@ -37,6 +37,11 @@ export class ConfiguracionComponent implements OnInit {
   logoUploadProgress: number = 0;
   isUploadingLogo: boolean = false;
 
+  // Limits
+  showLimitsForm = false;
+  limitsMovilidadDiario: number | null = null;
+  isSavingLimits = false;
+
   // Profile
   showProfileForm = false;
   profileName: string = '';
@@ -54,6 +59,7 @@ export class ConfiguracionComponent implements OnInit {
 
   get currentUser() { return this.userStateService.getUser(); }
   get isAdminUser() { return this.userStateService.isAdmin() || this.userStateService.isSuperAdmin(); }
+  get canConfigureEmpresa() { return this.isAdminUser || this.userStateService.isContabilidad(); }
 
   sunatConfig: ISunatConfig | null = null;
   showSunatForm = false;
@@ -77,8 +83,38 @@ export class ConfiguracionComponent implements OnInit {
     this.companyConfigService.companyConfig$.subscribe(
       (config: ICompanyConfig | null) => {
         this.companyConfig = config;
+        this.limitsMovilidadDiario = config?.limits?.movilidadDiario ?? null;
       }
     );
+  }
+
+  editLimits() {
+    this.limitsMovilidadDiario = this.companyConfig?.limits?.movilidadDiario ?? null;
+    this.showLimitsForm = true;
+  }
+
+  cancelLimitsEdit() {
+    this.showLimitsForm = false;
+    this.limitsMovilidadDiario = this.companyConfig?.limits?.movilidadDiario ?? null;
+  }
+
+  saveLimits() {
+    const companyId = this.companyConfig?._id || this.companyConfig?.companyId;
+    if (!companyId) return;
+    this.isSavingLimits = true;
+    this.companyConfigService.updateLimits(companyId, {
+      movilidadDiario: this.limitsMovilidadDiario ?? undefined,
+    }).subscribe({
+      next: () => {
+        this.notificationService.show('Límites actualizados correctamente', 'success');
+        this.showLimitsForm = false;
+        this.isSavingLimits = false;
+      },
+      error: () => {
+        this.notificationService.show('Error al guardar los límites', 'error');
+        this.isSavingLimits = false;
+      },
+    });
   }
 
   editCompanyConfig() {

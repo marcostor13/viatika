@@ -16,7 +16,7 @@
 
 
 
-  @if (isAdminUser) {
+  @if (canConfigureEmpresa) {
   <section class="bg-white rounded-lg shadow-lg p-6 mb-8">
     <div class="flex justify-between items-center mb-6">
       <h2 class="text-xl font-semibold text-gray-900">
@@ -171,7 +171,7 @@
     </div>
     }
   </section>
-  } <!-- end isAdminUser: empresa -->
+  } <!-- end canConfigureEmpresa: empresa -->
 
   @if (isAdminUser) {
   <section class="bg-white rounded-lg shadow-lg p-6 mb-8">
@@ -321,6 +321,74 @@
     }
   </section>
   } <!-- end isAdminUser: sunat -->
+
+  @if (canConfigureEmpresa) {
+  <section class="bg-white rounded-lg shadow-lg p-6 mb-8">
+    <div class="flex justify-between items-center mb-6">
+      <div>
+        <h2 class="text-xl font-semibold text-gray-900">Límites</h2>
+        <p class="text-sm text-gray-500 mt-1">Configura los montos máximos permitidos por tipo de gasto.</p>
+      </div>
+      @if (!showLimitsForm) {
+      <app-button label="Editar Límites" variant="primary" size="md" (clicked)="editLimits()" />
+      }
+    </div>
+
+    @if (!showLimitsForm) {
+    <div class="space-y-3">
+      <div class="flex items-center justify-between py-3 border-b border-gray-100">
+        <div>
+          <p class="text-sm font-medium text-gray-900">Planilla de Movilidad — Límite diario</p>
+          <p class="text-xs text-gray-500 mt-0.5">Monto máximo permitido por día en planillas de movilidad</p>
+        </div>
+        <span class="text-sm font-semibold text-gray-900">
+          @if (companyConfig?.limits?.movilidadDiario != null) {
+            S/ {{ companyConfig!.limits!.movilidadDiario | number:'1.2-2' }}
+          } @else {
+            <span class="text-gray-400 font-normal">Sin límite</span>
+          }
+        </span>
+      </div>
+    </div>
+    }
+
+    @if (showLimitsForm) {
+    <div class="space-y-6">
+      <div>
+        <label for="movilidadDiario" class="block text-sm font-medium text-gray-700 mb-1">
+          Planilla de Movilidad — Límite diario (S/)
+        </label>
+        <p class="text-xs text-gray-500 mb-2">Monto máximo que puede registrarse por día en una planilla de movilidad. Déjalo vacío para no aplicar límite.</p>
+        <input
+          id="movilidadDiario"
+          type="number"
+          min="0"
+          step="0.01"
+          [(ngModel)]="limitsMovilidadDiario"
+          placeholder="Ej: 50.00"
+          class="w-full sm:w-64 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm"
+        />
+      </div>
+      <div class="flex space-x-3">
+        <app-button
+          [label]="isSavingLimits ? 'Guardando...' : 'Guardar Límites'"
+          variant="primary"
+          size="md"
+          [disabled]="isSavingLimits"
+          (clicked)="saveLimits()"
+        />
+        <app-button
+          label="Cancelar"
+          variant="secondary"
+          size="md"
+          [disabled]="isSavingLimits"
+          (clicked)="cancelLimitsEdit()"
+        />
+      </div>
+    </div>
+    }
+  </section>
+  } <!-- end canConfigureEmpresa: limites -->
 
   }
 </div>

@@ -346,6 +346,27 @@
       </button>
     </div>
 
+    @if (mobilityDailyLimit) {
+    <div class="flex items-center gap-2 mb-3 px-3 py-2 rounded-lg text-xs"
+      [class.bg-red-50]="hasAnyMobilityLimitExceeded()"
+      [class.border]="hasAnyMobilityLimitExceeded()"
+      [class.border-error]="hasAnyMobilityLimitExceeded()"
+      [class.text-error]="hasAnyMobilityLimitExceeded()"
+      [class.bg-blue-50]="!hasAnyMobilityLimitExceeded()"
+      [class.text-blue-700]="!hasAnyMobilityLimitExceeded()">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4 shrink-0">
+        <path fill-rule="evenodd" d="M18 10a8 8 0 1 1-16 0 8 8 0 0 1 16 0Zm-7-4a1 1 0 1 1-2 0 1 1 0 0 1 2 0ZM9 9a.75.75 0 0 0 0 1.5h.253a.25.25 0 0 1 .244.304l-.459 2.066A1.75 1.75 0 0 0 10.747 15H11a.75.75 0 0 0 0-1.5h-.253a.25.25 0 0 1-.244-.304l.459-2.066A1.75 1.75 0 0 0 9.253 9H9Z" clip-rule="evenodd" />
+      </svg>
+      <span>
+        @if (hasAnyMobilityLimitExceeded()) {
+          Una o más fechas superan el límite diario de S/ {{ mobilityDailyLimit | number:'1.2-2' }}. Corrige los montos para poder guardar.
+        } @else {
+          Límite diario configurado: S/ {{ mobilityDailyLimit | number:'1.2-2' }} por día.
+        }
+      </span>
+    </div>
+    }
+
     @if(mobilityRowsArray.length === 0) {
     <div class="text-center py-8 text-tertiary text-sm">
       No hay filas aún. Haz clic en "Agregar fila" para empezar.
@@ -450,7 +471,18 @@
           <div class="flex flex-col gap-1">
             <label class="text-xs font-medium text-secondary">Total S/. <span class="text-error">*</span></label>
             <input type="number" formControlName="total" placeholder="0.00" min="0" step="0.01"
+              [class.border-error]="isMobilityRowDateOverLimit(i)"
+              [class.ring-error]="isMobilityRowDateOverLimit(i)"
               class="w-full h-[42px] px-3 rounded-lg border border-tertiary/40 bg-background focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm" />
+            @if (isMobilityRowDateOverLimit(i)) {
+            <p class="text-xs text-error flex items-center gap-1">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-3 h-3 shrink-0">
+                <path fill-rule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495ZM10 5a.75.75 0 0 1 .75.75v3.5a.75.75 0 0 1-1.5 0v-3.5A.75.75 0 0 1 10 5Zm0 9a1 1 0 1 0 0-2 1 1 0 0 0 0 2Z" clip-rule="evenodd" />
+              </svg>
+              Supera el límite diario de S/ {{ mobilityDailyLimit | number:'1.2-2' }}
+              (acumulado ese día: S/ {{ getMobilityDateTotal(row.get('fecha')?.value) | number:'1.2-2' }})
+            </p>
+            }
           </div>
           <div class="flex flex-col gap-1">
             <label class="text-xs font-medium text-secondary">Cliente / Proveedor</label>

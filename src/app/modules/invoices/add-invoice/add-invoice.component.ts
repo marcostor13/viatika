@@ -25,6 +25,7 @@ import {
 } from '../interfaces/invoices.interface';
 import { ButtonComponent } from '../../../design-system/button/button.component';
 import { PlacesAutocompleteDirective, PlaceResult } from '../../../directives/places-autocomplete.directive';
+import { CompanyConfigService } from '../../../services/company-config.service';
 
 declare const google: any;
 
@@ -45,6 +46,7 @@ export default class AddInvoiceComponent implements OnInit {
   private route = inject(ActivatedRoute);
   private sanitizer = inject(DomSanitizer);
   private uploadService = inject(UploadService);
+  private companyConfigService = inject(CompanyConfigService);
 
   form!: FormGroup;
   id: string = this.route.snapshot.params['id'];
@@ -59,6 +61,7 @@ export default class AddInvoiceComponent implements OnInit {
 
   expenseType = signal<ExpenseType>('factura');
   percentage = signal(0);
+  mobilityDailyLimit: number | null = null;
   isLoading = signal(false);
   readonly todayIso = new Date().toISOString().split('T')[0];
   showPostOcrReview = signal(false);
@@ -181,6 +184,9 @@ export default class AddInvoiceComponent implements OnInit {
   }
 
   ngOnInit() {
+    this.companyConfigService.companyConfig$.subscribe(config => {
+      this.mobilityDailyLimit = config?.limits?.movilidadDiario ?? null;
+    });
     this.rendicionId = this.route.snapshot.queryParamMap.get('rendicionId');
     this.guardRendiciones();
     this.loadCategories();
@@ -387,6 +393,30 @@ export default class AddInvoiceComponent implements OnInit {
     }, 0);
   }
 
+  getMobilityDateTotal(date: string): number {
+    if (!date) return 0;
+    return this.mobilityRowsArray.controls.reduce((sum, ctrl) => {
+      return ctrl.get('fecha')?.value === date ? sum + (ctrl.get('total')?.value || 0) : sum;
+    }, 0);
+  }
+
+  isMobilityRowDateOverLimit(index: number): boolean {
+    if (!this.mobilityDailyLimit) return false;
+    const date = this.mobilityRowsArray.at(index).get('fecha')?.value;
+    if (!date) return false;
+    return this.getMobilityDateTotal(date) > this.mobilityDailyLimit;
+  }
+
+  hasAnyMobilityLimitExceeded(): boolean {
+    if (!this.mobilityDailyLimit) return false;
+    const dates = new Set(
+      this.mobilityRowsArray.controls
+        .map(c => c.get('fecha')?.value)
+        .filter(Boolean)
+    );
+    return [...dates].some(d => this.getMobilityDateTotal(d) > this.mobilityDailyLimit!);
+  }
+
   isFormValid(): boolean {
     switch (this.expenseType()) {
       case 'planilla_movilidad':
@@ -394,7 +424,8 @@ export default class AddInvoiceComponent implements OnInit {
           this.form.get('proyectId')?.valid === true &&
           this.form.get('categoryId')?.valid === true &&
           this.mobilityRowsArray.length > 0 &&
-          this.mobilityRowsArray.valid
+          this.mobilityRowsArray.valid &&
+          !this.hasAnyMobilityLimitExceeded()
         );
       case 'otros_gastos':
         return (
@@ -531,6 +562,13 @@ export default class AddInvoiceComponent implements OnInit {
     }
     if (!this.form.get('proyectId')?.valid || !this.form.get('categoryId')?.valid) {
       this.notificationService.show('Completa los campos requeridos', 'error');
+      return;
+    }
+    if (this.hasAnyMobilityLimitExceeded()) {
+      this.notificationService.show(
+        `El total diario supera el límite configurado de S/ ${this.mobilityDailyLimit?.toFixed(2)}`,
+        'error'
+      );
       return;
     }
     this.isLoading.set(true);

@@ -209,7 +209,8 @@ export class InvoicesService {
         name: client.comercialName || client.businessName,
         businessName: client.comercialName || client.businessName,
         businessId: client.businessId,
-        logo: client.logo
+        logo: client.logo,
+        limits: client.limits,
       }))
     );
   }
@@ -222,6 +223,7 @@ export class InvoicesService {
     if (config.name) payload['comercialName'] = config.name;
     if (config.businessName) payload['businessName'] = config.businessName;
     if (config.logo) payload['logo'] = config.logo;
+    if (config.limits !== undefined) payload['limits'] = config.limits;
 
     return this.http.patch<any>(
       `${this.companyConfigUrl}/${companyId}`,
@@ -232,7 +234,8 @@ export class InvoicesService {
         companyId: client._id,
         name: client.comercialName || client.businessName,
         businessName: client.comercialName || client.businessName,
-        logo: client.logo
+        logo: client.logo,
+        limits: client.limits,
       }))
     );
   }
