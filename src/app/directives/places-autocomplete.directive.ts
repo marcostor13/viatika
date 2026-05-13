@@ -5,6 +5,9 @@ export interface PlaceResult {
   address: string;
   lat: number;
   lng: number;
+  departamento?: string;
+  provincia?: string;
+  distrito?: string;
 }
 
 declare const google: any;
@@ -24,6 +27,13 @@ export class PlacesAutocompleteDirective implements AfterViewInit {
     this.mapsLoader.load().then(() => this.initAutocomplete());
   }
 
+  private cleanLocationName(raw: string): string {
+    if (!raw) return '';
+    return raw
+      .replace(/^(Gobierno Regional de|Región|Region|Departamento de|Provincia de|Provincia Constitucional del?)\s*/i, '')
+      .trim();
+  }
+
   private initAutocomplete() {
     // Session token: agrupa todos los keystrokes + la selección final en
     // 1 sola unidad facturable (~$0.017) en lugar de cobrar por keystroke.
@@ -34,8 +44,7 @@ export class PlacesAutocompleteDirective implements AfterViewInit {
       {
         types: ['geocode', 'establishment'],
         componentRestrictions: { country: this.country },
-        // Solo pedimos los campos mínimos necesarios → tier más económico
-        fields: ['formatted_address', 'geometry'],
+        fields: ['formatted_address', 'geometry', 'address_components'],
         sessionToken,
       }
     );
@@ -43,13 +52,32 @@ export class PlacesAutocompleteDirective implements AfterViewInit {
     autocomplete.addListener('place_changed', () => {
       const place = autocomplete.getPlace();
       if (place?.geometry?.location) {
+        const components: any[] = place.address_components || [];
+        const getComponent = (type: string) =>
+          components.find((c: any) => c.types.includes(type))?.long_name || '';
+
+        const rawDep = getComponent('administrative_area_level_1');
+        const rawProv = getComponent('administrative_area_level_2');
+        const locality = getComponent('locality');
+        const sublocality = getComponent('sublocality_level_1') || getComponent('sublocality');
+        const adminL3 = getComponent('administrative_area_level_3');
+        const neighborhood = getComponent('neighborhood');
+
+        const specificDistrict = sublocality || neighborhood || adminL3;
+        const cleanedDep = this.cleanLocationName(rawDep);
+        const cleanedProv = this.cleanLocationName(rawProv);
+        const useLocality = locality && locality !== cleanedDep && locality !== cleanedProv;
+        const distrito = specificDistrict || (useLocality ? locality : '');
+
         this.placeSelected.emit({
           address: place.formatted_address || this.el.nativeElement.value,
           lat: place.geometry.location.lat(),
           lng: place.geometry.location.lng(),
+          departamento: this.cleanLocationName(rawDep),
+          provincia: this.cleanLocationName(rawProv),
+          distrito: this.cleanLocationName(distrito),
         });
       }
-      // Renovar sesión después de cada selección
       sessionToken = new google.maps.places.AutocompleteSessionToken();
     });
   }
