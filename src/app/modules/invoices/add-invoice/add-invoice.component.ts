@@ -26,6 +26,11 @@ import {
 import { ButtonComponent } from '../../../design-system/button/button.component';
 import { PlacesAutocompleteDirective, PlaceResult } from '../../../directives/places-autocomplete.directive';
 import { CompanyConfigService } from '../../../services/company-config.service';
+import { PERU_LOCATIONS, Departamento } from '../../../constants/peru-locations';
+
+function findDepartamento(label: string): Departamento | undefined {
+  return PERU_LOCATIONS.find(d => d.label === label);
+}
 
 declare const google: any;
 
@@ -62,6 +67,7 @@ export default class AddInvoiceComponent implements OnInit {
   expenseType = signal<ExpenseType>('factura');
   percentage = signal(0);
   mobilityDailyLimit: number | null = null;
+  readonly departamentos = PERU_LOCATIONS;
   isLoading = signal(false);
   readonly todayIso = new Date().toISOString().split('T')[0];
   showPostOcrReview = signal(false);
@@ -490,6 +496,46 @@ export default class AddInvoiceComponent implements OnInit {
 
   removeMobilityRow(index: number) {
     this.mobilityRowsArray.removeAt(index);
+  }
+
+  onOrigenDepartamentoChange(i: number) {
+    this.mobilityRowsArray.at(i).patchValue({ origenProvincia: '', origenDistrito: '' });
+  }
+
+  onOrigenProvinciaChange(i: number) {
+    this.mobilityRowsArray.at(i).patchValue({ origenDistrito: '' });
+  }
+
+  onDestinoDepartamentoChange(i: number) {
+    this.mobilityRowsArray.at(i).patchValue({ destinoProvincia: '', destinoDistrito: '' });
+  }
+
+  onDestinoProvinciaChange(i: number) {
+    this.mobilityRowsArray.at(i).patchValue({ destinoDistrito: '' });
+  }
+
+  getProvinciasOrigen(i: number) {
+    const dep = this.mobilityRowsArray.at(i).get('origenDepartamento')?.value;
+    return findDepartamento(dep)?.provincias ?? [];
+  }
+
+  getDistritosOrigen(i: number) {
+    const row = this.mobilityRowsArray.at(i);
+    const dep = row.get('origenDepartamento')?.value;
+    const prov = row.get('origenProvincia')?.value;
+    return findDepartamento(dep)?.provincias.find(p => p.label === prov)?.distritos ?? [];
+  }
+
+  getProvinciasDestino(i: number) {
+    const dep = this.mobilityRowsArray.at(i).get('destinoDepartamento')?.value;
+    return findDepartamento(dep)?.provincias ?? [];
+  }
+
+  getDistritosDestino(i: number) {
+    const row = this.mobilityRowsArray.at(i);
+    const dep = row.get('destinoDepartamento')?.value;
+    const prov = row.get('destinoProvincia')?.value;
+    return findDepartamento(dep)?.provincias.find(p => p.label === prov)?.distritos ?? [];
   }
 
   getMobilityTotal(): number {
