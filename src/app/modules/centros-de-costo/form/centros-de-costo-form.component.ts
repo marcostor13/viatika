@@ -27,6 +27,13 @@ export class CentrosDeCostoFormComponent implements OnInit {
   saving = false;
   form = { name: '', code: '', isActive: true };
 
+  private getErrorMessage(error: HttpErrorResponse, fallback: string) {
+    const apiMessage = Array.isArray(error.error?.message)
+      ? error.error.message.join(', ')
+      : error.error?.message;
+    return apiMessage || error.message || fallback;
+  }
+
   ngOnInit() {
     this.projectId = this.route.snapshot.paramMap.get('id');
     if (this.projectId) {
@@ -41,8 +48,8 @@ export class CentrosDeCostoFormComponent implements OnInit {
       next: (p) => {
         this.form = { name: p.name, code: p.code ?? '', isActive: p.isActive ?? true };
       },
-      error: () => {
-        this.notification.show('Error al cargar el centro de costo', 'error');
+      error: (error: HttpErrorResponse) => {
+        this.notification.show(this.getErrorMessage(error, 'Error al cargar el centro de costo'), 'error');
         this.back();
       },
     });
@@ -72,7 +79,10 @@ export class CentrosDeCostoFormComponent implements OnInit {
           this.back();
         },
         error: (e: HttpErrorResponse) => {
-          this.notification.show('Error al actualizar: ' + e.message, 'error');
+          this.notification.show(
+            'Error al actualizar: ' + this.getErrorMessage(e, 'No se pudo actualizar el centro de costo'),
+            'error'
+          );
           this.saving = false;
         },
       });
@@ -83,7 +93,10 @@ export class CentrosDeCostoFormComponent implements OnInit {
           this.back();
         },
         error: (e: HttpErrorResponse) => {
-          this.notification.show('Error al crear: ' + e.message, 'error');
+          this.notification.show(
+            'Error al crear: ' + this.getErrorMessage(e, 'No se pudo crear el centro de costo'),
+            'error'
+          );
           this.saving = false;
         },
       });

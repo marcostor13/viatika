@@ -342,30 +342,135 @@ export default class AddInvoiceComponent implements OnInit {
       origen: ['', Validators.required],
       origenLat: [null],
       origenLng: [null],
+      origenDepartamento: ['', Validators.required],
+      origenProvincia: ['', Validators.required],
+      origenDistrito: ['', Validators.required],
       destino: ['', Validators.required],
       destinoLat: [null],
       destinoLng: [null],
+      destinoDepartamento: ['', Validators.required],
+      destinoProvincia: ['', Validators.required],
+      destinoDistrito: ['', Validators.required],
       distanciaKm: [null],
       gestion: [''],
     }));
   }
 
   onOrigenSelected(result: PlaceResult, index: number) {
+    const { dep, prov, dist } = this.resolveLocation(result);
     this.mobilityRowsArray.at(index).patchValue({
       origen: result.address,
       origenLat: result.lat,
       origenLng: result.lng,
+      origenDepartamento: dep,
+      origenProvincia: prov,
+      origenDistrito: dist,
     });
     this.calculateDistance(index);
   }
 
   onDestinoSelected(result: PlaceResult, index: number) {
+    const { dep, prov, dist } = this.resolveLocation(result);
     this.mobilityRowsArray.at(index).patchValue({
       destino: result.address,
       destinoLat: result.lat,
       destinoLng: result.lng,
+      destinoDepartamento: dep,
+      destinoProvincia: prov,
+      destinoDistrito: dist,
     });
     this.calculateDistance(index);
+  }
+
+  private resolveLocation(result: PlaceResult): { dep: string; prov: string; dist: string } {
+    const dep = this.matchDepartamento(result.departamento);
+    if (!dep) return { dep: '', prov: '', dist: '' };
+
+    let prov = this.matchProvincia(dep, result.provincia);
+    let dist = '';
+
+    if (prov && result.distrito) {
+      dist = this.matchDistrito(dep, prov, result.distrito);
+    }
+
+    if (result.distrito && (!prov || !dist)) {
+      const match = this.findDistritoInDepartamento(dep, result.distrito);
+      if (match) {
+        prov = match.prov;
+        dist = match.dist;
+      }
+    }
+
+    if (!prov) {
+      const depData = findDepartamento(dep);
+      if (depData && depData.provincias.length === 1) {
+        prov = depData.provincias[0].label;
+      } else if (result.provincia) {
+        prov = this.matchProvincia(dep, result.provincia);
+      } else {
+        const provMatch = depData?.provincias.find(p =>
+          this.normalizeStr(p.label) === this.normalizeStr(dep)
+        );
+        if (provMatch) prov = provMatch.label;
+      }
+    }
+
+    return { dep, prov, dist };
+  }
+
+  private findDistritoInDepartamento(depLabel: string, distLabel: string): { prov: string; dist: string } | null {
+    if (!distLabel) return null;
+    const dep = findDepartamento(depLabel);
+    if (!dep) return null;
+    const n = this.normalizeStr(distLabel);
+    for (const prov of dep.provincias) {
+      const found = prov.distritos.find(d => {
+        const dn = this.normalizeStr(d.label);
+        return dn === n || n.includes(dn) || dn.includes(n);
+      });
+      if (found) return { prov: prov.label, dist: found.label };
+    }
+    return null;
+  }
+
+  private normalizeStr(str: string): string {
+    return str.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+  }
+
+  private matchDepartamento(label?: string): string {
+    if (!label) return '';
+    const n = this.normalizeStr(label);
+    const found = PERU_LOCATIONS.find(d => {
+      const dn = this.normalizeStr(d.label);
+      return dn === n || n.includes(dn) || dn.includes(n);
+    });
+    return found?.label || '';
+  }
+
+  private matchProvincia(depLabel: string, provLabel?: string): string {
+    if (!provLabel) return '';
+    const dep = findDepartamento(depLabel);
+    if (!dep) return '';
+    const n = this.normalizeStr(provLabel);
+    const found = dep.provincias.find(p => {
+      const pn = this.normalizeStr(p.label);
+      return pn === n || n.includes(pn) || pn.includes(n);
+    });
+    return found?.label || '';
+  }
+
+  private matchDistrito(depLabel: string, provLabel: string, distLabel?: string): string {
+    if (!distLabel) return '';
+    const dep = findDepartamento(depLabel);
+    if (!dep) return '';
+    const prov = dep.provincias.find(p => this.normalizeStr(p.label) === this.normalizeStr(provLabel));
+    if (!prov) return '';
+    const n = this.normalizeStr(distLabel);
+    const dist = prov.distritos.find(d => {
+      const dn = this.normalizeStr(d.label);
+      return dn === n || n.includes(dn) || dn.includes(n);
+    });
+    return dist?.label || '';
   }
 
   private calculateDistance(index: number) {
@@ -580,10 +685,16 @@ export default class AddInvoiceComponent implements OnInit {
         total: r.total,
         clienteProveedor: r.clienteProveedor,
         origen: r.origen,
+        origenDepartamento: r.origenDepartamento,
+        origenProvincia: r.origenProvincia,
+        origenDistrito: r.origenDistrito,
         ...(r.origenLat != null && r.origenLng != null
           ? { origenCoords: { lat: r.origenLat, lng: r.origenLng } }
           : {}),
         destino: r.destino,
+        destinoDepartamento: r.destinoDepartamento,
+        destinoProvincia: r.destinoProvincia,
+        destinoDistrito: r.destinoDistrito,
         ...(r.destinoLat != null && r.destinoLng != null
           ? { destinoCoords: { lat: r.destinoLat, lng: r.destinoLng } }
           : {}),
