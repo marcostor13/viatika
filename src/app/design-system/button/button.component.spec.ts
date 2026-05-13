@@ -57,7 +57,7 @@ describe('ButtonComponent', () => {
 
     it('should contain secondary variant classes when set', () => {
       fixture.componentRef.setInput('variant', 'secondary');
-      expect(component.buttonClasses()).toContain('border-tertiary');
+      expect(component.buttonClasses()).toContain('border-divider');
     });
 
     it('should contain ghost variant classes when set', () => {
