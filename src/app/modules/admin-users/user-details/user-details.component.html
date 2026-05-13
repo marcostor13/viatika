@@ -88,6 +88,39 @@
     </div>
   </div>
 
+  <!-- Datos bancarios -->
+  @if (user.bankAccount?.bankName || user.bankAccount?.accountNumber || user.bankAccount?.cci) {
+  <div class="bg-quaternary rounded-2xl border border-tertiary/20 shadow-soft p-6 mb-6">
+    <h2 class="text-sm font-bold text-secondary uppercase tracking-wider mb-4">Datos Bancarios</h2>
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      @if (user.bankAccount?.bankName) {
+      <div>
+        <p class="text-xs text-tertiary mb-0.5">Banco</p>
+        <p class="font-semibold text-secondary">{{ user.bankAccount?.bankName }}</p>
+      </div>
+      }
+      @if (user.bankAccount?.accountNumber) {
+      <div>
+        <p class="text-xs text-tertiary mb-0.5">N° de Cuenta</p>
+        <p class="font-semibold text-secondary font-mono">{{ user.bankAccount?.accountNumber }}</p>
+      </div>
+      }
+      @if (user.bankAccount?.cci) {
+      <div>
+        <p class="text-xs text-tertiary mb-0.5">CCI</p>
+        <p class="font-semibold text-secondary font-mono">{{ user.bankAccount?.cci }}</p>
+      </div>
+      }
+      @if (user.bankAccount?.accountType) {
+      <div>
+        <p class="text-xs text-tertiary mb-0.5">Tipo de cuenta</p>
+        <p class="font-semibold text-secondary capitalize">{{ user.bankAccount?.accountType }}</p>
+      </div>
+      }
+    </div>
+  </div>
+  }
+
   <!-- Rendiciones Section -->
   <div class="bg-quaternary rounded-2xl border border-tertiary/20 shadow-soft">
     <!-- Section header -->

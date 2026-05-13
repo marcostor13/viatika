@@ -14,7 +14,7 @@ import {
 import { ExpenseReportsService } from '../../services/expense-reports.service';
 import { IExpenseReport } from '../../interfaces/expense-report.interface';
 import { RouterModule } from '@angular/router';
-type Tab = 'pendientes' | 'aprobados' | 'devoluciones' | 'historial';
+type Tab = 'pendientes' | 'aprobados' | 'devoluciones';
 
 @Component({
   selector: 'app-tesoreria',
@@ -168,8 +168,6 @@ export class TesoreriaComponent implements OnInit {
         return this.allAdvances.filter(a => ['pending_l2', 'approved'].includes(a.status));
       case 'aprobados':
         return this.allAdvances.filter(a => ['approved', 'paid'].includes(a.status));
-      case 'historial':
-        return this.allAdvances.filter(a => ['settled', 'rejected', 'returned'].includes(a.status));
       default:
         return this.allAdvances;
     }
@@ -456,6 +454,13 @@ export class TesoreriaComponent implements OnInit {
       return advance.expenseReportId.title;
     }
     return '—';
+  }
+
+  getReportId(advance: IAdvance): string | null {
+    if (typeof advance.expenseReportId === 'object' && advance.expenseReportId) {
+      return advance.expenseReportId._id;
+    }
+    return typeof advance.expenseReportId === 'string' ? advance.expenseReportId : null;
   }
 
   getLevelsBadge(advance: IAdvance): string {
