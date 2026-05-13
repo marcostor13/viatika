@@ -54,16 +54,18 @@ export class ReembolsoDirectoComponent implements OnInit {
   readonly STATUS_COLORS = DIRECT_REIMBURSEMENT_STATUS_COLORS;
 
   get isAdmin(): boolean { return this.userState.isAdmin() || this.userState.isSuperAdmin(); }
+  get isContabilidad(): boolean { return this.userState.isContabilidad(); }
   get canPay(): boolean { return this.userState.canApproveL2(); }
 
   ngOnInit(): void {
+    if (this.isContabilidad) this.activeTab.set('todos');
     this.initForms();
     this.loadData();
   }
 
   private initForms(): void {
     this.createForm = this.fb.group({
-      justification: ['', [Validators.required, Validators.minLength(100)]],
+      justification: ['', [Validators.required, Validators.minLength(20)]],
       estimatedAmount: [null, [Validators.required, Validators.min(0.01)]],
     });
     this.rejectForm = this.fb.group({
@@ -85,7 +87,7 @@ export class ReembolsoDirectoComponent implements OnInit {
       },
       error: () => { this.isLoading.set(false); },
     });
-    if (this.isAdmin) {
+    if (this.isContabilidad) {
       this.service.findAllByClient().subscribe({
         next: rows => { this.allReimbursements = rows; },
         error: () => {},
@@ -113,7 +115,8 @@ export class ReembolsoDirectoComponent implements OnInit {
   submitCreate(): void {
     if (this.createForm.invalid) return;
     this.isActing.set(true);
-    this.service.create(this.createForm.value).subscribe({
+    const userId = (this.userState.getUser() as any)?._id;
+    this.service.create({ ...this.createForm.value, collaboratorId: userId }).subscribe({
       next: () => {
         this.notif.show('Reembolso directo creado', 'success');
         this.showCreateModal.set(false);
