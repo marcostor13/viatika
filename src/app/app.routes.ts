@@ -188,6 +188,7 @@ export const routes: Routes = [
           import('./modules/mis-rendiciones/mis-rendiciones.component').then(
             (m) => m.MisRendicionesComponent
           ),
+        canActivate: [AuthColaboradorGuard],
       },
       {
         path: 'mis-rendiciones/:id/detalle',
@@ -195,6 +196,7 @@ export const routes: Routes = [
           import('./modules/mis-rendiciones/rendicion-detail/rendicion-detail.component').then(
             (m) => m.RendicionDetailComponent
           ),
+        canActivate: [AuthColaboradorGuard],
       },
       {
         path: 'mis-documentos',
@@ -232,6 +234,14 @@ export const routes: Routes = [
         loadComponent: () =>
           import('./modules/tesoreria/tesoreria.component').then(
             (m) => m.TesoreriaComponent
+          ),
+        canActivate: [AuthTesoreroGuard],
+      },
+      {
+        path: 'tesoreria/rd/:id',
+        loadComponent: () =>
+          import('./modules/tesoreria/tesoreria-rd-detalle/tesoreria-rd-detalle.component').then(
+            (m) => m.TesoreriaRDDetalleComponent
           ),
         canActivate: [AuthTesoreroGuard],
       },
@@ -297,7 +307,7 @@ export const routes: Routes = [
           import('./modules/reembolso-directo/reembolso-directo.component').then(
             (m) => m.ReembolsoDirectoComponent
           ),
-        canActivate: [AuthColaboradorGuard],
+        canActivate: [authModuleGuard('reembolso-directo')],
       },
       {
         path: 'caja-chica',

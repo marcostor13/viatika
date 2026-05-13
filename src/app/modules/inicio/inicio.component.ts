@@ -68,7 +68,14 @@ export class InicioComponent implements OnInit {
   );
 
   paidAdvances = computed(() =>
-    this.advances().filter((a) => a.status === 'paid')
+    this.advances()
+      .filter((a) => a.status === 'paid')
+      .filter((a) => {
+        const reportId = this.getAdvanceReportId(a);
+        if (!reportId) return true;
+        const report = this.reports().find((r) => r._id === reportId);
+        return !report || report.status === 'open';
+      })
   );
 
   kpiAnticiposMonto = computed(() =>
