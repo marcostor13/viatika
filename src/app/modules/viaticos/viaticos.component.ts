@@ -30,7 +30,7 @@ export class ViaticosComponent implements OnInit {
   readonly ALL_STATUSES = [
     { value: 'all', label: 'Todos los estados' },
     { value: 'pending_l1', label: 'Pendiente Aprobación' },
-    { value: 'pending_l2', label: 'Pendiente Tesorería' },
+    { value: 'pending_l2', label: 'Pendiente Contabilidad' },
     { value: 'approved', label: 'Aprobado' },
     { value: 'paid', label: 'Pagado' },
     { value: 'settled', label: 'Liquidado' },
