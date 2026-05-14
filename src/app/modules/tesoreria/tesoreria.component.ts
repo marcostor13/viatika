@@ -105,7 +105,7 @@ export class TesoreriaComponent implements OnInit {
       accountNumber: [''],
       cci: [''],
       transferDate: [new Date().toISOString().split('T')[0], Validators.required],
-      reference: [''],
+      reference: ['', Validators.required],
     });
     this.rejectForm = this.fb.group({
       rejectionReason: [
