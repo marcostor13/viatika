@@ -22,7 +22,6 @@ const ACTION_LABELS: Record<string, string> = {
   reject_advance: 'Rechazó viático',
   resubmit_advance: 'Reenvió solicitud de viáticos corregida',
   pay_advance: 'Registró pago viático',
-  settle_advance: 'Liquidó viático',
   create_user: 'Creó usuario',
   update_user: 'Actualizó usuario',
   update_permissions: 'Modificó permisos',

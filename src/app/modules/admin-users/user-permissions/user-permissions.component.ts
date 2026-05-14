@@ -32,10 +32,9 @@ export class UserPermissionsComponent implements OnInit {
   readonly availableModules: ModuleOption[] = [
     { key: 'mis-rendiciones', label: 'Mis Rendiciones', description: 'Ver y gestionar rendiciones propias' },
     { key: 'nueva-rendicion', label: 'Nueva Rendición', description: 'Crear nuevas rendiciones desde la pantalla Mis Rendiciones' },
-    { key: 'reembolso-directo', label: 'Reembolso Directo', description: 'Acceder y gestionar expedientes de reembolso directo' },
     { key: 'invoice-approval', label: 'Aprobación de Facturas', description: 'Revisar y aprobar facturas de colaboradores' },
     { key: 'consolidated-invoices', label: 'Consolidado', description: 'Ver reportes consolidados de gastos' },
-    { key: 'tesoreria', label: 'Pagos', description: 'Registrar comprobantes de pago y liquidar viáticos' },
+    { key: 'tesoreria', label: 'Pagos', description: 'Registrar comprobantes de pago de viáticos' },
     { key: 'configuracion', label: 'Configuración', description: 'Configurar parámetros de la empresa' },
     { key: 'audit-log', label: 'Actividad', description: 'Ver el registro de actividad de la empresa' },
   ];

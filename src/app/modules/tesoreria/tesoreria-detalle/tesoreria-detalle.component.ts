@@ -59,11 +59,6 @@ export class TesoreriaDetalleComponent implements OnInit {
     return !!a && ['pending_l2', 'approved'].includes(a.status) && this.canPayAndSettle;
   }
 
-  get canSettle(): boolean {
-    const a = this.advance();
-    return !!a && a.status === 'paid' && this.canPayAndSettle;
-  }
-
   get canReject(): boolean {
     const a = this.advance();
     return !!a && ['pending_l2', 'approved'].includes(a.status) && this.canPayAndSettle;
@@ -262,23 +257,6 @@ export class TesoreriaDetalleComponent implements OnInit {
       },
       error: (e) => {
         this.notifications.show(e?.error?.message || 'Error al aprobar', 'error');
-        this.isActing.set(false);
-      },
-    });
-  }
-
-  settle() {
-    const a = this.advance();
-    if (!a) return;
-    this.isActing.set(true);
-    this.advanceService.settle(a._id).subscribe({
-      next: (updated) => {
-        this.advance.set(updated);
-        this.notifications.show('Liquidación registrada', 'success');
-        this.isActing.set(false);
-      },
-      error: (e) => {
-        this.notifications.show(e?.error?.message || 'Error en liquidación', 'error');
         this.isActing.set(false);
       },
     });

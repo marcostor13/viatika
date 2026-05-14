@@ -83,11 +83,6 @@ describe('AdvanceService', () => {
     httpMock.expectOne(`${BASE}/a1/register-payment`).flush({});
   });
 
-  it('settle sends PATCH', () => {
-    service.settle('a1').subscribe();
-    httpMock.expectOne(`${BASE}/a1/settle`).flush({});
-  });
-
   it('registerReturn sends PATCH with returnedAmount', () => {
     service.registerReturn('a1', 200).subscribe();
     const req = httpMock.expectOne(`${BASE}/a1/return`);
