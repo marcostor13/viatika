@@ -79,7 +79,7 @@ export class TesoreriaDetalleComponent implements OnInit {
       accountNumber: [''],
       cci: [''],
       transferDate: [new Date().toISOString().split('T')[0], Validators.required],
-      reference: [''],
+      reference: ['', Validators.required],
     });
 
     const id = this.route.snapshot.paramMap.get('id')!;
