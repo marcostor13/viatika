@@ -238,14 +238,6 @@ export const routes: Routes = [
         canActivate: [AuthTesoreroGuard],
       },
       {
-        path: 'tesoreria/rd/:id',
-        loadComponent: () =>
-          import('./modules/tesoreria/tesoreria-rd-detalle/tesoreria-rd-detalle.component').then(
-            (m) => m.TesoreriaRDDetalleComponent
-          ),
-        canActivate: [AuthTesoreroGuard],
-      },
-      {
         path: 'tesoreria/:id',
         loadComponent: () =>
           import('./modules/tesoreria/tesoreria-detalle/tesoreria-detalle.component').then(
@@ -300,14 +292,6 @@ export const routes: Routes = [
             (m) => m.AuditLogComponent
           ),
         canActivate: [authModuleGuard('audit-log', true)],
-      },
-      {
-        path: 'reembolso-directo',
-        loadComponent: () =>
-          import('./modules/reembolso-directo/reembolso-directo.component').then(
-            (m) => m.ReembolsoDirectoComponent
-          ),
-        canActivate: [authModuleGuard('reembolso-directo')],
       },
       {
         path: 'caja-chica',

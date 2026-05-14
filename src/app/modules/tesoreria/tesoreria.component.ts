@@ -14,8 +14,6 @@ import {
 import { ExpenseReportsService } from '../../services/expense-reports.service';
 import { IExpenseReport } from '../../interfaces/expense-report.interface';
 import { RouterModule } from '@angular/router';
-import { DirectReimbursementService } from '../../services/direct-reimbursement.service';
-import { IDirectReimbursement, DIRECT_REIMBURSEMENT_STATUS_LABELS, DIRECT_REIMBURSEMENT_STATUS_COLORS } from '../../interfaces/direct-reimbursement.interface';
 type Tab = 'pendientes' | 'aprobados' | 'devoluciones';
 
 @Component({
@@ -27,7 +25,6 @@ type Tab = 'pendientes' | 'aprobados' | 'devoluciones';
 export class TesoreriaComponent implements OnInit {
   private advanceService = inject(AdvanceService);
   private expenseReportsService = inject(ExpenseReportsService);
-  private directReimbursementService = inject(DirectReimbursementService);
   private userStateService = inject(UserStateService);
   private notificationService = inject(NotificationService);
   private uploadService = inject(UploadService);
@@ -42,10 +39,6 @@ export class TesoreriaComponent implements OnInit {
   pendingAdvances: IAdvance[] = [];
   /** Rendiciones aprobadas con reembolso al colaborador pendiente de comprobante (Fase 6) */
   pendingReimbursements: IExpenseReport[] = [];
-  pendingDirectReimbursements: IDirectReimbursement[] = [];
-
-  readonly DR_STATUS_LABELS = DIRECT_REIMBURSEMENT_STATUS_LABELS;
-  readonly DR_STATUS_COLORS = DIRECT_REIMBURSEMENT_STATUS_COLORS;
 
   selectedAdvance: IAdvance | null = null;
   selectedReportReimbursement: IExpenseReport | null = null;
@@ -133,13 +126,11 @@ export class TesoreriaComponent implements OnInit {
         this.isLoading.set(false);
         this.loadPendingReimbursements();
         this.loadPendingReturns();
-        this.loadPendingDirectReimbursements();
       },
       error: () => {
         this.isLoading.set(false);
         this.loadPendingReimbursements();
         this.loadPendingReturns();
-        this.loadPendingDirectReimbursements();
       },
     });
   }
@@ -157,13 +148,6 @@ export class TesoreriaComponent implements OnInit {
       error: () => {
         this.pendingReimbursements = [];
       },
-    });
-  }
-
-  private loadPendingDirectReimbursements(): void {
-    this.directReimbursementService.findPendingPayments().subscribe({
-      next: rows => { this.pendingDirectReimbursements = rows ?? []; },
-      error: () => { this.pendingDirectReimbursements = []; },
     });
   }
 
@@ -379,14 +363,6 @@ export class TesoreriaComponent implements OnInit {
       });
   }
 
-  drCollaboratorName(dr: IDirectReimbursement): string {
-    const c = dr.collaboratorId;
-    if (c && typeof c === 'object' && 'name' in c) return (c as { name: string }).name;
-    const coord = dr.coordinatorId;
-    if (coord && typeof coord === 'object' && 'name' in coord) return (coord as { name: string }).name;
-    return '—';
-  }
-
   collaboratorReportName(report: IExpenseReport): string {
     const u = report.userId;
     if (u && typeof u === 'object' && 'name' in u && (u as { name?: string }).name) {
@@ -423,24 +399,6 @@ export class TesoreriaComponent implements OnInit {
       },
       error: (e) => {
         this.notificationService.show(e.error?.message || 'Error al registrar pago', 'error');
-        this.isActing.set(false);
-      },
-    });
-  }
-
-  settle(advance: IAdvance) {
-    this.isActing.set(true);
-    this.advanceService.settle(advance._id).subscribe({
-      next: (settled) => {
-        this.notificationService.show(
-          `Liquidación: ${settled.settlement?.type === 'reembolso' ? 'Reembolso S/. ' + Math.abs(settled.settlement.difference).toFixed(2) : settled.settlement?.type === 'devolucion' ? 'Devolución S/. ' + settled.settlement.difference.toFixed(2) : 'Equilibrado'}`,
-          'success'
-        );
-        this.loadData();
-        this.isActing.set(false);
-      },
-      error: (e) => {
-        this.notificationService.show(e.error?.message || 'Error en liquidación', 'error');
         this.isActing.set(false);
       },
     });
