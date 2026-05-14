@@ -69,10 +69,6 @@ export class AdvanceService {
     return this.http.patch<IAdvance>(`${this.url}/${id}/register-payment`, payload);
   }
 
-  settle(id: string): Observable<IAdvance> {
-    return this.http.patch<IAdvance>(`${this.url}/${id}/settle`, {});
-  }
-
   registerReturn(id: string, returnedAmount: number): Observable<IAdvance> {
     return this.http.patch<IAdvance>(`${this.url}/${id}/return`, { returnedAmount });
   }

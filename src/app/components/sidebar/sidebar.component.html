@@ -222,17 +222,6 @@
         <span class="font-medium">Pagos</span>
       </a>
       }
-      @if (hasModulePermission('reembolso-directo')) {
-      <a
-        [routerLink]="['/reembolso-directo']"
-        routerLinkActive="bg-primary text-white"
-        [class.bg-primary]="isSelected('/reembolso-directo')"
-        [class.text-quaternary]="isSelected('/reembolso-directo')"
-        class="flex items-center px-4 py-3 text-secondary rounded-xl hover:bg-background hover:text-primary transition-all duration-200 group"
-      >
-        <span class="font-medium">Reembolso Directo</span>
-      </a>
-      }
       @if (isAdmin() || isContabilidadInCompany()) {
       <!-- Configuración (grupo colapsable) -->
       <div>
@@ -607,17 +596,6 @@
           class="flex items-center px-4 py-4 text-secondary rounded-xl hover:bg-background hover:text-primary transition-all duration-200 group"
         >
           <span class="font-medium text-lg">Pagos</span>
-        </a>
-        }
-        @if (hasModulePermission('reembolso-directo')) {
-        <a
-          [routerLink]="['/reembolso-directo']"
-          (click)="toggleSidebar()"
-          [class.bg-primary]="isSelected('/reembolso-directo')"
-          [class.text-quaternary]="isSelected('/reembolso-directo')"
-          class="flex items-center px-4 py-4 text-secondary rounded-xl hover:bg-background hover:text-primary transition-all duration-200 group"
-        >
-          <span class="font-medium text-lg">Reembolso Directo</span>
         </a>
         }
         @if (isAdmin() || isContabilidadInCompany()) {

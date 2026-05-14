@@ -6,7 +6,7 @@ import {
   HttpParams,
 } from '@angular/common/http';
 import { Observable, throwError } from 'rxjs';
-import { catchError, tap } from 'rxjs/operators';
+import { catchError } from 'rxjs/operators';
 import { IUser, IUserResponse, IRole, IClient, IUserPermissions } from '../../../interfaces/user.interface';
 import { UserStateService } from '../../../services/user-state.service';
 import { environment } from '../../../../environments/environment';
@@ -27,8 +27,6 @@ export class AdminUsersService {
       console.error('No hay token disponible');
       throw new Error('No hay token de autenticación disponible');
     }
-
-    console.log('Token utilizado:', token);
 
     return new HttpHeaders({
       Authorization: `Bearer ${token}`,
@@ -87,12 +85,7 @@ export class AdminUsersService {
       .patch<IUserResponse>(`${this.apiUrl}/${id}`, user, {
         headers: this.getHeaders(),
       })
-      .pipe(
-        tap((response) =>
-          console.log('Respuesta al actualizar usuario:', response)
-        ),
-        catchError((error: any) => this.handleError(error))
-      );
+      .pipe(catchError((error: any) => this.handleError(error)));
   }
 
   updatePermissions(id: string, permissions: IUserPermissions): Observable<IUserResponse> {
@@ -144,10 +137,7 @@ export class AdminUsersService {
       .get<IRole[]>(endpoint, {
         headers: this.getHeaders(),
       })
-      .pipe(
-        tap((response) => console.log('Roles cargados:', response)),
-        catchError((error: any) => this.handleError(error))
-      );
+      .pipe(catchError((error: any) => this.handleError(error)));
   }
 
   getClients(): Observable<IClient[]> {
@@ -155,10 +145,7 @@ export class AdminUsersService {
       .get<IClient[]>(`${environment.api}/client`, {
         headers: this.getHeaders(),
       })
-      .pipe(
-        tap((response) => console.log('Empresas cargadas:', response)),
-        catchError((error: any) => this.handleError(error))
-      );
+      .pipe(catchError((error: any) => this.handleError(error)));
   }
 
   private handleError(error: HttpErrorResponse) {
