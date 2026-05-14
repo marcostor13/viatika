@@ -182,7 +182,7 @@ export interface IPayAdvancePayload {
 export const ADVANCE_STATUS_LABELS: Record<AdvanceStatus, string> = {
   draft: 'Borrador',
   pending_l1: 'Pendiente Aprobación',
-  pending_l2: 'Pendiente Tesorería',
+  pending_l2: 'Pendiente Contabilidad',
   approved: 'Aprobado',
   paid: 'Pagado',
   settled: 'Liquidado',
