@@ -267,6 +267,10 @@ export default class AddInvoiceComponent implements OnInit {
         if (report && report.projectId) {
           const pId = typeof report.projectId === 'string' ? report.projectId : report.projectId._id;
           this.form.patchValue({ proyectId: pId });
+          const isViatico = Array.isArray((report as any).advanceIds) && (report as any).advanceIds.length > 0;
+          if (!isViatico) {
+            this.form.get('proyectId')?.disable();
+          }
         }
       },
       error: (err) => console.error('Error loading report project', err)
@@ -891,7 +895,7 @@ export default class AddInvoiceComponent implements OnInit {
 
   update() {
     if (this.form.valid && this.originalInvoice) {
-      const formValue = this.form.value;
+      const formValue = this.form.getRawValue();
 
       let dataObj: any = {};
       const currentData = this.originalInvoice.data || '';

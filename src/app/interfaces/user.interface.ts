@@ -39,6 +39,7 @@ export interface IUserUpdate {
 
 export interface IClientResponse {
   _id: string;
+  codigo?: string;
   comercialName: string;
   businessName: string;
   businessId: string; //ruc
@@ -62,6 +63,7 @@ export interface IUserPermissions {
   modules: string[];
   canApproveL1: boolean;
   canApproveL2: boolean;
+  categoryIds?: string[];
 }
 
 export interface IUserResponse {

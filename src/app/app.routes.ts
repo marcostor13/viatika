@@ -286,6 +286,22 @@ export const routes: Routes = [
         canActivate: [AuthAdmin2Guard],
       },
       {
+        path: 'categorias/nueva',
+        loadComponent: () =>
+          import('./modules/categorias/categoria-form/categoria-form.component').then(
+            (m) => m.CategoriaFormComponent
+          ),
+        canActivate: [AuthAdmin2Guard],
+      },
+      {
+        path: 'categorias/:id/editar',
+        loadComponent: () =>
+          import('./modules/categorias/categoria-form/categoria-form.component').then(
+            (m) => m.CategoriaFormComponent
+          ),
+        canActivate: [AuthAdmin2Guard],
+      },
+      {
         path: 'audit-log',
         loadComponent: () =>
           import('./modules/audit-log/audit-log.component').then(

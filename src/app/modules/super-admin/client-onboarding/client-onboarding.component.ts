@@ -14,6 +14,7 @@ import { InputComponent } from '../../../design-system/input/input.component';
 
 interface CreateClientPayload {
   client: {
+    codigo: string;
     comercialName: string;
     businessName: string;
     businessId: string;
@@ -42,6 +43,7 @@ export class ClientOnboardingComponent {
 
   form: FormGroup = this.fb.group({
     client: this.fb.group({
+      codigo: ['', Validators.required],
       comercialName: ['', Validators.required],
       businessName: ['', Validators.required],
       businessId: [

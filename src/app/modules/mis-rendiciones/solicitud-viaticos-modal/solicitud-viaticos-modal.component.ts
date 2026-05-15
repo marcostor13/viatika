@@ -199,10 +199,10 @@ export class SolicitudViaticosModalComponent implements OnChanges {
   createLineGroup(): FormGroup {
     return this.fb.group({
       categoryId: ['', Validators.required],
-      importe: [0, [Validators.required, Validators.min(0)]],
-      peopleCount: [1, [Validators.required, Validators.min(1)]],
-      glpPerDay: [0, [Validators.required, Validators.min(0)]],
-      days: [1, [Validators.required, Validators.min(1)]],
+      importe: [0, [Validators.min(0)]],
+      peopleCount: [1, [Validators.min(0)]],
+      glpPerDay: [0, [Validators.min(0)]],
+      days: [1, [Validators.min(0)]],
     });
   }
 
@@ -250,6 +250,17 @@ export class SolicitudViaticosModalComponent implements OnChanges {
   }
 
   submit(): void {
+    for (let i = 0; i < this.lines.length; i++) {
+      const g = this.lines.at(i) as FormGroup;
+      const v = g.value;
+      g.patchValue({
+        importe: v.importe ?? 0,
+        peopleCount: v.peopleCount ?? 0,
+        glpPerDay: v.glpPerDay ?? 0,
+        days: v.days ?? 0,
+      });
+    }
+
     if (this.form.invalid) {
       this.form.markAllAsTouched();
       this.notifications.show('Complete los campos obligatorios', 'error');
