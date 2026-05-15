@@ -9,14 +9,18 @@ import { UploadService } from '../../services/upload.service';
 import { NotificationService } from '../../services/notification.service';
 import { ISunatConfig } from '../../interfaces/sunat-config.interface';
 
-interface IClientRow {
-  _id: string;
+interface IClientForm {
+  codigo: string;
   comercialName: string;
   businessName: string;
   businessId: string;
   address: string;
   phone: string;
   email: string;
+}
+
+interface IClientRow extends IClientForm {
+  _id: string;
   logo?: string;
   // ui
   expanded: boolean;
@@ -24,7 +28,7 @@ interface IClientRow {
   sunatLoaded: boolean;
   sunatLoading: boolean;
   editing: boolean;
-  editForm: { comercialName: string; businessName: string; businessId: string; address: string; phone: string; email: string };
+  editForm: IClientForm;
   logoFile: File | null;
   logoPreview: string | null;
   uploadingLogo: boolean;
@@ -51,6 +55,9 @@ export class ClientsAdminComponent implements OnInit {
 
   clients: IClientRow[] = [];
   loading = false;
+  showCreateForm = false;
+  creating = false;
+  createForm: IClientForm = this.emptyForm();
 
   ngOnInit(): void {
     this.loadClients();
@@ -74,9 +81,22 @@ export class ClientsAdminComponent implements OnInit {
     });
   }
 
+  private emptyForm(): IClientForm {
+    return {
+      codigo: '',
+      comercialName: '',
+      businessName: '',
+      businessId: '',
+      address: '',
+      phone: '',
+      email: '',
+    };
+  }
+
   private toRow(c: any): IClientRow {
     return {
       _id: c._id,
+      codigo: c.codigo || '',
       comercialName: c.comercialName || '',
       businessName: c.businessName || '',
       businessId: c.businessId || '',
@@ -89,7 +109,7 @@ export class ClientsAdminComponent implements OnInit {
       sunatLoaded: false,
       sunatLoading: false,
       editing: false,
-      editForm: { comercialName: '', businessName: '', businessId: '', address: '', phone: '', email: '' },
+      editForm: this.emptyForm(),
       logoFile: null,
       logoPreview: null,
       uploadingLogo: false,
@@ -129,8 +149,66 @@ export class ClientsAdminComponent implements OnInit {
 
   // --- Company data editing ---
 
+  openCreateForm(): void {
+    this.createForm = this.emptyForm();
+    this.showCreateForm = true;
+  }
+
+  cancelCreate(): void {
+    this.showCreateForm = false;
+    this.createForm = this.emptyForm();
+  }
+
+  createClient(): void {
+    if (!this.createForm.codigo.trim()) {
+      this.notificationService.show('El código es obligatorio', 'error');
+      return;
+    }
+    if (!this.createForm.comercialName.trim()) {
+      this.notificationService.show('El nombre comercial es obligatorio', 'error');
+      return;
+    }
+    if (!this.createForm.businessName.trim()) {
+      this.notificationService.show('La razón social es obligatoria', 'error');
+      return;
+    }
+    if (!this.createForm.businessId.trim()) {
+      this.notificationService.show('El RUC es obligatorio', 'error');
+      return;
+    }
+    this.creating = true;
+    const payload = {
+      ...this.createForm,
+      codigo: this.createForm.codigo.trim(),
+      comercialName: this.createForm.comercialName.trim(),
+      businessName: this.createForm.businessName.trim(),
+      businessId: this.createForm.businessId.trim(),
+      address: this.createForm.address.trim(),
+      phone: this.createForm.phone.trim(),
+      email: this.createForm.email.trim(),
+      logo: '',
+    };
+    this.http.post<any>(`${environment.api}/client`, payload).subscribe({
+      next: (created) => {
+        this.creating = false;
+        this.showCreateForm = false;
+        this.createForm = this.emptyForm();
+        this.clients = [this.toRow(created), ...this.clients];
+        this.notificationService.show('Empresa creada correctamente', 'success');
+      },
+      error: (err: HttpErrorResponse) => {
+        this.creating = false;
+        const message = Array.isArray(err.error?.message)
+          ? err.error.message.join(', ')
+          : err.error?.message || 'Error al crear empresa';
+        this.notificationService.show(message, 'error');
+      },
+    });
+  }
+
   startEdit(row: IClientRow): void {
     row.editForm = {
+      codigo: row.codigo,
       comercialName: row.comercialName,
       businessName: row.businessName,
       businessId: row.businessId,
@@ -160,6 +238,10 @@ export class ClientsAdminComponent implements OnInit {
   }
 
   saveEdit(row: IClientRow): void {
+    if (!row.editForm.codigo.trim()) {
+      this.notificationService.show('El código es obligatorio', 'error');
+      return;
+    }
     if (!row.editForm.comercialName.trim()) {
       this.notificationService.show('El nombre comercial es obligatorio', 'error');
       return;
@@ -167,6 +249,7 @@ export class ClientsAdminComponent implements OnInit {
     row.saving = true;
     this.http.patch<any>(`${environment.api}/client/${row._id}`, row.editForm).subscribe({
       next: (updated) => {
+        row.codigo = updated.codigo || row.editForm.codigo;
         row.comercialName = updated.comercialName || row.editForm.comercialName;
         row.businessName = updated.businessName || row.editForm.businessName;
         row.businessId = updated.businessId || row.editForm.businessId;
@@ -181,9 +264,12 @@ export class ClientsAdminComponent implements OnInit {
           this.notificationService.show('Empresa actualizada', 'success');
         }
       },
-      error: () => {
+      error: (err: HttpErrorResponse) => {
         row.saving = false;
-        this.notificationService.show('Error al actualizar empresa', 'error');
+        const message = Array.isArray(err.error?.message)
+          ? err.error.message.join(', ')
+          : err.error?.message || 'Error al actualizar empresa';
+        this.notificationService.show(message, 'error');
       },
     });
   }

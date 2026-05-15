@@ -22,6 +22,7 @@ export class ClientsComponent implements OnInit {
     editingClient = signal<IClient | null>(null);
 
     newClient: Partial<IClient> = {
+        codigo: '',
         comercialName: '',
         businessName: '',
         businessId: '',
@@ -78,6 +79,7 @@ export class ClientsComponent implements OnInit {
     openNewForm() {
         this.editingClient.set(null);
         this.newClient = {
+            codigo: '',
             comercialName: '',
             businessName: '',
             businessId: '',

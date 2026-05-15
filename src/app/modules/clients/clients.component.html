@@ -67,6 +67,10 @@
         
         <form (submit)="saveClient()" class="p-6 overflow-y-auto space-y-5">
           <div class="flex flex-col gap-1.5">
+            <label class="text-xs uppercase tracking-wider font-bold text-slate-500 dark:text-slate-400">Código <span class="text-rose-500">*</span></label>
+            <input type="text" [(ngModel)]="newClient.codigo" name="codigo" class="w-full bg-slate-100 dark:bg-slate-800 border-none rounded-lg px-4 py-3 text-sm focus:ring-2 focus:ring-primary placeholder:text-slate-400 text-slate-900 dark:text-slate-100 transition-shadow uppercase" required />
+          </div>
+          <div class="flex flex-col gap-1.5">
             <label class="text-xs uppercase tracking-wider font-bold text-slate-500 dark:text-slate-400">Nombre Comercial <span class="text-rose-500">*</span></label>
             <input type="text" [(ngModel)]="newClient.comercialName" name="comercialName" class="w-full bg-slate-100 dark:bg-slate-800 border-none rounded-lg px-4 py-3 text-sm focus:ring-2 focus:ring-primary placeholder:text-slate-400 text-slate-900 dark:text-slate-100 transition-shadow" required />
           </div>
