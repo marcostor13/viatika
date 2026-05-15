@@ -6,6 +6,11 @@ import { ICategory } from '../modules/invoices/interfaces/category.interface';
 import { IPaginatedResult } from '../interfaces/paginated-result.interface';
 import { UserStateService } from './user-state.service';
 
+export interface IBulkImportResult {
+  created: number;
+  errors: { row: number; reason: string }[];
+}
+
 @Injectable({ providedIn: 'root' })
 export class CategoriaService {
   private readonly baseUrl = `${environment.api}/category`;
@@ -24,22 +29,50 @@ export class CategoriaService {
     return this.http.get<IPaginatedResult<ICategory>>(`${this.baseUrl}/${this.companyId}`, { params });
   }
 
+  getOne(id: string): Observable<ICategory> {
+    return this.http.get<ICategory>(`${this.baseUrl}/${id}/${this.companyId}`);
+  }
+
   getAllFlat(): Observable<ICategory[]> {
     return this.http.get<ICategory[]>(`${this.baseUrl}/${this.companyId}/flat`);
   }
 
-  create(dto: { name: string; description?: string; limit?: number | null; parentId?: string | null }): Observable<ICategory> {
+  getAllFlatAdmin(): Observable<ICategory[]> {
+    return this.http.get<ICategory[]>(`${this.baseUrl}/${this.companyId}/flat-all`);
+  }
+
+  create(dto: {
+    name: string;
+    description?: string;
+    cuenta?: string;
+    observaciones?: string;
+    limit?: number | null;
+  }): Observable<ICategory> {
     return this.http.post<ICategory>(this.baseUrl, {
       ...dto,
       clientId: this.companyId,
     });
   }
 
-  update(id: string, dto: { name?: string; description?: string; isActive?: boolean; limit?: number | null }): Observable<ICategory> {
+  update(id: string, dto: {
+    name?: string;
+    description?: string;
+    cuenta?: string;
+    observaciones?: string;
+    isActive?: boolean;
+    limit?: number | null;
+  }): Observable<ICategory> {
     return this.http.patch<ICategory>(`${this.baseUrl}/${id}/${this.companyId}`, dto);
   }
 
   remove(id: string): Observable<void> {
     return this.http.delete<void>(`${this.baseUrl}/${id}/${this.companyId}`);
+  }
+
+  importFromExcel(file: File): Observable<IBulkImportResult> {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('clientId', this.companyId);
+    return this.http.post<IBulkImportResult>(`${this.baseUrl}/import`, formData);
   }
 }

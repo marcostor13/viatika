@@ -146,10 +146,9 @@ export class SidebarComponent implements OnInit, OnDestroy {
 
   canAccessViaticos(): boolean {
     return (
-      this.userStateService.isAdmin() ||
       this.userStateService.isSuperAdmin() ||
-      this.userStateService.isCoordinador() ||
-      this.userStateService.canApproveL1()
+      this.userStateService.canApproveL1() ||
+      this.userStateService.hasModulePermission('viaticos')
     );
   }
 

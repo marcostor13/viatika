@@ -26,10 +26,6 @@ export const defaultRedirectGuard: CanActivateFn = () => {
     return router.createUrlTree(['/hub']);
   }
 
-  if (userState.isCoordinador()) {
-    return router.createUrlTree(['/viaticos']);
-  }
-
-  // Administrador
-  return router.createUrlTree(['/consolidated-invoices']);
+  // Coordinador
+  return router.createUrlTree(['/admin-users']);
 };

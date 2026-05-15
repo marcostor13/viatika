@@ -1,20 +1,23 @@
-import { Component, inject, OnInit, signal } from '@angular/core';
+import { Component, ElementRef, inject, OnInit, signal, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { CategoriaService } from '../../services/categoria.service';
+import { Router } from '@angular/router';
+import { CategoriaService, IBulkImportResult } from '../../services/categoria.service';
+import { CategoryGroupService } from '../../services/category-group.service';
 import { NotificationService } from '../../services/notification.service';
 import { ConfirmationService } from '../../services/confirmation.service';
 import { ICategory } from '../invoices/interfaces/category.interface';
+import { ICategoryGroup } from './interfaces/category-group.interface';
 import { IPaginatedResult } from '../../interfaces/paginated-result.interface';
 import { ButtonComponent } from '../../design-system/button/button.component';
 import { PaginatorComponent } from '../../design-system/paginator/paginator.component';
 import { HttpErrorResponse } from '@angular/common/http';
+import * as ExcelJS from 'exceljs';
 
-interface CategoryForm {
+interface GroupForm {
   name: string;
   description: string;
-  limit: number | null;
-  parentId: string | null;
+  categoryIds: string[];
 }
 
 @Component({
@@ -24,26 +27,47 @@ interface CategoryForm {
   templateUrl: './categorias.component.html',
 })
 export class CategoriasComponent implements OnInit {
+  @ViewChild('fileInput') fileInput!: ElementRef<HTMLInputElement>;
+
   private categoriaService = inject(CategoriaService);
+  private groupService = inject(CategoryGroupService);
   private notificationService = inject(NotificationService);
   private confirmationService = inject(ConfirmationService);
+  private router = inject(Router);
 
+  activeTab = signal<'categorias' | 'grupos'>('categorias');
+
+  // --- Category state ---
   result = signal<IPaginatedResult<ICategory>>({ data: [], total: 0, page: 1, pages: 0, limit: 20 });
   loading = signal(false);
   search = signal('');
   page = signal(1);
   limit = signal(20);
+  importResult = signal<IBulkImportResult | null>(null);
+  importing = signal(false);
 
-  showForm = signal(false);
-  editingId = signal<string | null>(null);
-  editingParentId = signal<string | null>(null);
-  form: CategoryForm = { name: '', description: '', limit: null, parentId: null };
-
-  expandedIds = signal<Set<string>>(new Set());
+  // --- Group state ---
+  groups = signal<ICategoryGroup[]>([]);
+  allCategories = signal<ICategory[]>([]);
+  groupsLoading = signal(false);
+  showGroupForm = signal(false);
+  editingGroupId = signal<string | null>(null);
+  groupForm: GroupForm = { name: '', description: '', categoryIds: [] };
+  groupSearch = signal('');
+  categorySearchInGroup = signal('');
 
   ngOnInit() {
     this.load();
   }
+
+  setTab(tab: 'categorias' | 'grupos') {
+    this.activeTab.set(tab);
+    if (tab === 'grupos' && this.groups().length === 0) {
+      this.loadGroups();
+    }
+  }
+
+  // ==================== CATEGORÍAS ====================
 
   load() {
     this.loading.set(true);
@@ -52,10 +76,7 @@ export class CategoriasComponent implements OnInit {
       limit: this.limit(),
       search: this.search() || undefined,
     }).subscribe({
-      next: (res) => {
-        this.result.set(res);
-        this.loading.set(false);
-      },
+      next: (res) => { this.result.set(res); this.loading.set(false); },
       error: (err: HttpErrorResponse) => {
         this.notificationService.show('Error al cargar categorías: ' + err.message, 'error');
         this.loading.set(false);
@@ -63,118 +84,230 @@ export class CategoriasComponent implements OnInit {
     });
   }
 
-  onSearch(value: string) {
-    this.search.set(value);
-    this.page.set(1);
-    this.load();
-  }
-
-  onPageChange(p: number) {
-    this.page.set(p);
-    this.load();
-  }
-
-  onLimitChange(l: number) {
-    this.limit.set(l);
-    this.page.set(1);
-    this.load();
-  }
-
-  toggleExpand(id: string) {
-    const set = new Set(this.expandedIds());
-    if (set.has(id)) set.delete(id); else set.add(id);
-    this.expandedIds.set(set);
-  }
-
-  isExpanded(id: string): boolean {
-    return this.expandedIds().has(id);
-  }
+  onSearch(value: string) { this.search.set(value); this.page.set(1); this.load(); }
+  onPageChange(p: number) { this.page.set(p); this.load(); }
+  onLimitChange(l: number) { this.limit.set(l); this.page.set(1); this.load(); }
 
   openAddCategory() {
-    this.form = { name: '', description: '', limit: null, parentId: null };
-    this.editingId.set(null);
-    this.editingParentId.set(null);
-    this.showForm.set(true);
-  }
-
-  openAddSubcategory(parentId: string) {
-    this.form = { name: '', description: '', limit: null, parentId };
-    this.editingId.set(null);
-    this.editingParentId.set(parentId);
-    this.showForm.set(true);
-    const set = new Set(this.expandedIds());
-    set.add(parentId);
-    this.expandedIds.set(set);
+    this.router.navigate(['/categorias/nueva']);
   }
 
   openEdit(cat: ICategory) {
-    this.form = {
-      name: cat.name,
-      description: cat.description ?? '',
-      limit: cat.limit ?? null,
-      parentId: cat.parentId ?? null,
+    this.router.navigate(['/categorias', cat._id, 'editar']);
+  }
+
+  remove(cat: ICategory) {
+    this.confirmationService.confirm({
+      title: 'Eliminar categoría',
+      message: `¿Eliminar "${cat.name}"?`,
+      accept: () => {
+        this.categoriaService.remove(cat._id!).subscribe({
+          next: () => { this.notificationService.show('Categoría eliminada', 'success'); this.load(); },
+          error: (err: HttpErrorResponse) => this.notificationService.show('Error: ' + err.message, 'error'),
+        });
+      },
+    });
+  }
+
+  // --- Import / Template ---
+
+  triggerFileInput() {
+    this.fileInput.nativeElement.value = '';
+    this.fileInput.nativeElement.click();
+  }
+
+  onFileSelected(event: Event) {
+    const file = (event.target as HTMLInputElement).files?.[0];
+    if (!file) return;
+    this.importing.set(true);
+    this.importResult.set(null);
+    this.categoriaService.importFromExcel(file).subscribe({
+      next: (res) => {
+        this.importing.set(false);
+        this.importResult.set(res);
+        if (res.created > 0) {
+          this.notificationService.show(`${res.created} categoría(s) importada(s)`, 'success');
+          this.load();
+        }
+        if (res.errors.length > 0) {
+          this.notificationService.show(`${res.errors.length} fila(s) con error`, 'warning');
+        }
+      },
+      error: (err: HttpErrorResponse) => {
+        this.importing.set(false);
+        this.notificationService.show('Error al importar: ' + (err.error?.message || err.message), 'error');
+      },
+    });
+  }
+
+  async downloadTemplate() {
+    const workbook = new ExcelJS.Workbook();
+    workbook.creator = 'Viatika';
+
+    const sheet = workbook.addWorksheet('Categorías');
+    const headers = ['Nombre*', 'Cuenta', 'Descripción', 'Observaciones', 'Límite'];
+    sheet.addRow(headers);
+
+    const headerRow = sheet.getRow(1);
+    headerRow.eachCell((cell) => {
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1E3A5F' } };
+      cell.font = { bold: true, color: { argb: 'FFFFFFFF' }, size: 11 };
+      cell.alignment = { vertical: 'middle', horizontal: 'center' };
+    });
+    sheet.columns = [
+      { key: 'Nombre*', width: 28 },
+      { key: 'Cuenta', width: 18 },
+      { key: 'Descripción', width: 30 },
+      { key: 'Observaciones', width: 30 },
+      { key: 'Límite', width: 14 },
+    ];
+    headerRow.height = 22;
+
+    // Sample row
+    sheet.addRow(['Viáticos de transporte', '6310', 'Gastos de movilidad del colaborador', 'Solo traslados locales', 500]);
+    sheet.getRow(2).font = { italic: true, color: { argb: 'FF888888' } };
+
+    const instrSheet = workbook.addWorksheet('Instrucciones');
+    instrSheet.addRow(['Campo', 'Requerido', 'Descripción']);
+    instrSheet.getRow(1).font = { bold: true };
+    instrSheet.addRow(['Nombre*', 'Sí', 'Nombre único de la categoría']);
+    instrSheet.addRow(['Cuenta', 'No', 'Número de cuenta contable (ej. 6310)']);
+    instrSheet.addRow(['Descripción', 'No', 'Descripción breve de la categoría']);
+    instrSheet.addRow(['Observaciones', 'No', 'Notas adicionales o restricciones']);
+    instrSheet.addRow(['Límite', 'No', 'Límite de gasto en soles (solo número, sin S/)']);
+    instrSheet.columns = [
+      { key: 'Campo', width: 18 },
+      { key: 'Requerido', width: 12 },
+      { key: 'Descripción', width: 45 },
+    ];
+    instrSheet.addRow([]);
+    instrSheet.addRow(['Nota: La fila de ejemplo en la hoja "Categorías" puede eliminarse antes de cargar.']);
+
+    const buffer = await workbook.xlsx.writeBuffer();
+    const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'plantilla_categorias.xlsx';
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  // ==================== GRUPOS ====================
+
+  loadGroups() {
+    this.groupsLoading.set(true);
+    Promise.all([
+      this.groupService.getAll().toPromise(),
+      this.categoriaService.getAllFlatAdmin().toPromise(),
+    ]).then(([groups, cats]) => {
+      this.groups.set(groups ?? []);
+      this.allCategories.set(cats ?? []);
+      this.groupsLoading.set(false);
+    }).catch((err: HttpErrorResponse) => {
+      this.notificationService.show('Error al cargar grupos', 'error');
+      this.groupsLoading.set(false);
+    });
+  }
+
+  get filteredGroups(): ICategoryGroup[] {
+    const q = this.groupSearch().toLowerCase();
+    if (!q) return this.groups();
+    return this.groups().filter((g) => g.name.toLowerCase().includes(q));
+  }
+
+  get filteredCategoriesInGroup(): ICategory[] {
+    const q = this.categorySearchInGroup().toLowerCase();
+    if (!q) return this.allCategories();
+    return this.allCategories().filter((c) => c.name.toLowerCase().includes(q) || (c.cuenta ?? '').toLowerCase().includes(q));
+  }
+
+  openAddGroup() {
+    this.groupForm = { name: '', description: '', categoryIds: [] };
+    this.editingGroupId.set(null);
+    this.showGroupForm.set(true);
+    this.categorySearchInGroup.set('');
+  }
+
+  openEditGroup(group: ICategoryGroup) {
+    this.groupForm = {
+      name: group.name,
+      description: group.description ?? '',
+      categoryIds: [...(group.categoryIds ?? [])],
     };
-    this.editingId.set(cat._id ?? null);
-    this.editingParentId.set(cat.parentId ?? null);
-    this.showForm.set(true);
+    this.editingGroupId.set(group._id ?? null);
+    this.showGroupForm.set(true);
+    this.categorySearchInGroup.set('');
   }
 
-  closeForm() {
-    this.showForm.set(false);
-    this.editingId.set(null);
-    this.editingParentId.set(null);
-    this.form = { name: '', description: '', limit: null, parentId: null };
+  closeGroupForm() {
+    this.showGroupForm.set(false);
+    this.editingGroupId.set(null);
+    this.groupForm = { name: '', description: '', categoryIds: [] };
+    this.categorySearchInGroup.set('');
   }
 
-  save() {
-    if (!this.form.name.trim()) {
-      this.notificationService.show('El nombre es obligatorio', 'error');
+  toggleCategoryInGroup(id: string) {
+    if (this.groupForm.categoryIds.includes(id)) {
+      this.groupForm.categoryIds = this.groupForm.categoryIds.filter((x) => x !== id);
+    } else {
+      this.groupForm.categoryIds = [...this.groupForm.categoryIds, id];
+    }
+  }
+
+  isCategoryInGroup(id: string): boolean {
+    return this.groupForm.categoryIds.includes(id);
+  }
+
+  selectAllCategories() {
+    this.groupForm.categoryIds = this.allCategories().map((c) => c._id!).filter(Boolean);
+  }
+
+  clearAllCategories() {
+    this.groupForm.categoryIds = [];
+  }
+
+  saveGroup() {
+    if (!this.groupForm.name.trim()) {
+      this.notificationService.show('El nombre del grupo es obligatorio', 'error');
       return;
     }
-    const id = this.editingId();
+    const dto = {
+      name: this.groupForm.name,
+      description: this.groupForm.description || undefined,
+      categoryIds: this.groupForm.categoryIds,
+    };
+    const id = this.editingGroupId();
     if (id) {
-      this.categoriaService.update(id, {
-        name: this.form.name,
-        description: this.form.description || undefined,
-        limit: this.form.limit,
-      }).subscribe({
-        next: () => {
-          this.notificationService.show('Categoría actualizada', 'success');
-          this.closeForm();
-          this.load();
+      this.groupService.update(id, dto).subscribe({
+        next: (updated) => {
+          this.groups.update((gs) => gs.map((g) => (g._id === id ? updated : g)));
+          this.notificationService.show('Grupo actualizado', 'success');
+          this.closeGroupForm();
         },
         error: (err: HttpErrorResponse) => this.notificationService.show('Error: ' + err.message, 'error'),
       });
     } else {
-      this.categoriaService.create({
-        name: this.form.name,
-        description: this.form.description || undefined,
-        limit: this.form.limit,
-        parentId: this.form.parentId,
-      }).subscribe({
-        next: () => {
-          this.notificationService.show(this.form.parentId ? 'Subcategoría creada' : 'Categoría creada', 'success');
-          this.closeForm();
-          this.load();
+      this.groupService.create(dto).subscribe({
+        next: (created) => {
+          this.groups.update((gs) => [...gs, created]);
+          this.notificationService.show('Grupo creado', 'success');
+          this.closeGroupForm();
         },
         error: (err: HttpErrorResponse) => this.notificationService.show('Error: ' + err.message, 'error'),
       });
     }
   }
 
-  remove(cat: ICategory) {
-    const hasChildren = (cat.children?.length ?? 0) > 0;
-    const msg = hasChildren
-      ? `¿Eliminar "${cat.name}" y sus ${cat.children!.length} subcategoría(s)?`
-      : `¿Eliminar "${cat.name}"?`;
+  removeGroup(group: ICategoryGroup) {
     this.confirmationService.confirm({
-      title: 'Eliminar categoría',
-      message: msg,
+      title: 'Eliminar grupo',
+      message: `¿Eliminar el grupo "${group.name}"? Las categorías no se eliminarán.`,
       accept: () => {
-        this.categoriaService.remove(cat._id!).subscribe({
+        this.groupService.remove(group._id!).subscribe({
           next: () => {
-            this.notificationService.show('Categoría eliminada', 'success');
-            this.load();
+            this.groups.update((gs) => gs.filter((g) => g._id !== group._id));
+            this.notificationService.show('Grupo eliminado', 'success');
           },
           error: (err: HttpErrorResponse) => this.notificationService.show('Error: ' + err.message, 'error'),
         });
@@ -182,24 +315,11 @@ export class CategoriasComponent implements OnInit {
     });
   }
 
-  removeSubcategory(sub: ICategory) {
-    this.confirmationService.confirm({
-      title: 'Eliminar subcategoría',
-      message: `¿Eliminar "${sub.name}"?`,
-      accept: () => {
-        this.categoriaService.remove(sub._id!).subscribe({
-          next: () => {
-            this.notificationService.show('Subcategoría eliminada', 'success');
-            this.load();
-          },
-          error: (err: HttpErrorResponse) => this.notificationService.show('Error: ' + err.message, 'error'),
-        });
-      },
-    });
+  getCategoryName(id: string): string {
+    return this.allCategories().find((c) => c._id === id)?.name ?? id;
   }
 
-  get formTitle(): string {
-    if (this.editingId()) return 'Editar categoría';
-    return this.editingParentId() ? 'Nueva subcategoría' : 'Nueva categoría';
+  get groupFormTitle(): string {
+    return this.editingGroupId() ? 'Editar grupo' : 'Nuevo grupo';
   }
 }

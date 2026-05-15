@@ -125,12 +125,12 @@ export class UserStateService {
   }
 
   isColaborador() { return this.getRole() === 'Colaborador'; }
-  isAdmin() { return this.getRole() === 'Administrador'; }
+  isAdmin() { return this.getRole() === 'Coordinador'; }
   isSuperAdmin() { return this.getRole() === 'Superadministrador'; }
   isContabilidad() { return this.getRole() === 'Contabilidad'; }
-  isCoordinador() { return this.getRole() === 'Coordinador'; }
+  isCoordinador() { return false; }
 
-  /** Administrador, Superadministrador, or Contabilidad */
+  /** Coordinador, Superadministrador, or Contabilidad */
   isAnyAdmin() {
     return this.isAdmin() || this.isSuperAdmin() || this.isContabilidad();
   }
@@ -141,13 +141,13 @@ export class UserStateService {
   }
 
   hasModulePermission(module: string): boolean {
-    if (this.isSuperAdmin() || this.isAdmin() || this.isContabilidad()) return true;
+    if (this.isSuperAdmin() || this.isContabilidad()) return true;
     const perms = this.getPermissions();
     return perms.modules?.includes(module) ?? false;
   }
 
   canApproveL1(): boolean {
-    if (this.isSuperAdmin() || this.isAdmin() || this.isCoordinador() || this.isContabilidad()) return true;
+    if (this.isSuperAdmin() || this.isContabilidad()) return true;
     return this.getPermissions().canApproveL1 === true;
   }
 
@@ -157,7 +157,7 @@ export class UserStateService {
   }
 
   canAccessTesoreria(): boolean {
-    if (this.isSuperAdmin() || this.isContabilidad() || this.isAdmin()) return true;
+    if (this.isSuperAdmin() || this.isContabilidad()) return true;
     const perms = this.getPermissions();
     return perms.modules?.includes('tesoreria') ?? false;
   }
