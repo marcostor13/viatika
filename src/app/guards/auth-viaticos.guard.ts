@@ -12,14 +12,14 @@ export class AuthViaticosGuard implements CanActivate {
       return false;
     }
     const allowed =
-      this.userState.isAdmin() ||
       this.userState.isSuperAdmin() ||
-      this.userState.isCoordinador() ||
-      this.userState.canApproveL1();
+      this.userState.canApproveL1() ||
+      this.userState.hasModulePermission('viaticos');
     if (!allowed) {
       const role = this.userState.getRole();
       const fallback = (role === 'Colaborador') ? '/mis-rendiciones'
         : (role === 'Contabilidad') ? '/tesoreria'
+        : (role === 'Coordinador') ? '/admin-users'
         : '/login';
       this.router.navigate([fallback]);
       return false;

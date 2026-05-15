@@ -191,20 +191,21 @@ export class ViaticosComponent implements OnInit {
     const a = this.pendingApproveAdvance();
     if (!a) return;
     const level = this.pendingApproveLevel();
-    this.showApproveModal.set(false);
     this.isActing.set(true);
     const action$ = level === 1
       ? this.advanceService.approveL1(a._id, {})
       : this.advanceService.approveL2(a._id, {});
     action$.subscribe({
       next: () => {
-        this.notifications.show(`Solicitud aprobada (Nivel ${level})`, 'success');
+        this.showApproveModal.set(false);
         this.isActing.set(false);
+        this.notifications.show(`Solicitud aprobada (Nivel ${level})`, 'success');
         this.load();
       },
       error: (e) => {
-        this.notifications.show(e?.error?.message || 'Error al aprobar', 'error');
+        this.showApproveModal.set(false);
         this.isActing.set(false);
+        this.notifications.show(e?.error?.message || 'Error al aprobar', 'error');
       },
     });
   }

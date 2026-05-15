@@ -3,10 +3,10 @@ export interface ICategory {
   key?: string;
   name: string;
   description?: string;
+  cuenta?: string;
+  observaciones?: string;
   isActive?: boolean;
   limit?: number | null;
-  parentId?: string | null;
-  children?: ICategory[];
   createdAt?: Date;
   updatedAt?: Date;
   companyId?: string;

@@ -62,6 +62,7 @@ export interface IUserPermissions {
   modules: string[];
   canApproveL1: boolean;
   canApproveL2: boolean;
+  categoryIds?: string[];
 }
 
 export interface IUserResponse {
