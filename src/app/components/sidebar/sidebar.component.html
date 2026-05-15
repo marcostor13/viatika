@@ -76,7 +76,7 @@
         <span class="font-medium">Inicio</span>
       </a>
       }
-      @if (isAdmin() && hasModulePermission('colaboradores')) {
+      @if ((isAdmin() && hasModulePermission('colaboradores')) || isContabilidadInCompany()) {
       <a
         [routerLink]="['/admin-users']"
         routerLinkActive="bg-primary text-white"
@@ -478,7 +478,7 @@
           <span class="font-medium text-lg">Inicio</span>
         </a>
         }
-        @if (isAdmin() && hasModulePermission('colaboradores')) {
+        @if ((isAdmin() && hasModulePermission('colaboradores')) || isContabilidadInCompany()) {
         <a
           [routerLink]="['/admin-users']"
           (click)="toggleSidebar()"
