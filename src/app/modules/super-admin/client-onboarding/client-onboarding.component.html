@@ -147,6 +147,21 @@
 
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <app-input
+              label="Código"
+              placeholder="Ej: EMP-001"
+              [required]="true"
+              [error]="
+                form.get('client.codigo')?.touched &&
+                form.get('client.codigo')?.invalid
+                  ? 'Obligatorio'
+                  : ''
+              "
+              [type]="'text'"
+              [value]="form.get('client.codigo')?.value"
+              (changed)="form.get('client.codigo')?.setValue($event)"
+            ></app-input>
+
+            <app-input
               label="Nombre Comercial"
               placeholder="Ej: Viatika SAC"
               [required]="true"

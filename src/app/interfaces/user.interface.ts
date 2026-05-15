@@ -39,6 +39,7 @@ export interface IUserUpdate {
 
 export interface IClientResponse {
   _id: string;
+  codigo?: string;
   comercialName: string;
   businessName: string;
   businessId: string; //ruc

@@ -11,13 +11,102 @@
       Volver al hub
     </button>
     <div class="h-5 w-px bg-tertiary/30"></div>
-    <div>
+    <div class="flex-1 min-w-0">
       <h1 class="text-lg font-bold text-secondary leading-none">Administrar Empresas</h1>
       <p class="text-xs text-tertiary mt-0.5">Gestiona los datos y configuración SUNAT de cada empresa.</p>
     </div>
+    <button
+      type="button"
+      (click)="openCreateForm()"
+      class="ml-auto flex items-center gap-2 px-4 py-2 text-sm font-semibold bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors shrink-0"
+    >
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+      </svg>
+      Nueva empresa
+    </button>
   </header>
 
 <div class="flex flex-col gap-4 p-5">
+
+  @if (showCreateForm) {
+    <div class="bg-quaternary rounded-2xl shadow-sm border border-primary/20 p-5">
+      <h2 class="text-sm font-semibold text-secondary uppercase tracking-wide mb-4">Nueva empresa</h2>
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div>
+          <label class="block text-xs font-medium text-tertiary mb-1">Código *</label>
+          <input
+            [(ngModel)]="createForm.codigo"
+            type="text"
+            placeholder="Ej: EMP-001"
+            class="w-full px-3 py-2 text-sm border border-tertiary/30 rounded-lg bg-background text-secondary focus:outline-none focus:border-primary uppercase"
+          />
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-tertiary mb-1">Nombre comercial *</label>
+          <input
+            [(ngModel)]="createForm.comercialName"
+            type="text"
+            class="w-full px-3 py-2 text-sm border border-tertiary/30 rounded-lg bg-background text-secondary focus:outline-none focus:border-primary"
+          />
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-tertiary mb-1">Razón social *</label>
+          <input
+            [(ngModel)]="createForm.businessName"
+            type="text"
+            class="w-full px-3 py-2 text-sm border border-tertiary/30 rounded-lg bg-background text-secondary focus:outline-none focus:border-primary"
+          />
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-tertiary mb-1">RUC *</label>
+          <input
+            [(ngModel)]="createForm.businessId"
+            type="text"
+            class="w-full px-3 py-2 text-sm border border-tertiary/30 rounded-lg bg-background text-secondary focus:outline-none focus:border-primary"
+          />
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-tertiary mb-1">Email</label>
+          <input
+            [(ngModel)]="createForm.email"
+            type="email"
+            class="w-full px-3 py-2 text-sm border border-tertiary/30 rounded-lg bg-background text-secondary focus:outline-none focus:border-primary"
+          />
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-tertiary mb-1">Teléfono</label>
+          <input
+            [(ngModel)]="createForm.phone"
+            type="text"
+            class="w-full px-3 py-2 text-sm border border-tertiary/30 rounded-lg bg-background text-secondary focus:outline-none focus:border-primary"
+          />
+        </div>
+        <div class="sm:col-span-2">
+          <label class="block text-xs font-medium text-tertiary mb-1">Dirección</label>
+          <input
+            [(ngModel)]="createForm.address"
+            type="text"
+            class="w-full px-3 py-2 text-sm border border-tertiary/30 rounded-lg bg-background text-secondary focus:outline-none focus:border-primary"
+          />
+        </div>
+      </div>
+      <div class="flex gap-3 mt-4">
+        <button
+          (click)="createClient()"
+          [disabled]="creating"
+          class="px-4 py-2 text-sm font-semibold bg-primary text-white rounded-lg hover:bg-primary/90 disabled:opacity-60 disabled:cursor-not-allowed"
+        >
+          @if (creating) { Creando... } @else { Crear empresa }
+        </button>
+        <button
+          (click)="cancelCreate()"
+          [disabled]="creating"
+          class="px-4 py-2 text-sm font-medium text-tertiary hover:text-secondary rounded-lg hover:bg-background"
+        >Cancelar</button>
+      </div>
+    </div>
+  }
 
   @if (loading) {
     <div class="flex justify-center py-16">
@@ -25,9 +114,13 @@
     </div>
   }
 
-  @if (!loading && clients.length === 0) {
+  @if (!loading && clients.length === 0 && !showCreateForm) {
     <div class="text-center py-16 text-tertiary">
       <p class="font-medium">No hay empresas registradas</p>
+      <button
+        (click)="openCreateForm()"
+        class="mt-4 inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold bg-primary text-white rounded-lg hover:bg-primary/90"
+      >Crear primera empresa</button>
     </div>
   }
 
@@ -49,7 +142,13 @@
           </div>
           <div class="flex-1 min-w-0">
             <p class="font-semibold text-secondary truncate">{{ row.comercialName }}</p>
-            <p class="text-sm text-tertiary truncate">{{ row.businessName }} &bull; RUC {{ row.businessId }}</p>
+            <p class="text-sm text-tertiary truncate">
+              @if (row.codigo) {
+                <span class="font-mono text-primary">{{ row.codigo }}</span>
+                <span> · </span>
+              }
+              {{ row.businessName }} · RUC {{ row.businessId }}
+            </p>
           </div>
           <svg
             xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"
@@ -79,6 +178,7 @@
               @if (!row.editing) {
                 <!-- View mode -->
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-2 text-sm">
+                  <div class="flex gap-2"><span class="text-tertiary w-36 flex-shrink-0">Código</span><span class="text-secondary font-medium font-mono">{{ row.codigo || '—' }}</span></div>
                   <div class="flex gap-2"><span class="text-tertiary w-36 flex-shrink-0">Nombre comercial</span><span class="text-secondary font-medium">{{ row.comercialName }}</span></div>
                   <div class="flex gap-2"><span class="text-tertiary w-36 flex-shrink-0">Razón social</span><span class="text-secondary font-medium">{{ row.businessName }}</span></div>
                   <div class="flex gap-2"><span class="text-tertiary w-36 flex-shrink-0">RUC</span><span class="text-secondary font-medium">{{ row.businessId }}</span></div>
@@ -89,6 +189,14 @@
               } @else {
                 <!-- Edit mode -->
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label class="block text-xs font-medium text-tertiary mb-1">Código *</label>
+                    <input
+                      [(ngModel)]="row.editForm.codigo"
+                      type="text"
+                      class="w-full px-3 py-2 text-sm border border-tertiary/30 rounded-lg bg-background text-secondary focus:outline-none focus:border-primary uppercase"
+                    />
+                  </div>
                   <div>
                     <label class="block text-xs font-medium text-tertiary mb-1">Nombre comercial *</label>
                     <input
