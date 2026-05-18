@@ -805,7 +805,22 @@ export class RendicionDetailComponent implements OnInit {
       if (!provider && this.getExpenseTypeLabel(exp) === 'Planilla movilidad') {
         provider = 'Planilla de Movilidad';
       }
-      const numDoc = dataObj['serie'] && dataObj['correlativo'] ? `${dataObj['serie']}-${dataObj['correlativo']}` : '';
+      const expType = exp['expenseType'] as string;
+      let numDoc = '';
+      if (expType === 'planilla_movilidad' || expType === 'comprobante_caja') {
+        numDoc = typeof exp['internalCode'] === 'string' ? exp['internalCode'] : '';
+      } else if (expType === 'recibo_caja') {
+        const payload = dataObj['payload'];
+        const p: Record<string, unknown> =
+          typeof payload === 'string'
+            ? (() => { try { return JSON.parse(payload) as Record<string, unknown>; } catch { return {}; } })()
+            : (payload && typeof payload === 'object' ? payload as Record<string, unknown> : {});
+        numDoc = p['numeroDocumento'] ? String(p['numeroDocumento']) : '';
+      } else {
+        numDoc = dataObj['serie'] && dataObj['correlativo']
+          ? `${dataObj['serie']}-${dataObj['correlativo']}`
+          : '';
+      }
 
       return {
         tipo: this.getExpenseTypeLabel(exp),
@@ -833,7 +848,7 @@ export class RendicionDetailComponent implements OnInit {
     }));
     return {
       fileBaseName: `rendicion_${this.id}_${safeName}`.replace(/_+/g, '_'),
-      titulo: this.report.title || 'Sin título',
+      titulo: this.getProjectName() !== '—' ? this.getProjectName() : (this.report.title || 'Sin título'),
       estado: this.getReportStatusLabel(),
       descripcionRendicion: this.report.description || undefined,
       colaborador: this.getCollaboratorDisplayName(),
@@ -1549,7 +1564,7 @@ export class RendicionDetailComponent implements OnInit {
       });
   }
 
-  exportMobilitySheet(expense: Record<string, unknown>): void {
+  async exportMobilitySheet(expense: Record<string, unknown>): Promise<void> {
     if (this.getExpenseTypeKey(expense) !== 'planilla_movilidad') return;
     const rows = this.mobilityRows(expense).map(r => ({
       fecha: String(r['fecha'] || ''),
@@ -1560,6 +1575,14 @@ export class RendicionDetailComponent implements OnInit {
       total: this.mobilityRowTotal(r),
     }));
     const total = rows.reduce((sum, r) => sum + (r.total || 0), 0);
+    const firstFecha = rows.find(r => r.fecha)?.fecha;
+    let periodo = '';
+    if (firstFecha) {
+      const d = new Date(firstFecha);
+      if (!isNaN(d.getTime())) {
+        periodo = d.toLocaleString('es-PE', { month: 'long' }).toUpperCase();
+      }
+    }
     const data: MobilitySheetExportData = {
       fileBaseName: `planilla_movilidad_${String(expense['_id'] || 'sin_id')}`,
       collaborator: this.getCollaboratorDisplayName(),
@@ -1571,11 +1594,12 @@ export class RendicionDetailComponent implements OnInit {
         dateStyle: 'short',
         timeStyle: 'short',
       }),
+      periodo,
       rows,
       total,
       signature: this.getCollaboratorSignature(),
     };
-    this.rendicionExportService.exportMobilitySheetToPdf(data);
+    await this.rendicionExportService.exportMobilitySheetToPdf(data);
     this.notificationService.show('Planilla de movilidad descargada en PDF', 'success');
   }
 
@@ -1617,7 +1641,7 @@ export class RendicionDetailComponent implements OnInit {
     this.notificationService.show('Comprobante de caja descargado en PDF', 'success');
   }
 
-  exportMobilitySheetExcel(expense: Record<string, unknown>): void {
+  async exportMobilitySheetExcel(expense: Record<string, unknown>): Promise<void> {
     if (this.getExpenseTypeKey(expense) !== 'planilla_movilidad') return;
     const rows = this.mobilityRows(expense).map(r => ({
       fecha: String(r['fecha'] || ''),
@@ -1628,6 +1652,14 @@ export class RendicionDetailComponent implements OnInit {
       total: this.mobilityRowTotal(r),
     }));
     const total = rows.reduce((sum, r) => sum + (r.total || 0), 0);
+    const firstFecha = rows.find(r => r.fecha)?.fecha;
+    let periodo = '';
+    if (firstFecha) {
+      const d = new Date(firstFecha);
+      if (!isNaN(d.getTime())) {
+        periodo = d.toLocaleString('es-PE', { month: 'long' }).toUpperCase();
+      }
+    }
     const data: MobilitySheetExportData = {
       fileBaseName: `planilla_movilidad_${String(expense['_id'] || 'sin_id')}`,
       collaborator: this.getCollaboratorDisplayName(),
@@ -1635,11 +1667,12 @@ export class RendicionDetailComponent implements OnInit {
       internalCode: typeof expense['internalCode'] === 'string' ? expense['internalCode'] : undefined,
       location: this.report?.location,
       generatedAt: new Date().toLocaleString('es-PE', { dateStyle: 'short', timeStyle: 'short' }),
+      periodo,
       rows,
       total,
       signature: this.getCollaboratorSignature(),
     };
-    this.rendicionExportService.exportMobilitySheetToExcel(data);
+    await this.rendicionExportService.exportMobilitySheetToExcel(data);
     this.notificationService.show('Planilla de movilidad descargada en Excel', 'success');
   }
 

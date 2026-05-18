@@ -101,6 +101,7 @@ export interface MobilitySheetExportData {
   internalCode?: string;
   location?: string;
   generatedAt: string;
+  periodo?: string;
   rows: Array<{
     fecha: string;
     clienteProveedor: string;
@@ -303,10 +304,10 @@ export class RendicionExportService {
       addDataRow([
         itemIndex++,
         a.fechaSolicitud,
-        '', 
-        '', 
+        '',
+        '',
         'Transferencia',
-        a.descripcion,
+        data.projectName || a.descripcion,
         a.monto,
         ''
       ]);
@@ -501,10 +502,10 @@ export class RendicionExportService {
       bodyData.push([
         itemIndex++,
         a.fechaSolicitud,
-        '', 
-        '', 
+        '',
+        '',
         'Transferencia',
-        a.descripcion,
+        data.projectName || a.descripcion,
         a.monto.toFixed(2),
         ''
       ]);
@@ -678,47 +679,228 @@ export class RendicionExportService {
     doc.save(`${data.fileBaseName}.pdf`);
   }
 
-  exportMobilitySheetToPdf(data: MobilitySheetExportData): void {
+  async exportMobilitySheetToPdf(data: MobilitySheetExportData): Promise<void> {
     const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+    const lm = 14;
+    const rm = 196;
+    const pageW = 210;
+
+    const cfg = this.companyConfigService.getCompanyConfig();
+    const companyName = cfg?.businessName || cfg?.name || '';
+    const ruc = cfg?.businessId || '';
+
+    const logoB64 = await this.getLogoBase64();
+
+    // Col X positions: Fecha | CliProv | Proyecto | Lugar | Gestión | TOTALES | end
+    const cols = [14, 34, 66, 84, 106, 170, 196];
+
+    // Title
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(12);
-    doc.text('PLANILLA DE MOVILIDAD', 105, 16, { align: 'center' });
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(10);
-    doc.text(`Colaborador: ${data.collaborator}`, 14, 26);
-    doc.text(`DNI: ${data.collaboratorDni || '-'}`, 14, 32);
-    doc.text(`Correlativo: ${data.internalCode || '-'}`, 14, 38);
-    doc.text(`Lugar de generacion: ${data.location || '-'}`, 14, 44);
-    doc.text(`Fecha de generacion: ${data.generatedAt}`, 14, 50);
+    doc.text('PLANILLA DE MOVILIDAD', pageW / 2, 10, { align: 'center' });
 
-    autoTable(doc, {
-      startY: 58,
-      head: [['Fecha', 'Cliente/Proveedor', 'Origen', 'Destino', 'Gestion', 'Total (S/)']],
-      body: data.rows.map(r => [
-        r.fecha,
-        r.clienteProveedor || '-',
-        r.origen || '-',
-        r.destino || '-',
-        r.gestion || '-',
-        r.total.toFixed(2),
-      ]),
-      theme: 'grid',
-      headStyles: { fillColor: [145, 47, 44], textColor: 255 },
-      styles: { fontSize: 8 },
-      columnStyles: { 5: { halign: 'right' } },
-      margin: { left: 14, right: 14 },
-    });
-
-    const y = afterTable(doc) + 10;
-    doc.setFont('helvetica', 'bold');
-    doc.text(`Total general: S/ ${data.total.toFixed(2)}`, 196, y, { align: 'right' });
-    doc.setFont('helvetica', 'normal');
-
-    if (data.signature) {
-      doc.addImage(data.signature, 'PNG', 74, y + 10, 60, 22);
-      doc.line(60, y + 36, 150, y + 36);
-      doc.text(data.collaborator.toUpperCase(), 105, y + 41, { align: 'center' });
+    // Logo top right
+    if (logoB64) {
+      doc.addImage(logoB64, 'PNG', 153, 6, 40, 24);
     }
+
+    // Company info left
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(9);
+    doc.text(companyName, lm, 18);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8);
+    if (ruc) {
+      doc.text(`RUC: ${ruc}`, lm, 24);
+    }
+
+    // Header section: separator lines + vertical divider
+    const vSep = 150;
+    doc.setLineWidth(0.3);
+    doc.line(lm, 32, rm, 32);
+    doc.line(vSep, 32, vSep, 50);
+    doc.line(rm, 32, rm, 50);
+    doc.line(lm, 50, rm, 50);
+
+    // Left: Nombre Completo
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(8.5);
+    doc.text('Nombre Completo :', lm, 40);
+    doc.setFont('helvetica', 'normal');
+    const nameX = lm + 37;
+    doc.text(data.collaborator, nameX, 40);
+    doc.line(nameX, 40.5, vSep - 2, 40.5);
+
+    // Right: Nº + Vo.Bo.
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(8.5);
+    doc.text('Nº', vSep + 4, 40);
+    doc.setFont('helvetica', 'normal');
+    doc.text(data.internalCode || '', vSep + 12, 40);
+    doc.setFontSize(7.5);
+    doc.text('Vo.Bo. Gerencia Adm y Finanzas', (vSep + rm) / 2, 47, { align: 'center' });
+
+    // Periodo
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(8.5);
+    doc.text('Periodo:', lm, 57);
+    doc.setFont('helvetica', 'normal');
+    doc.text(data.periodo ? data.periodo.toUpperCase() : '', lm + 20, 57);
+
+    // Table title bar
+    doc.setFillColor(145, 47, 44);
+    doc.rect(lm, 61, rm - lm, 8, 'F');
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(9);
+    doc.setTextColor(255, 255, 255);
+    doc.text('DETALLE DE GASTOS DE MOVILIDAD', pageW / 2, 66.5, { align: 'center' });
+    doc.setTextColor(0, 0, 0);
+
+    // 2-level table headers
+    const h1 = 7;
+    const h2 = 6;
+    let y = 69;
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(8);
+
+    // Fecha (rowspan 2)
+    doc.rect(cols[0], y, cols[1] - cols[0], h1 + h2, 'S');
+    doc.text('Fecha', (cols[0] + cols[1]) / 2, y + 7.5, { align: 'center' });
+
+    // Concepto (colspan 4)
+    doc.rect(cols[1], y, cols[5] - cols[1], h1, 'S');
+    doc.text('Concepto', (cols[1] + cols[5]) / 2, y + 4.5, { align: 'center' });
+
+    // TOTALES S/. (rowspan 2)
+    doc.rect(cols[5], y, cols[6] - cols[5], h1 + h2, 'S');
+    doc.setFontSize(7.5);
+    doc.text('TOTALES', (cols[5] + cols[6]) / 2, y + 4, { align: 'center' });
+    doc.text('S/.', (cols[5] + cols[6]) / 2, y + 9, { align: 'center' });
+
+    y += h1;
+
+    // Sub-headers under Concepto
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(7.5);
+
+    doc.rect(cols[1], y, cols[2] - cols[1], h2, 'S');
+    doc.text('Cliente/Proveedor', (cols[1] + cols[2]) / 2, y + 4, { align: 'center' });
+
+    doc.rect(cols[2], y, cols[3] - cols[2], h2, 'S');
+    doc.text('Proyecto', (cols[2] + cols[3]) / 2, y + 4, { align: 'center' });
+
+    doc.rect(cols[3], y, cols[4] - cols[3], h2, 'S');
+    doc.text('Lugar', (cols[3] + cols[4]) / 2, y + 4, { align: 'center' });
+
+    doc.rect(cols[4], y, cols[5] - cols[4], h2, 'S');
+    doc.text('Gestión', (cols[4] + cols[5]) / 2, y + 4, { align: 'center' });
+
+    y += h2;
+
+    // Data rows (min 10)
+    const dataRows = [...data.rows];
+    while (dataRows.length < 10) {
+      dataRows.push({ fecha: '', clienteProveedor: '', origen: '', destino: '', gestion: '', total: 0 });
+    }
+
+    const rowH = 7;
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8);
+
+    for (const row of dataRows) {
+      for (let c = 0; c < 6; c++) {
+        doc.rect(cols[c], y, cols[c + 1] - cols[c], rowH, 'S');
+      }
+      if (row.fecha) {
+        doc.text(row.fecha, cols[0] + 1, y + 4.5);
+      }
+      if (row.clienteProveedor) {
+        doc.text(doc.splitTextToSize(row.clienteProveedor, cols[2] - cols[1] - 2)[0], cols[1] + 1, y + 4.5);
+      }
+      if (row.origen) {
+        doc.text(doc.splitTextToSize(row.origen, cols[3] - cols[2] - 2)[0], cols[2] + 1, y + 4.5);
+      }
+      if (row.destino) {
+        doc.text(doc.splitTextToSize(row.destino, cols[4] - cols[3] - 2)[0], cols[3] + 1, y + 4.5);
+      }
+      if (row.gestion) {
+        doc.text(doc.splitTextToSize(row.gestion, cols[5] - cols[4] - 2)[0], cols[4] + 1, y + 4.5);
+      }
+      if (row.total) {
+        doc.text(row.total.toFixed(2), cols[6] - 1, y + 4.5, { align: 'right' });
+      }
+      y += rowH;
+    }
+
+    // Footer rows
+    const footerH = 7;
+    y += 1;
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(8);
+    doc.setTextColor(145, 47, 44);
+    doc.text('IMPORTE TOTAL PLANILLA DE MOVILIDAD', lm + 2, y + 4.5);
+    doc.setTextColor(0, 0, 0);
+    doc.rect(cols[5], y, cols[6] - cols[5], footerH, 'S');
+    doc.text(data.total.toFixed(2), cols[6] - 1, y + 4.5, { align: 'right' });
+    y += footerH;
+
+    doc.setTextColor(145, 47, 44);
+    doc.text('CANTIDAD RECIBIDA  A CUENTA', lm + 2, y + 4.5);
+    doc.setTextColor(0, 0, 0);
+    doc.rect(cols[5], y, cols[6] - cols[5], footerH, 'S');
+    y += footerH;
+
+    doc.setTextColor(145, 47, 44);
+    doc.text('DIFERENCIA A MI FAVOR', lm + 2, y + 4.5);
+    doc.setTextColor(0, 0, 0);
+    doc.text('S/.', cols[5] - 2, y + 4.5, { align: 'right' });
+    doc.rect(cols[5], y, cols[6] - cols[5], footerH, 'S');
+    doc.text(data.total.toFixed(2), cols[6] - 1, y + 4.5, { align: 'right' });
+    y += footerH + 10;
+
+    // Signature area
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(8);
+    doc.text('LUGAR Y FECHA:', lm, y);
+
+    const sigCX = pageW / 2;
+    if (data.signature) {
+      doc.addImage(data.signature, 'PNG', sigCX - 25, y + 2, 50, 16);
+    }
+    y += 20;
+    doc.setFont('helvetica', 'bold');
+    doc.text('FIRMA Trabajador', sigCX, y, { align: 'center' });
+    doc.line(sigCX - 35, y + 1.5, sigCX + 35, y + 1.5);
+    y += 7;
+    doc.setFont('helvetica', 'normal');
+    doc.text(
+      data.collaboratorDni ? `DNI   ${data.collaboratorDni}` : 'DNI',
+      sigCX,
+      y,
+      { align: 'center' },
+    );
+    y += 12;
+
+    // Cargar a / Cuenta
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(8);
+    doc.text('Cargar a :', lm, y);
+    doc.line(lm + 22, y + 0.5, lm + 90, y + 0.5);
+    y += 7;
+    doc.text('Cuenta :', lm, y);
+    doc.line(lm + 22, y + 0.5, lm + 90, y + 0.5);
+    y += 10;
+
+    // Bottom note
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(7);
+    doc.text(
+      '*** La tabla de centros de costos y proyectos seran administrados al personal para identificarlos adecuadamente.',
+      lm,
+      y,
+    );
 
     doc.save(`${data.fileBaseName}.pdf`);
   }
@@ -882,98 +1064,234 @@ export class RendicionExportService {
     const ws = wb.addWorksheet('Planilla Movilidad', { views: [{ showGridLines: false }] });
 
     ws.columns = [
-      { width: 14 },
-      { width: 30 },
-      { width: 30 },
-      { width: 30 },
-      { width: 20 },
-      { width: 14 },
+      { width: 14 },  // A: Fecha
+      { width: 28 },  // B: Cliente/Proveedor
+      { width: 15 },  // C: Proyecto
+      { width: 20 },  // D: Lugar
+      { width: 48 },  // E: Gestión
+      { width: 13 },  // F: TOTALES
     ];
 
+    const cfg = this.companyConfigService.getCompanyConfig();
+    const companyName = cfg?.businessName || cfg?.name || '';
+    const ruc = cfg?.businessId || '';
+
+    const bt = {
+      top: { style: 'thin' as const }, bottom: { style: 'thin' as const },
+      left: { style: 'thin' as const }, right: { style: 'thin' as const },
+    };
+
+    // Row 1: Title
     ws.mergeCells('A1:F1');
     const titleCell = ws.getCell('A1');
     titleCell.value = 'PLANILLA DE MOVILIDAD';
-    titleCell.font = { bold: true, size: 12 };
-    titleCell.alignment = { horizontal: 'center' };
+    titleCell.font = { bold: true, size: 13 };
+    titleCell.alignment = { horizontal: 'center', vertical: 'middle' };
+    ws.getRow(1).height = 20;
 
-    ws.getCell('A3').value = 'Colaborador:';
-    ws.mergeCells('B3:F3');
-    ws.getCell('B3').value = data.collaborator;
-    ws.getCell('A4').value = 'DNI:';
-    ws.getCell('B4').value = data.collaboratorDni || '';
-    ws.getCell('A5').value = 'Correlativo:';
-    ws.getCell('B5').value = data.internalCode || '';
-    ws.getCell('A6').value = 'Lugar:';
-    ws.getCell('B6').value = data.location || '';
-    ws.getCell('A7').value = 'Fecha generación:';
-    ws.getCell('B7').value = data.generatedAt;
+    // Rows 2-3: Company info
+    ws.mergeCells('A2:D2');
+    ws.getCell('A2').value = companyName;
+    ws.getCell('A2').font = { bold: true, size: 10 };
+    if (ruc) {
+      ws.mergeCells('A3:D3');
+      ws.getCell('A3').value = `RUC: ${ruc}`;
+      ws.getCell('A3').font = { size: 9 };
+    }
 
-    let r = 9;
-    const headers = ['Fecha', 'Cliente / Proveedor', 'Origen', 'Destino', 'Gestión', 'Total (S/)'];
-    headers.forEach((h, i) => {
-      const c = ws.getCell(r, i + 1);
-      c.value = h;
-      c.font = { bold: true, color: { argb: 'FFFFFFFF' } };
-      c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: RED_HEADER } };
-      c.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
-      c.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
-    });
-    ws.getRow(r).height = 24;
-    r++;
+    // Logo top right
+    const logoB64 = await this.getLogoBase64();
+    if (logoB64) {
+      const ext = logoB64.includes('data:image/png') ? 'png' : 'jpeg';
+      const imgId = wb.addImage({ base64: logoB64, extension: ext as 'png' | 'jpeg' });
+      ws.addImage(imgId, { tl: { col: 4, row: 0 }, ext: { width: 150, height: 60 } });
+    }
 
-    let total = 0;
-    data.rows.forEach(row => {
-      ws.getCell(r, 1).value = row.fecha;
+    // Row 4: blank separator
+    ws.getRow(4).height = 4;
+
+    // Row 5: Nombre Completo / Nº
+    ws.getCell('A5').value = 'Nombre Completo :';
+    ws.getCell('A5').font = { bold: true, size: 9 };
+    ws.getCell('A5').border = { top: { style: 'thin' }, bottom: { style: 'thin' } };
+    ws.mergeCells('B5:D5');
+    ws.getCell('B5').value = data.collaborator;
+    ws.getCell('B5').border = { top: { style: 'thin' }, bottom: { style: 'thin' } };
+    ws.getCell('E5').value = 'Nº';
+    ws.getCell('E5').font = { bold: true, size: 9 };
+    ws.getCell('E5').border = bt;
+    ws.getCell('F5').value = data.internalCode || '';
+    ws.getCell('F5').font = { size: 9 };
+    ws.getCell('F5').border = bt;
+
+    // Row 6: Vo.Bo.
+    ws.getCell('A6').border = { bottom: { style: 'thin' } };
+    ws.getCell('B6').border = { bottom: { style: 'thin' } };
+    ws.mergeCells('E6:F6');
+    ws.getCell('E6').value = 'Vo.Bo. Gerencia Adm y Finanzas';
+    ws.getCell('E6').alignment = { horizontal: 'center' };
+    ws.getCell('E6').font = { size: 8 };
+    ws.getCell('E6').border = bt;
+
+    // Row 7: Periodo
+    ws.getCell('A7').value = 'Periodo:';
+    ws.getCell('A7').font = { bold: true, size: 9 };
+    ws.getCell('B7').value = data.periodo ? data.periodo.toUpperCase() : '';
+    ws.getRow(7).height = 16;
+
+    // Row 8: blank separator
+    ws.getRow(8).height = 4;
+
+    // Row 9: Table title bar
+    ws.mergeCells('A9:F9');
+    const tableTitle = ws.getCell('A9');
+    tableTitle.value = 'DETALLE DE GASTOS DE MOVILIDAD';
+    tableTitle.font = { bold: true, size: 10, color: { argb: 'FFFFFFFF' } };
+    tableTitle.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: RED_HEADER } };
+    tableTitle.alignment = { horizontal: 'center', vertical: 'middle' };
+    ws.getRow(9).height = 18;
+
+    // Row 10: Header row 1 (Fecha rowspan2, Concepto colspan4, TOTALES rowspan2)
+    ws.mergeCells('A10:A11');
+    const fechaHdr = ws.getCell('A10');
+    fechaHdr.value = 'Fecha';
+    fechaHdr.font = { bold: true, size: 8.5 };
+    fechaHdr.alignment = { horizontal: 'center', vertical: 'middle' };
+    fechaHdr.border = bt;
+
+    ws.mergeCells('B10:E10');
+    const conceptoHdr = ws.getCell('B10');
+    conceptoHdr.value = 'Concepto';
+    conceptoHdr.font = { bold: true, size: 8.5 };
+    conceptoHdr.alignment = { horizontal: 'center', vertical: 'middle' };
+    conceptoHdr.border = bt;
+
+    ws.mergeCells('F10:F11');
+    const totalesHdr = ws.getCell('F10');
+    totalesHdr.value = 'TOTALES S/.';
+    totalesHdr.font = { bold: true, size: 8.5 };
+    totalesHdr.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
+    totalesHdr.border = bt;
+    ws.getRow(10).height = 18;
+
+    // Row 11: Sub-headers under Concepto
+    const subHdrs = [
+      { col: 'B', label: 'Cliente/Proveedor' },
+      { col: 'C', label: 'Proyecto' },
+      { col: 'D', label: 'Lugar' },
+      { col: 'E', label: 'Gestión' },
+    ];
+    for (const { col, label } of subHdrs) {
+      const cell = ws.getCell(`${col}11`);
+      cell.value = label;
+      cell.font = { bold: true, size: 8 };
+      cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
+      cell.border = bt;
+    }
+    ws.getRow(11).height = 16;
+
+    // Data rows (min 10)
+    let r = 12;
+    const dataRows = [...data.rows];
+    while (dataRows.length < 10) {
+      dataRows.push({ fecha: '', clienteProveedor: '', origen: '', destino: '', gestion: '', total: 0 });
+    }
+
+    for (const row of dataRows) {
+      ws.getCell(r, 1).value = row.fecha || '';
       ws.getCell(r, 2).value = row.clienteProveedor || '';
-      ws.getCell(r, 3).value = row.origen || '';
-      ws.getCell(r, 4).value = row.destino || '';
+      ws.getCell(r, 3).value = row.origen || '';   // origen → Proyecto
+      ws.getCell(r, 4).value = row.destino || '';  // destino → Lugar
       ws.getCell(r, 5).value = row.gestion || '';
-      ws.getCell(r, 6).value = row.total;
-      ws.getCell(r, 6).numFmt = '#,##0.00';
-      ws.getCell(r, 6).alignment = { horizontal: 'right' };
-      for (let i = 1; i <= 6; i++) {
-        ws.getCell(r, i).border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
+      if (row.total) {
+        ws.getCell(r, 6).value = row.total;
+        ws.getCell(r, 6).numFmt = '#,##0.00';
+        ws.getCell(r, 6).alignment = { horizontal: 'right' };
       }
-      total += row.total || 0;
+      for (let i = 1; i <= 6; i++) {
+        ws.getCell(r, i).border = bt;
+        ws.getCell(r, i).font = { size: 8.5 };
+      }
+      ws.getRow(r).height = 16;
       r++;
-    });
+    }
+
+    // Footer rows
+    const redFont = { bold: true, color: { argb: 'FF912f2c' } };
 
     ws.mergeCells(r, 1, r, 5);
-    const cLabel = ws.getCell(r, 1);
-    cLabel.value = 'TOTAL GENERAL';
-    cLabel.font = { bold: true, color: { argb: 'FFFFFFFF' } };
-    cLabel.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: RED_HEADER } };
-    cLabel.alignment = { horizontal: 'right' };
-    const cTotal = ws.getCell(r, 6);
-    cTotal.value = total;
-    cTotal.font = { bold: true, color: { argb: 'FFFFFFFF' } };
-    cTotal.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: RED_HEADER } };
-    cTotal.numFmt = '#,##0.00';
-    cTotal.alignment = { horizontal: 'right' };
-    for (let i = 1; i <= 6; i++) {
-      ws.getCell(r, i).border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
-    }
-    r += 3;
+    ws.getCell(r, 1).value = 'IMPORTE TOTAL PLANILLA DE MOVILIDAD';
+    ws.getCell(r, 1).font = redFont;
+    ws.getCell(r, 6).value = data.total;
+    ws.getCell(r, 6).numFmt = '#,##0.00';
+    ws.getCell(r, 6).alignment = { horizontal: 'right' };
+    ws.getCell(r, 6).border = bt;
+    ws.getRow(r).height = 16;
+    r++;
 
+    ws.mergeCells(r, 1, r, 5);
+    ws.getCell(r, 1).value = 'CANTIDAD RECIBIDA  A CUENTA';
+    ws.getCell(r, 1).font = redFont;
+    ws.getCell(r, 6).border = bt;
+    ws.getRow(r).height = 16;
+    r++;
+
+    ws.mergeCells(r, 1, r, 4);
+    ws.getCell(r, 1).value = 'DIFERENCIA A MI FAVOR';
+    ws.getCell(r, 1).font = redFont;
+    ws.getCell(r, 5).value = 'S/.';
+    ws.getCell(r, 5).font = { bold: true };
+    ws.getCell(r, 5).alignment = { horizontal: 'right' };
+    ws.getCell(r, 6).value = data.total;
+    ws.getCell(r, 6).numFmt = '#,##0.00';
+    ws.getCell(r, 6).alignment = { horizontal: 'right' };
+    ws.getCell(r, 6).border = bt;
+    ws.getRow(r).height = 16;
+    r += 2;
+
+    // Lugar y fecha
+    ws.getCell(r, 1).value = 'LUGAR Y FECHA:';
+    ws.getCell(r, 1).font = { bold: true, size: 8.5 };
+    r++;
+
+    // Signature
     if (data.signature) {
-      const sigImgId = wb.addImage({ base64: data.signature, extension: 'png' });
-      ws.addImage(sigImgId, { tl: { col: 1, row: r - 1 }, ext: { width: 150, height: 50 } });
+      const sigId = wb.addImage({ base64: data.signature, extension: 'png' });
+      ws.addImage(sigId, { tl: { col: 2, row: r - 1 }, ext: { width: 120, height: 50 } });
     }
     ws.getRow(r).height = 55;
-    ws.mergeCells(r, 2, r, 4);
-    ws.getCell(r, 2).border = { bottom: { style: 'medium' } };
+    ws.mergeCells(r, 3, r, 4);
+    ws.getCell(r, 3).border = { bottom: { style: 'medium' } };
     r++;
+
+    ws.mergeCells(r, 3, r, 4);
+    ws.getCell(r, 3).value = 'FIRMA Trabajador';
+    ws.getCell(r, 3).alignment = { horizontal: 'center' };
+    ws.getCell(r, 3).font = { bold: true, size: 8.5 };
+    r++;
+
+    ws.mergeCells(r, 3, r, 4);
+    ws.getCell(r, 3).value = data.collaboratorDni ? `DNI   ${data.collaboratorDni}` : 'DNI';
+    ws.getCell(r, 3).alignment = { horizontal: 'center' };
+    ws.getCell(r, 3).font = { size: 8.5 };
+    r += 2;
+
+    // Cargar a / Cuenta
+    ws.getCell(r, 1).value = 'Cargar a :';
+    ws.getCell(r, 1).font = { bold: true, size: 8.5 };
     ws.mergeCells(r, 2, r, 4);
-    ws.getCell(r, 2).value = data.collaborator.toUpperCase();
-    ws.getCell(r, 2).alignment = { horizontal: 'center' };
-    ws.getCell(r, 2).font = { size: 9 };
-    if (data.collaboratorDni) {
-      r++;
-      ws.mergeCells(r, 2, r, 4);
-      ws.getCell(r, 2).value = `DNI N° ${data.collaboratorDni}`;
-      ws.getCell(r, 2).alignment = { horizontal: 'center' };
-      ws.getCell(r, 2).font = { size: 9 };
-    }
+    ws.getCell(r, 2).border = { bottom: { style: 'thin' } };
+    r++;
+    ws.getCell(r, 1).value = 'Cuenta :';
+    ws.getCell(r, 1).font = { bold: true, size: 8.5 };
+    ws.mergeCells(r, 2, r, 4);
+    ws.getCell(r, 2).border = { bottom: { style: 'thin' } };
+    r += 2;
+
+    // Bottom note
+    ws.mergeCells(r, 1, r, 6);
+    ws.getCell(r, 1).value = '*** La tabla de centros de costos y proyectos seran administrados al personal para identificarlos adecuadamente.';
+    ws.getCell(r, 1).font = { size: 7 };
 
     const buf = await wb.xlsx.writeBuffer();
     this.triggerDownload(
