@@ -40,6 +40,7 @@ export interface IAdvanceSettlement {
 
 export interface IAdvanceLine {
   categoryId: { _id: string; name: string; key?: string } | string;
+  detalle?: string;
   importe: number;
   peopleCount: number;
   glpPerDay: number;
@@ -138,6 +139,7 @@ export interface IAdvanceStats {
 
 export interface IAdvanceLinePayload {
   categoryId: string;
+  detalle?: string;
   importe: number;
   peopleCount: number;
   glpPerDay: number;

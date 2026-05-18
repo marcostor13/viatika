@@ -289,13 +289,6 @@
   (close)="onModalClose($event)"
 />
 
-<app-solicitud-viaticos-modal
-  [isOpen]="showViaticosModal"
-  [expenseReportId]="null"
-  [initialProjectId]="null"
-  [advanceToResubmit]="advanceForResubmit"
-  (closed)="onViaticosModalClosed($event)"
-/>
 
 <!-- Modal: Procedimientos y Consideraciones -->
 @if (showGuidelines()) {

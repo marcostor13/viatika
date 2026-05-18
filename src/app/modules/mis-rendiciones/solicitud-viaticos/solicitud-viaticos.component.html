@@ -1,0 +1,347 @@
+<div class="min-h-screen bg-gray-50 flex flex-col">
+
+  <!-- Header -->
+  <div class="sticky top-0 z-10 bg-white border-b border-gray-200 shadow-sm">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between gap-4">
+      <div class="flex items-center gap-3 min-w-0">
+        <button
+          type="button"
+          (click)="goBack()"
+          class="flex items-center gap-1.5 text-sm font-medium text-gray-500 hover:text-gray-900 transition-colors shrink-0"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5 3 12m0 0 7.5-7.5M3 12h18" />
+          </svg>
+          Volver
+        </button>
+        <span class="text-gray-200 text-xl font-light">|</span>
+        <div class="flex items-center gap-2 min-w-0">
+          <div class="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary shrink-0">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 18.75a60.07 60.07 0 0 1 15.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 0 1 3 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25M2.25 6v9m18-10.5v.75c0 .414.336.75.75.75h.75m-1.5-1.5h.375c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125h-.375m1.5-1.5H21a.75.75 0 0 0-.75.75v.75m0 0H3.75m0 0h-.375a1.125 1.125 0 0 1-1.125-1.125V15m1.5 1.5v-.75A.75.75 0 0 0 3 15h-.75M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Zm3 0h.008v.008H18V10.5Zm-12 0h.008v.008H6V10.5Z" />
+            </svg>
+          </div>
+          <h1 class="text-base font-bold text-gray-900 truncate">{{ pageTitle }}</h1>
+        </div>
+      </div>
+
+      <!-- Total (desktop) -->
+      <div class="hidden sm:flex items-center gap-6 shrink-0">
+        <div class="text-right">
+          <p class="text-xs text-gray-400">Total general</p>
+          <p class="text-xl font-bold text-gray-900">S/ {{ totalGeneral() | number:'1.2-2' }}</p>
+        </div>
+        <button
+          type="button"
+          (click)="submit()"
+          [disabled]="submitting() || loading()"
+          class="px-5 py-2.5 bg-primary text-white text-sm font-semibold rounded-xl hover:bg-primary/90 disabled:opacity-40 disabled:cursor-not-allowed transition-colors shadow-sm"
+        >
+          @if (submitting()) {
+          <span class="inline-flex items-center gap-2">
+            <span class="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin"></span>
+            Enviando...
+          </span>
+          } @else {
+            {{ isResubmit ? 'Corregir y reenviar' : 'Enviar solicitud' }}
+          }
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Loading -->
+  @if (loading()) {
+  <div class="flex-1 flex items-center justify-center">
+    <div class="flex flex-col items-center gap-3 text-gray-400">
+      <div class="w-10 h-10 border-3 border-gray-200 border-t-primary rounded-full animate-spin"></div>
+      <p class="text-sm">Cargando solicitud...</p>
+    </div>
+  </div>
+  } @else {
+
+  <div class="flex-1 max-w-6xl mx-auto w-full px-4 sm:px-6 py-6 flex flex-col gap-6">
+
+    <!-- Info banner -->
+    <div class="rounded-xl border border-blue-100 bg-blue-50/70 px-4 py-3 flex items-start gap-3">
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 text-blue-500 shrink-0 mt-0.5">
+        <path stroke-linecap="round" stroke-linejoin="round" d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z" />
+      </svg>
+      <p class="text-sm text-blue-800">
+        Complete lugar, fechas, centro de costo y el detalle por categoría.
+        Los totales se calculan como <strong>(Importe + GLP/día) × Días × Personas</strong>.
+      </p>
+    </div>
+
+    <form [formGroup]="form" class="flex flex-col gap-6">
+
+      <!-- Section: Información del viaje -->
+      <div class="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+        <div class="px-5 py-3.5 border-b border-gray-100 bg-gray-50/50">
+          <h2 class="text-sm font-semibold text-gray-700 uppercase tracking-wider">Informacion del viaje</h2>
+        </div>
+        <div class="px-5 py-5 grid grid-cols-1 md:grid-cols-2 gap-5">
+
+          <!-- Lugar -->
+          <div class="md:col-span-2 flex flex-col gap-1.5">
+            <label class="text-sm font-medium text-gray-700">
+              Lugar de destino <span class="text-red-500">*</span>
+            </label>
+            <input
+              type="text"
+              formControlName="place"
+              appPlacesAutocomplete
+              country="pe"
+              (placeSelected)="onPlaceSelected($event)"
+              placeholder="Buscar direccion o ciudad…"
+              class="w-full px-3.5 py-2.5 text-sm rounded-xl border border-gray-300 bg-white text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-shadow"
+              [class.border-red-400]="form.get('place')?.invalid && form.get('place')?.touched"
+            />
+            @if (form.get('place')?.invalid && form.get('place')?.touched) {
+            <p class="text-xs text-red-500">El lugar es obligatorio</p>
+            }
+          </div>
+
+          <!-- Fecha inicio -->
+          <div class="flex flex-col gap-1.5">
+            <label class="text-sm font-medium text-gray-700">
+              Fecha inicio <span class="text-red-500">*</span>
+            </label>
+            <input
+              type="date"
+              formControlName="startDate"
+              class="w-full px-3.5 py-2.5 text-sm rounded-xl border border-gray-300 bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-shadow appearance-none"
+              [class.border-red-400]="form.get('startDate')?.invalid && form.get('startDate')?.touched"
+            />
+            @if (form.get('startDate')?.invalid && form.get('startDate')?.touched) {
+            <p class="text-xs text-red-500">La fecha de inicio es obligatoria</p>
+            }
+          </div>
+
+          <!-- Fecha fin -->
+          <div class="flex flex-col gap-1.5">
+            <label class="text-sm font-medium text-gray-700">
+              Fecha fin <span class="text-red-500">*</span>
+            </label>
+            <input
+              type="date"
+              formControlName="endDate"
+              class="w-full px-3.5 py-2.5 text-sm rounded-xl border border-gray-300 bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-shadow appearance-none"
+              [class.border-red-400]="form.get('endDate')?.invalid && form.get('endDate')?.touched"
+            />
+            @if (form.get('endDate')?.invalid && form.get('endDate')?.touched) {
+            <p class="text-xs text-red-500">La fecha fin es obligatoria</p>
+            }
+          </div>
+
+          <!-- Centro de costo -->
+          <div class="md:col-span-2 flex flex-col gap-1.5">
+            <label class="text-sm font-medium text-gray-700">
+              Centro de costo <span class="text-red-500">*</span>
+            </label>
+            <select
+              formControlName="projectId"
+              class="w-full px-3.5 py-2.5 text-sm rounded-xl border border-gray-300 bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-shadow appearance-none"
+              [class.border-red-400]="form.get('projectId')?.invalid && form.get('projectId')?.touched"
+            >
+              <option value="">Seleccione proyecto…</option>
+              @for (p of projects(); track p._id) {
+              <option [value]="p._id">{{ projectLabel(p) }}</option>
+              }
+            </select>
+            @if (form.get('projectId')?.invalid && form.get('projectId')?.touched) {
+            <p class="text-xs text-red-500">Seleccione un centro de costo</p>
+            }
+          </div>
+
+          <!-- Observaciones -->
+          <div class="md:col-span-2 flex flex-col gap-1.5">
+            <label class="text-sm font-medium text-gray-700">
+              Observaciones
+              <span class="text-gray-400 font-normal text-xs ml-1">(opcional — obligatorio si la fecha de inicio es pasada)</span>
+            </label>
+            <textarea
+              formControlName="observations"
+              rows="3"
+              placeholder="Justificacion del viaje. Si la fecha de inicio es anterior a hoy, debe tener al menos 10 caracteres."
+              class="w-full px-3.5 py-2.5 text-sm rounded-xl border border-gray-300 bg-white text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-shadow resize-none"
+            ></textarea>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Section: Detalle por categoría -->
+      <div class="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+        <div class="px-5 py-3.5 border-b border-gray-100 bg-gray-50/50 flex items-center justify-between">
+          <div>
+            <h2 class="text-sm font-semibold text-gray-700 uppercase tracking-wider">Detalle por categoría</h2>
+            <p class="text-xs text-gray-400 mt-0.5">Agrega una fila por cada concepto de gasto</p>
+          </div>
+          <button
+            type="button"
+            (click)="addLine()"
+            class="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-semibold text-primary border border-primary/30 bg-primary/5 rounded-lg hover:bg-primary/10 transition-colors"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-3.5 h-3.5">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+            </svg>
+            Agregar fila
+          </button>
+        </div>
+
+        <div class="overflow-x-auto">
+          <table class="min-w-full text-sm">
+            <thead>
+              <tr class="bg-gray-50 border-b border-gray-200">
+                <th class="text-left px-4 py-3 font-semibold text-gray-600 text-xs uppercase tracking-wide whitespace-nowrap" style="min-width:180px">Categoria</th>
+                <th class="text-left px-4 py-3 font-semibold text-gray-600 text-xs uppercase tracking-wide" style="min-width:180px">Detalle</th>
+                <th class="text-right px-4 py-3 font-semibold text-gray-600 text-xs uppercase tracking-wide whitespace-nowrap" style="min-width:110px">Importe (S/)</th>
+                <th class="text-center px-4 py-3 font-semibold text-gray-600 text-xs uppercase tracking-wide whitespace-nowrap" style="min-width:90px">Personas</th>
+                <th class="text-center px-4 py-3 font-semibold text-gray-600 text-xs uppercase tracking-wide whitespace-nowrap" style="min-width:90px">GLP/dia</th>
+                <th class="text-center px-4 py-3 font-semibold text-gray-600 text-xs uppercase tracking-wide whitespace-nowrap" style="min-width:80px">Dias</th>
+                <th class="text-right px-4 py-3 font-semibold text-gray-600 text-xs uppercase tracking-wide whitespace-nowrap" style="min-width:100px">Total fila</th>
+                <th class="w-10 px-2 py-3"></th>
+              </tr>
+            </thead>
+            <tbody formArrayName="lines">
+              @for (lineCtrl of lines.controls; track lineCtrl; let i = $index) {
+              <tr [formGroupName]="i" class="border-b border-gray-100 hover:bg-gray-50/50 transition-colors group">
+
+                <!-- Categoria -->
+                <td class="px-3 py-2.5 align-middle">
+                  <select
+                    formControlName="categoryId"
+                    class="w-full h-9 px-2.5 rounded-lg border text-sm text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-primary/30 transition-shadow"
+                    [class.border-red-400]="$any(lineCtrl).get('categoryId')?.invalid && $any(lineCtrl).get('categoryId')?.touched"
+                    [class.border-gray-300]="!($any(lineCtrl).get('categoryId')?.invalid && $any(lineCtrl).get('categoryId')?.touched)"
+                  >
+                    <option value="">—</option>
+                    @for (c of categories(); track c._id) {
+                    <option [value]="c._id">{{ c.name }}</option>
+                    }
+                  </select>
+                </td>
+
+                <!-- Detalle -->
+                <td class="px-3 py-2.5 align-middle">
+                  <input
+                    type="text"
+                    formControlName="detalle"
+                    placeholder="Descripcion opcional…"
+                    class="w-full h-9 px-2.5 rounded-lg border border-gray-300 text-sm text-gray-900 bg-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary/30 transition-shadow"
+                  />
+                </td>
+
+                <!-- Importe -->
+                <td class="px-3 py-2.5 align-middle">
+                  <input
+                    type="number"
+                    formControlName="importe"
+                    min="0"
+                    step="0.01"
+                    class="w-full h-9 px-2.5 rounded-lg border border-gray-300 text-sm text-gray-900 bg-white text-right focus:outline-none focus:ring-2 focus:ring-primary/30 transition-shadow"
+                  />
+                </td>
+
+                <!-- Personas -->
+                <td class="px-3 py-2.5 align-middle">
+                  <input
+                    type="number"
+                    formControlName="peopleCount"
+                    min="1"
+                    step="1"
+                    class="w-full h-9 px-2.5 rounded-lg border border-gray-300 text-sm text-gray-900 bg-white text-center focus:outline-none focus:ring-2 focus:ring-primary/30 transition-shadow"
+                  />
+                </td>
+
+                <!-- GLP/dia -->
+                <td class="px-3 py-2.5 align-middle">
+                  <input
+                    type="number"
+                    formControlName="glpPerDay"
+                    min="0"
+                    step="0.01"
+                    class="w-full h-9 px-2.5 rounded-lg border border-gray-300 text-sm text-gray-900 bg-white text-center focus:outline-none focus:ring-2 focus:ring-primary/30 transition-shadow"
+                  />
+                </td>
+
+                <!-- Dias -->
+                <td class="px-3 py-2.5 align-middle">
+                  <input
+                    type="number"
+                    formControlName="days"
+                    min="1"
+                    step="1"
+                    class="w-full h-9 px-2.5 rounded-lg border border-gray-300 text-sm text-gray-900 bg-white text-center focus:outline-none focus:ring-2 focus:ring-primary/30 transition-shadow"
+                  />
+                </td>
+
+                <!-- Total fila -->
+                <td class="px-4 py-2.5 align-middle text-right">
+                  <span class="text-sm font-semibold text-gray-900 whitespace-nowrap">
+                    S/ {{ lineTotal($any(lineCtrl)) | number:'1.2-2' }}
+                  </span>
+                </td>
+
+                <!-- Eliminar -->
+                <td class="px-2 py-2.5 align-middle text-center">
+                  @if (lines.length > 1) {
+                  <button
+                    type="button"
+                    (click)="removeLine(i)"
+                    class="w-7 h-7 rounded-lg flex items-center justify-center text-gray-300 hover:text-red-500 hover:bg-red-50 transition-colors opacity-0 group-hover:opacity-100"
+                    title="Eliminar fila"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                  }
+                </td>
+              </tr>
+              }
+            </tbody>
+
+            <!-- Fila total -->
+            <tfoot>
+              <tr class="bg-gray-50 border-t-2 border-gray-200">
+                <td colspan="6" class="px-4 py-3 text-right text-sm font-semibold text-gray-600 uppercase tracking-wide">
+                  Total general
+                </td>
+                <td class="px-4 py-3 text-right">
+                  <span class="text-base font-bold text-gray-900">S/ {{ totalGeneral() | number:'1.2-2' }}</span>
+                </td>
+                <td class="px-2 py-3"></td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      </div>
+
+    </form>
+
+  </div>
+
+  <!-- Mobile footer -->
+  <div class="sm:hidden sticky bottom-0 bg-white border-t border-gray-200 px-4 py-3 flex items-center justify-between gap-3 shadow-lg">
+    <div>
+      <p class="text-xs text-gray-400">Total</p>
+      <p class="text-base font-bold text-gray-900">S/ {{ totalGeneral() | number:'1.2-2' }}</p>
+    </div>
+    <button
+      type="button"
+      (click)="submit()"
+      [disabled]="submitting() || loading()"
+      class="flex-1 max-w-xs py-2.5 bg-primary text-white text-sm font-semibold rounded-xl hover:bg-primary/90 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+    >
+      @if (submitting()) {
+        Enviando...
+      } @else {
+        {{ isResubmit ? 'Corregir y reenviar' : 'Enviar solicitud' }}
+      }
+    </button>
+  </div>
+
+  }
+</div>

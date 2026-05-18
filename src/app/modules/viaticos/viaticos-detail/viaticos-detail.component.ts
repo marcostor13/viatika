@@ -280,6 +280,7 @@ export class ViaticosDetailComponent implements OnInit {
 
       const tableRows = lines.map((ln) => [
         catName(ln),
+        ln.detalle ?? '',
         `S/ ${ln.importe.toFixed(2)}`,
         String(ln.peopleCount),
         ln.glpPerDay > 0 ? ln.glpPerDay.toFixed(2) : '—',
@@ -290,13 +291,13 @@ export class ViaticosDetailComponent implements OnInit {
       autoTable(doc, {
         startY: tableY,
         margin: { left: M, right: M },
-        head: [['Viáticos', 'Importe', 'Cantidad\nde personas', 'Cantidad combustible\nGLP x dia', 'Cantidad\nde días', 'Total']],
+        head: [['Viáticos', 'Detalle', 'Importe', 'Cantidad\nde personas', 'Combustible\nGLP x dia', 'Días', 'Total']],
         body: [
           ...tableRows,
           [
             {
               content: 'TOTAL',
-              colSpan: 5,
+              colSpan: 6,
               styles: { halign: 'right' as const, fontStyle: 'bold' as const, fillColor: DARK_RED, textColor: WHITE },
             },
             {
@@ -312,12 +313,13 @@ export class ViaticosDetailComponent implements OnInit {
         styles: { fontSize: 8.5, cellPadding: 3, textColor: BLACK, lineWidth: 0.2, lineColor: [200, 200, 200] },
         alternateRowStyles: { fillColor: LIGHT },
         columnStyles: {
-          0: { cellWidth: 68 },
-          1: { halign: 'right' as const, cellWidth: 24 },
-          2: { halign: 'center' as const, cellWidth: 24 },
-          3: { halign: 'center' as const, cellWidth: 30 },
-          4: { halign: 'center' as const, cellWidth: 18 },
-          5: { halign: 'right' as const, cellWidth: W - 68 - 24 - 24 - 30 - 18 },
+          0: { cellWidth: 52 },
+          1: { cellWidth: 'auto' },
+          2: { halign: 'right' as const, cellWidth: 22 },
+          3: { halign: 'center' as const, cellWidth: 20 },
+          4: { halign: 'center' as const, cellWidth: 22 },
+          5: { halign: 'center' as const, cellWidth: 14 },
+          6: { halign: 'right' as const, cellWidth: 22 },
         },
       });
 
@@ -353,16 +355,17 @@ export class ViaticosDetailComponent implements OnInit {
       const ws = wb.addWorksheet('Solicitud Viáticos');
 
       ws.columns = [
-        { width: 44 },
-        { width: 17 },
+        { width: 40 },
+        { width: 30 },
+        { width: 16 },
         { width: 20 },
         { width: 24 },
+        { width: 14 },
         { width: 16 },
-        { width: 18 },
       ];
 
       // ── Título ──
-      ws.mergeCells('A1:F1');
+      ws.mergeCells('A1:G1');
       const title = ws.getCell('A1');
       title.value = 'SOLICITUD DE VIÁTICOS';
       title.font = { bold: true, size: 13, color: { argb: WH } };
@@ -373,8 +376,8 @@ export class ViaticosDetailComponent implements OnInit {
 
       // ── Helper: info row ──
       const addInfoRow = (label: string, value: string, rowIdx: number, mergeValue = true) => {
-        const row = ws.addRow([label, value, '', '', '', '']);
-        if (mergeValue) ws.mergeCells(`B${rowIdx}:F${rowIdx}`);
+        const row = ws.addRow([label, value, '', '', '', '', '']);
+        if (mergeValue) ws.mergeCells(`B${rowIdx}:G${rowIdx}`);
         row.height = 18;
         row.eachCell({ includeEmpty: true }, (cell, col) => {
           cell.font = col === 1 ? { bold: true, size: 9.5 } : { size: 9.5 };
@@ -390,7 +393,7 @@ export class ViaticosDetailComponent implements OnInit {
       addInfoRow('Lugar:', place, 6);
 
       // Tiempo presupuestado (row 7, no merge)
-      const timeRow = ws.addRow(['Tiempo presupuestado:', 'Del .....', startFmt, 'Al .....', endFmt, '']);
+      const timeRow = ws.addRow(['Tiempo presupuestado:', 'Del .....', startFmt, 'Al .....', endFmt, '', '']);
       timeRow.height = 18;
       timeRow.eachCell({ includeEmpty: true }, (cell, col) => {
         cell.font = col === 1 ? { bold: true, size: 9.5 } : { size: 9.5 };
@@ -405,8 +408,8 @@ export class ViaticosDetailComponent implements OnInit {
 
       // ── Encabezado tabla (row 10) ──
       const hRow = ws.addRow([
-        'Viáticos', 'Importe', 'Cantidad de personas',
-        'Cantidad combustible GLP x dia', 'Cantidad de días', 'Total',
+        'Viáticos', 'Detalle', 'Importe', 'Cantidad de personas',
+        'Combustible GLP x dia', 'Días', 'Total',
       ]);
       hRow.height = 36;
       hRow.eachCell((cell) => {
@@ -423,6 +426,7 @@ export class ViaticosDetailComponent implements OnInit {
       lines.forEach((ln, i) => {
         const dRow = ws.addRow([
           catName(ln),
+          ln.detalle ?? '',
           ln.importe,
           ln.peopleCount,
           ln.glpPerDay,
@@ -434,12 +438,12 @@ export class ViaticosDetailComponent implements OnInit {
           if (i % 2 === 1) cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: LT } };
           cell.font = { size: 9.5 };
           cell.border = allBorders();
-          if (col === 1) {
+          if (col === 1 || col === 2) {
             cell.alignment = { vertical: 'middle' };
-          } else if (col === 2 || col === 6) {
+          } else if (col === 3 || col === 7) {
             cell.numFmt = numFmt;
             cell.alignment = { horizontal: 'right', vertical: 'middle' };
-          } else if (col === 3 || col === 5) {
+          } else if (col === 4 || col === 6) {
             cell.alignment = { horizontal: 'center', vertical: 'middle' };
           } else {
             cell.numFmt = numFmtPlain;
@@ -450,15 +454,15 @@ export class ViaticosDetailComponent implements OnInit {
 
       // ── Fila TOTAL ──
       const totalRowIdx = 10 + lines.length + 1;
-      const tRow = ws.addRow(['TOTAL', '', '', '', '', a.amount]);
-      ws.mergeCells(`A${totalRowIdx}:E${totalRowIdx}`);
+      const tRow = ws.addRow(['TOTAL', '', '', '', '', '', a.amount]);
+      ws.mergeCells(`A${totalRowIdx}:F${totalRowIdx}`);
       tRow.height = 22;
       tRow.eachCell({ includeEmpty: true }, (cell, col) => {
         cell.font = { bold: true, size: 10, color: { argb: WH } };
         cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: DR } };
         cell.alignment = { horizontal: 'right', vertical: 'middle' };
         cell.border = allBorders('FF5C1515');
-        if (col === 6) cell.numFmt = numFmt;
+        if (col === 7) cell.numFmt = numFmt;
       });
 
       // ── Guardar ──
