@@ -15,6 +15,13 @@
   </div>
 
   @if (user) {
+    <!-- Aviso para Superadministrador -->
+    @if (user.role.name === 'Superadministrador') {
+    <div class="rounded-lg bg-amber-50 border border-amber-200 p-4 mb-6 text-sm text-amber-800">
+      <strong>Acceso total por rol:</strong> Este usuario es Superadministrador y tiene acceso a todos los módulos de la plataforma por su rol. Los permisos configurados aquí no afectan su acceso.
+    </div>
+    }
+
     <!-- Módulos -->
     <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
       <h2 class="text-base font-semibold text-gray-800 mb-1">Acceso a Módulos</h2>
