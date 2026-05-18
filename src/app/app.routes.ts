@@ -191,6 +191,22 @@ export const routes: Routes = [
         canActivate: [AuthColaboradorGuard],
       },
       {
+        path: 'mis-rendiciones/solicitud-viaticos/nueva',
+        loadComponent: () =>
+          import('./modules/mis-rendiciones/solicitud-viaticos/solicitud-viaticos.component').then(
+            (m) => m.SolicitudViaticosComponent
+          ),
+        canActivate: [AuthColaboradorGuard],
+      },
+      {
+        path: 'mis-rendiciones/solicitud-viaticos/:id/editar',
+        loadComponent: () =>
+          import('./modules/mis-rendiciones/solicitud-viaticos/solicitud-viaticos.component').then(
+            (m) => m.SolicitudViaticosComponent
+          ),
+        canActivate: [AuthColaboradorGuard],
+      },
+      {
         path: 'mis-rendiciones/:id/detalle',
         loadComponent: () =>
           import('./modules/mis-rendiciones/rendicion-detail/rendicion-detail.component').then(

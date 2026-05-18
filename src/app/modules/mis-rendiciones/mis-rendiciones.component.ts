@@ -6,7 +6,6 @@ import { NotificationService } from '../../services/notification.service';
 import { IExpenseReport } from '../../interfaces/expense-report.interface';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { CreateRendicionModalComponent } from '../admin-users/user-details/create-rendicion-modal/create-rendicion-modal.component';
-import { SolicitudViaticosModalComponent } from './solicitud-viaticos-modal/solicitud-viaticos-modal.component';
 import { AdvanceService } from '../../services/advance.service';
 import {
   IAdvance,
@@ -17,7 +16,7 @@ import {
 @Component({
   selector: 'app-mis-rendiciones',
   standalone: true,
-  imports: [CommonModule, RouterModule, CreateRendicionModalComponent, SolicitudViaticosModalComponent],
+  imports: [CommonModule, RouterModule, CreateRendicionModalComponent],
   templateUrl: './mis-rendiciones.component.html',
   styleUrls: ['./mis-rendiciones.component.scss']
 })
@@ -33,9 +32,6 @@ export class MisRendicionesComponent implements OnInit {
   myAdvances: IAdvance[] = [];
   isLoading = true;
   showCreateModal = false;
-  showViaticosModal = false;
-  /** Solicitud rechazada que se edita en el modal (Fase 3). */
-  advanceForResubmit: IAdvance | null = null;
   showGuidelines = signal(false);
 
   readonly ADVANCE_STATUS_LABELS = ADVANCE_STATUS_LABELS;
@@ -109,21 +105,11 @@ export class MisRendicionesComponent implements OnInit {
   }
 
   openViaticosModal() {
-    this.advanceForResubmit = null;
-    this.showViaticosModal = true;
+    this.router.navigate(['/mis-rendiciones/solicitud-viaticos/nueva']);
   }
 
   openResubmitAdvance(advance: IAdvance) {
-    this.advanceForResubmit = advance;
-    this.showViaticosModal = true;
-  }
-
-  onViaticosModalClosed(success: boolean) {
-    this.showViaticosModal = false;
-    this.advanceForResubmit = null;
-    if (success) {
-      this.loadMyAdvances();
-    }
+    this.router.navigate(['/mis-rendiciones/solicitud-viaticos', advance._id, 'editar']);
   }
 
   /** Deep link desde correo de rechazo (Fase 3): ?viaticoAdvanceId= */
@@ -133,14 +119,15 @@ export class MisRendicionesComponent implements OnInit {
     if (!id) return;
     const adv = this.myAdvances.find((a) => a._id === id);
     if (adv && (adv.status === 'rejected' || adv.status === 'pending_l1')) {
-      this.openResubmitAdvance(adv);
+      void this.router.navigate(['/mis-rendiciones/solicitud-viaticos', adv._id, 'editar']);
+    } else {
+      void this.router.navigate([], {
+        relativeTo: this.route,
+        queryParams: { viaticoAdvanceId: null },
+        queryParamsHandling: 'merge',
+        replaceUrl: true,
+      });
     }
-    void this.router.navigate([], {
-      relativeTo: this.route,
-      queryParams: { viaticoAdvanceId: null },
-      queryParamsHandling: 'merge',
-      replaceUrl: true,
-    });
   }
 
   advanceProjectLabel(adv: IAdvance): string {
