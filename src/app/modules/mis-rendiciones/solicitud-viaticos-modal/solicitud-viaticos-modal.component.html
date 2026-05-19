@@ -42,7 +42,7 @@
     <form [formGroup]="form" class="px-6 py-5 flex flex-col gap-5 overflow-y-auto">
       <div class="rounded-xl border border-tertiary/10 bg-background/60 p-3">
         <p class="text-xs text-tertiary">
-          Complete lugar, fechas, centro de costo y el detalle por categoría. Los totales por fila se calculan como (Importe + GLP/día) × Días × Personas.
+          Complete lugar, fechas, centro de costo y el detalle por categoría. Con GLP/día: Importe × GLP/día × Días (Personas opcional). Sin GLP: Importe × Personas × Días (GLP/día opcional).
         </p>
       </div>
 
@@ -124,15 +124,15 @@
                     class="w-full h-10 px-2 rounded-xl border border-tertiary/30 bg-background text-right text-sm text-secondary" />
                 </td>
                 <td class="px-3 py-2 align-middle">
-                  <input type="number" formControlName="peopleCount" min="1" step="1"
-                    class="w-full min-w-[4rem] h-10 px-2 rounded-xl border border-tertiary/30 bg-background text-right text-sm text-secondary" />
+                  <input type="number" formControlName="peopleCount" min="0" step="1" placeholder="—"
+                    class="w-full min-w-[4rem] h-10 px-2 rounded-xl border border-tertiary/30 bg-background text-right text-sm text-secondary placeholder:text-tertiary/50" />
                 </td>
                 <td class="px-3 py-2 align-middle">
-                  <input type="number" formControlName="glpPerDay" min="0" step="0.01"
-                    class="w-full h-10 px-2 rounded-xl border border-tertiary/30 bg-background text-right text-sm text-secondary" />
+                  <input type="number" formControlName="glpPerDay" min="0" step="0.01" placeholder="—"
+                    class="w-full h-10 px-2 rounded-xl border border-tertiary/30 bg-background text-right text-sm text-secondary placeholder:text-tertiary/50" />
                 </td>
                 <td class="px-3 py-2 align-middle">
-                  <input type="number" formControlName="days" min="1" step="1"
+                  <input type="number" formControlName="days" min="0" step="1"
                     class="w-full min-w-[4rem] h-10 px-2 rounded-xl border border-tertiary/30 bg-background text-right text-sm text-secondary" />
                 </td>
                 <td class="px-3 py-2 align-middle text-right font-semibold text-secondary whitespace-nowrap">
