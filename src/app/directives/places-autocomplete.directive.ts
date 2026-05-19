@@ -34,6 +34,28 @@ export class PlacesAutocompleteDirective implements AfterViewInit {
       .trim();
   }
 
+  /** Nombre legible: establecimientos por `name`, ciudades/direcciones por `formatted_address`. */
+  private buildDisplayAddress(
+    place: { name?: string; formatted_address?: string; types?: string[] },
+    locationSuffix: string
+  ): string {
+    const name = (place.name || '').trim();
+    const formatted = (place.formatted_address || '').trim();
+    const types = place.types || [];
+    const isEstablishment = types.some((t) =>
+      ['establishment', 'point_of_interest', 'premise', 'subpremise'].includes(t)
+    );
+
+    if (name && (isEstablishment || (formatted && !formatted.startsWith(name)))) {
+      if (locationSuffix && !name.toLowerCase().includes(locationSuffix.toLowerCase())) {
+        return `${name}, ${locationSuffix}`;
+      }
+      return name;
+    }
+
+    return formatted || name || (this.el.nativeElement as HTMLInputElement).value;
+  }
+
   private initAutocomplete() {
     // Session token: agrupa todos los keystrokes + la selección final en
     // 1 sola unidad facturable (~$0.017) en lugar de cobrar por keystroke.
@@ -44,7 +66,7 @@ export class PlacesAutocompleteDirective implements AfterViewInit {
       {
         types: ['geocode', 'establishment'],
         componentRestrictions: { country: this.country },
-        fields: ['formatted_address', 'geometry', 'address_components'],
+        fields: ['name', 'formatted_address', 'geometry', 'address_components', 'types'],
         sessionToken,
       }
     );
@@ -68,14 +90,20 @@ export class PlacesAutocompleteDirective implements AfterViewInit {
         const cleanedProv = this.cleanLocationName(rawProv);
         const useLocality = locality && locality !== cleanedDep && locality !== cleanedProv;
         const distrito = specificDistrict || (useLocality ? locality : '');
+        const cleanedDistrito = this.cleanLocationName(distrito);
+        const locationSuffix = cleanedDistrito || cleanedProv || cleanedDep;
+        const address = this.buildDisplayAddress(place, locationSuffix);
+
+        // Google suele reemplazar el input por la localidad (ej. "Ventanilla"); forzamos el nombre elegido.
+        (this.el.nativeElement as HTMLInputElement).value = address;
 
         this.placeSelected.emit({
-          address: place.formatted_address || this.el.nativeElement.value,
+          address,
           lat: place.geometry.location.lat(),
           lng: place.geometry.location.lng(),
-          departamento: this.cleanLocationName(rawDep),
-          provincia: this.cleanLocationName(rawProv),
-          distrito: this.cleanLocationName(distrito),
+          departamento: cleanedDep,
+          provincia: cleanedProv,
+          distrito: cleanedDistrito,
         });
       }
       sessionToken = new google.maps.places.AutocompleteSessionToken();
