@@ -29,20 +29,12 @@ import {
   IAdvanceLinePayload,
   IAdvance,
 } from '../../../interfaces/advance.interface';
-
-export function computeViaticoLineTotal(
-  importe: number,
-  glpPerDay: number,
-  days: number,
-  peopleCount: number
-): number {
-  const imp = Number(importe) || 0;
-  const glp = Number(glpPerDay) || 0;
-  const d = Number(days) || 0;
-  const p = Number(peopleCount) || 0;
-  const raw = glp > 0 ? imp * glp * d : imp * p * d;
-  return Math.round(raw * 100) / 100;
-}
+import {
+  coerceViaticoLineNumber,
+  computeViaticoLineTotal,
+  optionalViaticoLineNumber,
+  validateViaticoLineFields,
+} from '../viatico-line.util';
 
 @Component({
   selector: 'app-solicitud-viaticos',
@@ -187,8 +179,8 @@ export class SolicitudViaticosComponent implements OnInit {
       categoryId: ['', Validators.required],
       detalle: [''],
       importe: [null, [Validators.min(0)]],
-      peopleCount: [null, [Validators.min(0)]],
-      glpPerDay: [null, [Validators.min(0)]],
+      peopleCount: [null],
+      glpPerDay: [null],
       days: [null, [Validators.min(0)]],
     });
   }
@@ -232,22 +224,41 @@ export class SolicitudViaticosComponent implements OnInit {
     this.router.navigate(['/mis-rendiciones']);
   }
 
-  submit(): void {
+  private normalizeLineNumericFields(): void {
     for (let i = 0; i < this.lines.length; i++) {
       const g = this.lines.at(i) as FormGroup;
       const v = g.value;
-      g.patchValue({
-        importe: v.importe ?? 0,
-        peopleCount: v.peopleCount ?? 0,
-        glpPerDay: v.glpPerDay ?? 0,
-        days: v.days ?? 0,
-      });
+      g.patchValue(
+        {
+          importe: optionalViaticoLineNumber(v.importe),
+          peopleCount: optionalViaticoLineNumber(v.peopleCount),
+          glpPerDay: optionalViaticoLineNumber(v.glpPerDay),
+          days: optionalViaticoLineNumber(v.days),
+        },
+        { emitEvent: false }
+      );
     }
+    this.form.updateValueAndValidity();
+  }
+
+  submit(): void {
+    this.normalizeLineNumericFields();
 
     if (this.form.invalid) {
       this.form.markAllAsTouched();
       this.notifications.show('Complete los campos obligatorios', 'error');
       return;
+    }
+
+    for (let i = 0; i < this.lines.length; i++) {
+      const lineError = validateViaticoLineFields(
+        (this.lines.at(i) as FormGroup).value
+      );
+      if (lineError) {
+        this.form.markAllAsTouched();
+        this.notifications.show(lineError, 'error');
+        return;
+      }
     }
 
     const startStr = this.form.value.startDate as string;
