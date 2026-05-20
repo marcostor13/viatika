@@ -23,6 +23,10 @@ import {
   SingleExpenseAffidavitData,
 } from '../../../services/rendicion-export.service';
 import { SolicitudViaticosModalComponent } from '../solicitud-viaticos-modal/solicitud-viaticos-modal.component';
+import {
+  formatFechaEmisionDdMmYyyy,
+  resolveExpenseFechaEmision,
+} from '../../../utils/fecha-emision.util';
 
 @Component({
   selector: 'app-rendicion-detail',
@@ -476,6 +480,15 @@ export class RendicionDetailComponent implements OnInit {
     return d.toLocaleDateString('es-PE', { day: '2-digit', month: 'short', year: 'numeric' });
   }
 
+  /** Fecha de emisión del comprobante en formato dd/MM/yyyy */
+  formatEmissionDate(raw: string | Date | null | undefined): string {
+    return formatFechaEmisionDdMmYyyy(raw);
+  }
+
+  emissionDateText(exp: Record<string, unknown>): string {
+    return formatFechaEmisionDdMmYyyy(resolveExpenseFechaEmision(exp));
+  }
+
   getExpenseDate(expense: any): string {
     const type = expense?.expenseType;
     if (type === 'planilla_movilidad') {
@@ -483,12 +496,12 @@ export class RendicionDetailComponent implements OnInit {
       if (rows.length === 0) return '-';
       const dates = rows.map((r: any) => r.fecha).filter(Boolean);
       if (dates.length === 0) return '-';
-      return this.formatShortDate([...dates].sort()[0]);
+      return this.formatEmissionDate([...dates].sort()[0]);
     }
     if (type === 'otros_gastos') {
-      return this.formatShortDate(expense?.createdAt);
+      return this.formatEmissionDate(expense?.createdAt);
     }
-    return this.formatShortDate(expense?.fechaEmision);
+    return this.emissionDateText(expense);
   }
 
   getExpenseDescription(expense: any): string {
@@ -1706,10 +1719,7 @@ export class RendicionDetailComponent implements OnInit {
   exportReceiptPdf(expense: Record<string, unknown>): void {
     if (expense['expenseType'] !== 'recibo_caja') return;
     const dataObj = this.getExpenseDataObject(expense);
-    const rawDate = expense['fechaEmision'];
-    const fecha = typeof rawDate === 'string' && rawDate
-      ? new Date(rawDate).toLocaleDateString('es-PE')
-      : new Date().toLocaleDateString('es-PE');
+    const fecha = this.emissionDateText(expense);
     const data: ReceiptExportData = {
       fileBaseName: `recibo_caja_${String(expense['_id'] || 'sin_id')}`,
       collaborator: this.getCollaboratorDisplayName(),
@@ -1729,10 +1739,7 @@ export class RendicionDetailComponent implements OnInit {
   exportReceiptAffidavit(expense: Record<string, unknown>): void {
     if (expense['expenseType'] !== 'recibo_caja') return;
     const dataObj = this.getExpenseDataObject(expense);
-    const rawDate = expense['fechaEmision'];
-    const fecha = typeof rawDate === 'string' && rawDate
-      ? new Date(rawDate).toLocaleDateString('es-PE')
-      : new Date().toLocaleDateString('es-PE');
+    const fecha = this.emissionDateText(expense);
     const client = this.userStateService.getUser()?.client;
     const receiptFields = [
       { label: 'Proveedor', value: String(dataObj['razonSocial'] || '—') },
