@@ -303,6 +303,8 @@ export default class AddInvoiceComponent implements OnInit {
       rucEmisor: [''],
       serie: [''],
       correlativo: [''],
+      comentario: [''],
+      placaVehiculo: [''],
       // Otros gastos
       totalOtros: [null],
       description: [''],
@@ -1011,11 +1013,37 @@ export default class AddInvoiceComponent implements OnInit {
     this.invoiceService.analyzePdf(formData).subscribe({
       next: (res) => {
         this.isLoading.set(false);
-        this.notificationService.show(
-          'Factura PDF analizada correctamente',
-          'success'
-        );
-        this.navigateAfterExpenseSave();
+        if (res && res._id) {
+          let dataObj: any = {};
+          if (res.data) {
+            try {
+              dataObj = typeof res.data === 'string' ? JSON.parse(res.data) : res.data;
+            } catch {}
+          }
+          if (dataObj?.rucEmisor || dataObj?.fechaEmision || dataObj?.serie || dataObj?.correlativo || dataObj?.comentario) {
+            this.form.patchValue({
+              rucEmisor: dataObj.rucEmisor || '',
+              fechaEmision: this.formatDateForInput(dataObj.fechaEmision),
+              serie: dataObj.serie || '',
+              correlativo: dataObj.correlativo || '',
+              comentario: dataObj.comentario || '',
+              placaVehiculo: dataObj.placaVehiculo || '',
+            });
+            this.postOcrInvoiceId.set(res._id);
+            this.postOcrBaseInvoice = res;
+            this.showPostOcrReview.set(true);
+            this.notificationService.show(
+              'Revisa y confirma los datos extraidos por OCR antes de guardar.',
+              'warning'
+            );
+          } else {
+            this.notificationService.show('Factura PDF analizada correctamente', 'success');
+            this.navigateAfterExpenseSave();
+          }
+        } else {
+          this.notificationService.show('Factura PDF analizada correctamente', 'success');
+          this.navigateAfterExpenseSave();
+        }
       },
       error: (error) => {
         this.isLoading.set(false);
@@ -1050,13 +1078,16 @@ export default class AddInvoiceComponent implements OnInit {
               dataObj?.rucEmisor ||
               dataObj?.fechaEmision ||
               dataObj?.serie ||
-              dataObj?.correlativo
+              dataObj?.correlativo ||
+              dataObj?.comentario
             ) {
               this.form.patchValue({
                 rucEmisor: dataObj.rucEmisor || '',
                 fechaEmision: this.formatDateForInput(dataObj.fechaEmision),
                 serie: dataObj.serie || '',
                 correlativo: dataObj.correlativo || '',
+                comentario: dataObj.comentario || '',
+                placaVehiculo: dataObj.placaVehiculo || '',
               });
               this.postOcrInvoiceId.set(res._id);
               this.postOcrBaseInvoice = res;
@@ -1101,6 +1132,11 @@ export default class AddInvoiceComponent implements OnInit {
   confirmPostOcrReview() {
     const invoiceId = this.postOcrInvoiceId();
     if (!invoiceId || !this.postOcrBaseInvoice) return;
+    const comentario = (this.form.get('comentario')?.value || '').trim();
+    if (!comentario) {
+      this.notificationService.show('El campo Comentario es obligatorio.', 'error');
+      return;
+    }
     const formValue = this.form.value;
     let baseData: any = {};
     try {
@@ -1117,6 +1153,8 @@ export default class AddInvoiceComponent implements OnInit {
       fechaEmision: this.formatDateForBackend(formValue.fechaEmision || ''),
       serie: formValue.serie || '',
       correlativo: formValue.correlativo || '',
+      comentario,
+      placaVehiculo: (formValue.placaVehiculo || '').trim() || undefined,
     };
     const updatePayload = {
       proyectId: this.postOcrBaseInvoice.proyectId,
@@ -1125,6 +1163,8 @@ export default class AddInvoiceComponent implements OnInit {
       data: JSON.stringify(dataObj),
       fechaEmision: dataObj.fechaEmision,
       status: this.postOcrBaseInvoice.status,
+      comentario,
+      placaVehiculo: dataObj.placaVehiculo,
     };
 
     this.isLoading.set(true);
