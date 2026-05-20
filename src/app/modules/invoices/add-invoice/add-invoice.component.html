@@ -260,12 +260,39 @@
           class="w-full h-[40px] px-3 rounded-lg border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-primary/20"
         />
       </div>
+      <div class="flex flex-col gap-1">
+        <label for="placaVehiculoOcr" class="text-xs font-medium text-secondary">Placa de Vehículo <span class="text-tertiary font-normal">(si aplica)</span></label>
+        <input
+          id="placaVehiculoOcr"
+          type="text"
+          formControlName="placaVehiculo"
+          placeholder="Ej: ABC-123"
+          class="w-full h-[40px] px-3 rounded-lg border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-primary/20"
+        />
+      </div>
+    </div>
+    <div class="flex flex-col gap-1">
+      <label for="comentarioOcr" class="text-xs font-medium text-secondary">
+        Comentario <span class="text-error">*</span>
+        <span class="text-tertiary font-normal ml-1">(resumen del concepto del comprobante)</span>
+      </label>
+      <textarea
+        id="comentarioOcr"
+        formControlName="comentario"
+        rows="3"
+        placeholder="Ej: Servicio de transporte de carga por Empresa XYZ por S/ 1,000.00."
+        class="w-full px-3 py-2 rounded-lg border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-primary/20 resize-none text-sm"
+        [class.border-error]="!form.get('comentario')?.value?.trim()"
+      ></textarea>
+      @if (!form.get('comentario')?.value?.trim()) {
+      <span class="text-xs text-error">El comentario es obligatorio</span>
+      }
     </div>
     <div class="flex justify-end">
       <button
         type="button"
         (click)="confirmPostOcrReview()"
-        [disabled]="isLoading() || isSunatValidating()"
+        [disabled]="isLoading() || isSunatValidating() || !form.get('comentario')?.value?.trim()"
         class="px-4 py-2 rounded-lg bg-primary text-white text-sm font-semibold hover:bg-primary/90 disabled:opacity-50"
       >
         Confirmar y guardar factura
