@@ -504,7 +504,24 @@ export class RendicionDetailComponent implements OnInit {
     return this.emissionDateText(expense);
   }
 
-  getExpenseDescription(expense: any): string {
+  getExpenseComentario(expense: Record<string, unknown>): string {
+    const top = expense['comentario'];
+    if (typeof top === 'string' && top.trim()) return top.trim();
+    const fromData = this.getExpenseDataObject(expense)['comentario'];
+    if (typeof fromData === 'string' && fromData.trim()) return fromData.trim();
+    return '';
+  }
+
+  getExpensePlaca(expense: Record<string, unknown>): string {
+    const top = expense['placaVehiculo'];
+    if (typeof top === 'string' && top.trim()) return top.trim();
+    const fromData = this.getExpenseDataObject(expense)['placaVehiculo'];
+    if (typeof fromData === 'string' && fromData.trim()) return fromData.trim();
+    return '';
+  }
+
+  /** Concepto original del gasto (no incluye comentario manual). */
+  getExpenseConcepto(expense: any): string {
     const type = expense?.expenseType;
     if (type === 'planilla_movilidad') {
       const firstRow = expense?.mobilityRows?.[0];
@@ -525,6 +542,37 @@ export class RendicionDetailComponent implements OnInit {
         return data.concepto || data.razonSocial || 'N/A';
       } catch { return 'N/A'; }
     }
+    try {
+      const data = typeof expense?.data === 'string' ? JSON.parse(expense.data) : expense?.data || {};
+      return data.razonSocial || 'N/A';
+    } catch { return 'N/A'; }
+  }
+
+  getExpenseDescription(expense: any): string {
+    const type = expense?.expenseType;
+    if (type === 'planilla_movilidad') {
+      const firstRow = expense?.mobilityRows?.[0];
+      return firstRow?.concepto || firstRow?.gestion || `${expense?.mobilityRows?.length || 0} filas`;
+    }
+    if (type === 'otros_gastos') {
+      return expense?.description || 'DJ firmada';
+    }
+    if (type === 'comprobante_caja') {
+      try {
+        const parsed = typeof expense?.description === 'string' ? JSON.parse(expense.description) : null;
+        return parsed?.concepto || 'Comprobante interno';
+      } catch { return 'Comprobante interno'; }
+    }
+    if (type === 'recibo_caja') {
+      try {
+        const data = typeof expense?.data === 'string' ? JSON.parse(expense.data) : expense?.data || {};
+        const comentario = this.getExpenseComentario(expense);
+        if (comentario) return comentario;
+        return data.concepto || data.razonSocial || 'N/A';
+      } catch { return 'N/A'; }
+    }
+    const comentario = this.getExpenseComentario(expense);
+    if (comentario) return comentario;
     try {
       const data = typeof expense?.data === 'string' ? JSON.parse(expense.data) : expense?.data || {};
       return data.razonSocial || 'N/A';
@@ -835,10 +883,15 @@ export class RendicionDetailComponent implements OnInit {
           : '';
       }
 
+      const comentario = this.getExpenseComentario(exp);
+      const placaVehiculo = this.getExpensePlaca(exp);
+      const concepto = this.getExpenseConcepto(exp);
       return {
         tipo: this.getExpenseTypeLabel(exp),
         fecha: this.getExpenseDate(exp),
-        descripcion: this.getExpenseDescription(exp),
+        descripcion: concepto,
+        comentario: comentario || undefined,
+        placaVehiculo: placaVehiculo || undefined,
         monto: Number(exp['total']) || 0,
         estadoComprobante: this.mapExpenseStatusExport(
           typeof exp['status'] === 'string' ? exp['status'] : undefined,

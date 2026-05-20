@@ -1342,6 +1342,16 @@
                 <p class="text-xs text-gray-400">Monto total (extraído)</p>
                 <p class="font-medium text-gray-900 tabular-nums">{{ dataText(exp, 'montoTotal') }}</p>
               </div>
+              <div class="sm:col-span-2">
+                <p class="text-xs text-gray-400">Comentario</p>
+                <p class="font-medium text-gray-900 whitespace-pre-wrap break-words">{{ getExpenseComentario(exp) || '—' }}</p>
+              </div>
+              @if (getExpensePlaca(exp)) {
+              <div>
+                <p class="text-xs text-gray-400">Placa de vehículo</p>
+                <p class="font-medium text-gray-900">{{ getExpensePlaca(exp) }}</p>
+              </div>
+              }
             </div>
           </div>
         </section>
