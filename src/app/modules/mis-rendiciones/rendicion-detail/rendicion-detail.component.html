@@ -1265,7 +1265,7 @@
               <tbody class="divide-y divide-gray-100">
                 @for (row of mobilityRows(exp); track trackMobilityRow($index, row)) {
                 <tr class="hover:bg-gray-50/80">
-                  <td class="px-3 py-2 whitespace-nowrap">{{ formatShortDate($any(row['fecha'])) }}</td>
+                  <td class="px-3 py-2 whitespace-nowrap">{{ formatEmissionDate($any(row['fecha'])) }}</td>
                   <td class="px-3 py-2 max-w-[200px] break-words">{{ row['concepto'] || '—' }}</td>
                   <td class="px-3 py-2 text-right tabular-nums font-medium">{{ mobilityRowTotal(row) | number:'1.2-2' }}</td>
                   <td class="px-3 py-2 hidden lg:table-cell break-words">{{ row['clienteProveedor'] || '—' }}</td>
@@ -1332,7 +1332,7 @@
               </div>
               <div>
                 <p class="text-xs text-gray-400">Fecha emisión</p>
-                <p class="font-medium text-gray-900">{{ dataText(exp, 'fechaEmision') }}</p>
+                <p class="font-medium text-gray-900">{{ emissionDateText(exp) }}</p>
               </div>
               <div>
                 <p class="text-xs text-gray-400">Moneda</p>
@@ -1342,6 +1342,16 @@
                 <p class="text-xs text-gray-400">Monto total (extraído)</p>
                 <p class="font-medium text-gray-900 tabular-nums">{{ dataText(exp, 'montoTotal') }}</p>
               </div>
+              <div class="sm:col-span-2">
+                <p class="text-xs text-gray-400">Comentario</p>
+                <p class="font-medium text-gray-900 whitespace-pre-wrap break-words">{{ getExpenseComentario(exp) || '—' }}</p>
+              </div>
+              @if (getExpensePlaca(exp)) {
+              <div>
+                <p class="text-xs text-gray-400">Placa de vehículo</p>
+                <p class="font-medium text-gray-900">{{ getExpensePlaca(exp) }}</p>
+              </div>
+              }
             </div>
           </div>
         </section>

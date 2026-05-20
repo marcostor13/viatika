@@ -19,6 +19,8 @@ export interface RendicionExportComprobanteRow {
   estadoComprobante: string;
   proveedor?: string;
   numeroDocumento?: string;
+  comentario?: string;
+  placaVehiculo?: string;
 }
 
 export interface RendicionExportAnticipoRow {
@@ -215,26 +217,28 @@ export class RendicionExportService {
       { width: 12 }, // Fecha
       { width: 16 }, // Tipo
       { width: 18 }, // No Doc
-      { width: 30 }, // Proveedor
-      { width: 35 }, // Concepto
+      { width: 28 }, // Proveedor
+      { width: 28 }, // Concepto
+      { width: 32 }, // Comentario
+      { width: 14 }, // Placa
       { width: 12 }, // Ingresos
       { width: 12 }, // Gastos
     ];
 
     // Title Block
-    ws.mergeCells('A4:H4');
+    ws.mergeCells('A4:J4');
     const titleCell = ws.getCell('A4');
     titleCell.value = 'RENDICIÓN DE VIÁTICOS';
     titleCell.font = { bold: true, size: 12 };
     titleCell.alignment = { horizontal: 'center' };
 
-    ws.mergeCells('A5:H5');
+    ws.mergeCells('A5:J5');
     const subtitleCell = ws.getCell('A5');
     subtitleCell.value = `PROYECTO:\n${data.titulo}`;
     subtitleCell.font = { size: 10 };
     subtitleCell.alignment = { horizontal: 'center', wrapText: true };
 
-    ws.mergeCells('A7:H7');
+    ws.mergeCells('A7:J7');
     const dateCell = ws.getCell('A7');
     if (data.startDate && data.endDate) {
       dateCell.value = `DEL ${data.startDate} AL ${data.endDate}`;
@@ -265,7 +269,7 @@ export class RendicionExportService {
 
     // Table Header
     let r = 13;
-    const headers = ['Item', 'Fecha\nEmisión', 'Tipo\nde\nDoc.', 'Nº del Documento', 'Proveedor', 'Concepto', 'Ingresos', 'Gastos'];
+    const headers = ['Item', 'Fecha\nEmisión', 'Tipo\nde\nDoc.', 'Nº del Documento', 'Proveedor', 'Concepto', 'Comentario', 'Placa', 'Ingresos', 'Gastos'];
     headers.forEach((h, i) => {
       const c = ws.getCell(r, i + 1);
       c.value = h;
@@ -288,8 +292,8 @@ export class RendicionExportService {
         const c = ws.getCell(r, i + 1);
         c.value = val;
         c.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
-        if (i === 6 || i === 7) { 
-           c.numFmt = '#,##0.00'; 
+        if (i === 8 || i === 9) {
+           c.numFmt = '#,##0.00';
            if (val === 0 || !val) c.value = ''; // Hide 0s to match screenshot
            c.alignment = { horizontal: 'right' };
         } else {
@@ -308,6 +312,8 @@ export class RendicionExportService {
         '',
         'Transferencia',
         data.projectName || a.descripcion,
+        '',
+        '',
         a.monto,
         ''
       ]);
@@ -322,7 +328,9 @@ export class RendicionExportService {
         exp.tipo,
         exp.numeroDocumento || '',
         exp.proveedor || '',
-        exp.descripcion,
+        exp.descripcion || '',
+        exp.comentario || '',
+        exp.placaVehiculo || '',
         '',
         exp.monto
       ]);
@@ -332,22 +340,22 @@ export class RendicionExportService {
     // Fill some empty rows to make it look like a complete table (min 5 rows)
     const minRows = Math.max(5, itemIndex);
     while (itemIndex <= minRows) {
-      addDataRow([itemIndex++, '', '', '', '', '', '', '']);
+      addDataRow([itemIndex++, '', '', '', '', '', '', '', '', '']);
     }
 
     // Totals row
-    ws.mergeCells(r, 1, r, 6);
-    let cTotalId = ws.getCell(r, 6);
+    ws.mergeCells(r, 1, r, 8);
+    let cTotalId = ws.getCell(r, 8);
     cTotalId.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
-    
-    const cIng = ws.getCell(r, 7);
+
+    const cIng = ws.getCell(r, 9);
     cIng.value = sumIngresos;
     cIng.font = { color: { argb: 'FFFFFFFF' } };
     cIng.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: RED_HEADER } };
     cIng.numFmt = '#,##0.00';
     cIng.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
-    
-    const cGas = ws.getCell(r, 8);
+
+    const cGas = ws.getCell(r, 10);
     cGas.value = sumGastos;
     cGas.font = { color: { argb: 'FFFFFFFF' } };
     cGas.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: RED_HEADER } };
@@ -506,6 +514,8 @@ export class RendicionExportService {
         '',
         'Transferencia',
         data.projectName || a.descripcion,
+        '',
+        '',
         a.monto.toFixed(2),
         ''
       ]);
@@ -519,7 +529,9 @@ export class RendicionExportService {
         exp.tipo,
         exp.numeroDocumento || '',
         exp.proveedor || '',
-        exp.descripcion,
+        exp.descripcion || '',
+        exp.comentario || '',
+        exp.placaVehiculo || '',
         '',
         (exp.monto || 0).toFixed(2)
       ]);
@@ -528,25 +540,27 @@ export class RendicionExportService {
 
     const minRows = Math.max(5, itemIndex);
     while (itemIndex <= minRows) {
-      bodyData.push([itemIndex++, '', '', '', '', '', '', '']);
+      bodyData.push([itemIndex++, '', '', '', '', '', '', '', '', '']);
     }
 
     autoTable(doc, {
       startY: y,
-      head: [['Item', 'Fecha\nEmisión', 'Tipo\nde\nDoc.', 'Nº del Documento', 'Proveedor', 'Concepto', 'Ingresos', 'Gastos']],
+      head: [['Item', 'Fecha\nEmisión', 'Tipo\nde\nDoc.', 'Nº del Documento', 'Proveedor', 'Concepto', 'Comentario', 'Placa', 'Ingresos', 'Gastos']],
       body: bodyData,
       theme: 'grid',
       headStyles: { fillColor: [145, 47, 44], textColor: 255, halign: 'center', valign: 'middle' },
-      styles: { fontSize: 8, cellPadding: 2, textColor: 0 },
+      styles: { fontSize: 7, cellPadding: 2, textColor: 0 },
       columnStyles: {
-        0: { halign: 'center', cellWidth: 12 },
-        1: { halign: 'center', cellWidth: 20 },
-        2: { halign: 'center', cellWidth: 25 },
-        3: { cellWidth: 35 },
-        4: { cellWidth: 50 },
-        5: { cellWidth: 'auto' },
-        6: { halign: 'right', cellWidth: 20 },
-        7: { halign: 'right', cellWidth: 20 },
+        0: { halign: 'center', cellWidth: 9 },
+        1: { halign: 'center', cellWidth: 17 },
+        2: { halign: 'center', cellWidth: 18 },
+        3: { cellWidth: 24 },
+        4: { cellWidth: 32 },
+        5: { cellWidth: 38 },
+        6: { cellWidth: 'auto' },
+        7: { halign: 'center', cellWidth: 16 },
+        8: { halign: 'right', cellWidth: 16 },
+        9: { halign: 'right', cellWidth: 16 },
       },
       margin: { left: 14, right: 14 }
     });
@@ -554,13 +568,15 @@ export class RendicionExportService {
     y = afterTable(doc);
 
     // Totals row (simulated below table)
+    const rightEdge = doc.internal.pageSize.getWidth() - 14;
+    const colW = 16;
     doc.setFillColor(145, 47, 44);
-    doc.rect(doc.internal.pageSize.getWidth() - 14 - 40, y, 20, 6, 'F');
-    doc.rect(doc.internal.pageSize.getWidth() - 14 - 20, y, 20, 6, 'F');
+    doc.rect(rightEdge - colW * 2, y, colW, 6, 'F');
+    doc.rect(rightEdge - colW, y, colW, 6, 'F');
     doc.setTextColor(255, 255, 255);
     doc.setFont("helvetica", "normal");
-    doc.text(sumIngresos.toFixed(2), doc.internal.pageSize.getWidth() - 14 - 22, y + 4, { align: 'right' });
-    doc.text(sumGastos.toFixed(2), doc.internal.pageSize.getWidth() - 14 - 2, y + 4, { align: 'right' });
+    doc.text(sumIngresos.toFixed(2), rightEdge - colW - 2, y + 4, { align: 'right' });
+    doc.text(sumGastos.toFixed(2), rightEdge - 2, y + 4, { align: 'right' });
     doc.setTextColor(0, 0, 0);
 
     y += 12;
