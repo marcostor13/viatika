@@ -185,7 +185,10 @@ export class UserPermissionsComponent implements OnInit {
     this.saving = true;
     this.adminUsersService.updatePermissions(this.id, this.permissions).subscribe({
       next: () => {
-        this.notification.show('Permisos actualizados correctamente', 'success');
+        this.notification.show(
+          'Permisos actualizados. El usuario debe volver a iniciar sesión para que los cambios se reflejen.',
+          'success'
+        );
         this.saving = false;
       },
       error: () => {

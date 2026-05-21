@@ -87,7 +87,7 @@
         <span class="font-medium">Colaboradores</span>
       </a>
       }
-      @if (isAdmin() && hasModulePermission('rendiciones')) {
+      @if ((isAdmin() || isContabilidadInCompany()) && hasModulePermission('rendiciones')) {
       <a
         [routerLink]="['/rendiciones']"
         routerLinkActive="bg-primary text-white"
@@ -498,7 +498,7 @@
           <span class="font-medium text-lg">Colaboradores</span>
         </a>
         }
-        @if (isAdmin() && hasModulePermission('rendiciones')) {
+        @if ((isAdmin() || isContabilidadInCompany()) && hasModulePermission('rendiciones')) {
         <a
           [routerLink]="['/rendiciones']"
           (click)="toggleSidebar()"

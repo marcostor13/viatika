@@ -73,9 +73,10 @@
              <span class="px-4 py-2 rounded-full text-sm font-bold"
               [ngClass]="{
                 'bg-yellow-100 text-yellow-800': invoice.status === 'pending',
-                'bg-green-100 text-green-800': invoice.status === 'approved' || invoice.status === 'sunat_valid',
-                'bg-red-100 text-red-800': invoice.status === 'rejected' || invoice.status === 'sunat_error',
-                'bg-blue-100 text-blue-800': invoice.status === 'sunat_valid_not_ours'
+                'bg-green-100 text-green-800': invoice.status === 'approved' || invoice.status === 'sunat_valid' || invoice.status === 'VALIDO_ACEPTADO',
+                'bg-red-100 text-red-800': invoice.status === 'rejected' || invoice.status === 'sunat_error' || invoice.status === 'ERROR_SUNAT',
+                'bg-amber-100 text-amber-800': invoice.status === 'sunat_valid_not_ours' || invoice.status === 'VALIDO_NO_PERTENECE',
+                'bg-gray-100 text-gray-800': invoice.status === 'sunat_not_found' || invoice.status === 'NO_ENCONTRADO'
               }"
              >
                {{ getStatusName(invoice.status) }}
