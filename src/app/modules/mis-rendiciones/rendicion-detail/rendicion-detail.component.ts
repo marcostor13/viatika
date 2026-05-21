@@ -569,13 +569,9 @@ export class RendicionDetailComponent implements OnInit {
     if (type === 'recibo_caja') {
       try {
         const data = typeof expense?.data === 'string' ? JSON.parse(expense.data) : expense?.data || {};
-        const comentario = this.getExpenseComentario(expense);
-        if (comentario) return comentario;
-        return data.concepto || data.razonSocial || 'N/A';
+        return data.razonSocial || data.concepto || 'N/A';
       } catch { return 'N/A'; }
     }
-    const comentario = this.getExpenseComentario(expense);
-    if (comentario) return comentario;
     try {
       const data = typeof expense?.data === 'string' ? JSON.parse(expense.data) : expense?.data || {};
       return data.razonSocial || 'N/A';
