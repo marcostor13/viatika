@@ -75,9 +75,13 @@ export class InvoiceDetailComponent implements OnInit {
       'approved': 'Aprobada',
       'rejected': 'Rechazada',
       'sunat_valid': 'Válida',
-      'sunat_valid_not_ours': 'Válida (Externa)',
+      'valido_aceptado': 'Válida',
+      'sunat_valid_not_ours': 'No pertenece a la empresa',
+      'valido_no_pertenece': 'No pertenece a la empresa',
       'sunat_not_found': 'No Encontrada',
-      'sunat_error': 'Error SUNAT'
+      'no_encontrado': 'No Encontrada',
+      'sunat_error': 'Error SUNAT',
+      'error_sunat': 'Error SUNAT',
     };
     return states[status.toLowerCase()] || status;
   }

@@ -396,7 +396,7 @@ export default class InvoicesComponent implements OnInit {
         return 'Válida';
       case 'sunat_valid_not_ours':
       case 'VALIDO_NO_PERTENECE':
-        return 'Válida, Externa';
+        return 'No pertenece a la empresa';
       case 'sunat_not_found':
       case 'NO_ENCONTRADO':
         return 'No Encontrado SUNAT';
@@ -447,7 +447,7 @@ export default class InvoicesComponent implements OnInit {
         return 'Factura Válida y emitida a la empresa';
       case 'sunat_valid_not_ours':
       case 'VALIDO_NO_PERTENECE':
-        return 'Factura válida pero no ha sido emitida a la empresa';
+        return 'El comprobante no fue emitido a esta empresa';
       case 'sunat_error':
       case 'ERROR_SUNAT':
         return 'Error en el servicio de sunat';

@@ -288,6 +288,12 @@ export class InvoicesService {
     return this.http.get<{ file: string; filename: string }>(`${this.projectUrl}/bulk-import/template`);
   }
 
+  getRucInfo(ruc: string): Observable<{ razonSocial: string | null; fuente: string }> {
+    return this.http.get<{ razonSocial: string | null; fuente: string }>(
+      `${this.url}/ruc-info/${ruc}`
+    );
+  }
+
   validateWithSunatData(
     id: string,
     data: {

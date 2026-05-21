@@ -89,7 +89,11 @@ export type InvoiceStatus =
   | 'sunat_valid'
   | 'sunat_valid_not_ours'
   | 'sunat_not_found'
-  | 'sunat_error';
+  | 'sunat_error'
+  | 'VALIDO_ACEPTADO'
+  | 'VALIDO_NO_PERTENECE'
+  | 'NO_ENCONTRADO'
+  | 'ERROR_SUNAT';
 
 export interface IInvoiceResponse {
   _id: string;
