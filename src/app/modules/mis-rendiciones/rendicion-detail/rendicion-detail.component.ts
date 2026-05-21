@@ -797,6 +797,23 @@ export class RendicionDetailComponent implements OnInit {
     return undefined;
   }
 
+  getCollaboratorDni(): string | undefined {
+    const u = this.report?.userId;
+    if (u && typeof u === 'object' && 'dni' in u) {
+      return (u as { dni?: string }).dni;
+    }
+    return undefined;
+  }
+
+  getCollaboratorAccountNumber(): string | undefined {
+    const u = this.report?.userId;
+    if (u && typeof u === 'object' && 'bankAccount' in u) {
+      const ba = (u as { bankAccount?: { accountNumber?: string; cci?: string } }).bankAccount;
+      return ba?.cci || ba?.accountNumber;
+    }
+    return undefined;
+  }
+
   getApprovedByName(): string {
     const u = this.report?.approvedBy;
     if (u == null) return '—';
@@ -944,8 +961,8 @@ export class RendicionDetailComponent implements OnInit {
       anticipos,
       settlement: this.getSettlementForExport(),
       // New fields
-      accountNumber: this.report.accountNumber,
-      idDocument: this.report.idDocument,
+      accountNumber: this.report.accountNumber || this.getCollaboratorAccountNumber(),
+      idDocument: this.report.idDocument || this.getCollaboratorDni(),
       peopleNames: this.report.peopleNames,
       location: this.report.location,
       startDate: this.report.startDate ? new Date(this.report.startDate).toLocaleDateString('es-PE') : undefined,
