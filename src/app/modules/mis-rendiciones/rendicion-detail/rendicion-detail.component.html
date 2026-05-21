@@ -610,7 +610,7 @@
           Comprobante de devolución cargado
         </h3>
         <div class="text-sm text-gray-700 space-y-1 mb-3">
-          <p><span class="text-gray-500">Fecha de depósito:</span> {{ report.returnVoucher.depositDate }}</p>
+          <p><span class="text-gray-500">Fecha de depósito:</span> {{ formatShortDate(report.returnVoucher.depositDate) }}</p>
           @if (report.returnVoucher.bankOrigin) {
             <p><span class="text-gray-500">Banco origen:</span> {{ report.returnVoucher.bankOrigin }}</p>
           }
@@ -736,7 +736,7 @@
                     {{ expense.observado ? 'Observado' : expense.status === 'approved' ? 'Aprobado' : expense.status === 'rejected' ? 'Rechazado' : 'Pendiente' }}
                   </span>
                   <p class="text-base font-semibold text-gray-900 tabular-nums">
-                    {{ expense.total | currency:'S/.' }}
+                    S/ {{ expense.total | number:'1.2-2' }}
                   </p>
                 </div>
               </div>

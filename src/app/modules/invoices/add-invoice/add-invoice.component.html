@@ -1,6 +1,12 @@
 <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between w-full gap-4 p-5">
   <h1 class="text-2xl font-bold text-secondary">
-    @if (id) { Editar factura }
+    @if (id) {
+      @if (expenseType() === 'planilla_movilidad') { Editar Planilla de Movilidad }
+      @else if (expenseType() === 'otros_gastos') { Editar Gasto }
+      @else if (expenseType() === 'recibo_caja') { Editar Recibo de Caja }
+      @else if (expenseType() === 'comprobante_caja') { Editar Comprobante de Caja }
+      @else { Editar factura }
+    }
     @else if (expenseType() === 'planilla_movilidad') { Nueva Planilla de Movilidad }
     @else if (expenseType() === 'otros_gastos') { Nuevo Gasto }
     @else { Agregar factura }
@@ -313,7 +319,7 @@
       <p class="text-sm text-tertiary text-right">{{ percentage() }}%</p>
     </div>
   </div>
-  } @if(id) {
+  } @if(id && expenseType() === 'factura') {
   <div class="bg-quaternary rounded-xl shadow-soft border border-gray-100 p-3 sm:p-6 space-y-6">
     <div class="flex flex-col gap-2">
       <label for="fechaEmision" class="text-sm font-medium text-secondary">Fecha de Emisión</label>
@@ -354,11 +360,21 @@
         placeholder="Ej: 00001234"
       />
     </div>
+    <div class="flex flex-col gap-2">
+      <label for="placaVehiculoEdit" class="text-sm font-medium text-secondary">Placa del vehículo</label>
+      <input
+        id="placaVehiculoEdit"
+        type="text"
+        formControlName="placaVehiculo"
+        placeholder="Opcional"
+        class="w-full h-[42px] px-4 rounded-lg border border-gray-200 bg-background focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-sm"
+      />
+    </div>
   </div>
   }
 
   <!-- ===== PLANILLA DE MOVILIDAD ===== -->
-  @if(!id && expenseType() === 'planilla_movilidad') {
+  @if(expenseType() === 'planilla_movilidad') {
   <div class="bg-quaternary rounded-xl shadow-soft border border-gray-100 p-3 sm:p-6">
     <div class="flex items-center justify-between mb-4">
       <h3 class="text-sm font-semibold text-secondary">Filas de la planilla</h3>
@@ -608,6 +624,7 @@
     }
   </div>
 
+  @if(!id) {
   <!-- Adjunto opcional para la planilla -->
   <div class="bg-quaternary rounded-xl shadow-soft border border-tertiary/20 p-6">
     <div class="flex items-center gap-2 mb-4">
@@ -642,9 +659,10 @@
     </div>
   </div>
   }
+  }
 
   <!-- ===== OTROS GASTOS ===== -->
-  @if(!id && expenseType() === 'otros_gastos') {
+  @if(expenseType() === 'otros_gastos') {
   <div class="bg-quaternary rounded-xl shadow-soft border border-gray-100 p-3 sm:p-6 space-y-5">
     <div class="flex flex-col gap-2">
       <label class="text-sm font-medium text-secondary">Descripción del gasto</label>
@@ -656,6 +674,7 @@
       <input type="number" formControlName="totalOtros" placeholder="0.00" min="0" step="0.01"
         class="w-full h-[42px] px-4 rounded-lg border border-gray-200 bg-background focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-sm" />
     </div>
+    @if(!id) {
     <div class="flex flex-col gap-2">
       <label class="text-sm font-medium text-secondary">Adjunto (opcional)</label>
       <div class="bg-background border-2 border-dashed border-tertiary rounded-xl p-6 text-center cursor-pointer hover:border-primary hover:bg-primary/5 transition-all duration-200 group"
@@ -670,8 +689,10 @@
         <input type="file" accept="*/*" (change)="onFileSelected($event)" class="hidden" #fileInputOtros />
       </div>
     </div>
+    }
   </div>
 
+  @if(!id) {
   <!-- Declaración Jurada -->
   <div class="bg-amber-50 rounded-xl border border-amber-200 p-6 space-y-4">
     <div class="flex items-center gap-2 mb-1">
@@ -690,9 +711,10 @@
     </label>
   </div>
   }
+  }
 
   <!-- ===== RECIBO DE CAJA ===== -->
-  @if(!id && expenseType() === 'recibo_caja') {
+  @if(expenseType() === 'recibo_caja') {
   <div class="bg-quaternary rounded-xl shadow-soft border border-gray-100 p-3 sm:p-6 space-y-5">
     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
       <div class="flex flex-col gap-2">
@@ -726,6 +748,7 @@
       <input type="number" min="0" step="0.01" formControlName="receiptMonto"
         class="w-full h-[42px] px-4 rounded-lg border border-gray-200 bg-background focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary/20" />
     </div>
+    @if(!id) {
     <div class="flex flex-col gap-2">
       <label class="text-sm font-medium text-secondary">Adjunto del recibo <span class="text-error">*</span></label>
       <div class="bg-background border-2 border-dashed border-tertiary rounded-xl p-6 text-center cursor-pointer hover:border-primary hover:bg-primary/5 transition-all duration-200 group"
@@ -739,11 +762,12 @@
         <input type="file" accept="*/*" (change)="onFileSelected($event)" class="hidden" #fileInputReceipt />
       </div>
     </div>
+    }
   </div>
   }
 
   <!-- ===== COMPROBANTE DE CAJA ===== -->
-  @if(!id && expenseType() === 'comprobante_caja') {
+  @if(expenseType() === 'comprobante_caja') {
   <div class="bg-quaternary rounded-xl shadow-soft border border-gray-100 p-3 sm:p-6 space-y-5">
     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
       <div class="flex flex-col gap-2">
@@ -771,6 +795,24 @@
       <label class="text-sm font-medium text-secondary">Monto total S/. <span class="text-error">*</span></label>
       <input type="number" min="0" step="0.01" formControlName="voucherMonto"
         class="w-full h-[42px] px-4 rounded-lg border border-gray-200 bg-background focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary/20" />
+    </div>
+  </div>
+  }
+
+  @if(id) {
+  <div class="bg-quaternary rounded-xl shadow-soft border border-gray-100 p-3 sm:p-6">
+    <div class="flex flex-col gap-2">
+      <label for="comentarioEdit" class="text-sm font-medium text-secondary">
+        Comentario / Concepto
+        <span class="text-tertiary font-normal ml-1">(resumen del gasto)</span>
+      </label>
+      <textarea
+        id="comentarioEdit"
+        formControlName="comentario"
+        rows="3"
+        placeholder="Ej: Servicio de transporte de carga..."
+        class="w-full px-3 py-2 rounded-lg border border-gray-200 bg-background focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary/20 resize-none text-sm"
+      ></textarea>
     </div>
   </div>
   }
