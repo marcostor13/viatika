@@ -338,10 +338,7 @@ export default class AddInvoiceComponent implements OnInit {
         if (report && report.projectId) {
           const pId = typeof report.projectId === 'string' ? report.projectId : report.projectId._id;
           this.form.patchValue({ proyectId: pId });
-          const isViatico = Array.isArray((report as any).advanceIds) && (report as any).advanceIds.length > 0;
-          if (!isViatico) {
-            this.form.get('proyectId')?.disable();
-          }
+          this.form.get('proyectId')?.disable();
         }
       },
       error: (err) => console.error('Error loading report project', err)

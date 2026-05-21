@@ -477,7 +477,10 @@ export class RendicionDetailComponent implements OnInit {
       d = new Date(raw);
     }
     if (isNaN(d.getTime())) return raw;
-    return d.toLocaleDateString('es-PE', { day: '2-digit', month: 'short', year: 'numeric' });
+    const dd = String(d.getDate()).padStart(2, '0');
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const yyyy = d.getFullYear();
+    return `${dd}/${mm}/${yyyy}`;
   }
 
   /** Fecha de emisión del comprobante en formato dd/MM/yyyy */
@@ -810,12 +813,10 @@ export class RendicionDetailComponent implements OnInit {
   }
 
   get reportDateRange(): string {
-    const fmt = (d: string) =>
-      new Date(d).toLocaleDateString('es-PE', { day: 'numeric', month: 'long', year: 'numeric' });
     const r = this.report;
     if (!r) return '';
-    if (r.startDate && r.endDate) return `${fmt(r.startDate)} al ${fmt(r.endDate)}`;
-    if (r.startDate) return fmt(r.startDate);
+    if (r.startDate && r.endDate) return `${this.formatShortDate(r.startDate)} al ${this.formatShortDate(r.endDate)}`;
+    if (r.startDate) return this.formatShortDate(r.startDate);
     return '';
   }
 
