@@ -467,6 +467,22 @@ export class RendicionDetailComponent implements OnInit {
     return 'Factura';
   }
 
+  /** Código corto del tipo de documento para reportes (PDF/Excel). */
+  getExpenseTypeCode(expense: any): string {
+    const type = expense?.expenseType;
+    if (type === 'planilla_movilidad') return 'PM';
+    if (type === 'comprobante_caja') return 'CC';
+    if (type === 'recibo_caja') return 'RC';
+    if (type === 'otros_gastos') return 'DJ';
+    const dataObj = this.getExpenseDataObject(expense);
+    const tipoComp = String(dataObj['tipoComprobante'] ?? '').trim();
+    if (tipoComp === '03') return 'BV';
+    if (tipoComp === '12') return 'TK';
+    if (tipoComp === '01') return 'FT';
+    if (type === 'factura' || !type) return 'FT';
+    return 'OT';
+  }
+
   formatShortDate(raw: string | null | undefined): string {
     if (!raw) return '-';
     let d: Date;
@@ -569,13 +585,9 @@ export class RendicionDetailComponent implements OnInit {
     if (type === 'recibo_caja') {
       try {
         const data = typeof expense?.data === 'string' ? JSON.parse(expense.data) : expense?.data || {};
-        const comentario = this.getExpenseComentario(expense);
-        if (comentario) return comentario;
-        return data.concepto || data.razonSocial || 'N/A';
+        return data.razonSocial || data.concepto || 'N/A';
       } catch { return 'N/A'; }
     }
-    const comentario = this.getExpenseComentario(expense);
-    if (comentario) return comentario;
     try {
       const data = typeof expense?.data === 'string' ? JSON.parse(expense.data) : expense?.data || {};
       return data.razonSocial || 'N/A';
@@ -888,7 +900,7 @@ export class RendicionDetailComponent implements OnInit {
       const placaVehiculo = this.getExpensePlaca(exp);
       const concepto = this.getExpenseConcepto(exp);
       return {
-        tipo: this.getExpenseTypeLabel(exp),
+        tipo: this.getExpenseTypeCode(exp),
         fecha: this.getExpenseDate(exp),
         descripcion: concepto,
         comentario: comentario || undefined,
