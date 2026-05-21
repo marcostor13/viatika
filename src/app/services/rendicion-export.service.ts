@@ -218,27 +218,26 @@ export class RendicionExportService {
       { width: 16 }, // Tipo
       { width: 18 }, // No Doc
       { width: 28 }, // Proveedor
-      { width: 28 }, // Concepto
-      { width: 32 }, // Comentario
+      { width: 40 }, // Concepto (incluye comentario)
       { width: 14 }, // Placa
       { width: 12 }, // Ingresos
       { width: 12 }, // Gastos
     ];
 
     // Title Block
-    ws.mergeCells('A4:J4');
+    ws.mergeCells('A4:I4');
     const titleCell = ws.getCell('A4');
     titleCell.value = 'RENDICIÓN DE VIÁTICOS';
     titleCell.font = { bold: true, size: 12 };
     titleCell.alignment = { horizontal: 'center' };
 
-    ws.mergeCells('A5:J5');
+    ws.mergeCells('A5:I5');
     const subtitleCell = ws.getCell('A5');
-    subtitleCell.value = `PROYECTO:\n${data.titulo}`;
+    subtitleCell.value = `PROYECTO:\n${data.titulo || ''}`;
     subtitleCell.font = { size: 10 };
     subtitleCell.alignment = { horizontal: 'center', wrapText: true };
 
-    ws.mergeCells('A7:J7');
+    ws.mergeCells('A7:I7');
     const dateCell = ws.getCell('A7');
     if (data.startDate && data.endDate) {
       dateCell.value = `DEL ${data.startDate} AL ${data.endDate}`;
@@ -269,7 +268,7 @@ export class RendicionExportService {
 
     // Table Header
     let r = 13;
-    const headers = ['Item', 'Fecha\nEmisión', 'Tipo\nde\nDoc.', 'Nº del Documento', 'Proveedor', 'Concepto', 'Comentario', 'Placa', 'Ingresos', 'Gastos'];
+    const headers = ['Item', 'Fecha\nEmisión', 'Tipo\nde\nDoc.', 'Nº del Documento', 'Proveedor', 'Concepto', 'Placa', 'Ingresos', 'Gastos'];
     headers.forEach((h, i) => {
       const c = ws.getCell(r, i + 1);
       c.value = h;
@@ -292,12 +291,12 @@ export class RendicionExportService {
         const c = ws.getCell(r, i + 1);
         c.value = val;
         c.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
-        if (i === 8 || i === 9) {
+        if (i === 7 || i === 8) {
            c.numFmt = '#,##0.00';
            if (val === 0 || !val) c.value = ''; // Hide 0s to match screenshot
            c.alignment = { horizontal: 'right' };
         } else {
-           c.alignment = { horizontal: i === 0 || i === 1 || i === 2 ? 'center' : 'left' };
+           c.alignment = { horizontal: i === 0 || i === 1 || i === 2 ? 'center' : 'left', wrapText: true };
         }
       });
       r++;
@@ -311,7 +310,6 @@ export class RendicionExportService {
         '',
         '',
         'Transferencia',
-        data.projectName || a.descripcion,
         '',
         '',
         a.monto,
@@ -328,8 +326,7 @@ export class RendicionExportService {
         exp.tipo,
         exp.numeroDocumento || '',
         exp.proveedor || '',
-        exp.descripcion || '',
-        exp.comentario || '',
+        exp.comentario || exp.descripcion || '',
         exp.placaVehiculo || '',
         '',
         exp.monto
@@ -340,27 +337,46 @@ export class RendicionExportService {
     // Fill some empty rows to make it look like a complete table (min 5 rows)
     const minRows = Math.max(5, itemIndex);
     while (itemIndex <= minRows) {
-      addDataRow([itemIndex++, '', '', '', '', '', '', '', '', '']);
+      addDataRow([itemIndex++, '', '', '', '', '', '', '', '']);
     }
 
     // Totals row
-    ws.mergeCells(r, 1, r, 8);
-    let cTotalId = ws.getCell(r, 8);
+    ws.mergeCells(r, 1, r, 7);
+    let cTotalId = ws.getCell(r, 7);
     cTotalId.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
 
-    const cIng = ws.getCell(r, 9);
+    const cIng = ws.getCell(r, 8);
     cIng.value = sumIngresos;
     cIng.font = { color: { argb: 'FFFFFFFF' } };
     cIng.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: RED_HEADER } };
     cIng.numFmt = '#,##0.00';
     cIng.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
 
-    const cGas = ws.getCell(r, 10);
+    const cGas = ws.getCell(r, 9);
     cGas.value = sumGastos;
     cGas.font = { color: { argb: 'FFFFFFFF' } };
     cGas.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: RED_HEADER } };
     cGas.numFmt = '#,##0.00';
     cGas.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
+    r += 1;
+
+    // Indicador POR REEMBOLSAR / POR RENDIR según el saldo
+    const diferencia = sumIngresos - sumGastos;
+    if (Math.abs(diferencia) > 0.005) {
+      const esReembolso = diferencia < 0;
+      ws.mergeCells(r, 1, r, 7);
+      const cLabel = ws.getCell(r, 7);
+      cLabel.value = esReembolso ? 'POR REEMBOLSAR' : 'POR RENDIR';
+      cLabel.font = { bold: true };
+      cLabel.alignment = { horizontal: 'right' };
+      ws.mergeCells(r, 8, r, 9);
+      const cMonto = ws.getCell(r, 8);
+      cMonto.value = Math.abs(diferencia);
+      cMonto.numFmt = '#,##0.00';
+      cMonto.alignment = { horizontal: 'right' };
+      cMonto.font = { bold: true };
+      r++;
+    }
     r += 2;
 
     r += 1;
@@ -393,32 +409,6 @@ export class RendicionExportService {
       });
       r++;
     }
-
-    ws.getCell(r, 1).value = 'RESUMEN DE RENDICIÓN';
-    ws.getCell(r, 1).font = { bold: true };
-    r++;
-    ws.getCell(r, 1).value = 'Presupuesto asignado:';
-    ws.getCell(r, 4).value = data.presupuesto;
-    ws.getCell(r, 4).numFmt = '#,##0.00';
-    r++;
-    ws.getCell(r, 1).value = 'Total gastado:';
-    ws.getCell(r, 4).value = data.totalGastado;
-    ws.getCell(r, 4).numFmt = '#,##0.00';
-    r++;
-    ws.getCell(r, 1).value = 'Saldo sin gastar:';
-    ws.getCell(r, 4).value = data.saldoLibre;
-    ws.getCell(r, 4).numFmt = '#,##0.00';
-    r++;
-    if (data.approvedByName && data.approvedByName !== '—') {
-      ws.getCell(r, 1).value = 'Aprobado por:';
-      ws.getCell(r, 4).value = data.approvedByName;
-      r++;
-    }
-    ws.getCell(r, 1).value = 'Estado:';
-    ws.getCell(r, 4).value = data.estado;
-    r++;
-    ws.getCell(r, 1).value = 'Fecha generación:';
-    ws.getCell(r, 4).value = data.fechaGeneracion;
 
     r += 2;
 
@@ -472,7 +462,7 @@ export class RendicionExportService {
     doc.text('RENDICIÓN DE VIÁTICOS', doc.internal.pageSize.getWidth() / 2, 25, { align: 'center' });
     doc.setFont("helvetica", "normal");
     doc.setFontSize(10);
-    doc.text(`PROYECTO:\n${data.titulo}`, doc.internal.pageSize.getWidth() / 2, 30, { align: 'center' });
+    doc.text(`PROYECTO:\n${data.titulo || ''}`, doc.internal.pageSize.getWidth() / 2, 30, { align: 'center' });
     
     if (data.startDate && data.endDate) {
       doc.setFont("helvetica", "bold");
@@ -486,14 +476,10 @@ export class RendicionExportService {
     y += 5;
     doc.text(`Localidad:    ${data.location || ''}`, 14, y);
     y += 5;
-    if (data.idDocument) {
-      doc.text(`DNI:          ${data.idDocument}`, 14, y);
-      y += 5;
-    }
-    if (data.accountNumber) {
-      doc.text(`Cta / CCI:    ${data.accountNumber}`, 14, y);
-      y += 5;
-    }
+    doc.text(`DNI:          ${data.idDocument || ''}`, 14, y);
+    y += 5;
+    doc.text(`Cta / CCI:    ${data.accountNumber || ''}`, 14, y);
+    y += 5;
     if (data.peopleNames && data.peopleNames.length > 0) {
       doc.text(`Personas:     ${data.peopleNames.join(', ')}`, 14, y);
       y += 5;
@@ -513,7 +499,6 @@ export class RendicionExportService {
         '',
         '',
         'Transferencia',
-        data.projectName || a.descripcion,
         '',
         '',
         a.monto.toFixed(2),
@@ -529,8 +514,7 @@ export class RendicionExportService {
         exp.tipo,
         exp.numeroDocumento || '',
         exp.proveedor || '',
-        exp.descripcion || '',
-        exp.comentario || '',
+        exp.comentario || exp.descripcion || '',
         exp.placaVehiculo || '',
         '',
         (exp.monto || 0).toFixed(2)
@@ -540,12 +524,12 @@ export class RendicionExportService {
 
     const minRows = Math.max(5, itemIndex);
     while (itemIndex <= minRows) {
-      bodyData.push([itemIndex++, '', '', '', '', '', '', '', '', '']);
+      bodyData.push([itemIndex++, '', '', '', '', '', '', '', '']);
     }
 
     autoTable(doc, {
       startY: y,
-      head: [['Item', 'Fecha\nEmisión', 'Tipo\nde\nDoc.', 'Nº del Documento', 'Proveedor', 'Concepto', 'Comentario', 'Placa', 'Ingresos', 'Gastos']],
+      head: [['Item', 'Fecha\nEmisión', 'Tipo\nde\nDoc.', 'Nº del Documento', 'Proveedor', 'Concepto', 'Placa', 'Ingresos', 'Gastos']],
       body: bodyData,
       theme: 'grid',
       headStyles: { fillColor: [145, 47, 44], textColor: 255, halign: 'center', valign: 'middle' },
@@ -555,12 +539,11 @@ export class RendicionExportService {
         1: { halign: 'center', cellWidth: 17 },
         2: { halign: 'center', cellWidth: 18 },
         3: { cellWidth: 24 },
-        4: { cellWidth: 32 },
-        5: { cellWidth: 38 },
-        6: { cellWidth: 'auto' },
-        7: { halign: 'center', cellWidth: 16 },
+        4: { cellWidth: 36 },
+        5: { cellWidth: 'auto' },
+        6: { halign: 'center', cellWidth: 16 },
+        7: { halign: 'right', cellWidth: 16 },
         8: { halign: 'right', cellWidth: 16 },
-        9: { halign: 'right', cellWidth: 16 },
       },
       margin: { left: 14, right: 14 }
     });
@@ -579,25 +562,23 @@ export class RendicionExportService {
     doc.text(sumGastos.toFixed(2), rightEdge - 2, y + 4, { align: 'right' });
     doc.setTextColor(0, 0, 0);
 
-    y += 12;
+    y += 8;
 
-    doc.setFont("helvetica", "bold");
-    doc.text('RESUMEN DE RENDICIÓN', 14, y);
-    doc.setFont("helvetica", "normal");
-    y += 6;
-    doc.text(`Presupuesto asignado:   S/ ${data.presupuesto.toFixed(2)}`, 14, y);
-    y += 5;
-    doc.text(`Total gastado:          S/ ${data.totalGastado.toFixed(2)}`, 14, y);
-    y += 5;
-    doc.text(`Saldo sin gastar:       S/ ${data.saldoLibre.toFixed(2)}`, 14, y);
-    y += 6;
-    if (data.approvedByName && data.approvedByName !== '—') {
-      doc.text(`Aprobado por: ${data.approvedByName}`, 14, y);
-      y += 5;
+    // Indicador POR REEMBOLSAR / POR RENDIR según el saldo
+    const diferenciaPdf = sumIngresos - sumGastos;
+    if (Math.abs(diferenciaPdf) > 0.005) {
+      const esReembolso = diferenciaPdf < 0;
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(10);
+      const label = esReembolso ? 'POR REEMBOLSAR' : 'POR RENDIR';
+      const monto = Math.abs(diferenciaPdf).toFixed(2);
+      doc.text(`${label}:`, rightEdge - colW * 2 - 4, y + 4, { align: 'right' });
+      doc.text(`S/ ${monto}`, rightEdge - 2, y + 4, { align: 'right' });
+      doc.setFont("helvetica", "normal");
+      y += 8;
     }
-    doc.text(`Estado: ${data.estado}`, 14, y);
-    y += 5;
-    doc.text(`Fecha generación: ${data.fechaGeneracion}`, 14, y);
+
+    y += 4;
 
     if (data.items && data.items.length > 0) {
       y += 10;

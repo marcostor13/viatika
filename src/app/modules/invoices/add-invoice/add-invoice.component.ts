@@ -811,7 +811,9 @@ export default class AddInvoiceComponent implements OnInit {
       this.notificationService.show('Debes agregar al menos una fila', 'error');
       return;
     }
-    if (!this.form.get('proyectId')?.valid || !this.form.get('categoryId')?.valid) {
+    const proyectCtrl = this.form.get('proyectId');
+    const proyectOk = !!(proyectCtrl?.disabled || proyectCtrl?.valid);
+    if (!proyectOk || !this.form.get('categoryId')?.valid) {
       this.notificationService.show('Completa los campos requeridos', 'error');
       return;
     }
@@ -890,7 +892,9 @@ export default class AddInvoiceComponent implements OnInit {
     const total = this.form.get('totalOtros')?.value;
     const description = this.form.get('description')?.value;
 
-    if (!this.form.get('proyectId')?.valid || !this.form.get('categoryId')?.valid) {
+    const proyectCtrl = this.form.get('proyectId');
+    const proyectOk = !!(proyectCtrl?.disabled || proyectCtrl?.valid);
+    if (!proyectOk || !this.form.get('categoryId')?.valid) {
       this.notificationService.show('Completa los campos requeridos', 'error');
       return;
     }
