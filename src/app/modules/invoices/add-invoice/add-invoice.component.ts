@@ -119,6 +119,11 @@ export default class AddInvoiceComponent implements OnInit {
     this.initForm();
   }
 
+  private looksLikeJson(value: string): boolean {
+    const trimmed = (value || '').trim();
+    return trimmed.startsWith('{') || trimmed.startsWith('[');
+  }
+
   private isPdfFile(file: File | null | undefined): boolean {
     if (!file) return false;
     const mimeType = (file.type || '').toLowerCase();
@@ -215,6 +220,12 @@ export default class AddInvoiceComponent implements OnInit {
       this.invoiceService.getInvoiceById(this.id).subscribe({
         next: (res) => {
           this.originalInvoice = res;
+          const type = ((res as any).expenseType as ExpenseType) || 'factura';
+          this.expenseType.set(type);
+          this.form.get('file')?.clearValidators();
+          this.form.get('file')?.updateValueAndValidity();
+          this.form.get('proyectId')?.disable();
+
           let dataObj: any = {};
           if (res.data) {
             try {
@@ -224,7 +235,6 @@ export default class AddInvoiceComponent implements OnInit {
           }
 
           let fecha = '';
-
           if (dataObj.fechaEmision) {
             fecha = this.formatDateForInput(dataObj.fechaEmision);
           } else if (res.date) {
@@ -233,17 +243,78 @@ export default class AddInvoiceComponent implements OnInit {
             fecha = this.formatDateForInput((res as any).fechaEmision);
           }
 
-          const formValues = {
-            ...res,
-            fechaEmision: fecha,
-            rucEmisor: dataObj.rucEmisor || '',
-            serie: dataObj.serie || '',
-            correlativo: dataObj.correlativo || '',
+          const baseValues: any = {
             proyectId: res.proyectId?._id || res.proyectId || '',
             categoryId: res.categoryId?._id || res.categoryId || '',
+            comentario: (res as any).comentario || dataObj.comentario || '',
           };
 
-          this.form.patchValue(formValues);
+          if (type === 'factura') {
+            this.form.patchValue({
+              ...baseValues,
+              fechaEmision: fecha,
+              rucEmisor: dataObj.rucEmisor || '',
+              serie: dataObj.serie || '',
+              correlativo: dataObj.correlativo || '',
+              placaVehiculo: (res as any).placaVehiculo || dataObj.placaVehiculo || '',
+            });
+          } else if (type === 'otros_gastos') {
+            const description =
+              typeof res.data === 'string' && !this.looksLikeJson(res.data)
+                ? res.data
+                : dataObj.description || dataObj.descripcion || '';
+            this.form.patchValue({
+              ...baseValues,
+              description,
+              totalOtros: res.total ?? 0,
+              declaracionJurada: true,
+            });
+          } else if (type === 'recibo_caja') {
+            this.form.patchValue({
+              ...baseValues,
+              receiptRazonSocial: dataObj.razonSocial || '',
+              receiptRuc: dataObj.ruc || '',
+              receiptNumeroDocumento: dataObj.numeroDocumento || '',
+              receiptConcepto: dataObj.concepto || '',
+              receiptFecha: fecha,
+              receiptMonto: res.total ?? 0,
+            });
+          } else if (type === 'comprobante_caja') {
+            this.form.patchValue({
+              ...baseValues,
+              voucherEntregadoA: dataObj.entregadoA || '',
+              voucherDireccion: dataObj.direccion || '',
+              voucherConcepto: dataObj.concepto || '',
+              voucherFecha: fecha,
+              voucherMonto: res.total ?? dataObj.monto ?? 0,
+            });
+          } else if (type === 'planilla_movilidad') {
+            this.form.patchValue(baseValues);
+            const rows: any[] = (res as any).mobilityRows || dataObj.rows || [];
+            this.mobilityRowsArray.clear();
+            for (const row of rows) {
+              this.mobilityRowsArray.push(this.fb.group({
+                fecha: [row.fecha || '', Validators.required],
+                concepto: [row.concepto || '', Validators.required],
+                total: [row.total ?? null, [Validators.required, Validators.min(0)]],
+                clienteProveedor: [row.clienteProveedor || ''],
+                origen: [row.origen || '', Validators.required],
+                origenLat: [row.origenCoords?.lat ?? null],
+                origenLng: [row.origenCoords?.lng ?? null],
+                origenDepartamento: [row.origenDepartamento || '', Validators.required],
+                origenProvincia: [row.origenProvincia || '', Validators.required],
+                origenDistrito: [row.origenDistrito || '', Validators.required],
+                destino: [row.destino || '', Validators.required],
+                destinoLat: [row.destinoCoords?.lat ?? null],
+                destinoLng: [row.destinoCoords?.lng ?? null],
+                destinoDepartamento: [row.destinoDepartamento || '', Validators.required],
+                destinoProvincia: [row.destinoProvincia || '', Validators.required],
+                destinoDistrito: [row.destinoDistrito || '', Validators.required],
+                distanciaKm: [row.distanciaKm ?? null],
+                gestion: [row.gestion || ''],
+              }));
+            }
+          }
         },
         error: (error) => {
           console.error('Error al cargar la factura:', error);
@@ -267,10 +338,7 @@ export default class AddInvoiceComponent implements OnInit {
         if (report && report.projectId) {
           const pId = typeof report.projectId === 'string' ? report.projectId : report.projectId._id;
           this.form.patchValue({ proyectId: pId });
-          const isViatico = Array.isArray((report as any).advanceIds) && (report as any).advanceIds.length > 0;
-          if (!isViatico) {
-            this.form.get('proyectId')?.disable();
-          }
+          this.form.get('proyectId')?.disable();
         }
       },
       error: (err) => console.error('Error loading report project', err)
@@ -575,10 +643,14 @@ export default class AddInvoiceComponent implements OnInit {
   }
 
   isFormValid(): boolean {
+    const proyectOk = (() => {
+      const c = this.form.get('proyectId');
+      return c?.disabled || c?.valid === true;
+    })();
     switch (this.expenseType()) {
       case 'planilla_movilidad':
         return (
-          this.form.get('proyectId')?.valid === true &&
+          proyectOk &&
           this.form.get('categoryId')?.valid === true &&
           this.mobilityRowsArray.length > 0 &&
           this.mobilityRowsArray.valid &&
@@ -586,23 +658,23 @@ export default class AddInvoiceComponent implements OnInit {
         );
       case 'otros_gastos':
         return (
-          this.form.get('proyectId')?.valid === true &&
+          proyectOk &&
           this.form.get('categoryId')?.valid === true &&
-          !!this.form.get('declaracionJurada')?.value &&
+          (!!this.id || !!this.form.get('declaracionJurada')?.value) &&
           (this.form.get('totalOtros')?.value > 0)
         );
       case 'recibo_caja':
         return (
-          this.form.get('proyectId')?.valid === true &&
+          proyectOk &&
           this.form.get('categoryId')?.valid === true &&
-          !!this.selectedFile &&
+          (!!this.id || !!this.selectedFile) &&
           !!(this.form.get('receiptFecha')?.value || '').trim() &&
           !!(this.form.get('receiptConcepto')?.value || '').trim() &&
           (this.form.get('receiptMonto')?.value > 0)
         );
       case 'comprobante_caja':
         return (
-          this.form.get('proyectId')?.valid === true &&
+          proyectOk &&
           this.form.get('categoryId')?.valid === true &&
           !!(this.form.get('voucherEntregadoA')?.value || '').trim() &&
           !!(this.form.get('voucherConcepto')?.value || '').trim() &&
@@ -896,64 +968,114 @@ export default class AddInvoiceComponent implements OnInit {
   }
 
   update() {
-    if (this.form.valid && this.originalInvoice) {
-      const formValue = this.form.getRawValue();
-
-      let dataObj: any = {};
-      const currentData = this.originalInvoice.data || '';
-      if (currentData) {
-        try {
-          dataObj =
-            typeof currentData === 'string'
-              ? JSON.parse(currentData)
-              : currentData;
-        } catch {}
-      }
-
-      dataObj.rucEmisor = formValue.rucEmisor;
-      dataObj.fechaEmision = this.formatDateForBackend(formValue.fechaEmision);
-      dataObj.serie = formValue.serie;
-      dataObj.correlativo = formValue.correlativo;
-      // Solo enviar campos actualizables, excluyendo metadatos de MongoDB
-      const payload = {
-        proyectId: formValue.proyectId,
-        categoryId: formValue.categoryId,
-        total: this.originalInvoice.total,
-        data: JSON.stringify(dataObj),
-        fechaEmision: formValue.fechaEmision,
-        status: this.originalInvoice.status,
-      };
-
-      this.isLoading.set(true);
-
-      this.invoiceService.updateInvoice(this.id, payload).subscribe({
-        next: (response) => {
-          if (this.shouldValidateWithSunat(formValue)) {
-            this.validateWithSunatData(formValue);
-          } else {
-            this.isLoading.set(false);
-            this.notificationService.show(
-              'Factura actualizada correctamente',
-              'success'
-            );
-            this.navigateAfterExpenseSave();
-          }
-        },
-        error: (error: any) => {
-          this.isLoading.set(false);
-          console.error('Error al actualizar:', error);
-          this.notificationService.show(
-            'Error al actualizar la factura: ' +
-              (error.message || 'Intente nuevamente'),
-            'error'
-          );
-        },
-      });
-    } else {
-      if (!this.form.valid) {
-        // Formulario inválido
-      }
+    if (!this.originalInvoice) return;
+    if (!this.isFormValid()) {
+      this.notificationService.show('Completa los campos requeridos', 'error');
+      return;
     }
+
+    const formValue = this.form.getRawValue();
+    const type = this.expenseType();
+
+    let previousData: any = {};
+    const currentData = this.originalInvoice.data || '';
+    if (currentData) {
+      try {
+        previousData =
+          typeof currentData === 'string' ? JSON.parse(currentData) : currentData;
+      } catch {}
+    }
+
+    const payload: any = {
+      proyectId: formValue.proyectId,
+      categoryId: formValue.categoryId,
+      status: this.originalInvoice.status,
+      comentario: (formValue.comentario || '').trim() || undefined,
+    };
+
+    if (type === 'factura') {
+      const dataObj = {
+        ...previousData,
+        rucEmisor: formValue.rucEmisor,
+        serie: formValue.serie,
+        correlativo: formValue.correlativo,
+        fechaEmision: this.formatDateForBackend(formValue.fechaEmision),
+      };
+      payload.data = JSON.stringify(dataObj);
+      payload.fechaEmision = formValue.fechaEmision;
+      payload.total = this.originalInvoice.total;
+      payload.placaVehiculo = (formValue.placaVehiculo || '').trim() || undefined;
+    } else if (type === 'otros_gastos') {
+      payload.description = (formValue.description || '').trim();
+      payload.total = Number(formValue.totalOtros) || 0;
+    } else if (type === 'recibo_caja') {
+      const dataObj = {
+        ...previousData,
+        razonSocial: formValue.receiptRazonSocial || '',
+        ruc: formValue.receiptRuc || '',
+        numeroDocumento: formValue.receiptNumeroDocumento || '',
+        concepto: (formValue.receiptConcepto || '').trim(),
+      };
+      payload.data = JSON.stringify(dataObj);
+      payload.fechaEmision = formValue.receiptFecha;
+      payload.total = Number(formValue.receiptMonto) || 0;
+    } else if (type === 'comprobante_caja') {
+      const monto = Number(formValue.voucherMonto) || 0;
+      const dataObj = {
+        ...previousData,
+        entregadoA: (formValue.voucherEntregadoA || '').trim(),
+        direccion: (formValue.voucherDireccion || '').trim(),
+        concepto: (formValue.voucherConcepto || '').trim(),
+        monto,
+      };
+      payload.data = JSON.stringify(dataObj);
+      payload.fechaEmision = formValue.voucherFecha || undefined;
+      payload.total = monto;
+    } else if (type === 'planilla_movilidad') {
+      const rows = this.mobilityRowsArray.value.map((r: any) => ({
+        fecha: r.fecha,
+        concepto: r.concepto,
+        total: r.total,
+        clienteProveedor: r.clienteProveedor,
+        origen: r.origen,
+        origenDepartamento: r.origenDepartamento,
+        origenProvincia: r.origenProvincia,
+        origenDistrito: r.origenDistrito,
+        ...(r.origenLat != null && r.origenLng != null
+          ? { origenCoords: { lat: r.origenLat, lng: r.origenLng } }
+          : {}),
+        destino: r.destino,
+        destinoDepartamento: r.destinoDepartamento,
+        destinoProvincia: r.destinoProvincia,
+        destinoDistrito: r.destinoDistrito,
+        ...(r.destinoLat != null && r.destinoLng != null
+          ? { destinoCoords: { lat: r.destinoLat, lng: r.destinoLng } }
+          : {}),
+        ...(r.distanciaKm != null ? { distanciaKm: r.distanciaKm } : {}),
+        gestion: r.gestion,
+      }));
+      payload.mobilityRows = rows;
+    }
+
+    this.isLoading.set(true);
+
+    this.invoiceService.updateInvoice(this.id, payload).subscribe({
+      next: () => {
+        if (type === 'factura' && this.shouldValidateWithSunat(formValue)) {
+          this.validateWithSunatData(formValue);
+        } else {
+          this.isLoading.set(false);
+          this.notificationService.show('Gasto actualizado correctamente', 'success');
+          this.navigateAfterExpenseSave();
+        }
+      },
+      error: (error: any) => {
+        this.isLoading.set(false);
+        console.error('Error al actualizar:', error);
+        const msg = error?.error?.message || error?.message || 'Intente nuevamente';
+        this.notificationService.show('Error al actualizar: ' + msg, 'error');
+      },
+    });
   }
 
   onFileSelected(event: Event): void {
