@@ -360,23 +360,37 @@ export class RendicionExportService {
     cGas.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
     r += 1;
 
-    // Indicador POR REEMBOLSAR / POR RENDIR según el saldo
+    // Indicadores POR REEMBOLSAR y POR RENDIR (siempre se muestran ambos)
     const diferencia = sumIngresos - sumGastos;
-    if (Math.abs(diferencia) > 0.005) {
-      const esReembolso = diferencia < 0;
-      ws.mergeCells(r, 1, r, 7);
-      const cLabel = ws.getCell(r, 7);
-      cLabel.value = esReembolso ? 'POR REEMBOLSAR' : 'POR RENDIR';
-      cLabel.font = { bold: true };
-      cLabel.alignment = { horizontal: 'right' };
-      ws.mergeCells(r, 8, r, 9);
-      const cMonto = ws.getCell(r, 8);
-      cMonto.value = Math.abs(diferencia);
-      cMonto.numFmt = '#,##0.00';
-      cMonto.alignment = { horizontal: 'right' };
-      cMonto.font = { bold: true };
-      r++;
-    }
+    const montoReembolsar = diferencia < 0 ? Math.abs(diferencia) : 0;
+    const montoRendir = diferencia > 0 ? diferencia : 0;
+
+    ws.mergeCells(r, 1, r, 7);
+    const cReembLabel = ws.getCell(r, 7);
+    cReembLabel.value = 'POR REEMBOLSAR';
+    cReembLabel.font = { bold: true };
+    cReembLabel.alignment = { horizontal: 'right' };
+    ws.mergeCells(r, 8, r, 9);
+    const cReembMonto = ws.getCell(r, 8);
+    cReembMonto.value = montoReembolsar;
+    cReembMonto.numFmt = '#,##0.00';
+    cReembMonto.alignment = { horizontal: 'right' };
+    cReembMonto.font = { bold: true };
+    r++;
+
+    ws.mergeCells(r, 1, r, 7);
+    const cRendLabel = ws.getCell(r, 7);
+    cRendLabel.value = 'POR RENDIR';
+    cRendLabel.font = { bold: true };
+    cRendLabel.alignment = { horizontal: 'right' };
+    ws.mergeCells(r, 8, r, 9);
+    const cRendMonto = ws.getCell(r, 8);
+    cRendMonto.value = montoRendir;
+    cRendMonto.numFmt = '#,##0.00';
+    cRendMonto.alignment = { horizontal: 'right' };
+    cRendMonto.font = { bold: true };
+    r++;
+
     r += 2;
 
     r += 1;
@@ -564,21 +578,19 @@ export class RendicionExportService {
 
     y += 8;
 
-    // Indicador POR REEMBOLSAR / POR RENDIR según el saldo
+    // Indicadores POR REEMBOLSAR y POR RENDIR (siempre se muestran ambos)
     const diferenciaPdf = sumIngresos - sumGastos;
-    if (Math.abs(diferenciaPdf) > 0.005) {
-      const esReembolso = diferenciaPdf < 0;
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(10);
-      const label = esReembolso ? 'POR REEMBOLSAR' : 'POR RENDIR';
-      const monto = Math.abs(diferenciaPdf).toFixed(2);
-      doc.text(`${label}:`, rightEdge - colW * 2 - 4, y + 4, { align: 'right' });
-      doc.text(`S/ ${monto}`, rightEdge - 2, y + 4, { align: 'right' });
-      doc.setFont("helvetica", "normal");
-      y += 8;
-    }
-
-    y += 4;
+    const montoReembolsarPdf = diferenciaPdf < 0 ? Math.abs(diferenciaPdf) : 0;
+    const montoRendirPdf = diferenciaPdf > 0 ? diferenciaPdf : 0;
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(10);
+    doc.text('POR REEMBOLSAR:', rightEdge - colW * 2 - 4, y + 4, { align: 'right' });
+    doc.text(`S/ ${montoReembolsarPdf.toFixed(2)}`, rightEdge - 2, y + 4, { align: 'right' });
+    y += 6;
+    doc.text('POR RENDIR:', rightEdge - colW * 2 - 4, y + 4, { align: 'right' });
+    doc.text(`S/ ${montoRendirPdf.toFixed(2)}`, rightEdge - 2, y + 4, { align: 'right' });
+    doc.setFont("helvetica", "normal");
+    y += 10;
 
     if (data.items && data.items.length > 0) {
       y += 10;
