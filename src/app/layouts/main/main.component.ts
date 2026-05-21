@@ -1,7 +1,8 @@
-import { Component, inject, OnDestroy } from '@angular/core';
+import { Component, inject, OnDestroy, OnInit } from '@angular/core';
 import { Router, RouterOutlet, NavigationEnd } from '@angular/router';
 import { SidebarComponent } from '../../components/sidebar/sidebar.component';
 import { NotificationBellComponent } from '../../components/notification-bell/notification-bell.component';
+import { UserStateService } from '../../services/user-state.service';
 import { Subscription } from 'rxjs';
 
 @Component({
@@ -11,14 +12,19 @@ import { Subscription } from 'rxjs';
   templateUrl: './main.component.html',
   styleUrl: './main.component.scss',
 })
-export class MainComponent implements OnDestroy {
+export class MainComponent implements OnInit, OnDestroy {
   private router = inject(Router);
+  private userStateService = inject(UserStateService);
   private routerSubscription!: Subscription;
   currentPath = '';
   sidebarVisible = false;
 
   constructor() {
     this.detectPath();
+  }
+
+  ngOnInit() {
+    this.userStateService.refreshPermissions();
   }
 
   ngOnDestroy() {

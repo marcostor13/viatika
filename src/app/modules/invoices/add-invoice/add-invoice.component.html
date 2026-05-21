@@ -235,8 +235,16 @@
           id="rucEmisorOcr"
           type="text"
           formControlName="rucEmisor"
+          (blur)="lookupRazonSocial($any($event.target).value)"
           class="w-full h-[40px] px-3 rounded-lg border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-primary/20"
         />
+        @if (rucLookupLoading()) {
+          <span class="text-xs text-gray-400 mt-1">Consultando SUNAT...</span>
+        } @else if (fetchedRazonSocial()) {
+          <span class="text-xs text-green-700 mt-1 font-medium">{{ fetchedRazonSocial() }}</span>
+        } @else if (rucNotFound()) {
+          <span class="text-xs text-red-600 mt-1 font-medium">RUC inválido o no encontrado</span>
+        }
       </div>
       <div class="flex flex-col gap-1">
         <label for="fechaEmisionOcr" class="text-xs font-medium text-secondary">Fecha Emisión</label>
@@ -337,8 +345,16 @@
         id="rucEmisor"
         type="text"
         formControlName="rucEmisor"
+        (blur)="lookupRazonSocial($any($event.target).value)"
         class="w-full h-[42px] px-4 rounded-lg border border-gray-200 bg-background focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-sm"
       />
+      @if (rucLookupLoading()) {
+        <span class="text-xs text-gray-400">Consultando SUNAT...</span>
+      } @else if (fetchedRazonSocial()) {
+        <span class="text-xs text-green-700 font-medium">{{ fetchedRazonSocial() }}</span>
+      } @else if (rucNotFound()) {
+        <span class="text-xs text-red-600 font-medium">RUC inválido o no encontrado</span>
+      }
     </div>
     <div class="flex flex-col gap-2">
       <label for="serie" class="text-sm font-medium text-secondary">Serie</label>

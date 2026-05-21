@@ -66,6 +66,9 @@ export default class AddInvoiceComponent implements OnInit {
 
   expenseType = signal<ExpenseType>('factura');
   percentage = signal(0);
+  rucLookupLoading = signal(false);
+  fetchedRazonSocial = signal<string | null>(null);
+  rucNotFound = signal(false);
   mobilityDailyLimit: number | null = null;
   readonly departamentos = PERU_LOCATIONS;
   isLoading = signal(false);
@@ -250,6 +253,7 @@ export default class AddInvoiceComponent implements OnInit {
           };
 
           if (type === 'factura') {
+            this.fetchedRazonSocial.set(dataObj.razonSocial || null);
             this.form.patchValue({
               ...baseValues,
               fechaEmision: fecha,
@@ -358,6 +362,24 @@ export default class AddInvoiceComponent implements OnInit {
     this.invoiceService.getProjects().subscribe({
       next: (projects) => {
         this.proyects = projects;
+      },
+    });
+  }
+
+  lookupRazonSocial(ruc: string) {
+    if (!ruc || ruc.replace(/\D/g, '').length !== 11) return;
+    this.rucLookupLoading.set(true);
+    this.fetchedRazonSocial.set(null);
+    this.rucNotFound.set(false);
+    this.invoiceService.getRucInfo(ruc).subscribe({
+      next: (res) => {
+        this.fetchedRazonSocial.set(res.razonSocial);
+        this.rucNotFound.set(!res.razonSocial);
+        this.rucLookupLoading.set(false);
+      },
+      error: () => {
+        this.rucNotFound.set(true);
+        this.rucLookupLoading.set(false);
       },
     });
   }
@@ -994,12 +1016,15 @@ export default class AddInvoiceComponent implements OnInit {
     };
 
     if (type === 'factura') {
+      const fetched = this.fetchedRazonSocial();
+      const razonSocial = fetched !== null ? fetched : (this.rucNotFound() ? 'No Reconocida' : undefined);
       const dataObj = {
         ...previousData,
         rucEmisor: formValue.rucEmisor,
         serie: formValue.serie,
         correlativo: formValue.correlativo,
         fechaEmision: this.formatDateForBackend(formValue.fechaEmision),
+        ...(razonSocial !== undefined ? { razonSocial } : {}),
       };
       payload.data = JSON.stringify(dataObj);
       payload.fechaEmision = formValue.fechaEmision;
@@ -1269,6 +1294,8 @@ export default class AddInvoiceComponent implements OnInit {
     } catch {
       baseData = {};
     }
+    const fetched = this.fetchedRazonSocial();
+    const razonSocialOcr = fetched !== null ? fetched : (this.rucNotFound() ? 'No Reconocida' : undefined);
     const dataObj = {
       ...baseData,
       rucEmisor: formValue.rucEmisor || '',
@@ -1277,6 +1304,7 @@ export default class AddInvoiceComponent implements OnInit {
       correlativo: formValue.correlativo || '',
       comentario,
       placaVehiculo: (formValue.placaVehiculo || '').trim() || undefined,
+      ...(razonSocialOcr !== undefined ? { razonSocial: razonSocialOcr } : {}),
     };
     const updatePayload = {
       proyectId: this.postOcrBaseInvoice.proyectId,
@@ -1420,7 +1448,7 @@ export default class AddInvoiceComponent implements OnInit {
           type = 'success';
           break;
         case 'VALIDO_NO_PERTENECE':
-          message = 'Factura válida pero no ha sido emitida a la empresa';
+          message = 'El comprobante no fue emitido a esta empresa. Verifica el RUC emisor.';
           type = 'error';
           break;
         case 'NO_ENCONTRADO':
@@ -1491,7 +1519,7 @@ export default class AddInvoiceComponent implements OnInit {
               type = 'success';
               break;
             case 'VALIDO_NO_PERTENECE':
-              message = 'Factura válida pero no ha sido emitida a la empresa';
+              message = 'El comprobante no fue emitido a esta empresa. Verifica el RUC emisor.';
               type = 'error';
               break;
             case 'NO_ENCONTRADO':

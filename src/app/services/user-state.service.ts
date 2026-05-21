@@ -1,6 +1,8 @@
-import { Injectable, signal } from '@angular/core';
+import { Injectable, signal, inject } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
 import { IUserResponse } from '../interfaces/user.interface';
 import { USER_LOCALSTORAGE_KEY } from '../constants/user-localstorage.constant';
+import { environment } from '../../environments/environment';
 
 const HUB_TOKEN_KEY = 'hub_token';
 const HUB_USER_KEY = 'hub_user_data';
@@ -10,6 +12,7 @@ const HUB_USER_KEY = 'hub_user_data';
 })
 export class UserStateService {
   private _user = signal<IUserResponse | null>(null);
+  private http = inject(HttpClient);
 
   constructor() {
     const raw = localStorage.getItem(USER_LOCALSTORAGE_KEY);
@@ -106,6 +109,23 @@ export class UserStateService {
     localStorage.removeItem(HUB_USER_KEY);
   }
 
+  refreshPermissions(): void {
+    const token = this.getToken();
+    const current = this._user();
+    if (!token || !current) return;
+    this.http.get<IUserResponse>(`${environment.api}/user/me`, {
+      headers: { Authorization: `Bearer ${token}` },
+    }).subscribe({
+      next: (fresh) => {
+        if (!fresh?.permissions) return;
+        const updated = { ...this._user()!, permissions: fresh.permissions };
+        this._user.set(updated);
+        localStorage.setItem(USER_LOCALSTORAGE_KEY, JSON.stringify(updated));
+      },
+      error: () => {},
+    });
+  }
+
   logout() {
     this.clearUser();
   }
@@ -125,7 +145,10 @@ export class UserStateService {
   }
 
   isColaborador() { return this.getRole() === 'Colaborador'; }
-  isAdmin() { return this.getRole() === 'Coordinador'; }
+  isAdmin() {
+    const role = this.getRole();
+    return role === 'Coordinador' || role === 'Administrador';
+  }
   isSuperAdmin() { return this.getRole() === 'Superadministrador'; }
   isContabilidad() { return this.getRole() === 'Contabilidad'; }
   isCoordinador() { return false; }
