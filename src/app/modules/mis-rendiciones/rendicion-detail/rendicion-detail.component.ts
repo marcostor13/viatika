@@ -467,6 +467,22 @@ export class RendicionDetailComponent implements OnInit {
     return 'Factura';
   }
 
+  /** Código corto del tipo de documento para reportes (PDF/Excel). */
+  getExpenseTypeCode(expense: any): string {
+    const type = expense?.expenseType;
+    if (type === 'planilla_movilidad') return 'PM';
+    if (type === 'comprobante_caja') return 'CC';
+    if (type === 'recibo_caja') return 'RC';
+    if (type === 'otros_gastos') return 'DJ';
+    const dataObj = this.getExpenseDataObject(expense);
+    const tipoComp = String(dataObj['tipoComprobante'] ?? '').trim();
+    if (tipoComp === '03') return 'BV';
+    if (tipoComp === '12') return 'TK';
+    if (tipoComp === '01') return 'FT';
+    if (type === 'factura' || !type) return 'FT';
+    return 'OT';
+  }
+
   formatShortDate(raw: string | null | undefined): string {
     if (!raw) return '-';
     let d: Date;
@@ -884,7 +900,7 @@ export class RendicionDetailComponent implements OnInit {
       const placaVehiculo = this.getExpensePlaca(exp);
       const concepto = this.getExpenseConcepto(exp);
       return {
-        tipo: this.getExpenseTypeLabel(exp),
+        tipo: this.getExpenseTypeCode(exp),
         fecha: this.getExpenseDate(exp),
         descripcion: concepto,
         comentario: comentario || undefined,
