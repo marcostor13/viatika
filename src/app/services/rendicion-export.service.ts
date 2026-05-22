@@ -3,6 +3,7 @@ import ExcelJS from 'exceljs';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { CompanyConfigService } from './company-config.service';
+import { parseFechaEmisionInput } from '../utils/fecha-emision.util';
 
 type JsPdfWithAutoTable = jsPDF & { lastAutoTable?: { finalY: number } };
 
@@ -1007,7 +1008,7 @@ export class RendicionExportService {
 
     // Date
     doc.setFontSize(8);
-    const dateObj = data.fechaEmision ? new Date(data.fechaEmision) : new Date();
+    const dateObj = parseFechaEmisionInput(data.fechaEmision) ?? new Date();
     const day = dateObj.getDate();
     const month = dateObj.getMonth() + 1;
     const year = dateObj.getFullYear();
