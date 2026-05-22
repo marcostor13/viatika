@@ -1727,8 +1727,8 @@ export class RendicionDetailComponent implements OnInit {
   exportCashVoucher(expense: Record<string, unknown>): void {
     if (this.getExpenseTypeKey(expense) !== 'comprobante_caja') return;
     const payloadObj = this.getCashVoucherPayload(expense);
-    const companyName = this.companyConfigService.getCompanyConfig()?.businessName
-      || this.userStateService.getUser()?.client?.businessName;
+    const companyName = this.userStateService.getUser()?.client?.businessName
+      || this.companyConfigService.getCompanyConfig()?.businessName;
     const data: CashVoucherExportData = {
       fileBaseName: `comprobante_caja_${String(expense['_id'] || 'sin_id')}`,
       collaborator: this.getCollaboratorDisplayName(),
