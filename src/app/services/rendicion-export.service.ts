@@ -234,9 +234,13 @@ export class RendicionExportService {
 
     ws.mergeCells('A5:I5');
     const subtitleCell = ws.getCell('A5');
-    subtitleCell.value = `PROYECTO:\n${data.titulo || ''}`;
+    const proyectoLabel = data.projectName && data.projectName !== '—'
+      ? data.projectName
+      : (data.titulo || '');
+    subtitleCell.value = `PROYECTO:\n${proyectoLabel}`;
     subtitleCell.font = { size: 10 };
     subtitleCell.alignment = { horizontal: 'center', wrapText: true };
+    ws.getRow(5).height = 28;
 
     ws.mergeCells('A7:I7');
     const dateCell = ws.getCell('A7');
@@ -477,7 +481,10 @@ export class RendicionExportService {
     doc.text('RENDICIÓN DE VIÁTICOS', doc.internal.pageSize.getWidth() / 2, 25, { align: 'center' });
     doc.setFont("helvetica", "normal");
     doc.setFontSize(10);
-    doc.text(`PROYECTO:\n${data.titulo || ''}`, doc.internal.pageSize.getWidth() / 2, 30, { align: 'center' });
+    const proyectoLabelPdf = data.projectName && data.projectName !== '—'
+      ? data.projectName
+      : (data.titulo || '');
+    doc.text(`PROYECTO:\n${proyectoLabelPdf}`, doc.internal.pageSize.getWidth() / 2, 30, { align: 'center' });
     
     if (data.startDate && data.endDate) {
       doc.setFont("helvetica", "bold");
