@@ -1,5 +1,5 @@
 export enum ERoles {
-    Coordinador = 'Coordinador',
+    Administrador = 'Administrador',
     Superadministrador = 'Superadministrador',
     Colaborador = 'Colaborador',
     Contabilidad = 'Contabilidad',

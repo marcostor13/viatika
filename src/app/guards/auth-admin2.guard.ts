@@ -12,14 +12,7 @@ export class AuthAdmin2Guard implements CanActivate {
       return false;
     }
 
-    if (this.userState.isAnyAdmin()) return true;
-
-    if (
-      this.userState.hasModulePermission('colaboradores') ||
-      this.userState.hasModulePermission('rendiciones')
-    ) {
-      return true;
-    }
+    if (this.userState.isAdmin() || this.userState.isContabilidad()) return true;
 
     this.router.navigate(['/inicio']);
     return false;

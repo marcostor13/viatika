@@ -88,7 +88,8 @@ export class CambiarContrasenaComponent {
           const updated = { ...user, mustChangePassword: false };
           this.userState.setUser(updated as any);
           this.notification.show('Contraseña actualizada correctamente', 'success');
-          this.router.navigate(['/']);
+          const needsHub = (this.userState.isContabilidad() || this.userState.isAdmin()) && !(updated as any).companyId;
+          this.router.navigate([needsHub ? '/hub' : '/']);
         },
         error: () => {
           this.loading.set(false);

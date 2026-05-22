@@ -1,5 +1,7 @@
 import { Injectable, signal, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
+import { Observable, of } from 'rxjs';
+import { tap, map, catchError } from 'rxjs/operators';
 import { IUserResponse } from '../interfaces/user.interface';
 import { USER_LOCALSTORAGE_KEY } from '../constants/user-localstorage.constant';
 import { environment } from '../../environments/environment';
@@ -109,21 +111,26 @@ export class UserStateService {
     localStorage.removeItem(HUB_USER_KEY);
   }
 
-  refreshPermissions(): void {
+  refreshPermissions(): Observable<void> {
     const token = this.getToken();
     const current = this._user();
-    if (!token || !current) return;
-    this.http.get<IUserResponse>(`${environment.api}/user/me`, {
+    if (!token || !current) return of(undefined as any);
+    return this.http.get<IUserResponse>(`${environment.api}/user/me`, {
       headers: { Authorization: `Bearer ${token}` },
-    }).subscribe({
-      next: (fresh) => {
+    }).pipe(
+      tap((fresh) => {
         if (!fresh?.permissions) return;
-        const updated = { ...this._user()!, permissions: fresh.permissions };
+        const snapshot = this._user()!;
+        const updated: any = { ...snapshot, permissions: fresh.permissions };
+        if (fresh.signature !== undefined) {
+          updated.signature = fresh.signature;
+        }
         this._user.set(updated);
         localStorage.setItem(USER_LOCALSTORAGE_KEY, JSON.stringify(updated));
-      },
-      error: () => {},
-    });
+      }),
+      map(() => undefined as any),
+      catchError(() => of(undefined as any)),
+    );
   }
 
   logout() {
@@ -145,15 +152,11 @@ export class UserStateService {
   }
 
   isColaborador() { return this.getRole() === 'Colaborador'; }
-  isAdmin() {
-    const role = this.getRole();
-    return role === 'Coordinador' || role === 'Administrador';
-  }
+  isAdmin() { return this.getRole() === 'Administrador'; }
   isSuperAdmin() { return this.getRole() === 'Superadministrador'; }
   isContabilidad() { return this.getRole() === 'Contabilidad'; }
-  isCoordinador() { return false; }
+  isCoordinador() { return this.getRole() === 'Coordinador'; }
 
-  /** Coordinador, Superadministrador, or Contabilidad */
   isAnyAdmin() {
     return this.isAdmin() || this.isSuperAdmin() || this.isContabilidad();
   }
@@ -164,23 +167,23 @@ export class UserStateService {
   }
 
   hasModulePermission(module: string): boolean {
-    if (this.isSuperAdmin() || this.isContabilidad()) return true;
+    if (this.isSuperAdmin() || this.isContabilidad() || this.isAdmin()) return true;
     const perms = this.getPermissions();
     return perms.modules?.includes(module) ?? false;
   }
 
   canApproveL1(): boolean {
-    if (this.isSuperAdmin() || this.isContabilidad()) return true;
+    if (this.isSuperAdmin() || this.isContabilidad() || this.isAdmin()) return true;
     return this.getPermissions().canApproveL1 === true;
   }
 
   canApproveL2(): boolean {
-    if (this.isSuperAdmin() || this.isContabilidad()) return true;
+    if (this.isSuperAdmin() || this.isContabilidad() || this.isAdmin()) return true;
     return this.getPermissions().canApproveL2 === true;
   }
 
   canAccessTesoreria(): boolean {
-    if (this.isSuperAdmin() || this.isContabilidad()) return true;
+    if (this.isSuperAdmin() || this.isContabilidad() || this.isAdmin()) return true;
     const perms = this.getPermissions();
     return perms.modules?.includes('tesoreria') ?? false;
   }
@@ -196,6 +199,13 @@ export class UserStateService {
   /** True when Contabilidad has selected a company (companyId is set) */
   isContabilidadInCompany(): boolean {
     if (!this.isContabilidad()) return false;
+    const user = this._user();
+    return !!(user?.companyId);
+  }
+
+  /** True when Admin has selected a company (companyId is set) */
+  isAdminInCompany(): boolean {
+    if (!this.isAdmin()) return false;
     const user = this._user();
     return !!(user?.companyId);
   }

@@ -54,8 +54,7 @@
       }
 
       <!-- Admin / Contabilidad (dentro de empresa): páginas fijas -->
-      @if (isAdmin() || isContabilidadInCompany()) {
-      @if (isContabilidadInCompany()) {
+      @if (isAdminInCompany() || isContabilidadInCompany()) {
       <button
         (click)="goBackToHub()"
         class="flex items-center gap-2 w-full px-4 py-3 text-secondary rounded-xl hover:bg-background hover:text-primary transition-all duration-200 text-left"
@@ -66,6 +65,7 @@
         <span class="font-medium text-sm">Volver al Hub</span>
       </button>
       <div class="border-t border-tertiary/20 my-1"></div>
+      @if (isContabilidadInCompany()) {
       <a
         [routerLink]="['/consolidated-invoices']"
         routerLinkActive="bg-primary text-white"
@@ -191,17 +191,6 @@
         <span class="font-medium">Rendiciones</span>
       </a>
       }
-      @if (!isContabilidadInCompany() && hasModulePermission('invoice-approval')) {
-      <a
-        [routerLink]="['/invoice-approval']"
-        routerLinkActive="bg-primary text-white"
-        [class.bg-primary]="isSelected('/invoice-approval')"
-        [class.text-quaternary]="isSelected('/invoice-approval')"
-        class="flex items-center px-4 py-3 text-secondary rounded-xl hover:bg-background hover:text-primary transition-all duration-200 group"
-      >
-        <span class="font-medium">Aprobación de Facturas</span>
-      </a>
-      }
       @if (!isContabilidadInCompany() && hasModulePermission('consolidated-invoices')) {
       <a
         [routerLink]="['/consolidated-invoices']"
@@ -213,7 +202,7 @@
         <span class="font-medium">Consolidado</span>
       </a>
       }
-      @if (!isSuper() && !isAdmin() && !isContabilidadInCompany() && hasModulePermission('configuracion')) {
+      @if (!isSuper() && !isAdminInCompany() && !isContabilidadInCompany() && hasModulePermission('configuracion')) {
       <a
         [routerLink]="['/configuracion']"
         routerLinkActive="bg-primary text-white"
@@ -257,7 +246,7 @@
         <span class="font-medium">Pagos</span>
       </a>
       }
-      @if ((isAdmin() && hasModulePermission('configuracion')) || isContabilidadInCompany() || isSuper()) {
+      @if ((isAdminInCompany() && hasModulePermission('configuracion')) || isContabilidadInCompany() || isSuper()) {
       <!-- Configuración (grupo colapsable) -->
       <div>
         <button
@@ -318,7 +307,7 @@
         }
       </div>
       }
-      @if (!isAdmin() && !isSuper() && !isContabilidadInCompany()) {
+      @if (!isAdminInCompany() && !isSuper() && !isContabilidadInCompany()) {
       <a
         [routerLink]="['/mi-firma']"
         routerLinkActive="bg-primary text-white"
@@ -465,8 +454,7 @@
         }
 
         <!-- Admin / Contabilidad (dentro de empresa): páginas fijas -->
-        @if (isAdmin() || isContabilidadInCompany()) {
-        @if (isContabilidadInCompany()) {
+        @if (isAdminInCompany() || isContabilidadInCompany()) {
         <button
           (click)="goBackToHub(); toggleSidebar()"
           class="flex items-center gap-2 w-full px-4 py-4 text-secondary rounded-xl hover:bg-background hover:text-primary transition-all duration-200 text-left"
@@ -477,6 +465,7 @@
           <span class="font-medium text-lg">Volver al Hub</span>
         </button>
         <div class="border-t border-tertiary/20 my-1"></div>
+        @if (isContabilidadInCompany()) {
         <a
           [routerLink]="['/consolidated-invoices']"
           (click)="toggleSidebar()"
@@ -602,17 +591,6 @@
           <span class="font-medium text-lg">Rendiciones</span>
         </a>
         }
-        @if (!isContabilidadInCompany() && hasModulePermission('invoice-approval')) {
-        <a
-          [routerLink]="['/invoice-approval']"
-          (click)="toggleSidebar()"
-          [class.bg-primary]="isSelected('/invoice-approval')"
-          [class.text-quaternary]="isSelected('/invoice-approval')"
-          class="flex items-center px-4 py-4 text-secondary rounded-xl hover:bg-background hover:text-primary transition-all duration-200 group"
-        >
-          <span class="font-medium text-lg">Aprobación de Facturas</span>
-        </a>
-        }
         @if (!isContabilidadInCompany() && hasModulePermission('consolidated-invoices')) {
         <a
           [routerLink]="['/consolidated-invoices']"
@@ -624,7 +602,7 @@
           <span class="font-medium text-lg">Consolidado</span>
         </a>
         }
-        @if (!isSuper() && !isAdmin() && !isContabilidadInCompany() && hasModulePermission('configuracion')) {
+        @if (!isSuper() && !isAdminInCompany() && !isContabilidadInCompany() && hasModulePermission('configuracion')) {
         <a
           [routerLink]="['/configuracion']"
           (click)="toggleSidebar()"
@@ -668,7 +646,7 @@
           <span class="font-medium text-lg">Pagos</span>
         </a>
         }
-        @if ((isAdmin() && hasModulePermission('configuracion')) || isContabilidadInCompany() || isSuper()) {
+        @if ((isAdminInCompany() && hasModulePermission('configuracion')) || isContabilidadInCompany() || isSuper()) {
         <!-- Configuración (grupo colapsable) -->
         <div>
           <button
@@ -733,7 +711,7 @@
           }
         </div>
         }
-        @if (!isAdmin() && !isSuper() && !isContabilidadInCompany()) {
+        @if (!isAdminInCompany() && !isSuper() && !isContabilidadInCompany()) {
         <a
           [routerLink]="['/mi-firma']"
           (click)="toggleSidebar()"

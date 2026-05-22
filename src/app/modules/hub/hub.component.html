@@ -33,7 +33,7 @@
       <div class="text-center mb-10">
         <h1 class="text-3xl font-bold text-secondary mb-2">Seleccionar empresa</h1>
         <p class="text-tertiary">
-          @if (isContabilidad) {
+          @if (isContabilidad || isAdmin) {
             Elige la empresa en la que deseas trabajar o administra los clientes.
           } @else {
             Tu cuenta tiene acceso a varias empresas. Selecciona con cuál deseas continuar.
@@ -41,7 +41,7 @@
         </p>
       </div>
 
-      @if (isContabilidad) {
+      @if (isContabilidad || isAdmin) {
         <!-- Admin companies button -->
         <div class="mb-6 flex justify-center">
           <button
