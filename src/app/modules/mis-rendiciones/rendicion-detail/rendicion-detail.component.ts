@@ -663,6 +663,31 @@ export class RendicionDetailComponent implements OnInit {
     return String(v);
   }
 
+  /** Payload del comprobante de caja (entregadoA, direccion, concepto, monto). */
+  getCashVoucherPayload(exp: Record<string, unknown>): Record<string, unknown> {
+    const rawData = this.getExpenseDataObject(exp);
+    const payloadRaw = rawData['payload'];
+    let payloadObj: Record<string, unknown> = {};
+    if (payloadRaw && typeof payloadRaw === 'string') {
+      try { payloadObj = JSON.parse(payloadRaw); } catch { /* empty */ }
+    } else if (payloadRaw && typeof payloadRaw === 'object') {
+      payloadObj = payloadRaw as Record<string, unknown>;
+    }
+    if (!payloadObj['concepto'] && exp['description']) {
+      try {
+        const descParsed = JSON.parse(String(exp['description']));
+        if (descParsed?.concepto) payloadObj = descParsed;
+      } catch { /* empty */ }
+    }
+    return payloadObj;
+  }
+
+  cashVoucherText(exp: Record<string, unknown>, key: string): string {
+    const v = this.getCashVoucherPayload(exp)[key];
+    if (v === null || v === undefined || v === '') return '—';
+    return String(v);
+  }
+
   getExpenseStatusForUi(expense: Record<string, unknown>): string {
     if (expense['observado'] === true) return 'Observado';
     return this.mapExpenseStatusExport(
@@ -1701,21 +1726,7 @@ export class RendicionDetailComponent implements OnInit {
 
   exportCashVoucher(expense: Record<string, unknown>): void {
     if (this.getExpenseTypeKey(expense) !== 'comprobante_caja') return;
-    const rawData = this.getExpenseDataObject(expense);
-    const payloadRaw = rawData['payload'];
-    let payloadObj: Record<string, unknown> = {};
-    if (payloadRaw && typeof payloadRaw === 'string') {
-      try { payloadObj = JSON.parse(payloadRaw); } catch { /* empty */ }
-    } else if (payloadRaw && typeof payloadRaw === 'object') {
-      payloadObj = payloadRaw as Record<string, unknown>;
-    }
-    // Fallback: if payload was not nested, concepto may be in description (stored as JSON)
-    if (!payloadObj['concepto'] && expense['description']) {
-      try {
-        const descParsed = JSON.parse(String(expense['description']));
-        if (descParsed?.concepto) payloadObj = descParsed;
-      } catch { /* empty */ }
-    }
+    const payloadObj = this.getCashVoucherPayload(expense);
     const companyName = this.companyConfigService.getCompanyConfig()?.businessName
       || this.userStateService.getUser()?.client?.businessName;
     const data: CashVoucherExportData = {
