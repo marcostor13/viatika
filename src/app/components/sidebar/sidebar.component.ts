@@ -166,7 +166,7 @@ export class SidebarComponent implements OnInit, OnDestroy {
   }
 
   getCompanyName(): string {
-    return this.companyConfig?.name || 'Mi Empresa';
+    return this.companyConfig?.name || 'Tema Litoclean';
   }
 
   getCompanyLogo(): string {

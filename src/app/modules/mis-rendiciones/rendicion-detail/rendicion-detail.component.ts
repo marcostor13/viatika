@@ -663,6 +663,31 @@ export class RendicionDetailComponent implements OnInit {
     return String(v);
   }
 
+  /** Payload del comprobante de caja (entregadoA, direccion, concepto, monto). */
+  getCashVoucherPayload(exp: Record<string, unknown>): Record<string, unknown> {
+    const rawData = this.getExpenseDataObject(exp);
+    const payloadRaw = rawData['payload'];
+    let payloadObj: Record<string, unknown> = {};
+    if (payloadRaw && typeof payloadRaw === 'string') {
+      try { payloadObj = JSON.parse(payloadRaw); } catch { /* empty */ }
+    } else if (payloadRaw && typeof payloadRaw === 'object') {
+      payloadObj = payloadRaw as Record<string, unknown>;
+    }
+    if (!payloadObj['concepto'] && exp['description']) {
+      try {
+        const descParsed = JSON.parse(String(exp['description']));
+        if (descParsed?.concepto) payloadObj = descParsed;
+      } catch { /* empty */ }
+    }
+    return payloadObj;
+  }
+
+  cashVoucherText(exp: Record<string, unknown>, key: string): string {
+    const v = this.getCashVoucherPayload(exp)[key];
+    if (v === null || v === undefined || v === '') return '—';
+    return String(v);
+  }
+
   getExpenseStatusForUi(expense: Record<string, unknown>): string {
     if (expense['observado'] === true) return 'Observado';
     return this.mapExpenseStatusExport(
@@ -793,6 +818,23 @@ export class RendicionDetailComponent implements OnInit {
     if (u == null) return undefined;
     if (typeof u === 'object' && u !== null && 'signature' in u) {
       return (u as { signature?: string }).signature;
+    }
+    return undefined;
+  }
+
+  getCollaboratorDni(): string | undefined {
+    const u = this.report?.userId;
+    if (u && typeof u === 'object' && 'dni' in u) {
+      return (u as { dni?: string }).dni;
+    }
+    return undefined;
+  }
+
+  getCollaboratorAccountNumber(): string | undefined {
+    const u = this.report?.userId;
+    if (u && typeof u === 'object' && 'bankAccount' in u) {
+      const ba = (u as { bankAccount?: { accountNumber?: string; cci?: string } }).bankAccount;
+      return ba?.cci || ba?.accountNumber;
     }
     return undefined;
   }
@@ -944,8 +986,8 @@ export class RendicionDetailComponent implements OnInit {
       anticipos,
       settlement: this.getSettlementForExport(),
       // New fields
-      accountNumber: this.report.accountNumber,
-      idDocument: this.report.idDocument,
+      accountNumber: this.report.accountNumber || this.getCollaboratorAccountNumber(),
+      idDocument: this.report.idDocument || this.getCollaboratorDni(),
       peopleNames: this.report.peopleNames,
       location: this.report.location,
       startDate: this.report.startDate ? new Date(this.report.startDate).toLocaleDateString('es-PE') : undefined,
@@ -1684,23 +1726,9 @@ export class RendicionDetailComponent implements OnInit {
 
   exportCashVoucher(expense: Record<string, unknown>): void {
     if (this.getExpenseTypeKey(expense) !== 'comprobante_caja') return;
-    const rawData = this.getExpenseDataObject(expense);
-    const payloadRaw = rawData['payload'];
-    let payloadObj: Record<string, unknown> = {};
-    if (payloadRaw && typeof payloadRaw === 'string') {
-      try { payloadObj = JSON.parse(payloadRaw); } catch { /* empty */ }
-    } else if (payloadRaw && typeof payloadRaw === 'object') {
-      payloadObj = payloadRaw as Record<string, unknown>;
-    }
-    // Fallback: if payload was not nested, concepto may be in description (stored as JSON)
-    if (!payloadObj['concepto'] && expense['description']) {
-      try {
-        const descParsed = JSON.parse(String(expense['description']));
-        if (descParsed?.concepto) payloadObj = descParsed;
-      } catch { /* empty */ }
-    }
-    const companyName = this.companyConfigService.getCompanyConfig()?.businessName
-      || this.userStateService.getUser()?.client?.businessName;
+    const payloadObj = this.getCashVoucherPayload(expense);
+    const companyName = this.userStateService.getUser()?.client?.businessName
+      || this.companyConfigService.getCompanyConfig()?.businessName;
     const data: CashVoucherExportData = {
       fileBaseName: `comprobante_caja_${String(expense['_id'] || 'sin_id')}`,
       collaborator: this.getCollaboratorDisplayName(),

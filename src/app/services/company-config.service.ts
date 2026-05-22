@@ -35,8 +35,8 @@ export class CompanyConfigService {
     const defaultConfig: ICompanyConfig = {
       _id: clientId,
       companyId: clientId,
-      name: 'Mi Empresa',
-      businessName: 'Mi Empresa',
+      name: 'Tema Litoclean',
+      businessName: 'Tema Litoclean',
       logo: '',
     };
     this.setCompanyConfig(defaultConfig);
