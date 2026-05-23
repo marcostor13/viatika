@@ -32,6 +32,8 @@ export class HubComponent implements OnInit {
 
   get currentUser() { return this.userStateService.getUser(); }
   get isContabilidad() { return this.userStateService.isContabilidad(); }
+  get isAdmin() { return this.userStateService.isAdmin(); }
+  get isHubUser() { return this.isContabilidad || this.isAdmin; }
 
   // Stored temporarily for multi-company regular user selection
   private _pendingEmail = '';
@@ -46,8 +48,8 @@ export class HubComponent implements OnInit {
       this._pendingEmail = nav.email || '';
       this._pendingPassword = nav.password || '';
       this.loading.set(false);
-    } else if (this.isContabilidad) {
-      // Contabilidad refresh: re-fetch companies from API
+    } else if (this.isHubUser) {
+      // Hub user refresh: re-fetch companies from API using stored hub token
       this.authService.getHubCompanies()
         .pipe(finalize(() => this.loading.set(false)))
         .subscribe({
@@ -67,9 +69,11 @@ export class HubComponent implements OnInit {
     this.selecting.set(company.clientId);
 
     const isContabilidad = this.isContabilidad;
-    const hubToken = isContabilidad ? (this.currentUser?.access_token || localStorage.getItem('token')) : undefined;
+    const isAdmin = this.isAdmin;
+    const isHubUser = isContabilidad || isAdmin;
+    const hubToken = isHubUser ? (this.currentUser?.access_token || localStorage.getItem('token')) : undefined;
 
-    const body = isContabilidad
+    const body = isHubUser
       ? { hubToken: hubToken!, clientId: company.clientId }
       : { email: this._pendingEmail, password: this._pendingPassword, clientId: company.clientId };
 
@@ -84,7 +88,8 @@ export class HubComponent implements OnInit {
             return;
           }
           this.notificationService.show('Bienvenid@ ' + res.name, 'success');
-          this.router.navigate([isContabilidad ? '/consolidated-invoices' : '/']);
+          const redirect = isAdmin ? '/admin-users' : isContabilidad ? '/consolidated-invoices' : '/';
+          this.router.navigate([redirect]);
         },
         error: () => {
           this.notificationService.show('Error al seleccionar empresa', 'error');

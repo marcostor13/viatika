@@ -55,10 +55,15 @@ export class LoginComponent {
 
         // Multi-company or Contabilidad hub flow
         if (res?.requiresClientSelection) {
-          if (res.isContabilidad) {
+          if (res.isContabilidad || res.isAdmin) {
             // Store hub token & user state so hub page can use it
             this.userStateService.saveHubState(res);
             this.userStateService.setUser(res);
+            if (res.mustChangePassword) {
+              this.notificationService.show('Debes cambiar tu contraseña antes de continuar', 'warning');
+              this.router.navigate(['/cambiar-contrasena']);
+              return;
+            }
           }
           // Navigate to hub, passing companies + credentials via router state
           this.router.navigate(['/hub'], {

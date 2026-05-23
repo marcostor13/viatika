@@ -117,6 +117,10 @@ export interface IAdvance {
   /** Reenvíos tras rechazo (Fase 3). */
   solicitudVersion?: number;
   budgetCommitmentRecorded?: boolean;
+  /** Rendición de origen cuando este anticipo incorpora un saldo pendiente de otra rendición. */
+  pendingBalanceFromReportId?: string;
+  pendingBalanceAmount?: number;
+  additionalAmount?: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -158,6 +162,9 @@ export interface ICreateAdvancePayload {
   projectId?: string;
   lines?: IAdvanceLinePayload[];
   observations?: string;
+  pendingBalanceFromReportId?: string;
+  pendingBalanceAmount?: number;
+  additionalAmount?: number;
 }
 
 export interface IApproveAdvancePayload {
@@ -184,7 +191,7 @@ export interface IPayAdvancePayload {
 export const ADVANCE_STATUS_LABELS: Record<AdvanceStatus, string> = {
   draft: 'Borrador',
   pending_l1: 'Pendiente Aprobación',
-  pending_l2: 'Pendiente Contabilidad',
+  pending_l2: 'Aprobado por Coordinador',
   approved: 'Aprobado',
   paid: 'Pagado',
   settled: 'Liquidado',

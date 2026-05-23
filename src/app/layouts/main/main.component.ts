@@ -4,6 +4,7 @@ import { SidebarComponent } from '../../components/sidebar/sidebar.component';
 import { NotificationBellComponent } from '../../components/notification-bell/notification-bell.component';
 import { UserStateService } from '../../services/user-state.service';
 import { Subscription } from 'rxjs';
+import { finalize } from 'rxjs/operators';
 
 @Component({
   selector: 'app-main',
@@ -18,13 +19,21 @@ export class MainComponent implements OnInit, OnDestroy {
   private routerSubscription!: Subscription;
   currentPath = '';
   sidebarVisible = false;
+  showSignatureModal = false;
 
   constructor() {
     this.detectPath();
   }
 
   ngOnInit() {
-    this.userStateService.refreshPermissions();
+    this.userStateService.refreshPermissions()
+      .pipe(finalize(() => {
+        const user = this.userStateService.getUser();
+        if (user && !user.signature) {
+          this.showSignatureModal = true;
+        }
+      }))
+      .subscribe();
   }
 
   ngOnDestroy() {
@@ -46,8 +55,6 @@ export class MainComponent implements OnInit, OnDestroy {
 
     if (path.includes('/invoices')) {
       return 'Facturas';
-    } else if (path.includes('/invoice-approval')) {
-      return 'Aprobación de Facturas';
     } else if (path.includes('/admin-users')) {
       return 'Colaboradores';
     } else if (path.includes('/consolidated-invoices')) {
@@ -69,5 +76,14 @@ export class MainComponent implements OnInit, OnDestroy {
 
   toggleSidebar() {
     this.sidebarVisible = !this.sidebarVisible;
+  }
+
+  goToSignature() {
+    this.showSignatureModal = false;
+    this.router.navigate(['/mi-firma']);
+  }
+
+  dismissSignatureModal() {
+    this.showSignatureModal = false;
   }
 }

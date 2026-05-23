@@ -299,7 +299,6 @@ export default class AddInvoiceComponent implements OnInit {
             for (const row of rows) {
               this.mobilityRowsArray.push(this.fb.group({
                 fecha: [row.fecha || '', Validators.required],
-                concepto: [row.concepto || '', Validators.required],
                 total: [row.total ?? null, [Validators.required, Validators.min(0)]],
                 clienteProveedor: [row.clienteProveedor || ''],
                 origen: [row.origen || '', Validators.required],
@@ -438,7 +437,6 @@ export default class AddInvoiceComponent implements OnInit {
   addMobilityRow() {
     this.mobilityRowsArray.push(this.fb.group({
       fecha: ['', Validators.required],
-      concepto: ['', Validators.required],
       total: [null, [Validators.required, Validators.min(0)]],
       clienteProveedor: [''],
       origen: ['', Validators.required],
@@ -829,7 +827,6 @@ export default class AddInvoiceComponent implements OnInit {
     const doSave = (imageUrl?: string) => {
       const rows = this.mobilityRowsArray.value.map((r: any) => ({
         fecha: r.fecha,
-        concepto: r.concepto,
         total: r.total,
         clienteProveedor: r.clienteProveedor,
         origen: r.origen,
@@ -1063,7 +1060,6 @@ export default class AddInvoiceComponent implements OnInit {
     } else if (type === 'planilla_movilidad') {
       const rows = this.mobilityRowsArray.value.map((r: any) => ({
         fecha: r.fecha,
-        concepto: r.concepto,
         total: r.total,
         clienteProveedor: r.clienteProveedor,
         origen: r.origen,

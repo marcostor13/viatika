@@ -10,7 +10,6 @@ import { defaultRedirectGuard } from './guards/default-redirect.guard';
 import { authModuleGuard } from './guards/auth-module.guard';
 import { MainComponent } from './layouts/main/main.component';
 import AdminUsersComponent from './modules/admin-users/admin-users.component';
-import { InvoiceApprovalComponent } from './modules/invoice-approval/invoice-approval.component';
 import { CreateUserComponent } from './modules/admin-users/create-user/create-user.component';
 import { ConfiguracionComponent } from './modules/configuracion/configuracion.component';
 import { ClientOnboardingComponent } from './modules/super-admin/client-onboarding/client-onboarding.component';
@@ -50,11 +49,6 @@ export const routes: Routes = [
             (m) => m.InvoiceDetailComponent
           ),
         canActivate: [AuthColaboradorGuard],
-      },
-      {
-        path: 'invoice-approval',
-        component: InvoiceApprovalComponent,
-        canActivate: [authModuleGuard('invoice-approval')],
       },
       {
         path: 'consolidated-invoices',
@@ -148,7 +142,7 @@ export const routes: Routes = [
           import('./modules/admin-users/rendiciones-admin/rendiciones-admin.component').then(
             (m) => m.RendicionesAdminComponent
           ),
-        canActivate: [AuthAdmin2Guard],
+        canActivate: [authModuleGuard('rendiciones')],
       },
       {
         path: 'configuracion',

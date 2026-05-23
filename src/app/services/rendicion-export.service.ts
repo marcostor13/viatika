@@ -773,47 +773,20 @@ export class RendicionExportService {
     doc.text('DETALLE DE GASTOS DE MOVILIDAD', pageW / 2, 66.5, { align: 'center' });
     doc.setTextColor(0, 0, 0);
 
-    // 2-level table headers
-    const h1 = 7;
-    const h2 = 6;
+    // Single-row table header
+    const hdr = 8;
     let y = 69;
 
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(8);
-
-    // Fecha (rowspan 2)
-    doc.rect(cols[0], y, cols[1] - cols[0], h1 + h2, 'S');
-    doc.text('Fecha', (cols[0] + cols[1]) / 2, y + 7.5, { align: 'center' });
-
-    // Concepto (colspan 4)
-    doc.rect(cols[1], y, cols[5] - cols[1], h1, 'S');
-    doc.text('Concepto', (cols[1] + cols[5]) / 2, y + 4.5, { align: 'center' });
-
-    // TOTALES S/. (rowspan 2)
-    doc.rect(cols[5], y, cols[6] - cols[5], h1 + h2, 'S');
-    doc.setFontSize(7.5);
-    doc.text('TOTALES', (cols[5] + cols[6]) / 2, y + 4, { align: 'center' });
-    doc.text('S/.', (cols[5] + cols[6]) / 2, y + 9, { align: 'center' });
-
-    y += h1;
-
-    // Sub-headers under Concepto
-    doc.setFont('helvetica', 'normal');
     doc.setFontSize(7.5);
 
-    doc.rect(cols[1], y, cols[2] - cols[1], h2, 'S');
-    doc.text('Cliente/Proveedor', (cols[1] + cols[2]) / 2, y + 4, { align: 'center' });
+    const headers = ['Fecha', 'Cliente/Proveedor', 'Proyecto', 'Lugar', 'Gestión', 'TOTALES S/.'];
+    for (let i = 0; i < 6; i++) {
+      doc.rect(cols[i], y, cols[i + 1] - cols[i], hdr, 'S');
+      doc.text(headers[i], (cols[i] + cols[i + 1]) / 2, y + 5, { align: 'center' });
+    }
 
-    doc.rect(cols[2], y, cols[3] - cols[2], h2, 'S');
-    doc.text('Proyecto', (cols[2] + cols[3]) / 2, y + 4, { align: 'center' });
-
-    doc.rect(cols[3], y, cols[4] - cols[3], h2, 'S');
-    doc.text('Lugar', (cols[3] + cols[4]) / 2, y + 4, { align: 'center' });
-
-    doc.rect(cols[4], y, cols[5] - cols[4], h2, 'S');
-    doc.text('Gestión', (cols[4] + cols[5]) / 2, y + 4, { align: 'center' });
-
-    y += h2;
+    y += hdr;
 
     // Data rows (min 10)
     const dataRows = [...data.rows];
@@ -1168,47 +1141,20 @@ export class RendicionExportService {
     tableTitle.alignment = { horizontal: 'center', vertical: 'middle' };
     ws.getRow(9).height = 18;
 
-    // Row 10: Header row 1 (Fecha rowspan2, Concepto colspan4, TOTALES rowspan2)
-    ws.mergeCells('A10:A11');
-    const fechaHdr = ws.getCell('A10');
-    fechaHdr.value = 'Fecha';
-    fechaHdr.font = { bold: true, size: 8.5 };
-    fechaHdr.alignment = { horizontal: 'center', vertical: 'middle' };
-    fechaHdr.border = bt;
-
-    ws.mergeCells('B10:E10');
-    const conceptoHdr = ws.getCell('B10');
-    conceptoHdr.value = 'Concepto';
-    conceptoHdr.font = { bold: true, size: 8.5 };
-    conceptoHdr.alignment = { horizontal: 'center', vertical: 'middle' };
-    conceptoHdr.border = bt;
-
-    ws.mergeCells('F10:F11');
-    const totalesHdr = ws.getCell('F10');
-    totalesHdr.value = 'TOTALES S/.';
-    totalesHdr.font = { bold: true, size: 8.5 };
-    totalesHdr.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
-    totalesHdr.border = bt;
-    ws.getRow(10).height = 18;
-
-    // Row 11: Sub-headers under Concepto
-    const subHdrs = [
-      { col: 'B', label: 'Cliente/Proveedor' },
-      { col: 'C', label: 'Proyecto' },
-      { col: 'D', label: 'Lugar' },
-      { col: 'E', label: 'Gestión' },
-    ];
-    for (const { col, label } of subHdrs) {
-      const cell = ws.getCell(`${col}11`);
-      cell.value = label;
-      cell.font = { bold: true, size: 8 };
+    // Row 10: Single header row
+    const hdrLabels = ['Fecha', 'Cliente/Proveedor', 'Proyecto', 'Lugar', 'Gestión', 'TOTALES S/.'];
+    const hdrCols = ['A', 'B', 'C', 'D', 'E', 'F'];
+    for (let i = 0; i < hdrLabels.length; i++) {
+      const cell = ws.getCell(`${hdrCols[i]}10`);
+      cell.value = hdrLabels[i];
+      cell.font = { bold: true, size: 8.5 };
       cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
       cell.border = bt;
     }
-    ws.getRow(11).height = 16;
+    ws.getRow(10).height = 18;
 
     // Data rows (min 10)
-    let r = 12;
+    let r = 11;
     const dataRows = [...data.rows];
     while (dataRows.length < 10) {
       dataRows.push({ fecha: '', clienteProveedor: '', origen: '', destino: '', gestion: '', total: 0 });
