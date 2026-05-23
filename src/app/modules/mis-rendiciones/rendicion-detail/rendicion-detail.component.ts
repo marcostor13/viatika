@@ -933,6 +933,19 @@ export class RendicionDetailComponent implements OnInit {
     return '—';
   }
 
+  getExpenseProjectName(expense: Record<string, unknown>): string {
+    const p = expense['proyectId'];
+    if (p && typeof p === 'object' && 'name' in p) {
+      const name = (p as { name?: string }).name;
+      if (name) return name;
+    }
+    const rp = this.report?.projectId;
+    if (rp && typeof rp === 'object' && 'name' in rp) {
+      return (rp as { name?: string }).name || '';
+    }
+    return '';
+  }
+
   get reportDateRange(): string {
     const r = this.report;
     if (!r) return '';
@@ -1788,6 +1801,7 @@ export class RendicionDetailComponent implements OnInit {
         timeStyle: 'short',
       }),
       periodo,
+      proyecto: this.getExpenseProjectName(expense),
       rows,
       total,
       signature: this.getCollaboratorSignature(),
@@ -1847,6 +1861,7 @@ export class RendicionDetailComponent implements OnInit {
       location: this.report?.location,
       generatedAt: new Date().toLocaleString('es-PE', { dateStyle: 'short', timeStyle: 'short' }),
       periodo,
+      proyecto: this.getExpenseProjectName(expense),
       rows,
       total,
       signature: this.getCollaboratorSignature(),

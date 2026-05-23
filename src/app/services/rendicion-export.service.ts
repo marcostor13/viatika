@@ -105,6 +105,7 @@ export interface MobilitySheetExportData {
   location?: string;
   generatedAt: string;
   periodo?: string;
+  proyecto?: string;
   rows: Array<{
     fecha: string;
     clienteProveedor: string;
@@ -166,6 +167,21 @@ const YELLOW_CELL = 'FFFFFF00'; // Yellow for summary cell
 @Injectable({ providedIn: 'root' })
 export class RendicionExportService {
   private companyConfigService = inject(CompanyConfigService);
+
+  private formatDateDdMmYyyy(raw: string | null | undefined): string {
+    if (!raw) return '';
+    let d: Date;
+    if (/^\d{4}-\d{2}-\d{2}/.test(raw)) {
+      const [y, m, day] = raw.slice(0, 10).split('-').map(Number);
+      d = new Date(y, m - 1, day);
+    } else {
+      d = new Date(raw);
+    }
+    if (isNaN(d.getTime())) return raw;
+    const dd = String(d.getDate()).padStart(2, '0');
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    return `${dd}/${mm}/${d.getFullYear()}`;
+  }
 
   private async getLogoBase64(): Promise<string | null> {
     const logoUrl = this.companyConfigService.getCompanyConfig()?.logo;
@@ -709,7 +725,7 @@ export class RendicionExportService {
     const logoB64 = await this.getLogoBase64();
 
     // Col X positions: Fecha | CliProv | Proyecto | Lugar | Gestión | TOTALES | end
-    const cols = [14, 34, 66, 84, 106, 170, 196];
+    const cols = [14, 34, 60, 78, 140, 170, 196];
 
     // Title
     doc.setFont('helvetica', 'bold');
@@ -803,19 +819,37 @@ export class RendicionExportService {
         doc.rect(cols[c], y, cols[c + 1] - cols[c], rowH, 'S');
       }
       if (row.fecha) {
-        doc.text(row.fecha, cols[0] + 1, y + 4.5);
+        doc.text(this.formatDateDdMmYyyy(row.fecha), cols[0] + 1, y + 4.5);
       }
       if (row.clienteProveedor) {
         doc.text(doc.splitTextToSize(row.clienteProveedor, cols[2] - cols[1] - 2)[0], cols[1] + 1, y + 4.5);
       }
-      if (row.origen) {
-        doc.text(doc.splitTextToSize(row.origen, cols[3] - cols[2] - 2)[0], cols[2] + 1, y + 4.5);
+      if (data.proyecto && (row.fecha || row.origen || row.destino || row.gestion)) {
+        doc.text(doc.splitTextToSize(data.proyecto, cols[3] - cols[2] - 2)[0], cols[2] + 1, y + 4.5);
       }
-      if (row.destino) {
-        doc.text(doc.splitTextToSize(row.destino, cols[4] - cols[3] - 2)[0], cols[3] + 1, y + 4.5);
+      const lugarParts: string[] = [];
+      if (row.origen) lugarParts.push(row.origen);
+      if (row.destino) lugarParts.push(row.destino);
+      if (lugarParts.length > 0) {
+        const prevSize = doc.getFontSize();
+        doc.setFontSize(6.5);
+        const maxW = cols[4] - cols[3] - 2;
+        const startY = lugarParts.length > 1 ? y + 2.8 : y + 4.5;
+        lugarParts.forEach((part, i) => {
+          const line = (doc.splitTextToSize(part, maxW) as string[])[0] || '';
+          doc.text(line, cols[3] + 1, startY + i * 3);
+        });
+        doc.setFontSize(prevSize);
       }
       if (row.gestion) {
-        doc.text(doc.splitTextToSize(row.gestion, cols[5] - cols[4] - 2)[0], cols[4] + 1, y + 4.5);
+        const prevSize = doc.getFontSize();
+        doc.setFontSize(6.5);
+        const gLines = (doc.splitTextToSize(row.gestion, cols[5] - cols[4] - 2) as string[]).slice(0, 2);
+        const gStartY = gLines.length > 1 ? y + 2.8 : y + 4.5;
+        gLines.forEach((line, i) => {
+          doc.text(line, cols[4] + 1, gStartY + i * 3);
+        });
+        doc.setFontSize(prevSize);
       }
       if (row.total) {
         doc.text(row.total.toFixed(2), cols[6] - 1, y + 4.5, { align: 'right' });
@@ -1055,10 +1089,10 @@ export class RendicionExportService {
 
     ws.columns = [
       { width: 14 },  // A: Fecha
-      { width: 28 },  // B: Cliente/Proveedor
-      { width: 15 },  // C: Proyecto
-      { width: 20 },  // D: Lugar
-      { width: 48 },  // E: Gestión
+      { width: 24 },  // B: Cliente/Proveedor
+      { width: 14 },  // C: Proyecto
+      { width: 42 },  // D: Lugar
+      { width: 24 },  // E: Gestión
       { width: 13 },  // F: TOTALES
     ];
 
@@ -1161,11 +1195,15 @@ export class RendicionExportService {
     }
 
     for (const row of dataRows) {
-      ws.getCell(r, 1).value = row.fecha || '';
+      const hasContent = !!(row.fecha || row.origen || row.destino || row.gestion);
+      const lugar = [row.origen, row.destino].filter(Boolean).join(' → ');
+      ws.getCell(r, 1).value = this.formatDateDdMmYyyy(row.fecha);
       ws.getCell(r, 2).value = row.clienteProveedor || '';
-      ws.getCell(r, 3).value = row.origen || '';   // origen → Proyecto
-      ws.getCell(r, 4).value = row.destino || '';  // destino → Lugar
+      ws.getCell(r, 3).value = hasContent ? (data.proyecto || '') : '';
+      ws.getCell(r, 4).value = lugar;
+      ws.getCell(r, 4).alignment = { wrapText: true, vertical: 'middle' };
       ws.getCell(r, 5).value = row.gestion || '';
+      ws.getCell(r, 5).alignment = { wrapText: true, vertical: 'middle' };
       if (row.total) {
         ws.getCell(r, 6).value = row.total;
         ws.getCell(r, 6).numFmt = '#,##0.00';
