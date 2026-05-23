@@ -1,4 +1,5 @@
 import { TestBed } from '@angular/core/testing';
+import { HttpClientTestingModule } from '@angular/common/http/testing';
 import { UserStateService } from './user-state.service';
 import { USER_LOCALSTORAGE_KEY } from '../constants/user-localstorage.constant';
 import { IUserResponse } from '../interfaces/user.interface';
@@ -19,7 +20,7 @@ describe('UserStateService — empty localStorage', () => {
 
   beforeEach(() => {
     localStorage.clear();
-    TestBed.configureTestingModule({});
+    TestBed.configureTestingModule({ imports: [HttpClientTestingModule] });
     service = TestBed.inject(UserStateService);
   });
 
@@ -172,8 +173,8 @@ describe('UserStateService — empty localStorage', () => {
 
   describe('getRole()', () => {
     it('should return role name from string role', () => {
-      service.setUser(makeUser({ role: 'Coordinador' as any }));
-      expect(service.getRole()).toBe('Coordinador');
+      service.setUser(makeUser({ role: 'Administrador' as any }));
+      expect(service.getRole()).toBe('Administrador');
     });
 
     it('should return role name from object role', () => {
@@ -182,9 +183,9 @@ describe('UserStateService — empty localStorage', () => {
     });
 
     it('should return name from roleId.name when role has no name', () => {
-      const user = makeUser({ role: {} as any, roleId: { name: 'Coordinador' } as any });
+      const user = makeUser({ role: {} as any, roleId: { name: 'Administrador' } as any });
       service.setUser(user);
-      expect(service.getRole()).toBe('Coordinador');
+      expect(service.getRole()).toBe('Administrador');
     });
   });
 
@@ -194,8 +195,8 @@ describe('UserStateService — empty localStorage', () => {
       expect(service.isColaborador()).toBeTrue();
     });
 
-    it('isAdmin() returns true for Coordinador', () => {
-      const role = { _id: 'r2', name: 'Coordinador', active: true, createdAt: new Date(), updatedAt: new Date() };
+    it('isAdmin() returns true for Administrador', () => {
+      const role = { _id: 'r2', name: 'Administrador', active: true, createdAt: new Date(), updatedAt: new Date() };
       service.setUser(makeUser({ role }));
       expect(service.isAdmin()).toBeTrue();
     });
@@ -206,8 +207,8 @@ describe('UserStateService — empty localStorage', () => {
       expect(service.isSuperAdmin()).toBeTrue();
     });
 
-    it('isAnyAdmin() returns true for Coordinador', () => {
-      const role = { _id: 'r2', name: 'Coordinador', active: true, createdAt: new Date(), updatedAt: new Date() };
+    it('isAnyAdmin() returns true for Administrador', () => {
+      const role = { _id: 'r2', name: 'Administrador', active: true, createdAt: new Date(), updatedAt: new Date() };
       service.setUser(makeUser({ role }));
       expect(service.isAnyAdmin()).toBeTrue();
     });
@@ -235,8 +236,8 @@ describe('UserStateService — empty localStorage', () => {
       expect(service.getPermissions()).toEqual({ modules: [], canApproveL1: false, canApproveL2: false });
     });
 
-    it('hasModulePermission() returns true for Coordinador regardless of modules', () => {
-      const role = { _id: 'r2', name: 'Coordinador', active: true, createdAt: new Date(), updatedAt: new Date() };
+    it('hasModulePermission() returns true for Administrador regardless of modules', () => {
+      const role = { _id: 'r2', name: 'Administrador', active: true, createdAt: new Date(), updatedAt: new Date() };
       service.setUser(makeUser({ role, permissions: { modules: [], canApproveL1: false, canApproveL2: false } }));
       expect(service.hasModulePermission('tesoreria')).toBeTrue();
     });
@@ -315,7 +316,7 @@ describe('UserStateService — pre-populated localStorage', () => {
     isActive: true,
     access_token: 'stored-token',
     companyId: 'company1',
-    role: { _id: 'r1', name: 'Coordinador', active: true, createdAt: new Date(), updatedAt: new Date() },
+    role: { _id: 'r1', name: 'Administrador', active: true, createdAt: new Date(), updatedAt: new Date() },
     permissions: { modules: ['tesoreria'], canApproveL1: true, canApproveL2: false },
     createdAt: new Date(),
     updatedAt: new Date(),
@@ -324,7 +325,7 @@ describe('UserStateService — pre-populated localStorage', () => {
   beforeEach(() => {
     localStorage.clear();
     localStorage.setItem(USER_LOCALSTORAGE_KEY, JSON.stringify(storedUser));
-    TestBed.configureTestingModule({});
+    TestBed.configureTestingModule({ imports: [HttpClientTestingModule] });
   });
 
   afterEach(() => localStorage.clear());

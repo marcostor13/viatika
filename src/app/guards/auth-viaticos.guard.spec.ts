@@ -10,7 +10,7 @@ describe('AuthViaticosGuard', () => {
 
   beforeEach(() => {
     userState = jasmine.createSpyObj('UserStateService', [
-      'isAuthenticated', 'isAdmin', 'isSuperAdmin', 'isCoordinador', 'canApproveL1', 'getRole',
+      'isAuthenticated', 'isSuperAdmin', 'canApproveL1', 'hasModulePermission', 'getRole',
     ]);
     router = jasmine.createSpyObj('Router', ['navigate']);
 
@@ -30,61 +30,57 @@ describe('AuthViaticosGuard', () => {
     expect(router.navigate).toHaveBeenCalledWith(['/login']);
   });
 
-  it('returns true when admin', () => {
-    userState.isAuthenticated.and.returnValue(true);
-    userState.isAdmin.and.returnValue(true);
-    userState.isSuperAdmin.and.returnValue(false);
-    userState.isCoordinador.and.returnValue(false);
-    userState.canApproveL1.and.returnValue(false);
-    expect(guard.canActivate()).toBeTrue();
-  });
-
   it('returns true when superadmin', () => {
     userState.isAuthenticated.and.returnValue(true);
-    userState.isAdmin.and.returnValue(false);
     userState.isSuperAdmin.and.returnValue(true);
-    userState.isCoordinador.and.returnValue(false);
     userState.canApproveL1.and.returnValue(false);
-    expect(guard.canActivate()).toBeTrue();
-  });
-
-  it('returns true when coordinador', () => {
-    userState.isAuthenticated.and.returnValue(true);
-    userState.isAdmin.and.returnValue(false);
-    userState.isSuperAdmin.and.returnValue(false);
-    userState.isCoordinador.and.returnValue(true);
-    userState.canApproveL1.and.returnValue(false);
+    userState.hasModulePermission.and.returnValue(false);
     expect(guard.canActivate()).toBeTrue();
   });
 
   it('returns true when canApproveL1', () => {
     userState.isAuthenticated.and.returnValue(true);
-    userState.isAdmin.and.returnValue(false);
     userState.isSuperAdmin.and.returnValue(false);
-    userState.isCoordinador.and.returnValue(false);
     userState.canApproveL1.and.returnValue(true);
+    userState.hasModulePermission.and.returnValue(false);
+    expect(guard.canActivate()).toBeTrue();
+  });
+
+  it('returns true when has viaticos module permission', () => {
+    userState.isAuthenticated.and.returnValue(true);
+    userState.isSuperAdmin.and.returnValue(false);
+    userState.canApproveL1.and.returnValue(false);
+    userState.hasModulePermission.and.returnValue(true);
     expect(guard.canActivate()).toBeTrue();
   });
 
   it('redirects Colaborador without permission to /mis-rendiciones', () => {
     userState.isAuthenticated.and.returnValue(true);
-    userState.isAdmin.and.returnValue(false);
     userState.isSuperAdmin.and.returnValue(false);
-    userState.isCoordinador.and.returnValue(false);
     userState.canApproveL1.and.returnValue(false);
+    userState.hasModulePermission.and.returnValue(false);
     userState.getRole.and.returnValue('Colaborador');
     expect(guard.canActivate()).toBeFalse();
     expect(router.navigate).toHaveBeenCalledWith(['/mis-rendiciones']);
   });
 
-  it('redirects Contabilidad to /tesoreria', () => {
+  it('redirects Administrador without permission to /admin-users', () => {
     userState.isAuthenticated.and.returnValue(true);
-    userState.isAdmin.and.returnValue(false);
     userState.isSuperAdmin.and.returnValue(false);
-    userState.isCoordinador.and.returnValue(false);
     userState.canApproveL1.and.returnValue(false);
-    userState.getRole.and.returnValue('Contabilidad');
+    userState.hasModulePermission.and.returnValue(false);
+    userState.getRole.and.returnValue('Administrador');
     expect(guard.canActivate()).toBeFalse();
-    expect(router.navigate).toHaveBeenCalledWith(['/tesoreria']);
+    expect(router.navigate).toHaveBeenCalledWith(['/admin-users']);
+  });
+
+  it('redirects other roles to /login when no permission', () => {
+    userState.isAuthenticated.and.returnValue(true);
+    userState.isSuperAdmin.and.returnValue(false);
+    userState.canApproveL1.and.returnValue(false);
+    userState.hasModulePermission.and.returnValue(false);
+    userState.getRole.and.returnValue('OtroRol');
+    expect(guard.canActivate()).toBeFalse();
+    expect(router.navigate).toHaveBeenCalledWith(['/login']);
   });
 });
