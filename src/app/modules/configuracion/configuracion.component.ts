@@ -42,6 +42,12 @@ export class ConfiguracionComponent implements OnInit {
   limitsMovilidadDiario: number | null = null;
   isSavingLimits = false;
 
+  // Notifications
+  showNotificationsForm = false;
+  notificationsEnabled = false;
+  notificationsFrequency: 'semanal' | 'mensual' = 'semanal';
+  isSavingNotifications = false;
+
   // Profile
   showProfileForm = false;
   profileName: string = '';
@@ -84,6 +90,8 @@ export class ConfiguracionComponent implements OnInit {
       (config: ICompanyConfig | null) => {
         this.companyConfig = config;
         this.limitsMovilidadDiario = config?.limits?.movilidadDiario ?? null;
+        this.notificationsEnabled = config?.notificationSettings?.enabled ?? false;
+        this.notificationsFrequency = config?.notificationSettings?.frequency ?? 'semanal';
       }
     );
   }
@@ -113,6 +121,39 @@ export class ConfiguracionComponent implements OnInit {
       error: () => {
         this.notificationService.show('Error al guardar los límites', 'error');
         this.isSavingLimits = false;
+      },
+    });
+  }
+
+  editNotifications() {
+    this.notificationsEnabled = this.companyConfig?.notificationSettings?.enabled ?? false;
+    this.notificationsFrequency = this.companyConfig?.notificationSettings?.frequency ?? 'semanal';
+    this.showNotificationsForm = true;
+  }
+
+  cancelNotificationsEdit() {
+    this.showNotificationsForm = false;
+    this.notificationsEnabled = this.companyConfig?.notificationSettings?.enabled ?? false;
+    this.notificationsFrequency = this.companyConfig?.notificationSettings?.frequency ?? 'semanal';
+  }
+
+  saveNotifications() {
+    const companyId = this.companyConfig?._id || this.companyConfig?.companyId;
+    if (!companyId) return;
+    this.isSavingNotifications = true;
+    this.invoicesService.updateNotificationSettings(companyId, {
+      enabled: this.notificationsEnabled,
+      frequency: this.notificationsFrequency,
+    }).subscribe({
+      next: () => {
+        this.notificationService.show('Configuración de notificaciones guardada', 'success');
+        this.showNotificationsForm = false;
+        this.isSavingNotifications = false;
+        this.companyConfigService.refreshConfig();
+      },
+      error: () => {
+        this.notificationService.show('Error al guardar la configuración de notificaciones', 'error');
+        this.isSavingNotifications = false;
       },
     });
   }

@@ -189,8 +189,15 @@
               </td>
 
               <!-- Monto -->
-              <td class="px-4 py-3.5 text-right whitespace-nowrap">
-                <span class="text-base font-bold text-secondary">S/ {{ a.amount | number:'1.2-2' }}</span>
+              <td class="px-4 py-3.5 text-right">
+                <span class="text-base font-bold text-secondary tabular-nums">S/ {{ a.amount | number:'1.2-2' }}</span>
+                @if ($any(a).pendingBalanceAmount != null && $any(a).pendingBalanceAmount > 0) {
+                  <div class="text-xs text-tertiary mt-0.5 leading-snug">
+                    <span class="text-amber-600">Saldo S/ {{ $any(a).pendingBalanceAmount | number:'1.2-2' }}</span>
+                    <span class="mx-0.5">+</span>
+                    <span>Adic. S/ {{ $any(a).additionalAmount | number:'1.2-2' }}</span>
+                  </div>
+                }
               </td>
 
               <!-- Estado -->
@@ -275,9 +282,18 @@
               </div>
             </div>
 
-            <div class="flex items-center justify-between text-xs text-tertiary mb-3 pl-[52px]">
+            <div class="flex items-start justify-between text-xs text-tertiary mb-3 pl-[52px]">
               <span>{{ dateRange(a) }}</span>
-              <span class="text-base font-bold text-secondary">S/ {{ a.amount | number:'1.2-2' }}</span>
+              <div class="text-right">
+                <span class="text-base font-bold text-secondary tabular-nums">S/ {{ a.amount | number:'1.2-2' }}</span>
+                @if ($any(a).pendingBalanceAmount != null && $any(a).pendingBalanceAmount > 0) {
+                  <div class="text-xs text-tertiary mt-0.5 leading-snug">
+                    <span class="text-amber-600">Saldo S/ {{ $any(a).pendingBalanceAmount | number:'1.2-2' }}</span>
+                    <span class="mx-0.5">+</span>
+                    <span>Adic. S/ {{ $any(a).additionalAmount | number:'1.2-2' }}</span>
+                  </div>
+                }
+              </div>
             </div>
 
             <div class="flex items-center gap-1 pl-[52px]">
@@ -366,8 +382,18 @@
         </div>
         <div class="border-t border-tertiary/10 pt-2.5 flex justify-between items-center">
           <span class="text-sm text-tertiary">Monto solicitado</span>
-          <span class="text-lg font-bold text-secondary">S/ {{ pendingApproveAdvance()?.amount | number:'1.2-2' }}</span>
+          <span class="text-lg font-bold text-secondary tabular-nums">S/ {{ pendingApproveAdvance()?.amount | number:'1.2-2' }}</span>
         </div>
+        @if ($any(pendingApproveAdvance())?.pendingBalanceAmount != null && $any(pendingApproveAdvance())?.pendingBalanceAmount > 0) {
+          <div class="flex justify-between text-xs pt-1.5">
+            <span class="text-tertiary">Saldo pendiente</span>
+            <span class="text-amber-700 font-semibold tabular-nums">S/ {{ $any(pendingApproveAdvance())?.pendingBalanceAmount | number:'1.2-2' }}</span>
+          </div>
+          <div class="flex justify-between text-xs">
+            <span class="text-tertiary">Adicional</span>
+            <span class="text-secondary font-medium tabular-nums">S/ {{ $any(pendingApproveAdvance())?.additionalAmount | number:'1.2-2' }}</span>
+          </div>
+        }
       </div>
 
       <div class="flex gap-3">

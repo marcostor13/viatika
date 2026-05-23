@@ -390,5 +390,111 @@
   </section>
   } <!-- end canConfigureEmpresa: limites -->
 
+  @if (canConfigureEmpresa) {
+  <section class="bg-white rounded-lg shadow-lg p-6 mb-8">
+    <div class="flex justify-between items-center mb-6">
+      <div>
+        <h2 class="text-xl font-semibold text-gray-900">Notificaciones Automaticas</h2>
+        <p class="text-sm text-gray-500 mt-1">Configura el envio automatico de recordatorios de rendicion a colaboradores y coordinadores.</p>
+      </div>
+      @if (!showNotificationsForm) {
+        <app-button label="Editar Notificaciones" variant="primary" size="md" (clicked)="editNotifications()" />
+      }
+    </div>
+
+    @if (!showNotificationsForm) {
+    <div class="space-y-3">
+      <div class="flex items-center justify-between py-3 border-b border-gray-100">
+        <div>
+          <p class="text-sm font-medium text-gray-900">Notificaciones automaticas</p>
+          <p class="text-xs text-gray-500 mt-0.5">Recordatorios periodicos para rendicion de viaticos</p>
+        </div>
+        <span class="text-sm font-semibold" [class]="(companyConfig?.notificationSettings?.enabled) ? 'text-green-600' : 'text-gray-400'">
+          {{ (companyConfig?.notificationSettings?.enabled) ? 'Activadas' : 'Desactivadas' }}
+        </span>
+      </div>
+      @if (companyConfig?.notificationSettings?.enabled) {
+      <div class="flex items-center justify-between py-3 border-b border-gray-100">
+        <div>
+          <p class="text-sm font-medium text-gray-900">Frecuencia</p>
+          <p class="text-xs text-gray-500 mt-0.5">Intervalo de envio de notificaciones</p>
+        </div>
+        <span class="text-sm font-semibold text-gray-900 capitalize">
+          {{ companyConfig?.notificationSettings?.frequency === 'semanal' ? 'Semanal' : 'Mensual' }}
+        </span>
+      </div>
+      }
+    </div>
+    }
+
+    @if (showNotificationsForm) {
+    <div class="space-y-6">
+      <div class="flex items-center gap-3">
+        <input
+          id="notificationsEnabled"
+          type="checkbox"
+          [(ngModel)]="notificationsEnabled"
+          class="h-4 w-4 text-purple-600 focus:ring-purple-500 border-gray-300 rounded"
+        />
+        <label for="notificationsEnabled" class="text-sm font-medium text-gray-900">
+          Activar notificaciones automaticas de rendicion
+        </label>
+      </div>
+
+      @if (notificationsEnabled) {
+      <div>
+        <p class="text-sm font-medium text-gray-700 mb-3">Frecuencia de notificaciones</p>
+        <div class="flex gap-4">
+          <label class="flex items-center gap-2 cursor-pointer">
+            <input
+              type="radio"
+              name="notifFrequency"
+              value="semanal"
+              [(ngModel)]="notificationsFrequency"
+              class="h-4 w-4 text-purple-600 focus:ring-purple-500 border-gray-300"
+            />
+            <span class="text-sm text-gray-900">Semanal</span>
+            <span class="text-xs text-gray-500">(cada lunes)</span>
+          </label>
+          <label class="flex items-center gap-2 cursor-pointer">
+            <input
+              type="radio"
+              name="notifFrequency"
+              value="mensual"
+              [(ngModel)]="notificationsFrequency"
+              class="h-4 w-4 text-purple-600 focus:ring-purple-500 border-gray-300"
+            />
+            <span class="text-sm text-gray-900">Mensual</span>
+            <span class="text-xs text-gray-500">(el dia 1 de cada mes)</span>
+          </label>
+        </div>
+        <p class="text-xs text-gray-500 mt-3">
+          El colaborador recibe un recordatorio si no cargo comprobantes en el periodo.<br>
+          El coordinador recibe un resumen de los comprobantes pendientes de aprobacion.
+        </p>
+      </div>
+      }
+
+      <div class="flex space-x-3">
+        <app-button
+          [label]="isSavingNotifications ? 'Guardando...' : 'Guardar Configuracion'"
+          variant="primary"
+          size="md"
+          [disabled]="isSavingNotifications"
+          (clicked)="saveNotifications()"
+        />
+        <app-button
+          label="Cancelar"
+          variant="secondary"
+          size="md"
+          [disabled]="isSavingNotifications"
+          (clicked)="cancelNotificationsEdit()"
+        />
+      </div>
+    </div>
+    }
+  </section>
+  } <!-- end canConfigureEmpresa: notificaciones -->
+
   }
 </div>

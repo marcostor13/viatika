@@ -14,7 +14,7 @@ export class AuthTesoreroGuard implements CanActivate {
     if (!this.userState.canAccessTesoreria()) {
       const role = this.userState.getRole();
       const fallback = (role === 'Colaborador') ? '/inicio'
-        : (role === 'Coordinador') ? '/admin-users'
+        : (role === 'Administrador' || role === 'Coordinador') ? '/admin-users'
         : '/login';
       this.router.navigate([fallback]);
       return false;

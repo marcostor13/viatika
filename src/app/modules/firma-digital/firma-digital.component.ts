@@ -148,14 +148,12 @@ export class FirmaDigitalComponent implements AfterViewInit, OnInit {
       next: (res: any) => {
         this.notificationService.show(clear ? 'Firma eliminada exitosamente' : 'Firma guardada exitosamente.', 'success');
         this.isSaving = false;
-        
-        // Update local user state
-        const user = this.userStateService.getUser() as any;
-        if (user) {
-          user.signature = base64Signature;
-          this.userStateService.setUser(user);
+
+        const currentUser = this.userStateService.getUser() as any;
+        if (currentUser) {
+          this.userStateService.setUser({ ...currentUser, signature: base64Signature });
         }
-        
+
         if (clear) {
           this.startNewSignature();
         } else {

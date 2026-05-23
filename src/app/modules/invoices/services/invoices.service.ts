@@ -211,7 +211,18 @@ export class InvoicesService {
         businessId: client.businessId,
         logo: client.logo,
         limits: client.limits,
+        notificationSettings: client.notificationSettings,
       }))
+    );
+  }
+
+  updateNotificationSettings(
+    companyId: string,
+    settings: { enabled: boolean; frequency: 'semanal' | 'mensual' }
+  ): Observable<void> {
+    return this.http.patch<void>(
+      `${this.companyConfigUrl}/${companyId}/notification-settings`,
+      settings
     );
   }
 

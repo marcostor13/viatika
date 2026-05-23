@@ -9,6 +9,17 @@ import { UploadService } from '../../services/upload.service';
 import { NotificationService } from '../../services/notification.service';
 import { ISunatConfig } from '../../interfaces/sunat-config.interface';
 
+interface IUserRow {
+  _id: string;
+  name: string;
+  email: string;
+  roleName: string;
+  isActive: boolean;
+  isCompanyAdmin: boolean;
+  resetting: boolean;
+  resetResult: string | null;
+}
+
 interface IClientForm {
   codigo: string;
   comercialName: string;
@@ -37,6 +48,12 @@ interface IClientRow extends IClientForm {
   sunatForm: { ruc: string; clientIdSunat: string; clientSecret: string; isActive: boolean };
   savingSunat: boolean;
   testingConnection: boolean;
+  showDeleteConfirm: boolean;
+  deleteConfirmText: string;
+  deleting: boolean;
+  users: IUserRow[];
+  usersLoaded: boolean;
+  usersLoading: boolean;
 }
 
 @Component({
@@ -57,7 +74,12 @@ export class ClientsAdminComponent implements OnInit {
   loading = false;
   showCreateForm = false;
   creating = false;
+  creationResult: { companyName: string; adminEmail: string; temporaryPassword: string } | null = null;
   createForm: IClientForm = this.emptyForm();
+  createLogoFile: File | null = null;
+  createLogoPreview: string | null = null;
+  createAdminUser = { name: '', email: '' };
+  createSunatForm = { ruc: '', clientIdSunat: '', clientSecret: '', isActive: true, enabled: false };
 
   ngOnInit(): void {
     this.loadClients();
@@ -72,6 +94,7 @@ export class ClientsAdminComponent implements OnInit {
     this.http.get<any[]>(`${environment.api}/client`).subscribe({
       next: (clients) => {
         this.loading = false;
+        console.log('[clients-admin] API response:', JSON.stringify(clients?.map(c => ({ _id: c._id, comercialName: c.comercialName, email: c.email, phone: c.phone, address: c.address }))));
         this.clients = (clients || []).map((c) => this.toRow(c));
       },
       error: () => {
@@ -118,13 +141,20 @@ export class ClientsAdminComponent implements OnInit {
       sunatForm: { ruc: '', clientIdSunat: '', clientSecret: '', isActive: true },
       savingSunat: false,
       testingConnection: false,
+      showDeleteConfirm: false,
+      deleteConfirmText: '',
+      deleting: false,
+      users: [],
+      usersLoaded: false,
+      usersLoading: false,
     };
   }
 
   toggleExpand(row: IClientRow): void {
     row.expanded = !row.expanded;
-    if (row.expanded && !row.sunatLoaded) {
-      this.loadSunat(row);
+    if (row.expanded) {
+      if (!row.sunatLoaded) this.loadSunat(row);
+      if (!row.usersLoaded) this.loadUsers(row);
     }
   }
 
@@ -150,13 +180,33 @@ export class ClientsAdminComponent implements OnInit {
   // --- Company data editing ---
 
   openCreateForm(): void {
-    this.createForm = this.emptyForm();
+    this.resetCreateForm();
     this.showCreateForm = true;
   }
 
   cancelCreate(): void {
     this.showCreateForm = false;
-    this.createForm = this.emptyForm();
+    this.resetCreateForm();
+  }
+
+  dismissCreationResult(): void {
+    this.creationResult = null;
+  }
+
+  copyPassword(password: string): void {
+    navigator.clipboard.writeText(password).then(() => {
+      this.notificationService.show('Contraseña copiada', 'success');
+    });
+  }
+
+  onCreateLogoSelected(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    if (!file) return;
+    this.createLogoFile = file;
+    const reader = new FileReader();
+    reader.onload = (e: any) => { this.createLogoPreview = e.target.result; };
+    reader.readAsDataURL(file);
   }
 
   createClient(): void {
@@ -176,9 +226,17 @@ export class ClientsAdminComponent implements OnInit {
       this.notificationService.show('El RUC es obligatorio', 'error');
       return;
     }
+    if (!this.createAdminUser.name.trim()) {
+      this.notificationService.show('El nombre del administrador es obligatorio', 'error');
+      return;
+    }
+    if (!this.createAdminUser.email.trim()) {
+      this.notificationService.show('El email del administrador es obligatorio', 'error');
+      return;
+    }
     this.creating = true;
-    const payload = {
-      ...this.createForm,
+
+    const clientPayload = {
       codigo: this.createForm.codigo.trim(),
       comercialName: this.createForm.comercialName.trim(),
       businessName: this.createForm.businessName.trim(),
@@ -188,13 +246,73 @@ export class ClientsAdminComponent implements OnInit {
       email: this.createForm.email.trim(),
       logo: '',
     };
-    this.http.post<any>(`${environment.api}/client`, payload).subscribe({
-      next: (created) => {
-        this.creating = false;
-        this.showCreateForm = false;
-        this.createForm = this.emptyForm();
-        this.clients = [this.toRow(created), ...this.clients];
-        this.notificationService.show('Empresa creada correctamente', 'success');
+
+    const registerPayload = {
+      client: clientPayload,
+      adminUser: {
+        name: this.createAdminUser.name.trim(),
+        email: this.createAdminUser.email.trim(),
+      },
+    };
+
+    console.log('[createClient] payload enviado:', JSON.stringify({ email: clientPayload.email, phone: clientPayload.phone, address: clientPayload.address }));
+    this.http.post<any>(`${environment.api}/client/register-with-user`, registerPayload).subscribe({
+      next: (result) => {
+        const created = result.client;
+        const adminUser = result.adminUser;
+
+        const afterLogo = (clientData: any) => {
+          const sunat = this.createSunatForm;
+          if (sunat.enabled && sunat.clientIdSunat.trim() && sunat.clientSecret.trim()) {
+            this.invoicesService.createSunatConfig(clientData._id, {
+              ruc: sunat.ruc,
+              clientIdSunat: sunat.clientIdSunat,
+              clientSecret: sunat.clientSecret,
+              isActive: sunat.isActive,
+            }).subscribe({
+              next: (config) => {
+                const row = this.toRow(clientData);
+                row.sunatConfig = config;
+                row.sunatLoaded = true;
+                this.creating = false;
+                this.showCreateForm = false;
+                this.creationResult = { companyName: clientData.comercialName, adminEmail: adminUser.email, temporaryPassword: adminUser.temporaryPassword };
+                this.resetCreateForm();
+                this.clients = [row, ...this.clients];
+              },
+              error: () => {
+                this.creating = false;
+                this.showCreateForm = false;
+                this.creationResult = { companyName: clientData.comercialName, adminEmail: adminUser.email, temporaryPassword: adminUser.temporaryPassword };
+                this.resetCreateForm();
+                this.clients = [this.toRow(clientData), ...this.clients];
+                this.notificationService.show('No se pudo guardar la configuración SUNAT.', 'error');
+              },
+            });
+          } else {
+            this.creating = false;
+            this.showCreateForm = false;
+            this.creationResult = { companyName: clientData.comercialName, adminEmail: adminUser.email, temporaryPassword: adminUser.temporaryPassword };
+            this.resetCreateForm();
+            this.clients = [this.toRow(clientData), ...this.clients];
+          }
+        };
+
+        if (this.createLogoFile) {
+          const path = `company-logos/${created._id}`;
+          const { downloadUrl$ } = this.uploadService.uploadFile(this.createLogoFile, path);
+          downloadUrl$.subscribe({
+            next: (url) => {
+              this.http.patch<any>(`${environment.api}/client/${created._id}`, { logo: url }).subscribe({
+                next: (updated) => afterLogo(updated),
+                error: () => afterLogo(created),
+              });
+            },
+            error: () => afterLogo(created),
+          });
+        } else {
+          afterLogo(created);
+        }
       },
       error: (err: HttpErrorResponse) => {
         this.creating = false;
@@ -204,6 +322,14 @@ export class ClientsAdminComponent implements OnInit {
         this.notificationService.show(message, 'error');
       },
     });
+  }
+
+  private resetCreateForm(): void {
+    this.createForm = this.emptyForm();
+    this.createLogoFile = null;
+    this.createLogoPreview = null;
+    this.createAdminUser = { name: '', email: '' };
+    this.createSunatForm = { ruc: '', clientIdSunat: '', clientSecret: '', isActive: true, enabled: false };
   }
 
   startEdit(row: IClientRow): void {
@@ -247,6 +373,7 @@ export class ClientsAdminComponent implements OnInit {
       return;
     }
     row.saving = true;
+    console.log('[saveEdit] editForm enviado:', JSON.stringify({ email: row.editForm.email, phone: row.editForm.phone, address: row.editForm.address }));
     this.http.patch<any>(`${environment.api}/client/${row._id}`, row.editForm).subscribe({
       next: (updated) => {
         row.codigo = updated.codigo || row.editForm.codigo;
@@ -303,6 +430,83 @@ export class ClientsAdminComponent implements OnInit {
         this.notificationService.show('Error al subir logo', 'error');
       },
     });
+  }
+
+  // --- Delete client ---
+
+  openDeleteConfirm(row: IClientRow): void {
+    row.showDeleteConfirm = true;
+    row.deleteConfirmText = '';
+  }
+
+  cancelDeleteConfirm(row: IClientRow): void {
+    row.showDeleteConfirm = false;
+    row.deleteConfirmText = '';
+  }
+
+  confirmDeleteClient(row: IClientRow): void {
+    if (row.deleteConfirmText !== 'eliminar empresa definitivamente') return;
+    row.deleting = true;
+    this.http.delete(`${environment.api}/client/${row._id}`).subscribe({
+      next: () => {
+        this.clients = this.clients.filter(c => c._id !== row._id);
+        this.notificationService.show('Empresa y sus usuarios eliminados correctamente', 'success');
+      },
+      error: () => {
+        row.deleting = false;
+        this.notificationService.show('Error al eliminar la empresa', 'error');
+      },
+    });
+  }
+
+  // --- Users ---
+
+  private loadUsers(row: IClientRow): void {
+    row.usersLoading = true;
+    this.http.get<any[]>(`${environment.api}/user/client/${row._id}`).subscribe({
+      next: (users) => {
+        const allUsers = (users || []).map((u: any) => ({
+          _id: u._id,
+          name: u.name || '',
+          email: u.email || '',
+          roleName: u.role?.name || '',
+          isActive: u.isActive !== false,
+          isCompanyAdmin: u.isCompanyAdmin === true,
+          resetting: false,
+          resetResult: null,
+        }));
+        const companyAdmins = allUsers.filter((u: IUserRow) => u.isCompanyAdmin);
+        row.users = companyAdmins.length > 0
+          ? companyAdmins
+          : allUsers.filter((u: IUserRow) => u.roleName === 'Administrador').slice(0, 1);
+        row.usersLoaded = true;
+        row.usersLoading = false;
+      },
+      error: () => {
+        row.usersLoaded = true;
+        row.usersLoading = false;
+        this.notificationService.show('Error al cargar usuarios', 'error');
+      },
+    });
+  }
+
+  resetUserPassword(user: IUserRow): void {
+    user.resetting = true;
+    user.resetResult = null;
+    this.http.post<{ temporaryPassword: string }>(`${environment.api}/user/${user._id}/reset-password`, {}).subscribe({
+      next: (result) => {
+        user.resetting = false;
+        user.resetResult = result.temporaryPassword;
+      },
+      error: () => {
+        user.resetting = false;
+        this.notificationService.show('Error al resetear la contraseña', 'error');
+      },
+    });
+  }
+
+  dismissResetResult(user: IUserRow): void {
+    user.resetResult = null;
   }
 
   // --- SUNAT config ---

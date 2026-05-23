@@ -121,6 +121,34 @@
   </div>
   }
 
+  <!-- Notificaciones por correo -->
+  <div class="bg-quaternary rounded-2xl border border-tertiary/20 shadow-soft p-6 mb-6">
+    <div class="flex items-center justify-between gap-4">
+      <div>
+        <h2 class="text-sm font-bold text-secondary uppercase tracking-wider">Notificaciones por correo</h2>
+        <p class="text-xs text-tertiary mt-1">
+          @if (user.emailNotificationsEnabled) {
+            El colaborador recibe notificaciones por correo electronico.
+          } @else {
+            El colaborador no recibe notificaciones por correo electronico.
+          }
+        </p>
+      </div>
+      <button
+        (click)="toggleNotifications()"
+        [disabled]="isTogglingNotifications()"
+        class="relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-primary/30 disabled:opacity-50 disabled:cursor-not-allowed"
+        [ngClass]="user.emailNotificationsEnabled ? 'bg-primary' : 'bg-tertiary/30'"
+        [title]="user.emailNotificationsEnabled ? 'Desactivar notificaciones' : 'Activar notificaciones'"
+      >
+        <span
+          class="pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow transform ring-0 transition duration-200 ease-in-out"
+          [ngClass]="user.emailNotificationsEnabled ? 'translate-x-5' : 'translate-x-0'"
+        ></span>
+      </button>
+    </div>
+  </div>
+
   <!-- Rendiciones Section -->
   <div class="bg-quaternary rounded-2xl border border-tertiary/20 shadow-soft">
     <!-- Section header -->

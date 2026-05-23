@@ -176,6 +176,92 @@ export class ViaticosDetailComponent implements OnInit {
     return map[action] ?? action;
   }
 
+  pipelineSteps(): Array<{
+    label: string;
+    state: 'completed' | 'active' | 'upcoming' | 'rejected';
+    date?: string;
+    description?: string;
+    notes?: string;
+  }> {
+    const a = this.advance();
+    if (!a) return [];
+
+    const isTwoLevel = a.requiredLevels >= 2;
+    const status = a.status;
+    const history = a.approvalHistory;
+
+    const ACTIVE_STEP: Partial<Record<string, number>> = isTwoLevel
+      ? { pending_l1: 1, pending_l2: 2, approved: 3, paid: 4, settled: 5 }
+      : { pending_l1: 1, approved: 2, paid: 3, settled: 4 };
+
+    const activeStep = ACTIVE_STEP[status] ?? 0;
+
+    const stateFor = (pos: number): 'completed' | 'active' | 'upcoming' | 'rejected' => {
+      if (status === 'rejected') {
+        const rejEntry = [...history].reverse().find(h => h.action === 'rejected');
+        const rejPos = (rejEntry?.level ?? 1) === 1 ? 1 : 2;
+        if (pos < rejPos) return 'completed';
+        if (pos === rejPos) return 'rejected';
+        return 'upcoming';
+      }
+      if (pos < activeStep) return 'completed';
+      if (pos === activeStep) return 'active';
+      return 'upcoming';
+    };
+
+    const fmt = (d?: string) =>
+      d ? new Date(d).toLocaleDateString('es-PE', { day: 'numeric', month: 'short', year: 'numeric' }) : undefined;
+
+    const l1Entry = history.find(h => h.level === 1 && h.action === 'approved');
+    const l2Entry = history.find(h => h.level === 2 && h.action === 'approved');
+
+    const ACTIVE_DESC: Record<number, string> = isTwoLevel
+      ? {
+          1: 'Pendiente de aprobacion del coordinador',
+          2: 'Aprobado por coordinador — pendiente de aprobacion de contabilidad y deposito',
+          3: 'Pendiente de registro de pago',
+        }
+      : {
+          1: 'Pendiente de aprobacion del coordinador',
+          2: 'Pendiente de registro de pago',
+        };
+
+    const l1S = stateFor(1);
+    const payPos = isTwoLevel ? 3 : 2;
+    const payS = stateFor(payPos);
+
+    const steps: Array<{ label: string; state: ReturnType<typeof stateFor>; date?: string; description?: string; notes?: string }> = [
+      { label: 'Solicitud enviada', state: 'completed', date: fmt(a.createdAt) },
+      {
+        label: 'Aprobado por coordinador',
+        state: l1S,
+        date: fmt(l1Entry?.date),
+        description: l1S === 'active' ? ACTIVE_DESC[1] : undefined,
+        notes: l1Entry?.notes,
+      },
+    ];
+
+    if (isTwoLevel) {
+      const l2S = stateFor(2);
+      steps.push({
+        label: 'Aprobado por contabilidad',
+        state: l2S,
+        date: fmt(l2Entry?.date),
+        description: l2S === 'active' ? ACTIVE_DESC[2] : undefined,
+        notes: l2Entry?.notes,
+      });
+    }
+
+    steps.push({
+      label: 'Pago registrado',
+      state: payS,
+      date: fmt(a.paymentInfo?.transferDate),
+      description: payS === 'active' ? ACTIVE_DESC[payPos] : undefined,
+    });
+
+    return steps;
+  }
+
   // ── Helpers compartidos ──────────────────────────────────────────────────
 
   private exportData() {
@@ -214,10 +300,28 @@ export class ViaticosDetailComponent implements OnInit {
 
   // ── PDF ──────────────────────────────────────────────────────────────────
 
-  downloadPdf(): void {
+  private async loadLogoBase64(): Promise<string | null> {
+    try {
+      const res = await fetch('logo_header.png');
+      if (!res.ok) return null;
+      const blob = await res.blob();
+      return new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result as string);
+        reader.onerror = () => resolve(null);
+        reader.readAsDataURL(blob);
+      });
+    } catch {
+      return null;
+    }
+  }
+
+  async downloadPdf(): Promise<void> {
     const a = this.advance();
     if (!a || this.isDownloading()) return;
     this.isDownloading.set(true);
+
+    const logoBase64 = await this.loadLogoBase64();
 
     try {
       const { responsible, accountStr, dni, peopleMax, place, startFmt, endFmt, projectName, lines, catName } =
@@ -227,19 +331,28 @@ export class ViaticosDetailComponent implements OnInit {
       const WHITE: [number, number, number] = [255, 255, 255];
       const LIGHT: [number, number, number] = [248, 243, 243];
       const BLACK: [number, number, number] = [30, 30, 30];
+      const AMBER_BG: [number, number, number] = [255, 251, 235];
+      const AMBER_FG: [number, number, number] = [120, 70, 20];
 
       const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' }) as JsPdfAT;
       const pageW = doc.internal.pageSize.getWidth();
       const M = 14;
       const W = pageW - M * 2;
 
+      // ── Logo (fuera del recuadro) ──
+      if (logoBase64) {
+        doc.addImage(logoBase64, 'PNG', M, 6, 42, 15);
+      }
+
       // ── Título ──
+      const HEADER_H = 10;
+      const headerY = 23;
       doc.setFillColor(...DARK_RED);
-      doc.rect(M, 10, W, 11, 'F');
+      doc.rect(M, headerY, W, HEADER_H, 'F');
       doc.setFont('helvetica', 'bold');
-      doc.setFontSize(13);
+      doc.setFontSize(12);
       doc.setTextColor(...WHITE);
-      doc.text('SOLICITUD DE VIÁTICOS', pageW / 2, 17.5, { align: 'center' });
+      doc.text('SOLICITUD DE VIÁTICOS', pageW / 2, headerY + HEADER_H / 2 + 2, { align: 'center' });
 
       // ── Info section ──
       // Col widths: label 72, rest distributed across 5 cols = 110
@@ -247,7 +360,7 @@ export class ViaticosDetailComponent implements OnInit {
       const COL_REST = W - COL_LABEL;
 
       autoTable(doc, {
-        startY: 23,
+        startY: 36,
         margin: { left: M, right: M },
         theme: 'plain',
         styles: { fontSize: 8.5, cellPadding: { top: 2, bottom: 2, left: 2.5, right: 2.5 }, textColor: BLACK, lineWidth: 0.2, lineColor: [200, 200, 200] },
@@ -288,11 +401,22 @@ export class ViaticosDetailComponent implements OnInit {
         `S/ ${ln.lineTotal.toFixed(2)}`,
       ]);
 
+      const hasPending = a.pendingBalanceAmount != null && a.pendingBalanceAmount > 0;
+
       autoTable(doc, {
         startY: tableY,
         margin: { left: M, right: M },
         head: [['Viáticos', 'Detalle', 'Importe', 'Cantidad\nde personas', 'Combustible\nGLP x dia', 'Días', 'Total']],
         body: [
+          ...(hasPending ? [[
+            { content: 'Saldo anterior', styles: { fontStyle: 'bold' as const, fillColor: AMBER_BG, textColor: AMBER_FG } },
+            { content: '', styles: { fillColor: AMBER_BG } },
+            { content: '', styles: { fillColor: AMBER_BG } },
+            { content: '', styles: { fillColor: AMBER_BG } },
+            { content: '', styles: { fillColor: AMBER_BG } },
+            { content: '', styles: { fillColor: AMBER_BG } },
+            { content: `S/ ${a.pendingBalanceAmount!.toFixed(2)}`, styles: { halign: 'right' as const, fontStyle: 'bold' as const, fillColor: AMBER_BG, textColor: AMBER_FG } },
+          ]] : []),
           ...tableRows,
           [
             {
@@ -337,6 +461,9 @@ export class ViaticosDetailComponent implements OnInit {
     this.isDownloading.set(true);
 
     try {
+      const logoBase64 = await this.loadLogoBase64();
+      const hasPending = a.pendingBalanceAmount != null && a.pendingBalanceAmount > 0;
+
       const { responsible, accountStr, dni, peopleMax, place, startFmt, endFmt, projectName, lines, catName } =
         this.exportData();
 
@@ -364,15 +491,24 @@ export class ViaticosDetailComponent implements OnInit {
         { width: 16 },
       ];
 
-      // ── Título ──
+      // ── Logo (fila 1, fuera del recuadro) ──
       ws.mergeCells('A1:G1');
-      const title = ws.getCell('A1');
+      ws.getRow(1).height = 44;
+      if (logoBase64) {
+        const logoData = logoBase64.replace(/^data:[^;]+;base64,/, '');
+        const imgId = wb.addImage({ base64: logoData, extension: 'png' });
+        ws.addImage(imgId, { tl: { col: 0, row: 0 } as any, ext: { width: 142, height: 42 } });
+      }
+
+      // ── Título (fila 2) ──
+      ws.mergeCells('A2:G2');
+      const title = ws.getCell('A2');
       title.value = 'SOLICITUD DE VIÁTICOS';
       title.font = { bold: true, size: 13, color: { argb: WH } };
       title.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: DR } };
       title.alignment = { horizontal: 'center', vertical: 'middle' };
       title.border = allBorders('FF7E1D1D');
-      ws.getRow(1).height = 26;
+      ws.getRow(2).height = 26;
 
       // ── Helper: info row ──
       const addInfoRow = (label: string, value: string, rowIdx: number, mergeValue = true) => {
@@ -386,13 +522,13 @@ export class ViaticosDetailComponent implements OnInit {
         });
       };
 
-      addInfoRow('Responsable:', responsible, 2);
-      addInfoRow('N° cuenta  y CCI', accountStr, 3);
-      addInfoRow('Documento de identificación en caso sea CCI', dni, 4);
-      addInfoRow('Cantidad de Personas (nombres):', String(peopleMax), 5);
-      addInfoRow('Lugar:', place, 6);
+      addInfoRow('Responsable:', responsible, 3);
+      addInfoRow('N° cuenta  y CCI', accountStr, 4);
+      addInfoRow('Documento de identificación en caso sea CCI', dni, 5);
+      addInfoRow('Cantidad de Personas (nombres):', String(peopleMax), 6);
+      addInfoRow('Lugar:', place, 7);
 
-      // Tiempo presupuestado (row 7, no merge)
+      // Tiempo presupuestado (row 8, no merge)
       const timeRow = ws.addRow(['Tiempo presupuestado:', 'Del .....', startFmt, 'Al .....', endFmt, '', '']);
       timeRow.height = 18;
       timeRow.eachCell({ includeEmpty: true }, (cell, col) => {
@@ -401,12 +537,12 @@ export class ViaticosDetailComponent implements OnInit {
         cell.alignment = { vertical: 'middle' };
       });
 
-      addInfoRow('Proyecto:', projectName, 8);
+      addInfoRow('Proyecto:', projectName, 9);
 
       // ── Separador ──
       ws.addRow([]);
 
-      // ── Encabezado tabla (row 10) ──
+      // ── Encabezado tabla (row 11) ──
       const hRow = ws.addRow([
         'Viáticos', 'Detalle', 'Importe', 'Cantidad de personas',
         'Combustible GLP x dia', 'Días', 'Total',
@@ -422,6 +558,22 @@ export class ViaticosDetailComponent implements OnInit {
       // ── Líneas ──
       const numFmt = '"S/ "#,##0.00';
       const numFmtPlain = '#,##0.00';
+
+      if (hasPending) {
+        const sRow = ws.addRow(['Saldo anterior', '', '', '', '', '', a.pendingBalanceAmount!]);
+        sRow.height = 18;
+        sRow.eachCell({ includeEmpty: true }, (cell, col) => {
+          cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFEF3C7' } };
+          cell.font = (col === 1 || col === 7)
+            ? { bold: true, size: 9.5, color: { argb: 'FF92400E' } }
+            : { size: 9.5, color: { argb: 'FF92400E' } };
+          cell.border = allBorders();
+          cell.alignment = col === 7
+            ? { horizontal: 'right', vertical: 'middle' }
+            : { vertical: 'middle' };
+          if (col === 7) cell.numFmt = numFmt;
+        });
+      }
 
       lines.forEach((ln, i) => {
         const dRow = ws.addRow([
@@ -453,7 +605,7 @@ export class ViaticosDetailComponent implements OnInit {
       });
 
       // ── Fila TOTAL ──
-      const totalRowIdx = 10 + lines.length + 1;
+      const totalRowIdx = 11 + lines.length + (hasPending ? 1 : 0) + 1;
       const tRow = ws.addRow(['TOTAL', '', '', '', '', '', a.amount]);
       ws.mergeCells(`A${totalRowIdx}:F${totalRowIdx}`);
       tRow.height = 22;

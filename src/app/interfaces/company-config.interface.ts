@@ -12,6 +12,10 @@ export interface ICompanyConfig {
   limits?: {
     movilidadDiario?: number | null;
   };
+  notificationSettings?: {
+    enabled: boolean;
+    frequency: 'semanal' | 'mensual';
+  };
   createdAt?: Date;
   updatedAt?: Date;
 }

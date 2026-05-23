@@ -39,7 +39,7 @@ export default class AdminUsersComponent implements OnInit {
   isSuperAdmin = this.userStateService.isSuperAdmin();
 
   readonly roleOptions = [
-    { value: 'Coordinador', label: 'Coordinador' },
+    { value: 'Administrador', label: 'Administrador' },
     { value: 'Colaborador', label: 'Colaborador' },
   ];
 

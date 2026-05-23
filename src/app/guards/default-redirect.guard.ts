@@ -18,12 +18,12 @@ export const defaultRedirectGuard: CanActivateFn = () => {
     return router.createUrlTree(['/clients-admin']);
   }
 
+  if (userState.isAdmin()) {
+    return router.createUrlTree([userState.isAdminInCompany() ? '/admin-users' : '/hub']);
+  }
+
   if (userState.isContabilidad()) {
-    // If a company has been selected (companyId set), go to the main view
-    if (userState.isContabilidadInCompany()) {
-      return router.createUrlTree(['/consolidated-invoices']);
-    }
-    return router.createUrlTree(['/hub']);
+    return router.createUrlTree([userState.isContabilidadInCompany() ? '/consolidated-invoices' : '/hub']);
   }
 
   // Coordinador

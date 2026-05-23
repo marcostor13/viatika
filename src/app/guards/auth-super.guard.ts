@@ -12,7 +12,7 @@ export class AuthSuperGuard implements CanActivate {
             return false;
         }
 
-        if (this.userState.isSuperAdmin() || this.userState.isContabilidad()) {
+        if (this.userState.isSuperAdmin() || this.userState.isAdmin() || this.userState.isContabilidad()) {
             return true;
         }
 

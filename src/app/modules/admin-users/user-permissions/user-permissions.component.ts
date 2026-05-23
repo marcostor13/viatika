@@ -46,7 +46,6 @@ export class UserPermissionsComponent implements OnInit {
     { key: 'mis-rendiciones', label: 'Mis Rendiciones', description: 'Ver y gestionar rendiciones propias' },
     { key: 'nueva-rendicion', label: 'Nueva Rendición', description: 'Crear nuevas rendiciones desde la pantalla Mis Rendiciones' },
     { key: 'viaticos', label: 'Viáticos', description: 'Acceder a la gestión y seguimiento de anticipos de viáticos' },
-    { key: 'invoice-approval', label: 'Aprobación de Facturas', description: 'Revisar y aprobar facturas de colaboradores' },
     { key: 'consolidated-invoices', label: 'Consolidado', description: 'Ver reportes consolidados de gastos' },
     { key: 'tesoreria', label: 'Pagos', description: 'Registrar comprobantes de pago de viáticos' },
     { key: 'configuracion', label: 'Configuración', description: 'Configurar parámetros de la empresa' },

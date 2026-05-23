@@ -58,6 +58,11 @@ export class SolicitudViaticosComponent implements OnInit {
   categories = signal<ICategory[]>([]);
   advanceToResubmit = signal<IAdvance | null>(null);
 
+  /** ID de la rendición de origen cuando se traslada saldo pendiente. */
+  pendingBalanceFromReportId = signal<string | null>(null);
+  /** Monto del saldo pendiente trasladado desde la rendición de origen. */
+  pendingBalanceAmount = signal<number>(0);
+
   form = this.fb.group({
     place: ['', Validators.required],
     startDate: ['', Validators.required],
@@ -71,11 +76,30 @@ export class SolicitudViaticosComponent implements OnInit {
     return !!this.route.snapshot.paramMap.get('id');
   }
 
+  get hasPendingBalance(): boolean {
+    return !!this.pendingBalanceFromReportId() && this.pendingBalanceAmount() > 0;
+  }
+
   get pageTitle(): string {
     const adv = this.advanceToResubmit();
-    return adv
-      ? `Corregir solicitud · v${adv.solicitudVersion ?? 1}`
+    if (adv) return `Corregir solicitud · v${adv.solicitudVersion ?? 1}`;
+    return this.hasPendingBalance
+      ? 'Nueva solicitud de viáticos (con saldo pendiente)'
       : 'Nueva solicitud de viáticos';
+  }
+
+  /** Total de las líneas del formulario (monto adicional). */
+  totalGeneral(): number {
+    let sum = 0;
+    for (let i = 0; i < this.lines.length; i++) {
+      sum += this.lineTotal(this.lines.at(i) as FormGroup);
+    }
+    return Math.round(sum * 100) / 100;
+  }
+
+  /** Total del anticipo = saldo pendiente + líneas adicionales. */
+  totalAnticipo(): number {
+    return Math.round((this.pendingBalanceAmount() + this.totalGeneral()) * 100) / 100;
   }
 
   ngOnInit(): void {
@@ -83,6 +107,13 @@ export class SolicitudViaticosComponent implements OnInit {
     if (id) {
       this.loadAdvanceForResubmit(id);
     } else {
+      const qp = this.route.snapshot.queryParamMap;
+      const fromReport = qp.get('pendingBalanceFromReportId');
+      const amount = parseFloat(qp.get('pendingBalanceAmount') ?? '0');
+      if (fromReport && amount > 0) {
+        this.pendingBalanceFromReportId.set(fromReport);
+        this.pendingBalanceAmount.set(amount);
+      }
       this.loadCatalogues();
     }
   }
@@ -199,14 +230,6 @@ export class SolicitudViaticosComponent implements OnInit {
     );
   }
 
-  totalGeneral(): number {
-    let sum = 0;
-    for (let i = 0; i < this.lines.length; i++) {
-      sum += this.lineTotal(this.lines.at(i) as FormGroup);
-    }
-    return Math.round(sum * 100) / 100;
-  }
-
   addLine(): void {
     this.lines.push(this.createLineGroup());
   }
@@ -221,7 +244,12 @@ export class SolicitudViaticosComponent implements OnInit {
   }
 
   goBack(): void {
-    this.router.navigate(['/mis-rendiciones']);
+    const fromReport = this.pendingBalanceFromReportId();
+    if (fromReport) {
+      this.router.navigate(['/mis-rendiciones', fromReport, 'detalle']);
+    } else {
+      this.router.navigate(['/mis-rendiciones']);
+    }
   }
 
   private normalizeLineNumericFields(): void {
@@ -301,11 +329,14 @@ export class SolicitudViaticosComponent implements OnInit {
       });
     }
 
-    const total = this.totalGeneral();
+    const linesTotal = this.totalGeneral();
     const metaDesc = `Viático: ${place} (${startStr} → ${endStr})`;
+    const fromReportId = this.pendingBalanceFromReportId();
+    const pendingAmt = this.pendingBalanceAmount();
+    const hasPending = !!(fromReportId && pendingAmt > 0);
 
     const payload: ICreateAdvancePayload = {
-      amount: total,
+      amount: hasPending ? this.totalAnticipo() : linesTotal,
       description: metaDesc,
       place,
       startDate: `${startStr}T12:00:00.000Z`,
@@ -313,6 +344,11 @@ export class SolicitudViaticosComponent implements OnInit {
       projectId: this.form.value.projectId as string,
       lines: linesPayload,
       observations: (this.form.value.observations || '').trim() || undefined,
+      ...(hasPending && {
+        pendingBalanceFromReportId: fromReportId!,
+        pendingBalanceAmount: pendingAmt,
+        additionalAmount: linesTotal,
+      }),
     };
 
     this.submitting.set(true);

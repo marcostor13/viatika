@@ -96,6 +96,16 @@ export class AdminUsersService {
       .pipe(catchError((error: any) => this.handleError(error)));
   }
 
+  toggleEmailNotifications(id: string, enabled: boolean): Observable<{ emailNotificationsEnabled: boolean }> {
+    return this.http
+      .patch<{ emailNotificationsEnabled: boolean }>(
+        `${this.apiUrl}/${id}/notifications`,
+        { emailNotificationsEnabled: enabled },
+        { headers: this.getHeaders() }
+      )
+      .pipe(catchError((error: any) => this.handleError(error)));
+  }
+
   deleteUser(id: string): Observable<void> {
     return this.http
       .delete<void>(`${this.apiUrl}/${id}`, { headers: this.getHeaders() })
