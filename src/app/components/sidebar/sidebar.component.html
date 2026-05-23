@@ -169,7 +169,7 @@
         <span class="font-medium">Mis Rendiciones</span>
       </a>
       }
-      @if (isColaborador() && hasModulePermission('colaboradores')) {
+      @if ((isColaborador() || isCoordinador()) && hasModulePermission('colaboradores')) {
       <a
         [routerLink]="['/admin-users']"
         routerLinkActive="bg-primary text-white"
@@ -180,7 +180,7 @@
         <span class="font-medium">Colaboradores</span>
       </a>
       }
-      @if (isColaborador() && hasModulePermission('rendiciones')) {
+      @if ((isColaborador() || isCoordinador()) && hasModulePermission('rendiciones')) {
       <a
         [routerLink]="['/rendiciones']"
         routerLinkActive="bg-primary text-white"
@@ -224,7 +224,7 @@
         <span class="font-medium">Actividad</span>
       </a>
       }
-      @if (canAccessViaticos()) {
+      @if (canAccessViaticos() && !isCoordinador()) {
       <a
         [routerLink]="['/viaticos']"
         routerLinkActive="bg-primary text-white"
@@ -569,7 +569,7 @@
           <span class="font-medium text-lg">Mis Rendiciones</span>
         </a>
         }
-        @if (isColaborador() && hasModulePermission('colaboradores')) {
+        @if ((isColaborador() || isCoordinador()) && hasModulePermission('colaboradores')) {
         <a
           [routerLink]="['/admin-users']"
           (click)="toggleSidebar()"
@@ -580,7 +580,7 @@
           <span class="font-medium text-lg">Colaboradores</span>
         </a>
         }
-        @if (isColaborador() && hasModulePermission('rendiciones')) {
+        @if ((isColaborador() || isCoordinador()) && hasModulePermission('rendiciones')) {
         <a
           [routerLink]="['/rendiciones']"
           (click)="toggleSidebar()"
@@ -624,7 +624,7 @@
           <span class="font-medium text-lg">Actividad</span>
         </a>
         }
-        @if (canAccessViaticos()) {
+        @if (canAccessViaticos() && !isCoordinador()) {
         <a
           [routerLink]="['/viaticos']"
           (click)="toggleSidebar()"

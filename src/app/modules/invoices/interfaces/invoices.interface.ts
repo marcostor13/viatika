@@ -15,7 +15,6 @@ export interface IMobilityRowCoords {
 
 export interface IMobilityRow {
   fecha: string;
-  concepto: string;
   total: number;
   clienteProveedor: string;
   origen: string;

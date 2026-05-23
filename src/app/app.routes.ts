@@ -142,7 +142,7 @@ export const routes: Routes = [
           import('./modules/admin-users/rendiciones-admin/rendiciones-admin.component').then(
             (m) => m.RendicionesAdminComponent
           ),
-        canActivate: [AuthAdmin2Guard],
+        canActivate: [authModuleGuard('rendiciones')],
       },
       {
         path: 'configuracion',

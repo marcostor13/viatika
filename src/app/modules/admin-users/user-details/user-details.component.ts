@@ -64,6 +64,7 @@ export class UserDetailsComponent implements OnInit {
   expenseReports: IExpenseReport[] = [];
   isLoadingReports = signal(false);
   isCreateModalOpen = false;
+  isTogglingNotifications = signal(false);
 
   showStatusModal = signal(false);
   selectedReport = signal<IExpenseReport | null>(null);
@@ -215,6 +216,27 @@ export class UserDetailsComponent implements OnInit {
 
   goToRendicionDetail(reportId: string) {
     this.router.navigate([`/mis-rendiciones/${reportId}/detalle`]);
+  }
+
+  // ── Notificaciones por correo ────────────────────────────────────
+  toggleNotifications() {
+    if (!this.user) return;
+    const newValue = !this.user.emailNotificationsEnabled;
+    this.isTogglingNotifications.set(true);
+    this.adminUsersService.toggleEmailNotifications(this.id, newValue).subscribe({
+      next: (res) => {
+        this.user = { ...this.user!, emailNotificationsEnabled: res.emailNotificationsEnabled };
+        this.isTogglingNotifications.set(false);
+        this.notificationService.show(
+          newValue ? 'Notificaciones activadas' : 'Notificaciones desactivadas',
+          'success'
+        );
+      },
+      error: () => {
+        this.notificationService.show('Error al actualizar las notificaciones', 'error');
+        this.isTogglingNotifications.set(false);
+      },
+    });
   }
 
   // ── Helpers ──────────────────────────────────────────────────────

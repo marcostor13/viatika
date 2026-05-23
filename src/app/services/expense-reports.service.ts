@@ -102,6 +102,22 @@ export class ExpenseReportsService {
     );
   }
 
+  findExpensesPaginated(
+    reportId: string,
+    params: { page?: number; limit?: number; type?: string; status?: string; search?: string }
+  ): Observable<{ data: any[]; total: number; page: number; limit: number; pages: number }> {
+    const qp = new URLSearchParams();
+    if (params.page) qp.set('page', String(params.page));
+    if (params.limit) qp.set('limit', String(params.limit));
+    if (params.type && params.type !== 'all') qp.set('type', params.type);
+    if (params.status && params.status !== 'all') qp.set('status', params.status);
+    if (params.search?.trim()) qp.set('search', params.search.trim());
+    const qs = qp.toString();
+    return this.http.get<{ data: any[]; total: number; page: number; limit: number; pages: number }>(
+      `${this.apiUrl}/expense-report/${reportId}/expenses${qs ? '?' + qs : ''}`
+    );
+  }
+
   createAffidavit(
     reportId: string,
     payload: { type: 'viaticos_nacionales' | 'viajes_exterior'; expenseIds: string[] }

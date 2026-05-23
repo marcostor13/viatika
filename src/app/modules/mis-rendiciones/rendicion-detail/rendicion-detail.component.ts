@@ -59,6 +59,13 @@ export class RendicionDetailComponent implements OnInit {
   advances: IAdvance[] = [];
   showAdvanceModal = false;
 
+  // Comprobantes paginados
+  expensesPage = signal<{ data: any[]; total: number; page: number; limit: number; pages: number } | null>(null);
+  isLoadingExpenses = signal(false);
+  expFilterType = signal('all');
+  expFilterStatus = signal('all');
+  expFilterSearch = signal('');
+
   readonly ADVANCE_STATUS_LABELS = ADVANCE_STATUS_LABELS;
   readonly ADVANCE_STATUS_COLORS = ADVANCE_STATUS_COLORS;
 
@@ -131,12 +138,38 @@ export class RendicionDetailComponent implements OnInit {
         this.report = data;
         this.calculateTotals();
         this.isLoading = false;
+        this.loadExpensesPage(1);
       },
       error: (err) => {
         console.error('Error fetching report detail', err);
         this.isLoading = false;
       }
     });
+  }
+
+  loadExpensesPage(page: number) {
+    this.isLoadingExpenses.set(true);
+    this.expenseReportsService.findExpensesPaginated(this.id, {
+      page,
+      limit: 10,
+      type: this.expFilterType(),
+      status: this.expFilterStatus(),
+      search: this.expFilterSearch(),
+    }).subscribe({
+      next: (result) => { this.expensesPage.set(result); this.isLoadingExpenses.set(false); },
+      error: () => { this.isLoadingExpenses.set(false); },
+    });
+  }
+
+  applyExpenseFilters() {
+    this.loadExpensesPage(1);
+  }
+
+  clearExpenseFilters() {
+    this.expFilterType.set('all');
+    this.expFilterStatus.set('all');
+    this.expFilterSearch.set('');
+    this.loadExpensesPage(1);
   }
 
   calculateTotals() {
@@ -183,7 +216,14 @@ export class RendicionDetailComponent implements OnInit {
   adminRejectionReason = signal('');
 
   get isAdminView(): boolean {
-    return this.userStateService.isAdmin() || this.userStateService.isSuperAdmin() || this.userStateService.isContabilidad() || this.userStateService.canApproveL2();
+    return this.userStateService.isAdmin() || this.userStateService.isSuperAdmin() || this.userStateService.isContabilidad() || this.userStateService.canApproveL2()
+      || (this.userStateService.isCoordinador() && this.userStateService.hasModulePermission('rendiciones'));
+  }
+
+  get canApproveExpenses(): boolean {
+    if (this.userStateService.isContabilidad()) return false;
+    if (this.userStateService.isCoordinador() && this.userStateService.hasModulePermission('rendiciones')) return true;
+    return this.userStateService.canApproveL1();
   }
 
   /** La rendición está en fase de solicitud inicial (creada por colaborador, aún no aprobada). */
@@ -235,8 +275,21 @@ export class RendicionDetailComponent implements OnInit {
   }
 
   confirmApproveReport(): void {
-    const isSolicitud = this.report?.status === 'solicited';
-    const newStatus = isSolicitud ? 'open' : 'approved';
+    const currentStatus = this.report?.status;
+    let newStatus: IExpenseReport['status'];
+    let successMsg: string;
+
+    if (currentStatus === 'solicited') {
+      newStatus = 'open';
+      successMsg = 'Solicitud aprobada. El colaborador ya puede agregar sus gastos.';
+    } else if (currentStatus === 'submitted') {
+      newStatus = 'pending_accounting';
+      successMsg = 'Rendicion aprobada por coordinador. Enviada a contabilidad para aprobacion final.';
+    } else {
+      newStatus = 'approved';
+      successMsg = 'Rendicion aprobada definitivamente por contabilidad.';
+    }
+
     this.isApprovingReport.set(true);
     this.expenseReportsService.update(this.id, { status: newStatus }).subscribe({
       next: (res) => {
@@ -244,10 +297,7 @@ export class RendicionDetailComponent implements OnInit {
         this.calculateTotals();
         this.showAdminApproveModal.set(false);
         this.isApprovingReport.set(false);
-        this.notificationService.show(
-          isSolicitud ? 'Solicitud aprobada. El colaborador ya puede agregar sus gastos.' : 'Rendición aprobada correctamente',
-          'success',
-        );
+        this.notificationService.show(successMsg, 'success');
       },
       error: () => {
         this.isApprovingReport.set(false);
@@ -330,12 +380,28 @@ export class RendicionDetailComponent implements OnInit {
     return this.report.expenseIds.every((exp: any) => exp.status === 'approved');
   }
 
-  /** El admin puede aprobar la rendición completa solo si:
-   *  1. La rendición está en status 'submitted' (colaborador la envió).
-   *  2. Todos los documentos están aprobados individualmente.
-   */
-  get canFinalApprove(): boolean {
+  /** Coordinador/Admin puede aprobar (paso 1): rendicion enviada + todos los docs aprobados. */
+  get canCoordinadorApprove(): boolean {
+    if (this.userStateService.isContabilidad()) return false;
     return this.report?.status === 'submitted' && this.allDocumentsApproved;
+  }
+
+  /** Contabilidad/Admin/SuperAdmin puede hacer la aprobacion final (paso 2). */
+  get canContabilidadApprove(): boolean {
+    const hasRole = this.userStateService.isContabilidad()
+      || this.userStateService.isSuperAdmin()
+      || this.userStateService.isAdmin();
+    return hasRole && this.report?.status === 'pending_accounting';
+  }
+
+  /** Contabilidad ve la rendicion en submitted pero no puede actuar aun. */
+  get isPendingCoordinador(): boolean {
+    return this.userStateService.isContabilidad() && this.report?.status === 'submitted';
+  }
+
+  /** @deprecated usar canCoordinadorApprove o canContabilidadApprove */
+  get canFinalApprove(): boolean {
+    return this.canCoordinadorApprove || this.canContabilidadApprove;
   }
 
   /** Cantidad de documentos aprobados individualmente. */
@@ -544,7 +610,7 @@ export class RendicionDetailComponent implements OnInit {
     const type = expense?.expenseType;
     if (type === 'planilla_movilidad') {
       const firstRow = expense?.mobilityRows?.[0];
-      return firstRow?.concepto || firstRow?.gestion || `${expense?.mobilityRows?.length || 0} filas`;
+      return firstRow?.gestion || `${expense?.mobilityRows?.length || 0} filas`;
     }
     if (type === 'otros_gastos') {
       return expense?.description || 'DJ firmada';
@@ -571,7 +637,7 @@ export class RendicionDetailComponent implements OnInit {
     const type = expense?.expenseType;
     if (type === 'planilla_movilidad') {
       const firstRow = expense?.mobilityRows?.[0];
-      return firstRow?.concepto || firstRow?.gestion || `${expense?.mobilityRows?.length || 0} filas`;
+      return firstRow?.gestion || `${expense?.mobilityRows?.length || 0} filas`;
     }
     if (type === 'otros_gastos') {
       return expense?.description || 'DJ firmada';
@@ -748,7 +814,7 @@ export class RendicionDetailComponent implements OnInit {
   }
 
   trackMobilityRow(index: number, row: Record<string, unknown>): string {
-    return `${index}-${String(row['fecha'] ?? '')}-${String(row['concepto'] ?? '').slice(0, 20)}`;
+    return `${index}-${String(row['fecha'] ?? '')}-${String(row['gestion'] ?? '').slice(0, 20)}`;
   }
 
   /** Acepta `unknown` para usar desde plantillas con `expense` de `@for` sin `unknown` en el pipe `number`. */
@@ -794,6 +860,7 @@ export class RendicionDetailComponent implements OnInit {
       solicited: 'Solicitada',
       open: 'Abierta',
       submitted: 'Enviada',
+      pending_accounting: 'Pendiente contabilidad',
       approved: 'Aprobada',
       rejected: 'Rechazada',
       reimbursed: 'Reembolsado',
@@ -955,18 +1022,23 @@ export class RendicionDetailComponent implements OnInit {
         numeroDocumento: numDoc
       };
     });
-    const anticipos = this.advances.map((a) => ({
-      descripcion: a.description,
-      monto: a.amount,
-      estado: this.ADVANCE_STATUS_LABELS[a.status] ?? a.status,
-      fechaSolicitud: a.createdAt
+    const anticipos = this.advances.flatMap((a) => {
+      const fechaSolicitud = a.createdAt
         ? new Date(a.createdAt).toLocaleDateString('es-PE', {
             day: '2-digit',
             month: '2-digit',
             year: 'numeric',
           })
-        : '—',
-    }));
+        : '—';
+      const estado = this.ADVANCE_STATUS_LABELS[a.status] ?? a.status;
+      if (a.pendingBalanceAmount !== undefined && a.additionalAmount !== undefined) {
+        return [
+          { descripcion: 'Saldo pendiente (rendición anterior)', monto: a.pendingBalanceAmount, estado, fechaSolicitud },
+          { descripcion: `${a.description} (adicional)`, monto: a.additionalAmount, estado, fechaSolicitud },
+        ];
+      }
+      return [{ descripcion: a.description, monto: a.amount, estado, fechaSolicitud }];
+    });
     return {
       fileBaseName: `rendicion_${this.id}_${safeName}`.replace(/_+/g, '_'),
       titulo: this.getProjectName() !== '—' ? this.getProjectName() : (this.report.title || 'Sin título'),
@@ -1899,6 +1971,15 @@ export class RendicionDetailComponent implements OnInit {
     };
     this.rendicionExportService.exportSingleExpenseAffidavitToPdf(data);
     this.notificationService.show('Declaración jurada descargada', 'success');
+  }
+
+  openNuevaSolicitudConSaldo(): void {
+    this.router.navigate(['/mis-rendiciones/solicitud-viaticos/nueva'], {
+      queryParams: {
+        pendingBalanceFromReportId: this.id,
+        pendingBalanceAmount: this.saldoLibre,
+      },
+    });
   }
 
   confirmDeleteExpense(expense: Record<string, unknown> & { _id?: string }): void {

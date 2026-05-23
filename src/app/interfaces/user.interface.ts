@@ -104,6 +104,7 @@ export interface IUserResponse {
     cci?: string;
     accountType?: 'ahorros' | 'corriente';
   };
+  emailNotificationsEnabled?: boolean;
 }
 
 
