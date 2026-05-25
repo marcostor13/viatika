@@ -76,6 +76,46 @@ export default class AddInvoiceComponent implements OnInit {
   showPostOcrReview = signal(false);
   postOcrInvoiceId = signal<string | null>(null);
   private postOcrBaseInvoice: any = null;
+  ocrTotalAmount = signal<number>(0);
+  isEditingOcrAmount = signal(false);
+  editedOcrTotal = signal<number | null>(null);
+
+  get ocrAmountWasEdited(): boolean {
+    const edited = this.editedOcrTotal();
+    return edited !== null && edited !== this.ocrTotalAmount();
+  }
+
+  startEditOcrAmount() {
+    if (!this.isEditingOcrAmount()) {
+      this.editedOcrTotal.set(this.ocrTotalAmount());
+    }
+    this.isEditingOcrAmount.set(true);
+  }
+
+  confirmEditOcrAmount() {
+    this.isEditingOcrAmount.set(false);
+  }
+
+  // --- Edición de monto en modo edición de factura existente ---
+  editingInvoiceAmount = signal(false);
+  editedInvoiceTotal = signal<number | null>(null);
+
+  get invoiceAmountWasEdited(): boolean {
+    const edited = this.editedInvoiceTotal();
+    if (edited === null) return false;
+    return edited !== parseFloat(String(this.originalInvoice?.total ?? 0));
+  }
+
+  startEditInvoiceAmount() {
+    if (!this.editingInvoiceAmount()) {
+      this.editedInvoiceTotal.set(parseFloat(String(this.originalInvoice?.total ?? 0)));
+    }
+    this.editingInvoiceAmount.set(true);
+  }
+
+  confirmEditInvoiceAmount() {
+    this.editingInvoiceAmount.set(false);
+  }
 
   private notifyCategoryLimitWarning(response: { categoryLimitWarning?: string; categoryLimitPercent?: number } | null | undefined): void {
     if (!response?.categoryLimitWarning) return;
@@ -254,6 +294,8 @@ export default class AddInvoiceComponent implements OnInit {
 
           if (type === 'factura') {
             this.fetchedRazonSocial.set(dataObj.razonSocial || null);
+            this.editingInvoiceAmount.set(false);
+            this.editedInvoiceTotal.set(null);
             this.form.patchValue({
               ...baseValues,
               fechaEmision: fecha,
@@ -1019,6 +1061,8 @@ export default class AddInvoiceComponent implements OnInit {
     if (type === 'factura') {
       const fetched = this.fetchedRazonSocial();
       const razonSocial = fetched !== null ? fetched : (this.rucNotFound() ? 'No Reconocida' : undefined);
+      const currentTotal = parseFloat(String(this.originalInvoice.total)) || 0;
+      const finalTotal = this.invoiceAmountWasEdited ? this.editedInvoiceTotal()! : currentTotal;
       const dataObj = {
         ...previousData,
         rucEmisor: formValue.rucEmisor,
@@ -1026,10 +1070,11 @@ export default class AddInvoiceComponent implements OnInit {
         correlativo: formValue.correlativo,
         fechaEmision: this.formatDateForBackend(formValue.fechaEmision),
         ...(razonSocial !== undefined ? { razonSocial } : {}),
+        ...(this.invoiceAmountWasEdited ? { amountEdited: true, originalOcrTotal: currentTotal } : {}),
       };
       payload.data = JSON.stringify(dataObj);
       payload.fechaEmision = formValue.fechaEmision;
-      payload.total = this.originalInvoice.total;
+      payload.total = finalTotal;
       payload.placaVehiculo = (formValue.placaVehiculo || '').trim() || undefined;
     } else if (type === 'otros_gastos') {
       payload.description = (formValue.description || '').trim();
@@ -1178,6 +1223,9 @@ export default class AddInvoiceComponent implements OnInit {
             });
             this.postOcrInvoiceId.set(res._id);
             this.postOcrBaseInvoice = res;
+            this.ocrTotalAmount.set(parseFloat(String(res.total)) || 0);
+            this.isEditingOcrAmount.set(false);
+            this.editedOcrTotal.set(null);
             this.showPostOcrReview.set(true);
             this.notificationService.show(
               'Revisa y confirma los datos extraidos por OCR antes de guardar.',
@@ -1238,6 +1286,9 @@ export default class AddInvoiceComponent implements OnInit {
               });
               this.postOcrInvoiceId.set(res._id);
               this.postOcrBaseInvoice = res;
+              this.ocrTotalAmount.set(parseFloat(String(res.total)) || 0);
+              this.isEditingOcrAmount.set(false);
+              this.editedOcrTotal.set(null);
               this.showPostOcrReview.set(true);
               this.isLoading.set(false);
               this.notificationService.show(
@@ -1296,6 +1347,9 @@ export default class AddInvoiceComponent implements OnInit {
     }
     const fetched = this.fetchedRazonSocial();
     const razonSocialOcr = fetched !== null ? fetched : (this.rucNotFound() ? 'No Reconocida' : undefined);
+    const finalTotal = this.ocrAmountWasEdited
+      ? this.editedOcrTotal()!
+      : (parseFloat(String(this.postOcrBaseInvoice.total)) || 0);
     const dataObj = {
       ...baseData,
       rucEmisor: formValue.rucEmisor || '',
@@ -1305,11 +1359,12 @@ export default class AddInvoiceComponent implements OnInit {
       comentario,
       placaVehiculo: (formValue.placaVehiculo || '').trim() || undefined,
       ...(razonSocialOcr !== undefined ? { razonSocial: razonSocialOcr } : {}),
+      ...(this.ocrAmountWasEdited ? { amountEdited: true, originalOcrTotal: this.ocrTotalAmount() } : {}),
     };
     const updatePayload = {
       proyectId: this.postOcrBaseInvoice.proyectId,
       categoryId: this.postOcrBaseInvoice.categoryId,
-      total: this.postOcrBaseInvoice.total,
+      total: finalTotal,
       data: JSON.stringify(dataObj),
       fechaEmision: dataObj.fechaEmision,
       status: this.postOcrBaseInvoice.status,

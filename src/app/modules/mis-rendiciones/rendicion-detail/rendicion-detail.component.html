@@ -837,9 +837,32 @@
                   }" class="inline-flex px-2 py-0.5 rounded text-xs font-medium">
                     {{ expense.observado ? 'Observado' : expense.status === 'approved' ? 'Aprobado' : expense.status === 'rejected' ? 'Rechazado' : 'Pendiente' }}
                   </span>
-                  <p class="text-base font-semibold text-gray-900 tabular-nums">
-                    S/ {{ expense.total | number:'1.2-2' }}
-                  </p>
+                  <div class="flex items-center gap-1">
+                    <p class="text-base font-semibold text-gray-900 tabular-nums">
+                      S/ {{ expense.total | number:'1.2-2' }}
+                    </p>
+                    @if (getExpenseAmountEdited(expense)) {
+                    <div class="relative">
+                      <button type="button"
+                        (click)="toggleAmountEditedTooltip(expense._id, $event)"
+                        class="flex items-center justify-center w-6 h-6 text-amber-500 hover:text-amber-700 transition-colors"
+                        aria-label="Monto editado">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-6 h-6">
+                          <path fill-rule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495ZM10 5a.75.75 0 0 1 .75.75v3.5a.75.75 0 0 1-1.5 0v-3.5A.75.75 0 0 1 10 5Zm0 9a1 1 0 1 0 0-2 1 1 0 0 0 0 2Z" clip-rule="evenodd" />
+                        </svg>
+                      </button>
+                      @if (amountEditedTooltipId() === expense._id) {
+                      <div class="absolute top-full right-0 mt-1.5 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg shadow-xl z-50 whitespace-nowrap"
+                        (click)="$event.stopPropagation()">
+                        <p class="font-semibold">El Monto Fue Editado</p>
+                        @if (getExpenseOriginalOcrTotal(expense) !== null) {
+                          <p class="text-gray-400 mt-0.5">OCR extrajo: S/ {{ getExpenseOriginalOcrTotal(expense)! | number:'1.2-2' }}</p>
+                        }
+                      </div>
+                      }
+                    </div>
+                    }
+                  </div>
                 </div>
               </div>
               @if (expense.status === 'rejected' && expense.rejectionReason) {
@@ -972,7 +995,30 @@
                   <td class="px-4 lg:px-6 py-3 text-sm text-gray-900 whitespace-nowrap">{{ getExpenseDate(expense) }}</td>
                   <td class="px-4 lg:px-6 py-3 text-sm text-gray-900">{{ getExpenseDescription(expense) }}</td>
                   <td class="px-4 lg:px-6 py-3 text-sm font-medium text-gray-900 text-right tabular-nums">
-                    S/ {{ expense.total | number:'1.2-2' }}
+                    <div class="flex items-center justify-end gap-1.5">
+                      S/ {{ expense.total | number:'1.2-2' }}
+                      @if (getExpenseAmountEdited(expense)) {
+                      <div class="relative">
+                        <button type="button"
+                          (click)="toggleAmountEditedTooltip(expense._id, $event)"
+                          class="flex items-center justify-center w-6 h-6 text-amber-500 hover:text-amber-700 transition-colors"
+                          aria-label="Monto editado">
+                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-6 h-6">
+                            <path fill-rule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495ZM10 5a.75.75 0 0 1 .75.75v3.5a.75.75 0 0 1-1.5 0v-3.5A.75.75 0 0 1 10 5Zm0 9a1 1 0 1 0 0-2 1 1 0 0 0 0 2Z" clip-rule="evenodd" />
+                          </svg>
+                        </button>
+                        @if (amountEditedTooltipId() === expense._id) {
+                        <div class="absolute top-full right-0 mt-1.5 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg shadow-xl z-50 whitespace-nowrap"
+                          (click)="$event.stopPropagation()">
+                          <p class="font-semibold">El Monto Fue Editado</p>
+                          @if (getExpenseOriginalOcrTotal(expense) !== null) {
+                            <p class="text-gray-400 mt-0.5">OCR extrajo: S/ {{ getExpenseOriginalOcrTotal(expense)! | number:'1.2-2' }}</p>
+                          }
+                        </div>
+                        }
+                      </div>
+                      }
+                    </div>
                   </td>
                   <td class="px-4 lg:px-6 py-3 text-center">
                     <div class="flex flex-col items-center gap-1">
