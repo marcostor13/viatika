@@ -9,7 +9,7 @@ describe('AuthSuperGuard', () => {
   let router: jasmine.SpyObj<Router>;
 
   beforeEach(() => {
-    userState = jasmine.createSpyObj('UserStateService', ['isAuthenticated', 'isSuperAdmin', 'isContabilidad']);
+    userState = jasmine.createSpyObj('UserStateService', ['isAuthenticated', 'isSuperAdmin', 'isAdmin', 'isContabilidad']);
     router = jasmine.createSpyObj('Router', ['navigate']);
 
     TestBed.configureTestingModule({
@@ -31,6 +31,15 @@ describe('AuthSuperGuard', () => {
   it('returns true when authenticated as superadmin', () => {
     userState.isAuthenticated.and.returnValue(true);
     userState.isSuperAdmin.and.returnValue(true);
+    userState.isAdmin.and.returnValue(false);
+    userState.isContabilidad.and.returnValue(false);
+    expect(guard.canActivate()).toBeTrue();
+  });
+
+  it('returns true when authenticated as admin', () => {
+    userState.isAuthenticated.and.returnValue(true);
+    userState.isSuperAdmin.and.returnValue(false);
+    userState.isAdmin.and.returnValue(true);
     userState.isContabilidad.and.returnValue(false);
     expect(guard.canActivate()).toBeTrue();
   });
@@ -38,6 +47,7 @@ describe('AuthSuperGuard', () => {
   it('returns true when authenticated as contabilidad', () => {
     userState.isAuthenticated.and.returnValue(true);
     userState.isSuperAdmin.and.returnValue(false);
+    userState.isAdmin.and.returnValue(false);
     userState.isContabilidad.and.returnValue(true);
     expect(guard.canActivate()).toBeTrue();
   });
@@ -45,6 +55,7 @@ describe('AuthSuperGuard', () => {
   it('returns false for other roles and navigates to /login', () => {
     userState.isAuthenticated.and.returnValue(true);
     userState.isSuperAdmin.and.returnValue(false);
+    userState.isAdmin.and.returnValue(false);
     userState.isContabilidad.and.returnValue(false);
     expect(guard.canActivate()).toBeFalse();
     expect(router.navigate).toHaveBeenCalledWith(['/login']);

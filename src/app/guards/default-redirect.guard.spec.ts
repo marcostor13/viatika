@@ -10,7 +10,7 @@ describe('defaultRedirectGuard', () => {
   beforeEach(() => {
     userState = jasmine.createSpyObj('UserStateService', [
       'isAuthenticated', 'isColaborador', 'isSuperAdmin',
-      'isContabilidad', 'isContabilidadInCompany', 'isCoordinador',
+      'isAdmin', 'isAdminInCompany', 'isContabilidad', 'isContabilidadInCompany',
     ]);
     router = jasmine.createSpyObj('Router', ['createUrlTree']);
     router.createUrlTree.and.callFake((commands: string[]) => ({ commands } as any));
@@ -48,10 +48,31 @@ describe('defaultRedirectGuard', () => {
     expect(router.createUrlTree).toHaveBeenCalledWith(['/clients-admin']);
   });
 
+  it('redirects admin in company to /admin-users', () => {
+    userState.isAuthenticated.and.returnValue(true);
+    userState.isColaborador.and.returnValue(false);
+    userState.isSuperAdmin.and.returnValue(false);
+    userState.isAdmin.and.returnValue(true);
+    userState.isAdminInCompany.and.returnValue(true);
+    run();
+    expect(router.createUrlTree).toHaveBeenCalledWith(['/admin-users']);
+  });
+
+  it('redirects admin not in company to /hub', () => {
+    userState.isAuthenticated.and.returnValue(true);
+    userState.isColaborador.and.returnValue(false);
+    userState.isSuperAdmin.and.returnValue(false);
+    userState.isAdmin.and.returnValue(true);
+    userState.isAdminInCompany.and.returnValue(false);
+    run();
+    expect(router.createUrlTree).toHaveBeenCalledWith(['/hub']);
+  });
+
   it('redirects contabilidad in company to /consolidated-invoices', () => {
     userState.isAuthenticated.and.returnValue(true);
     userState.isColaborador.and.returnValue(false);
     userState.isSuperAdmin.and.returnValue(false);
+    userState.isAdmin.and.returnValue(false);
     userState.isContabilidad.and.returnValue(true);
     userState.isContabilidadInCompany.and.returnValue(true);
     run();
@@ -62,29 +83,20 @@ describe('defaultRedirectGuard', () => {
     userState.isAuthenticated.and.returnValue(true);
     userState.isColaborador.and.returnValue(false);
     userState.isSuperAdmin.and.returnValue(false);
+    userState.isAdmin.and.returnValue(false);
     userState.isContabilidad.and.returnValue(true);
     userState.isContabilidadInCompany.and.returnValue(false);
     run();
     expect(router.createUrlTree).toHaveBeenCalledWith(['/hub']);
   });
 
-  it('redirects coordinador to /viaticos', () => {
+  it('redirects other roles to /admin-users by default', () => {
     userState.isAuthenticated.and.returnValue(true);
     userState.isColaborador.and.returnValue(false);
     userState.isSuperAdmin.and.returnValue(false);
+    userState.isAdmin.and.returnValue(false);
     userState.isContabilidad.and.returnValue(false);
-    userState.isCoordinador.and.returnValue(true);
     run();
-    expect(router.createUrlTree).toHaveBeenCalledWith(['/viaticos']);
-  });
-
-  it('redirects administrador to /consolidated-invoices', () => {
-    userState.isAuthenticated.and.returnValue(true);
-    userState.isColaborador.and.returnValue(false);
-    userState.isSuperAdmin.and.returnValue(false);
-    userState.isContabilidad.and.returnValue(false);
-    userState.isCoordinador.and.returnValue(false);
-    run();
-    expect(router.createUrlTree).toHaveBeenCalledWith(['/consolidated-invoices']);
+    expect(router.createUrlTree).toHaveBeenCalledWith(['/admin-users']);
   });
 });

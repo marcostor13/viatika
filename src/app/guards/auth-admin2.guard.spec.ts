@@ -9,7 +9,7 @@ describe('AuthAdmin2Guard', () => {
   let router: jasmine.SpyObj<Router>;
 
   beforeEach(() => {
-    userState = jasmine.createSpyObj('UserStateService', ['isAuthenticated', 'isAnyAdmin', 'getUser']);
+    userState = jasmine.createSpyObj('UserStateService', ['isAuthenticated', 'isAdmin', 'isContabilidad']);
     router = jasmine.createSpyObj('Router', ['navigate']);
 
     TestBed.configureTestingModule({
@@ -28,16 +28,26 @@ describe('AuthAdmin2Guard', () => {
     expect(router.navigate).toHaveBeenCalledWith(['/login']);
   });
 
-  it('returns false and navigates to /login when authenticated but not admin', () => {
+  it('returns false and navigates to /inicio when authenticated but not admin or contabilidad', () => {
     userState.isAuthenticated.and.returnValue(true);
-    userState.isAnyAdmin.and.returnValue(false);
+    userState.isAdmin.and.returnValue(false);
+    userState.isContabilidad.and.returnValue(false);
     expect(guard.canActivate()).toBeFalse();
-    expect(router.navigate).toHaveBeenCalledWith(['/login']);
+    expect(router.navigate).toHaveBeenCalledWith(['/inicio']);
   });
 
   it('returns true when authenticated and admin', () => {
     userState.isAuthenticated.and.returnValue(true);
-    userState.isAnyAdmin.and.returnValue(true);
+    userState.isAdmin.and.returnValue(true);
+    userState.isContabilidad.and.returnValue(false);
+    expect(guard.canActivate()).toBeTrue();
+    expect(router.navigate).not.toHaveBeenCalled();
+  });
+
+  it('returns true when authenticated as contabilidad', () => {
+    userState.isAuthenticated.and.returnValue(true);
+    userState.isAdmin.and.returnValue(false);
+    userState.isContabilidad.and.returnValue(true);
     expect(guard.canActivate()).toBeTrue();
     expect(router.navigate).not.toHaveBeenCalled();
   });
