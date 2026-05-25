@@ -871,6 +871,21 @@ export class RendicionDetailComponent implements OnInit {
     return true;
   }
 
+  /** Coordinador (con permiso rendiciones) o Contabilidad pueden editar/eliminar cualquier comprobante pendiente. */
+  get canMutateAsAdmin(): boolean {
+    return (this.userStateService.isCoordinador() && this.userStateService.hasModulePermission('rendiciones'))
+      || this.userStateService.isContabilidad();
+  }
+
+  canMutateExpense(expense: { createdBy?: string; status?: string }): boolean {
+    if (this.canMutateOwnExpense(expense)) return true;
+    if (!this.canMutateAsAdmin) return false;
+    const reportStatus = this.report?.status;
+    if (!reportStatus || ['approved', 'paid', 'settled', 'closed', 'cancelled'].includes(reportStatus)) return false;
+    const st = expense.status ?? 'pending';
+    return st !== 'approved' && st !== 'rejected';
+  }
+
   goEditExpense(expenseId: string): void {
     this.router.navigate(['/invoices/edit', expenseId], {
       queryParams: { rendicionId: this.id },
