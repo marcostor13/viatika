@@ -100,6 +100,7 @@
             <thead class="bg-gray-100/80 text-secondary">
               <tr>
                 <th class="text-left px-3 py-2 font-medium">Categoría</th>
+                <th class="text-left px-3 py-2 font-medium">Detalle</th>
                 <th class="text-right px-3 py-2 font-medium">Importe (S/)</th>
                 <th class="text-right px-3 py-2 font-medium">Personas</th>
                 <th class="text-right px-3 py-2 font-medium">GLP/día</th>
@@ -118,6 +119,10 @@
                     <option [value]="c._id">{{ c.name }}</option>
                     }
                   </select>
+                </td>
+                <td class="px-3 py-2 align-middle">
+                  <input type="text" formControlName="detalle" placeholder="Descripción opcional…"
+                    class="w-full min-w-[10rem] h-10 px-2 rounded-xl border border-tertiary/30 bg-background text-left text-sm text-secondary placeholder:text-tertiary/50" />
                 </td>
                 <td class="px-3 py-2 align-middle">
                   <input type="number" formControlName="importe" min="0" step="0.01"
