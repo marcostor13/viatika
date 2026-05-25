@@ -868,8 +868,8 @@
               @if (expense.status === 'rejected' && expense.rejectionReason) {
                 <p class="text-xs text-red-600 mt-1 bg-red-50 px-2 py-1 rounded">{{ expense.rejectionReason }}</p>
               }
-              <p class="text-sm text-gray-900 mt-2 leading-snug break-words">
-                {{ getExpenseDescription(expense) }}
+              <p class="text-sm text-gray-900 mt-2 leading-snug break-words whitespace-pre-line">
+                {{ getExpenseDescriptionMultiline(expense) }}
               </p>
               <p class="text-xs text-gray-500 mt-2 flex items-center gap-1.5">
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-3.5 h-3.5 shrink-0 text-gray-400">
@@ -993,7 +993,7 @@
                     </span>
                   </td>
                   <td class="px-4 lg:px-6 py-3 text-sm text-gray-900 whitespace-nowrap">{{ getExpenseDate(expense) }}</td>
-                  <td class="px-4 lg:px-6 py-3 text-sm text-gray-900">{{ getExpenseDescription(expense) }}</td>
+                  <td class="px-4 lg:px-6 py-3 text-sm text-gray-900 whitespace-pre-line align-top">{{ getExpenseDescriptionMultiline(expense) }}</td>
                   <td class="px-4 lg:px-6 py-3 text-sm font-medium text-gray-900 text-right tabular-nums">
                     <div class="flex items-center justify-end gap-1.5">
                       S/ {{ expense.total | number:'1.2-2' }}
