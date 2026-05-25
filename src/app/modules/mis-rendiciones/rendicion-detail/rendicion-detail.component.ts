@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, signal, computed } from '@angular/core';
+import { Component, OnInit, inject, signal, computed, HostListener } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
@@ -69,7 +69,30 @@ export class RendicionDetailComponent implements OnInit {
   readonly ADVANCE_STATUS_LABELS = ADVANCE_STATUS_LABELS;
   readonly ADVANCE_STATUS_COLORS = ADVANCE_STATUS_COLORS;
 
+  amountEditedTooltipId = signal<string | null>(null);
+
   totalGastado = 0;
+
+  @HostListener('document:click')
+  closeAmountEditedTooltip() {
+    this.amountEditedTooltipId.set(null);
+  }
+
+  toggleAmountEditedTooltip(id: string, evt: MouseEvent) {
+    evt.stopPropagation();
+    this.amountEditedTooltipId.set(this.amountEditedTooltipId() === id ? null : id);
+  }
+
+  getExpenseAmountEdited(expense: any): boolean {
+    const d = this.getExpenseDataObject(expense as Record<string, unknown>);
+    return d['amountEdited'] === true;
+  }
+
+  getExpenseOriginalOcrTotal(expense: any): number | null {
+    const d = this.getExpenseDataObject(expense as Record<string, unknown>);
+    const v = d['originalOcrTotal'];
+    return (v !== undefined && v !== null) ? Number(v) : null;
+  }
 
   get saldoLibre(): number {
     if (this.settlement?.difference !== undefined && this.settlement.difference !== null) {

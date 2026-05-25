@@ -118,4 +118,45 @@ describe('ExpenseReportsService', () => {
     expect(req.request.body).toEqual(payload);
     req.flush({ reportId: ID, type: payload.type, expenseIds: payload.expenseIds, generatedBy: 'u1', generatedAt: '' });
   });
+
+  describe('findExpensesPaginated', () => {
+    it('sends GET to /expense-report/:id/expenses without query string when no params', () => {
+      service.findExpensesPaginated(ID, {}).subscribe();
+      http.expectOne(`${API}/${ID}/expenses`).flush({ data: [], total: 0, page: 1, limit: 10, pages: 0 });
+    });
+
+    it('sends GET with page and limit query params', () => {
+      service.findExpensesPaginated(ID, { page: 2, limit: 20 }).subscribe();
+      http.expectOne(`${API}/${ID}/expenses?page=2&limit=20`).flush({ data: [], total: 0, page: 2, limit: 20, pages: 0 });
+    });
+
+    it('sends GET with type filter when type is not "all"', () => {
+      service.findExpensesPaginated(ID, { type: 'factura' }).subscribe();
+      http.expectOne(`${API}/${ID}/expenses?type=factura`).flush({ data: [], total: 0, page: 1, limit: 10, pages: 0 });
+    });
+
+    it('omits type filter when type is "all"', () => {
+      service.findExpensesPaginated(ID, { type: 'all' }).subscribe();
+      const req = http.expectOne(`${API}/${ID}/expenses`);
+      expect(req.request.urlWithParams).not.toContain('type');
+      req.flush({ data: [], total: 0, page: 1, limit: 10, pages: 0 });
+    });
+
+    it('sends GET with status filter when status is not "all"', () => {
+      service.findExpensesPaginated(ID, { status: 'approved' }).subscribe();
+      http.expectOne(`${API}/${ID}/expenses?status=approved`).flush({ data: [], total: 0, page: 1, limit: 10, pages: 0 });
+    });
+
+    it('sends GET with search param when search is not empty', () => {
+      service.findExpensesPaginated(ID, { search: 'hotel' }).subscribe();
+      http.expectOne(`${API}/${ID}/expenses?search=hotel`).flush({ data: [], total: 0, page: 1, limit: 10, pages: 0 });
+    });
+
+    it('omits search param when search is whitespace only', () => {
+      service.findExpensesPaginated(ID, { search: '   ' }).subscribe();
+      const req = http.expectOne(`${API}/${ID}/expenses`);
+      expect(req.request.urlWithParams).not.toContain('search');
+      req.flush({ data: [], total: 0, page: 1, limit: 10, pages: 0 });
+    });
+  });
 });

@@ -284,6 +284,55 @@
           class="w-full h-[40px] px-3 rounded-lg border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-primary/20"
         />
       </div>
+      <!-- Monto extraído por OCR -->
+      <div class="flex flex-col gap-1 sm:col-span-2">
+        <label class="text-xs font-medium text-secondary">
+          Monto S/.
+          <span class="text-tertiary font-normal">(extraído por OCR)</span>
+        </label>
+        <div class="flex items-center gap-2">
+          @if (!isEditingOcrAmount()) {
+          <div class="flex-1 h-[40px] px-3 flex items-center rounded-lg border text-sm font-semibold tabular-nums transition-colors"
+            [class.border-gray-200]="!ocrAmountWasEdited"
+            [class.bg-gray-50]="!ocrAmountWasEdited"
+            [class.text-secondary]="!ocrAmountWasEdited"
+            [class.border-amber-300]="ocrAmountWasEdited"
+            [class.bg-amber-50]="ocrAmountWasEdited"
+            [class.text-amber-900]="ocrAmountWasEdited">
+            S/ {{ (ocrAmountWasEdited ? editedOcrTotal()! : ocrTotalAmount()) | number:'1.2-2' }}
+            @if (ocrAmountWasEdited) {
+              <span class="ml-2 text-xs font-normal text-amber-600">(editado)</span>
+            }
+          </div>
+          <button type="button" (click)="startEditOcrAmount()" title="Editar monto"
+            class="shrink-0 w-10 h-10 flex items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-500 hover:text-primary hover:border-primary/30 hover:bg-primary/5 transition-colors">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
+              <path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125" />
+            </svg>
+          </button>
+          } @else {
+          <input type="number" min="0" step="0.01"
+            [value]="editedOcrTotal() ?? ocrTotalAmount()"
+            (input)="editedOcrTotal.set(+$any($event.target).value)"
+            autofocus
+            class="flex-1 h-[40px] px-3 rounded-lg border border-amber-300 bg-amber-50 focus:outline-none focus:ring-2 focus:ring-amber-400/30 text-sm tabular-nums" />
+          <button type="button" (click)="confirmEditOcrAmount()" title="Confirmar monto"
+            class="shrink-0 w-10 h-10 flex items-center justify-center rounded-lg border border-green-200 bg-green-50 text-green-700 hover:bg-green-100 transition-colors">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+            </svg>
+          </button>
+          }
+        </div>
+        @if (ocrAmountWasEdited) {
+        <div class="flex items-center gap-1.5 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-2 py-1.5">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-3.5 h-3.5 shrink-0">
+            <path fill-rule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495ZM10 5a.75.75 0 0 1 .75.75v3.5a.75.75 0 0 1-1.5 0v-3.5A.75.75 0 0 1 10 5Zm0 9a1 1 0 1 0 0-2 1 1 0 0 0 0 2Z" clip-rule="evenodd" />
+          </svg>
+          Monto editado. OCR extrajo: S/ {{ ocrTotalAmount() | number:'1.2-2' }}.
+        </div>
+        }
+      </div>
     </div>
     <div class="flex flex-col gap-1">
       <label for="comentarioOcr" class="text-xs font-medium text-secondary">
@@ -375,6 +424,52 @@
         class="w-full h-[42px] px-4 rounded-lg border border-gray-200 bg-background focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-sm"
         placeholder="Ej: 00001234"
       />
+    </div>
+    <!-- Monto editable en edición -->
+    <div class="flex flex-col gap-2">
+      <label class="text-sm font-medium text-secondary">Monto S/.</label>
+      <div class="flex items-center gap-2">
+        @if (!editingInvoiceAmount()) {
+        <div class="flex-1 h-[42px] px-4 flex items-center rounded-lg border text-sm font-semibold tabular-nums transition-colors"
+          [class.border-gray-200]="!invoiceAmountWasEdited"
+          [class.bg-background]="!invoiceAmountWasEdited"
+          [class.text-secondary]="!invoiceAmountWasEdited"
+          [class.border-amber-300]="invoiceAmountWasEdited"
+          [class.bg-amber-50]="invoiceAmountWasEdited"
+          [class.text-amber-900]="invoiceAmountWasEdited">
+          S/ {{ (invoiceAmountWasEdited ? editedInvoiceTotal()! : (originalInvoice?.total ?? 0)) | number:'1.2-2' }}
+          @if (invoiceAmountWasEdited) {
+            <span class="ml-2 text-xs font-normal text-amber-600">(editado)</span>
+          }
+        </div>
+        <button type="button" (click)="startEditInvoiceAmount()" title="Editar monto"
+          class="shrink-0 w-10 h-10 flex items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-500 hover:text-primary hover:border-primary/30 hover:bg-primary/5 transition-colors">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
+            <path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125" />
+          </svg>
+        </button>
+        } @else {
+        <input type="number" min="0" step="0.01"
+          [value]="editedInvoiceTotal() ?? (originalInvoice?.total ?? 0)"
+          (input)="editedInvoiceTotal.set(+$any($event.target).value)"
+          autofocus
+          class="flex-1 h-[42px] px-4 rounded-lg border border-amber-300 bg-amber-50 focus:outline-none focus:ring-2 focus:ring-amber-400/30 text-sm tabular-nums" />
+        <button type="button" (click)="confirmEditInvoiceAmount()" title="Confirmar monto"
+          class="shrink-0 w-10 h-10 flex items-center justify-center rounded-lg border border-green-200 bg-green-50 text-green-700 hover:bg-green-100 transition-colors">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+          </svg>
+        </button>
+        }
+      </div>
+      @if (invoiceAmountWasEdited) {
+      <div class="flex items-center gap-1.5 text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4 shrink-0">
+          <path fill-rule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495ZM10 5a.75.75 0 0 1 .75.75v3.5a.75.75 0 0 1-1.5 0v-3.5A.75.75 0 0 1 10 5Zm0 9a1 1 0 1 0 0-2 1 1 0 0 0 0 2Z" clip-rule="evenodd" />
+        </svg>
+        Monto editado. Valor anterior: S/ {{ (originalInvoice?.total ?? 0) | number:'1.2-2' }}.
+      </div>
+      }
     </div>
     <div class="flex flex-col gap-2">
       <label for="placaVehiculoEdit" class="text-sm font-medium text-secondary">Placa del vehículo</label>

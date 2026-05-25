@@ -43,12 +43,12 @@ describe('AuthTesoreroGuard', () => {
     expect(router.navigate).toHaveBeenCalledWith(['/inicio']);
   });
 
-  it('redirects Coordinador to /viaticos when no tesoreria access', () => {
+  it('redirects Administrador to /admin-users when no tesoreria access', () => {
     userState.isAuthenticated.and.returnValue(true);
     userState.canAccessTesoreria.and.returnValue(false);
-    userState.getRole.and.returnValue('Coordinador');
+    userState.getRole.and.returnValue('Administrador');
     expect(guard.canActivate()).toBeFalse();
-    expect(router.navigate).toHaveBeenCalledWith(['/viaticos']);
+    expect(router.navigate).toHaveBeenCalledWith(['/admin-users']);
   });
 
   it('redirects other roles to /login when no tesoreria access', () => {

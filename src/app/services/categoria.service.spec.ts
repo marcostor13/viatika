@@ -72,10 +72,10 @@ describe('CategoriaService', () => {
       req.flush({ _id: '1', name: 'Alimentos' });
     });
 
-    it('includes parentId when provided', () => {
-      service.create({ name: 'Sub', parentId: 'parent-id' }).subscribe();
+    it('includes optional fields when provided', () => {
+      service.create({ name: 'Sub', description: 'A sub category' }).subscribe();
       const req = http.expectOne(BASE_URL);
-      expect(req.request.body).toEqual({ name: 'Sub', parentId: 'parent-id', clientId: COMPANY_ID });
+      expect(req.request.body).toEqual({ name: 'Sub', description: 'A sub category', clientId: COMPANY_ID });
       req.flush({ _id: '2', name: 'Sub' });
     });
   });
