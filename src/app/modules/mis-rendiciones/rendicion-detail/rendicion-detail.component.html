@@ -931,7 +931,7 @@
                   </div>
                 }
               </div>
-              @if (canMutateOwnExpense(expense)) {
+              @if (canMutateExpense(expense)) {
               <div class="mt-3 flex flex-wrap gap-2">
                 <button
                   type="button"
@@ -1147,8 +1147,8 @@
                         </div>
                       }
 
-                      <!-- Collaborator actions -->
-                      @if (canMutateOwnExpense(expense)) {
+                      <!-- Collaborator / Coordinator / Contabilidad actions -->
+                      @if (canMutateExpense(expense)) {
                         <div class="inline-flex items-center gap-2">
                           <button
                             type="button"
@@ -1179,7 +1179,7 @@
                       }
 
                       <!-- Placeholder if no actions available -->
-                      @if (!(canApproveExpenses && report.status === 'submitted') && !canMutateOwnExpense(expense)) {
+                      @if (!(canApproveExpenses && report.status === 'submitted') && !canMutateExpense(expense)) {
                         <span class="text-xs text-gray-400">—</span>
                       }
                     </div>
