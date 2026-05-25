@@ -356,7 +356,7 @@ export default class AddInvoiceComponent implements OnInit {
                 destinoProvincia: [row.destinoProvincia || '', Validators.required],
                 destinoDistrito: [row.destinoDistrito || '', Validators.required],
                 distanciaKm: [row.distanciaKm ?? null],
-                gestion: [row.gestion || ''],
+                gestion: [row.gestion || '', Validators.required],
               }));
             }
           }
@@ -494,7 +494,7 @@ export default class AddInvoiceComponent implements OnInit {
       destinoProvincia: ['', Validators.required],
       destinoDistrito: ['', Validators.required],
       distanciaKm: [null],
-      gestion: [''],
+      gestion: ['', Validators.required],
     }));
   }
 
