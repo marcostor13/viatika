@@ -140,6 +140,7 @@ export class SolicitudViaticosModalComponent implements OnChanges {
       const g = this.createLineGroup();
       g.patchValue({
         categoryId: this.categoryIdFromLine(ln),
+        detalle: ln.detalle ?? '',
         importe: ln.importe,
         peopleCount: ln.peopleCount,
         glpPerDay: ln.glpPerDay,
@@ -194,6 +195,7 @@ export class SolicitudViaticosModalComponent implements OnChanges {
   createLineGroup(): FormGroup {
     return this.fb.group({
       categoryId: ['', Validators.required],
+      detalle: [''],
       importe: [null, [Validators.min(0)]],
       peopleCount: [null],
       glpPerDay: [null],
@@ -312,6 +314,7 @@ export class SolicitudViaticosModalComponent implements OnChanges {
       const lineTotal = this.lineTotal(g);
       linesPayload.push({
         categoryId: v.categoryId,
+        detalle: (v.detalle || '').trim() || undefined,
         importe: Number(v.importe),
         peopleCount: Number(v.peopleCount),
         glpPerDay: Number(v.glpPerDay),
