@@ -373,8 +373,7 @@ export class ViaticosDetailComponent implements OnInit {
           [
             { content: 'Tiempo presupuestado:', styles: { fontStyle: 'bold' } },
             { content: 'Del .....' }, { content: startFmt },
-            { content: 'Al .....' }, { content: endFmt },
-            { content: '' },
+            { content: 'Al .....' }, { content: endFmt, colSpan: 2 },
           ],
           [{ content: 'Proyecto:', styles: { fontStyle: 'bold' } }, { content: projectName, colSpan: 5 }],
         ],
@@ -432,16 +431,23 @@ export class ViaticosDetailComponent implements OnInit {
         ],
         headStyles: {
           fillColor: DARK_RED, textColor: WHITE, fontStyle: 'bold',
-          halign: 'center', fontSize: 8.5, cellPadding: 4, lineWidth: 0.3, lineColor: [160, 40, 40],
+          halign: 'center', valign: 'middle', fontSize: 8,
+          cellPadding: { top: 3, bottom: 3, left: 1.5, right: 1.5 },
+          lineWidth: 0.3, lineColor: [160, 40, 40],
         },
-        styles: { fontSize: 8.5, cellPadding: 3, textColor: BLACK, lineWidth: 0.2, lineColor: [200, 200, 200] },
+        styles: {
+          fontSize: 8.5, textColor: BLACK,
+          cellPadding: { top: 3, bottom: 3, left: 2, right: 2 },
+          lineWidth: 0.2, lineColor: [200, 200, 200],
+          valign: 'middle', overflow: 'linebreak',
+        },
         alternateRowStyles: { fillColor: LIGHT },
         columnStyles: {
-          0: { cellWidth: 52 },
+          0: { cellWidth: 44 },
           1: { cellWidth: 'auto' },
           2: { halign: 'right' as const, cellWidth: 22 },
-          3: { halign: 'center' as const, cellWidth: 20 },
-          4: { halign: 'center' as const, cellWidth: 22 },
+          3: { halign: 'center' as const, cellWidth: 24 },
+          4: { halign: 'center' as const, cellWidth: 26 },
           5: { halign: 'center' as const, cellWidth: 14 },
           6: { halign: 'right' as const, cellWidth: 22 },
         },
@@ -528,8 +534,9 @@ export class ViaticosDetailComponent implements OnInit {
       addInfoRow('Cantidad de Personas (nombres):', String(peopleMax), 6);
       addInfoRow('Lugar:', place, 7);
 
-      // Tiempo presupuestado (row 8, no merge)
+      // Tiempo presupuestado (row 8)
       const timeRow = ws.addRow(['Tiempo presupuestado:', 'Del .....', startFmt, 'Al .....', endFmt, '', '']);
+      ws.mergeCells(timeRow.number, 5, timeRow.number, 7);
       timeRow.height = 18;
       timeRow.eachCell({ includeEmpty: true }, (cell, col) => {
         cell.font = col === 1 ? { bold: true, size: 9.5 } : { size: 9.5 };
