@@ -868,9 +868,11 @@
               @if (expense.status === 'rejected' && expense.rejectionReason) {
                 <p class="text-xs text-red-600 mt-1 bg-red-50 px-2 py-1 rounded">{{ expense.rejectionReason }}</p>
               }
-              <p class="text-sm text-gray-900 mt-2 leading-snug break-words whitespace-pre-line">
-                {{ getExpenseDescriptionMultiline(expense) }}
-              </p>
+              <div class="text-sm text-gray-900 mt-2 leading-snug break-words divide-y divide-gray-200">
+                @for (line of getExpenseDescriptionLines(expense); track $index) {
+                  <p class="py-1 first:pt-0 last:pb-0">{{ line }}</p>
+                }
+              </div>
               <p class="text-xs text-gray-500 mt-2 flex items-center gap-1.5">
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-3.5 h-3.5 shrink-0 text-gray-400">
                   <path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5a2.25 2.25 0 0 0 2.25-2.25m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5a2.25 2.25 0 0 1 2.25 2.25v7.5" />
@@ -993,7 +995,13 @@
                     </span>
                   </td>
                   <td class="px-4 lg:px-6 py-3 text-sm text-gray-900 whitespace-nowrap">{{ getExpenseDate(expense) }}</td>
-                  <td class="px-4 lg:px-6 py-3 text-sm text-gray-900 whitespace-pre-line align-top">{{ getExpenseDescriptionMultiline(expense) }}</td>
+                  <td class="px-4 lg:px-6 py-3 text-sm text-gray-900 align-top">
+                    <div class="divide-y divide-gray-200">
+                      @for (line of getExpenseDescriptionLines(expense); track $index) {
+                        <p class="py-1 first:pt-0 last:pb-0">{{ line }}</p>
+                      }
+                    </div>
+                  </td>
                   <td class="px-4 lg:px-6 py-3 text-sm font-medium text-gray-900 text-right tabular-nums">
                     <div class="flex items-center justify-end gap-1.5">
                       S/ {{ expense.total | number:'1.2-2' }}
