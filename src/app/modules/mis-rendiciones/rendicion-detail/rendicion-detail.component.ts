@@ -656,12 +656,12 @@ export class RendicionDetailComponent implements OnInit {
     } catch { return 'N/A'; }
   }
 
-  /** Resumen multi-línea para la tabla Comprobantes Asociados: lista todos los conceptos. */
-  getExpenseDescriptionMultiline(expense: any): string {
+  /** Lista de conceptos para la tabla Comprobantes Asociados (1 entrada por fila de planilla). */
+  getExpenseDescriptionLines(expense: any): string[] {
     const type = expense?.expenseType;
     if (type === 'planilla_movilidad') {
       const rows: any[] = expense?.mobilityRows || [];
-      if (!rows.length) return '0 filas';
+      if (!rows.length) return ['0 filas'];
       const lines = rows
         .map((r: any) => {
           const concepto = (r?.concepto || '').toString().trim();
@@ -674,9 +674,9 @@ export class RendicionDetailComponent implements OnInit {
           return origen || destino || (r?.clienteProveedor || '').toString().trim();
         })
         .filter(Boolean);
-      return lines.length ? lines.join('\n') : `${rows.length} filas`;
+      return lines.length ? lines : [`${rows.length} filas`];
     }
-    return this.getExpenseDescription(expense);
+    return [this.getExpenseDescription(expense)];
   }
 
   getExpenseDescription(expense: any): string {
