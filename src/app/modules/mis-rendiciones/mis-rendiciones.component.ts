@@ -295,6 +295,7 @@ export class MisRendicionesComponent implements OnInit {
       solicited: 'SOLICITADA',
       open: 'ABIERTA',
       submitted: 'ENVIADA',
+      pending_accounting: 'PENDIENTE CONTABILIDAD',
       approved: 'APROBADA',
       rejected: 'RECHAZADA',
       reimbursed: 'REEMBOLSADO',

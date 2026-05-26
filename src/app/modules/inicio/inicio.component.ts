@@ -28,19 +28,27 @@ export class InicioComponent implements OnInit {
   readonly STATUS_COLORS = ADVANCE_STATUS_COLORS;
 
   readonly REPORT_STATUS_LABELS: Record<string, string> = {
+    solicited: 'Solicitada',
     open: 'Abierta',
     submitted: 'Enviada',
+    pending_accounting: 'Pendiente contabilidad',
     approved: 'Aprobada',
     rejected: 'Rechazada',
+    reimbursed: 'Reembolsado',
     closed: 'Cerrada',
+    cancelled: 'Cancelada',
   };
 
   readonly REPORT_STATUS_COLORS: Record<string, string> = {
+    solicited: 'bg-purple-100 text-purple-700',
     open: 'bg-blue-100 text-blue-700',
     submitted: 'bg-yellow-100 text-yellow-700',
+    pending_accounting: 'bg-amber-100 text-amber-700',
     approved: 'bg-green-100 text-green-700',
     rejected: 'bg-red-100 text-red-700',
+    reimbursed: 'bg-teal-100 text-teal-700',
     closed: 'bg-gray-100 text-gray-600',
+    cancelled: 'bg-orange-100 text-orange-700',
   };
 
   // ── KPIs ─────────────────────────────────────────────────────────
