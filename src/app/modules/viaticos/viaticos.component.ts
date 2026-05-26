@@ -152,18 +152,30 @@ export class ViaticosComponent implements OnInit {
     return p.code ? `${p.code} — ${p.name}` : p.name;
   }
 
+  private fmtDate(d: string | Date): string {
+    const date = new Date(d);
+    const dd = String(date.getDate()).padStart(2, '0');
+    const mm = String(date.getMonth() + 1).padStart(2, '0');
+    const yyyy = date.getFullYear();
+    return `${dd}/${mm}/${yyyy}`;
+  }
+
+  startDateFmt(a: IAdvance): string {
+    return a.startDate ? this.fmtDate(a.startDate) : '—';
+  }
+
+  endDateFmt(a: IAdvance): string {
+    return a.endDate ? this.fmtDate(a.endDate) : '';
+  }
+
   dateRange(a: IAdvance): string {
-    const fmt = (d: string) =>
-      new Date(d).toLocaleDateString('es-PE', { day: 'numeric', month: 'short', year: 'numeric' });
-    if (a.startDate && a.endDate) return `${fmt(a.startDate)} al ${fmt(a.endDate)}`;
-    if (a.startDate) return fmt(a.startDate);
+    if (a.startDate && a.endDate) return `${this.fmtDate(a.startDate)} al ${this.fmtDate(a.endDate)}`;
+    if (a.startDate) return this.fmtDate(a.startDate);
     return '—';
   }
 
   createdAt(a: IAdvance): string {
-    return new Date(a.createdAt).toLocaleDateString('es-PE', {
-      day: 'numeric', month: 'short', year: 'numeric',
-    });
+    return this.fmtDate(a.createdAt);
   }
 
   canApproveL1Action(a: IAdvance): boolean {

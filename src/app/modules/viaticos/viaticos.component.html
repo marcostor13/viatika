@@ -183,9 +183,14 @@
               </td>
 
               <!-- Fechas -->
-              <td class="px-4 py-3.5 whitespace-nowrap">
-                <p class="text-xs text-tertiary">{{ dateRange(a) }}</p>
-                <p class="text-xs text-tertiary/50 mt-0.5">Solicitado {{ createdAt(a) }}</p>
+              <td class="px-3 py-3.5 whitespace-nowrap">
+                <div class="text-xs text-tertiary leading-tight">
+                  <div>{{ startDateFmt(a) }}</div>
+                  @if (endDateFmt(a)) {
+                    <div class="text-tertiary/70">al {{ endDateFmt(a) }}</div>
+                  }
+                </div>
+                <p class="text-[10px] text-tertiary/50 mt-1">Sol. {{ createdAt(a) }}</p>
               </td>
 
               <!-- Monto -->
