@@ -79,6 +79,19 @@ export class RendicionDetailComponent implements OnInit {
   pendingRejectRoleExpenseId = signal<string | null>(null);
   pendingRejectRole = signal<'coord' | 'cont' | null>(null);
 
+  // Planilla movilidad accordion (IDs collapsed; empty = all expanded by default)
+  collapsedMobilityIds = signal<Set<string>>(new Set());
+
+  toggleMobilityAccordion(id: string): void {
+    const s = new Set(this.collapsedMobilityIds());
+    if (s.has(id)) { s.delete(id); } else { s.add(id); }
+    this.collapsedMobilityIds.set(s);
+  }
+
+  isMobilityExpanded(id: string): boolean {
+    return !this.collapsedMobilityIds().has(id);
+  }
+
   // Batch approve
   isBatchApproving = signal(false);
   isBatchApprovingCollab = signal(false);
