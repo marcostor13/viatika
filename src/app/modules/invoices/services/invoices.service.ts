@@ -113,6 +113,22 @@ export class InvoicesService {
     );
   }
 
+  approveByCoord(id: string): Observable<any> {
+    return this.http.patch(`${this.url}/invoice/${id}/approve-coord`, {});
+  }
+
+  rejectByCoord(id: string, reason: string): Observable<any> {
+    return this.http.patch(`${this.url}/invoice/${id}/reject-coord`, { reason });
+  }
+
+  approveByContabilidad(id: string): Observable<any> {
+    return this.http.patch(`${this.url}/invoice/${id}/approve-cont`, {});
+  }
+
+  rejectByContabilidad(id: string, reason: string): Observable<any> {
+    return this.http.patch(`${this.url}/invoice/${id}/reject-cont`, { reason });
+  }
+
   getCategories(companyId?: string): Observable<ICategory[]> {
     const url = companyId
       ? `${this.categoryUrl}/${companyId}/flat`
