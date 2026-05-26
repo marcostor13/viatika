@@ -79,6 +79,11 @@ export interface IExpenseReport {
     uploadedAt: string;
   };
   closureRecord?: IClosureRecord;
+  coordinatorApprovedAt?: string;
+  coordinatorApprovedBy?: any;
+  contabilidadApprovedAt?: string;
+  contabilidadApprovedBy?: any;
+  reopenHistory?: Array<{ reason: string; reopenedBy: string; reopenedAt: string; fromStatus: string }>;
 }
 
 export interface ICreateExpenseReport {

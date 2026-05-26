@@ -118,6 +118,27 @@ export class ExpenseReportsService {
     );
   }
 
+  reopen(reportId: string, reason: string): Observable<IExpenseReport> {
+    return this.http.patch<IExpenseReport>(
+      `${this.apiUrl}/expense-report/${reportId}/reopen`,
+      { reason }
+    );
+  }
+
+  batchApproveByCoord(reportId: string): Observable<{ approved: number }> {
+    return this.http.patch<{ approved: number }>(
+      `${this.apiUrl}/expense/report/${reportId}/batch-approve-coord`,
+      {}
+    );
+  }
+
+  batchApproveByCollab(reportId: string): Observable<{ approved: number }> {
+    return this.http.patch<{ approved: number }>(
+      `${this.apiUrl}/expense/report/${reportId}/batch-approve-collab`,
+      {}
+    );
+  }
+
   createAffidavit(
     reportId: string,
     payload: { type: 'viaticos_nacionales' | 'viajes_exterior'; expenseIds: string[] }

@@ -71,6 +71,22 @@ export class RendicionDetailComponent implements OnInit {
 
   amountEditedTooltipId = signal<string | null>(null);
 
+  // Aprobación dual de comprobantes
+  approvingExpenseRoleId = signal<string | null>(null);
+  rejectingExpenseRoleId = signal<string | null>(null);
+  rejectRoleReason = signal('');
+  showRejectRoleModal = signal(false);
+  pendingRejectRoleExpenseId = signal<string | null>(null);
+  pendingRejectRole = signal<'coord' | 'cont' | null>(null);
+
+  // Batch approve
+  isBatchApproving = signal(false);
+  isBatchApprovingCollab = signal(false);
+
+  // Reopen modal (direct reopen by Contabilidad)
+  showReopenModal = signal(false);
+  isReopening = signal(false);
+
   totalGastado = 0;
 
   @HostListener('document:click')
@@ -556,20 +572,63 @@ export class RendicionDetailComponent implements OnInit {
     return 'Factura';
   }
 
-  /** Código corto del tipo de documento para reportes (PDF/Excel). */
+  /** Código corto del tipo de documento. */
   getExpenseTypeCode(expense: any): string {
     const type = expense?.expenseType;
     if (type === 'planilla_movilidad') return 'PM';
     if (type === 'comprobante_caja') return 'CC';
-    if (type === 'recibo_caja') return 'RC';
-    if (type === 'otros_gastos') return 'DJ';
+    if (type === 'recibo_caja') return 'H';
+    if (type === 'otros_gastos') return 'SC';
     const dataObj = this.getExpenseDataObject(expense);
     const tipoComp = String(dataObj['tipoComprobante'] ?? '').trim();
     if (tipoComp === '03') return 'BV';
     if (tipoComp === '12') return 'TK';
-    if (tipoComp === '01') return 'FT';
+    if (tipoComp === '01') return 'FE';
     if (type === 'factura' || !type) return 'FT';
-    return 'OT';
+    return 'FT';
+  }
+
+  getExpenseTypeCodeBadgeClass(expense: any): string {
+    const code = this.getExpenseTypeCode(expense);
+    if (code === 'PM') return 'bg-yellow-100 text-yellow-800';
+    if (code === 'CC') return 'bg-purple-100 text-purple-800';
+    if (code === 'H')  return 'bg-green-100 text-green-800';
+    if (code === 'SC') return 'bg-gray-100 text-gray-600';
+    return 'bg-blue-100 text-blue-700';
+  }
+
+  getExpenseDocumentNumber(expense: any): string {
+    const type = expense?.expenseType;
+    if (type === 'planilla_movilidad' || type === 'comprobante_caja') {
+      return typeof expense?.internalCode === 'string' && expense.internalCode ? expense.internalCode : '-';
+    }
+    if (type === 'recibo_caja') {
+      const d = this.getExpenseDataObject(expense);
+      const payload = d['payload'];
+      const p: Record<string, unknown> =
+        typeof payload === 'string'
+          ? (() => { try { return JSON.parse(payload); } catch { return {}; } })()
+          : (payload && typeof payload === 'object' ? payload as Record<string, unknown> : {});
+      return p['numeroDocumento'] ? String(p['numeroDocumento']) : '-';
+    }
+    const d = this.getExpenseDataObject(expense);
+    const serie = d['serie'] ? String(d['serie']) : '';
+    const correlativo = d['correlativo'] ? String(d['correlativo']) : '';
+    if (serie && correlativo) return `${serie}-${correlativo}`;
+    if (serie) return serie;
+    if (correlativo) return correlativo;
+    return '-';
+  }
+
+  getExpenseProveedor(expense: any): string {
+    const type = expense?.expenseType;
+    if (type === 'planilla_movilidad' || type === 'comprobante_caja' || type === 'otros_gastos') return '-';
+    const d = this.getExpenseDataObject(expense);
+    const razonSocial = d['razonSocial'];
+    if (typeof razonSocial === 'string' && razonSocial.trim()) return razonSocial.trim();
+    const provider = expense?.provider;
+    if (typeof provider === 'string' && provider.trim()) return provider.trim();
+    return '-';
   }
 
   formatShortDate(raw: string | null | undefined): string {
@@ -921,10 +980,10 @@ export class RendicionDetailComponent implements OnInit {
       solicited: 'Solicitada',
       open: 'Abierta',
       submitted: 'Enviada',
-      pending_accounting: 'Pendiente contabilidad',
-      approved: 'Aprobada',
+      pending_accounting: 'Aprobada por Coordinador',
+      approved: 'Aprobada por Contabilidad',
       rejected: 'Rechazada',
-      reimbursed: 'Reembolsado',
+      reimbursed: 'Reembolsada',
       closed: 'Cerrada',
       cancelled: 'Cancelada',
     };
@@ -2054,6 +2113,190 @@ export class RendicionDetailComponent implements OnInit {
       queryParams: {
         pendingBalanceFromReportId: this.id,
         pendingBalanceAmount: this.saldoLibre,
+      },
+    });
+  }
+
+  // ─── Aprobación dual de comprobantes ─────────────────────────────────────────
+
+  get canApproveExpenseAsCoord(): boolean {
+    return this.userStateService.isCoordinador() && this.userStateService.hasModulePermission('rendiciones')
+      || this.userStateService.isAdmin() || this.userStateService.isSuperAdmin();
+  }
+
+  get canApproveExpenseAsCont(): boolean {
+    return this.userStateService.isContabilidad() || this.userStateService.isSuperAdmin();
+  }
+
+  get canReopen(): boolean {
+    return this.userStateService.isContabilidad() || this.userStateService.isSuperAdmin();
+  }
+
+  get batchApproveCount(): number {
+    const expenses = this.expensesPage()?.data ?? [];
+    return expenses.filter((e: any) => {
+      const contStatus = e.approvalCont?.status ?? 'pending';
+      const coordStatus = e.approvalCoord?.status ?? 'pending';
+      return contStatus === 'approved' && coordStatus !== 'approved';
+    }).length;
+  }
+
+  get collaboratorBatchCount(): number {
+    const expenses = this.expensesPage()?.data ?? [];
+    return expenses.filter((e: any) => {
+      const contStatus = e.approvalCont?.status ?? 'pending';
+      return contStatus === 'approved' && e.status !== 'approved';
+    }).length;
+  }
+
+  getExpenseApprovalCoord(expense: any): { status: string; userName?: string } {
+    return expense.approvalCoord ?? { status: 'pending' };
+  }
+
+  getExpenseApprovalCont(expense: any): { status: string; userName?: string } {
+    return expense.approvalCont ?? { status: 'pending' };
+  }
+
+  approveExpenseByRole(expenseId: string, role: 'coord' | 'cont'): void {
+    const label = role === 'coord' ? 'Coordinador' : 'Contabilidad';
+    this.confirmationService.show(
+      `¿Aprobar este comprobante como ${label}? Esta acción no se puede deshacer.`,
+      () => this._doApproveExpenseByRole(expenseId, role)
+    );
+  }
+
+  private _doApproveExpenseByRole(expenseId: string, role: 'coord' | 'cont'): void {
+    this.approvingExpenseRoleId.set(`${role}:${expenseId}`);
+    const call$ = role === 'coord'
+      ? this.invoicesService.approveByCoord(expenseId)
+      : this.invoicesService.approveByContabilidad(expenseId);
+    call$.subscribe({
+      next: () => {
+        this.approvingExpenseRoleId.set(null);
+        this.loadExpensesPage(this.expensesPage()?.page ?? 1);
+      },
+      error: (e) => {
+        this.approvingExpenseRoleId.set(null);
+        this.notificationService.show(e?.error?.message ?? 'Error al aprobar', 'error');
+      },
+    });
+  }
+
+  openRejectRoleModal(expenseId: string, role: 'coord' | 'cont'): void {
+    this.pendingRejectRoleExpenseId.set(expenseId);
+    this.pendingRejectRole.set(role);
+    this.rejectRoleReason.set('');
+    this.showRejectRoleModal.set(true);
+  }
+
+  closeRejectRoleModal(): void {
+    this.showRejectRoleModal.set(false);
+    this.pendingRejectRoleExpenseId.set(null);
+    this.pendingRejectRole.set(null);
+    this.rejectRoleReason.set('');
+  }
+
+  confirmRejectExpenseByRole(): void {
+    const id = this.pendingRejectRoleExpenseId();
+    const role = this.pendingRejectRole();
+    const reason = this.rejectRoleReason().trim();
+    if (!id || !role || !reason) return;
+    this.rejectingExpenseRoleId.set(`${role}:${id}`);
+    const call$ = role === 'coord'
+      ? this.invoicesService.rejectByCoord(id, reason)
+      : this.invoicesService.rejectByContabilidad(id, reason);
+    call$.subscribe({
+      next: () => {
+        this.rejectingExpenseRoleId.set(null);
+        this.closeRejectRoleModal();
+        this.loadExpensesPage(this.expensesPage()?.page ?? 1);
+      },
+      error: (e) => {
+        this.rejectingExpenseRoleId.set(null);
+        this.notificationService.show(e?.error?.message ?? 'Error al rechazar', 'error');
+      },
+    });
+  }
+
+  batchApproveByCoord(): void {
+    this.confirmationService.show(
+      `¿Aprobar como Coordinador todos los comprobantes ya validados por Contabilidad? Esta acción no se puede deshacer.`,
+      () => this._doBatchApproveByCoord()
+    );
+  }
+
+  private _doBatchApproveByCoord(): void {
+    this.isBatchApproving.set(true);
+    this.expenseReportsService.batchApproveByCoord(this.id).subscribe({
+      next: (res) => {
+        this.isBatchApproving.set(false);
+        this.notificationService.show(
+          `${res.approved} comprobante(s) aprobados por Coordinador`,
+          'success'
+        );
+        this.loadExpensesPage(this.expensesPage()?.page ?? 1);
+      },
+      error: (e) => {
+        this.isBatchApproving.set(false);
+        this.notificationService.show(e?.error?.message ?? 'Error al aprobar en lote', 'error');
+      },
+    });
+  }
+
+  batchApproveByCollab(): void {
+    this.confirmationService.show(
+      `¿Confirmar todos los comprobantes aprobados por Contabilidad? Esta acción no se puede deshacer.`,
+      () => this._doBatchApproveByCollab()
+    );
+  }
+
+  private _doBatchApproveByCollab(): void {
+    this.isBatchApprovingCollab.set(true);
+    this.expenseReportsService.batchApproveByCollab(this.id).subscribe({
+      next: (res) => {
+        this.isBatchApprovingCollab.set(false);
+        this.notificationService.show(
+          `${res.approved} comprobante(s) confirmados`,
+          'success'
+        );
+        this.loadExpensesPage(this.expensesPage()?.page ?? 1);
+      },
+      error: (e) => {
+        this.isBatchApprovingCollab.set(false);
+        this.notificationService.show(e?.error?.message ?? 'Error al confirmar comprobantes', 'error');
+      },
+    });
+  }
+
+  // ─── Reapertura ───────────────────────────────────────────────────────────────
+
+  openReopenModal(): void {
+    this.reopenReason.set('');
+    this.showReopenModal.set(true);
+  }
+
+  closeReopenModal(): void {
+    this.showReopenModal.set(false);
+    this.reopenReason.set('');
+  }
+
+  confirmReopen(): void {
+    const reason = this.reopenReason().trim();
+    if (!reason) {
+      this.notificationService.show('El motivo es obligatorio', 'error');
+      return;
+    }
+    this.isReopening.set(true);
+    this.expenseReportsService.reopen(this.id, reason).subscribe({
+      next: () => {
+        this.isReopening.set(false);
+        this.closeReopenModal();
+        this.notificationService.show('Rendición reabierta correctamente', 'success');
+        this.loadReport();
+      },
+      error: (e) => {
+        this.isReopening.set(false);
+        this.notificationService.show(e?.error?.message ?? 'Error al reabrir', 'error');
       },
     });
   }
