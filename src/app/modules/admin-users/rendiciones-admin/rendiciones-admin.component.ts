@@ -160,6 +160,17 @@ export class RendicionesAdminComponent implements OnInit {
     return typeof report.userId === 'object' ? report.userId?._id : report.userId;
   }
 
+  getUserInitials(report: IExpenseReport): string {
+    const name = this.getUserName(report);
+    if (!name || name === '—') return '?';
+    return name
+      .split(/\s+/)
+      .filter(Boolean)
+      .slice(0, 2)
+      .map(part => part.charAt(0).toUpperCase())
+      .join('');
+  }
+
   goToDetail(report: IExpenseReport): void {
     this.router.navigate(['/mis-rendiciones', report._id, 'detalle']);
   }
