@@ -166,6 +166,10 @@ export class RendicionDetailComponent implements OnInit {
       .reduce((sum, a) => sum + a.amount, 0);
   }
 
+  get paidAdvances(): IAdvance[] {
+    return this.advances.filter(a => ['approved', 'paid', 'settled'].includes(a.status));
+  }
+
   get hasPaidAdvanceForReport(): boolean {
     return this.advances.some(a => ['paid', 'settled'].includes(a.status));
   }
@@ -183,12 +187,19 @@ export class RendicionDetailComponent implements OnInit {
     if (success) this.loadAdvances();
   }
 
+  private updateDocCounts(report: IExpenseReport): void {
+    const ids = (report.expenseIds as any[]) ?? [];
+    this.totalDocCount.set(ids.length);
+    this.approvedDocCount.set(ids.filter((e: any) => e.status === 'approved').length);
+  }
+
   loadReport() {
     this.isLoading = true;
     this.expenseReportsService.findOne(this.id).subscribe({
       next: (data) => {
         this.report = data;
         this.calculateTotals();
+        this.updateDocCounts(data);
         this.isLoading = false;
         this.loadExpensesPage(1);
       },
@@ -196,6 +207,17 @@ export class RendicionDetailComponent implements OnInit {
         console.error('Error fetching report detail', err);
         this.isLoading = false;
       }
+    });
+  }
+
+  private refreshReport(): void {
+    this.expenseReportsService.findOne(this.id).subscribe({
+      next: (data) => {
+        this.report = data;
+        this.calculateTotals();
+        this.updateDocCounts(data);
+      },
+      error: () => {},
     });
   }
 
@@ -426,16 +448,16 @@ export class RendicionDetailComponent implements OnInit {
   expenseRejectTargetId = signal<string | null>(null);
   expenseRejectReason = signal('');
 
-  /** Todos los comprobantes del reporte tienen status === 'approved'. */
-  get allDocumentsApproved(): boolean {
-    if (!this.report?.expenseIds || this.report.expenseIds.length === 0) return false;
-    return this.report.expenseIds.every((exp: any) => exp.status === 'approved');
-  }
+  approvedDocCount = signal(0);
+  totalDocCount = signal(0);
+  readonly allDocumentsApproved = computed(() =>
+    this.totalDocCount() > 0 && this.approvedDocCount() === this.totalDocCount()
+  );
 
   /** Coordinador/Admin puede aprobar (paso 1): rendicion enviada + todos los docs aprobados. */
   get canCoordinadorApprove(): boolean {
     if (this.userStateService.isContabilidad()) return false;
-    return this.report?.status === 'submitted' && this.allDocumentsApproved;
+    return this.report?.status === 'submitted' && this.allDocumentsApproved();
   }
 
   /** Contabilidad/Admin/SuperAdmin puede hacer la aprobacion final (paso 2). */
@@ -454,16 +476,6 @@ export class RendicionDetailComponent implements OnInit {
   /** @deprecated usar canCoordinadorApprove o canContabilidadApprove */
   get canFinalApprove(): boolean {
     return this.canCoordinadorApprove || this.canContabilidadApprove;
-  }
-
-  /** Cantidad de documentos aprobados individualmente. */
-  get approvedDocCount(): number {
-    return this.report?.expenseIds?.filter((exp: any) => exp.status === 'approved').length ?? 0;
-  }
-
-  /** Cantidad total de documentos. */
-  get totalDocCount(): number {
-    return this.report?.expenseIds?.length ?? 0;
   }
 
   confirmApproveExpense(expenseId: string): void {
@@ -2187,6 +2199,7 @@ export class RendicionDetailComponent implements OnInit {
       next: () => {
         this.approvingExpenseRoleId.set(null);
         this.loadExpensesPage(this.expensesPage()?.page ?? 1);
+        this.refreshReport();
       },
       error: (e) => {
         this.approvingExpenseRoleId.set(null);
@@ -2223,6 +2236,7 @@ export class RendicionDetailComponent implements OnInit {
         this.rejectingExpenseRoleId.set(null);
         this.closeRejectRoleModal();
         this.loadExpensesPage(this.expensesPage()?.page ?? 1);
+        this.refreshReport();
       },
       error: (e) => {
         this.rejectingExpenseRoleId.set(null);
@@ -2248,6 +2262,7 @@ export class RendicionDetailComponent implements OnInit {
           'success'
         );
         this.loadExpensesPage(this.expensesPage()?.page ?? 1);
+        this.refreshReport();
       },
       error: (e) => {
         this.isBatchApproving.set(false);
@@ -2273,6 +2288,7 @@ export class RendicionDetailComponent implements OnInit {
           'success'
         );
         this.loadExpensesPage(this.expensesPage()?.page ?? 1);
+        this.refreshReport();
       },
       error: (e) => {
         this.isBatchApprovingCollab.set(false);
