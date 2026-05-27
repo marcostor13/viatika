@@ -326,13 +326,24 @@ export default class AddInvoiceComponent implements OnInit {
               receiptMonto: res.total ?? 0,
             });
           } else if (type === 'comprobante_caja') {
+            let voucherPayload: any = dataObj;
+            if (dataObj?.payload) {
+              try {
+                voucherPayload =
+                  typeof dataObj.payload === 'string'
+                    ? JSON.parse(dataObj.payload)
+                    : dataObj.payload;
+              } catch {
+                voucherPayload = {};
+              }
+            }
             this.form.patchValue({
               ...baseValues,
-              voucherEntregadoA: dataObj.entregadoA || '',
-              voucherDireccion: dataObj.direccion || '',
-              voucherConcepto: dataObj.concepto || '',
+              voucherEntregadoA: voucherPayload.entregadoA || '',
+              voucherDireccion: voucherPayload.direccion || '',
+              voucherConcepto: voucherPayload.concepto || '',
               voucherFecha: fecha,
-              voucherMonto: res.total ?? dataObj.monto ?? 0,
+              voucherMonto: res.total ?? voucherPayload.monto ?? 0,
             });
           } else if (type === 'planilla_movilidad') {
             this.form.patchValue(baseValues);
@@ -1092,14 +1103,36 @@ export default class AddInvoiceComponent implements OnInit {
       payload.total = Number(formValue.receiptMonto) || 0;
     } else if (type === 'comprobante_caja') {
       const monto = Number(formValue.voucherMonto) || 0;
-      const dataObj = {
-        ...previousData,
+
+      let previousPayload: any = {};
+      if (previousData?.payload) {
+        try {
+          previousPayload =
+            typeof previousData.payload === 'string'
+              ? JSON.parse(previousData.payload)
+              : previousData.payload;
+        } catch {
+          previousPayload = {};
+        }
+      } else {
+        previousPayload = { ...previousData };
+        delete previousPayload.type;
+      }
+
+      const newPayload = {
+        ...previousPayload,
         entregadoA: (formValue.voucherEntregadoA || '').trim(),
         direccion: (formValue.voucherDireccion || '').trim(),
         concepto: (formValue.voucherConcepto || '').trim(),
         monto,
       };
+
+      const dataObj = {
+        type: 'comprobante_caja',
+        payload: JSON.stringify(newPayload),
+      };
       payload.data = JSON.stringify(dataObj);
+      payload.description = JSON.stringify(newPayload);
       payload.fechaEmision = formValue.voucherFecha || undefined;
       payload.total = monto;
     } else if (type === 'planilla_movilidad') {

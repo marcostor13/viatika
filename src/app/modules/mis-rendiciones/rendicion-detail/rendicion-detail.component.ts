@@ -2091,9 +2091,7 @@ export class RendicionDetailComponent implements OnInit {
 
   exportCashVoucherAffidavit(expense: Record<string, unknown>): void {
     if (this.getExpenseTypeKey(expense) !== 'comprobante_caja') return;
-    const rawData = this.getExpenseDataObject(expense);
-    const payload = rawData['payload'];
-    const payloadObj = payload && typeof payload === 'object' ? (payload as Record<string, unknown>) : {};
+    const payloadObj = this.getCashVoucherPayload(expense);
     const client = this.userStateService.getUser()?.client;
     const receiptFields = [
       { label: 'Entregado a', value: String(payloadObj['entregadoA'] || '—') },
