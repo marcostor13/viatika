@@ -305,10 +305,26 @@ export default class AddInvoiceComponent implements OnInit {
               placaVehiculo: (res as any).placaVehiculo || dataObj.placaVehiculo || '',
             });
           } else if (type === 'otros_gastos') {
-            const description =
-              typeof res.data === 'string' && !this.looksLikeJson(res.data)
-                ? res.data
-                : dataObj.description || dataObj.descripcion || '';
+            let description = '';
+            if (typeof res.data === 'string' && !this.looksLikeJson(res.data)) {
+              description = res.data;
+            } else if (dataObj?.payload !== undefined) {
+              if (typeof dataObj.payload === 'string') {
+                try {
+                  const parsed = JSON.parse(dataObj.payload);
+                  description = parsed?.description || parsed?.descripcion || dataObj.payload;
+                } catch {
+                  description = dataObj.payload;
+                }
+              } else if (dataObj.payload && typeof dataObj.payload === 'object') {
+                description = dataObj.payload.description || dataObj.payload.descripcion || '';
+              }
+            } else {
+              description = dataObj.description || dataObj.descripcion || '';
+            }
+            if (!description && typeof (res as any).description === 'string') {
+              description = (res as any).description;
+            }
             this.form.patchValue({
               ...baseValues,
               description,
