@@ -84,15 +84,19 @@ export interface IExpenseReport {
   contabilidadApprovedAt?: string;
   contabilidadApprovedBy?: any;
   reopenHistory?: Array<{ reason: string; reopenedBy: string; reopenedAt: string; fromStatus: string }>;
+  motivo?: string;
+  isDirecta?: boolean;
 }
 
 export interface ICreateExpenseReport {
-  title: string;
+  title?: string;
   description?: string;
   budget?: number;
   userId: string;
   clientId: string;
   projectId?: string;
+  motivo?: string;
+  isDirecta?: boolean;
   // New fields
   accountNumber?: string;
   idDocument?: string;

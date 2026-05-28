@@ -104,6 +104,10 @@ export class MisRendicionesComponent implements OnInit {
     this.showCreateModal = true;
   }
 
+  openNuevaRendicion() {
+    this.router.navigate(['/mis-rendiciones/nueva']);
+  }
+
   openViaticosModal() {
     this.router.navigate(['/mis-rendiciones/solicitud-viaticos/nueva']);
   }

@@ -312,7 +312,10 @@ export class RendicionDetailComponent implements OnInit {
   /** Colaborador puede agregar gastos (rendición ya aprobada/abierta). */
   get canAddExpenses(): boolean {
     if (!this.report || this.isAdminView) return false;
-    return this.report.status === 'open' && this.hasPaidAdvanceForReport;
+    if (this.report.status !== 'open') return false;
+    // Rendición directa: no necesita anticipo pagado para agregar gastos
+    if ((this.report as any).isDirecta) return true;
+    return this.hasPaidAdvanceForReport;
   }
 
   /** Colaborador puede re-enviar la solicitud inicial (fue rechazada antes de agregar gastos). */
