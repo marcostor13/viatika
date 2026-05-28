@@ -1,6 +1,8 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { ExpenseReportsService } from '../../services/expense-reports.service';
+import { ExpenseService } from '../../services/expense.service';
 import { UserStateService } from '../../services/user-state.service';
 import { NotificationService } from '../../services/notification.service';
 import { IExpenseReport } from '../../interfaces/expense-report.interface';
@@ -16,12 +18,13 @@ import {
 @Component({
   selector: 'app-mis-rendiciones',
   standalone: true,
-  imports: [CommonModule, RouterModule, CreateRendicionModalComponent],
+  imports: [CommonModule, FormsModule, RouterModule, CreateRendicionModalComponent],
   templateUrl: './mis-rendiciones.component.html',
   styleUrls: ['./mis-rendiciones.component.scss']
 })
 export class MisRendicionesComponent implements OnInit {
   private expenseReportsService = inject(ExpenseReportsService);
+  private expenseService = inject(ExpenseService);
   private userStateService = inject(UserStateService);
   private advanceService = inject(AdvanceService);
   private notificationService = inject(NotificationService);
@@ -33,6 +36,21 @@ export class MisRendicionesComponent implements OnInit {
   isLoading = true;
   showCreateModal = false;
   showGuidelines = signal(false);
+  showTypeModal = false;
+  isCreatingGasto = signal(false);
+
+  // Tabs
+  activeTab = signal<'viaticos' | 'directas'>('viaticos');
+
+  // Tab gastos directos
+  directaExpenses = signal<any[]>([]);
+  directaTotal = signal(0);
+  directaPages = signal(0);
+  directaPage = 1;
+  directaLoading = signal(false);
+  directaLoaded = false;
+  directaFilterTipo = '';
+  isSubmittingDirectas = signal(false);
 
   readonly ADVANCE_STATUS_LABELS = ADVANCE_STATUS_LABELS;
   readonly ADVANCE_STATUS_COLORS = ADVANCE_STATUS_COLORS;
@@ -52,6 +70,201 @@ export class MisRendicionesComponent implements OnInit {
   ngOnInit(): void {
     this.loadMyReports();
     this.loadMyAdvances();
+    const tab = this.route.snapshot.queryParamMap.get('tab');
+    if (tab === 'directas') {
+      this.setTab('directas');
+    } else if (this.canCreateRendicion) {
+      this.setTab('directas');
+    }
+  }
+
+  setTab(tab: 'viaticos' | 'directas'): void {
+    this.activeTab.set(tab);
+    if (tab === 'directas' && !this.directaLoaded) {
+      this.loadDirectaExpenses();
+    }
+  }
+
+  loadDirectaExpenses(): void {
+    this.directaLoading.set(true);
+    this.expenseService.getMyDirectExpenses({
+      page: this.directaPage,
+      limit: 50,
+      tipo: this.directaFilterTipo || undefined,
+    }).subscribe({
+      next: (res) => {
+        this.directaExpenses.set(res.data ?? []);
+        this.directaTotal.set(res.total ?? 0);
+        this.directaPages.set(res.pages ?? 0);
+        this.directaLoading.set(false);
+        this.directaLoaded = true;
+      },
+      error: () => {
+        this.directaLoading.set(false);
+      },
+    });
+  }
+
+  // Solo rendiciones de viáticos (no directas) para Tab 1
+  get viaticosReports(): IExpenseReport[] {
+    return this.expenseReports.filter(r => !r.isDirecta);
+  }
+
+  get loosePendingCount(): number {
+    return this.directaExpenses().filter(e => !e.expenseReportId).length;
+  }
+
+  get loosePendingTotal(): number {
+    return this.directaExpenses()
+      .filter(e => !e.expenseReportId)
+      .reduce((sum, e) => sum + (Number(e.total) || 0), 0);
+  }
+
+  submitDirectas(): void {
+    if (this.loosePendingCount === 0) return;
+    this.isSubmittingDirectas.set(true);
+    this.expenseService.submitMyDirectExpenses().subscribe({
+      next: () => {
+        this.isSubmittingDirectas.set(false);
+        this.notificationService.show('Documentos enviados a Contabilidad.', 'success');
+        this.directaLoaded = false;
+        this.loadDirectaExpenses();
+        this.loadMyReports();
+      },
+      error: (err) => {
+        this.isSubmittingDirectas.set(false);
+        const msg = err?.error?.message ?? 'Error al enviar.';
+        this.notificationService.show(Array.isArray(msg) ? msg.join(', ') : msg, 'error');
+      },
+    });
+  }
+
+  // ─── Helpers columnas tabla gastos directos (alineados con rendicion-detail) ──
+
+  private getData(e: any): Record<string, unknown> {
+    const raw = e?.data;
+    try {
+      if (raw == null) return {};
+      if (typeof raw === 'string') return JSON.parse(raw);
+      if (typeof raw === 'object') return { ...raw };
+    } catch { return {}; }
+    return {};
+  }
+
+  getDirectaTipoCode(e: any): string {
+    const type = e?.expenseType;
+    if (type === 'planilla_movilidad') return 'PM';
+    if (type === 'comprobante_caja') return 'CC';
+    if (type === 'recibo_caja') return 'H';
+    if (type === 'otros_gastos') {
+      const sub = e?.subTipo ?? this.getData(e)['subTipo'];
+      if (sub === 'TK') return 'TK';
+      if (sub === 'RC') return 'RC';
+      if (sub === 'DJ') return 'DJ';
+      if (sub === 'OT') return 'OT';
+      return 'SC';
+    }
+    const d = this.getData(e);
+    const tc = String(d['tipoComprobante'] ?? '').trim();
+    if (tc === '03') return 'BV';
+    if (tc === '12') return 'TK';
+    if (tc === '01') return 'FE';
+    return 'FT';
+  }
+
+  getDirectaTipoBadgeClass(e: any): string {
+    const code = this.getDirectaTipoCode(e);
+    if (code === 'PM') return 'bg-yellow-100 text-yellow-800';
+    if (code === 'CC') return 'bg-purple-100 text-purple-800';
+    if (code === 'SC' || code === 'OT') return 'bg-gray-100 text-gray-600';
+    if (code === 'DJ') return 'bg-amber-100 text-amber-800';
+    if (code === 'TK') return 'bg-teal-100 text-teal-700';
+    if (code === 'RC') return 'bg-indigo-100 text-indigo-700';
+    return 'bg-blue-100 text-blue-700';
+  }
+
+  getDirectaFecha(e: any): string {
+    const type = e?.expenseType;
+    if (type === 'planilla_movilidad') {
+      const rows: any[] = e?.mobilityRows || [];
+      if (!rows.length) return '—';
+      const dates = rows.map((r: any) => r.fecha).filter(Boolean);
+      return dates.length ? ([...dates].sort()[0]) : '—';
+    }
+    return e.fechaEmision || '—';
+  }
+
+  getDirectaDocNumber(e: any): string {
+    const type = e?.expenseType;
+    if (type === 'planilla_movilidad' || type === 'comprobante_caja') {
+      return (typeof e?.internalCode === 'string' && e.internalCode) ? e.internalCode : '-';
+    }
+    if (type === 'recibo_caja') {
+      const d = this.getData(e);
+      const payload = d['payload'];
+      const p: any = typeof payload === 'string' ? (() => { try { return JSON.parse(payload); } catch { return {}; } })() : (payload ?? {});
+      return p['numeroDocumento'] ? String(p['numeroDocumento']) : '-';
+    }
+    const d = this.getData(e);
+    const serie = d['serie'] ? String(d['serie']) : '';
+    const corr = d['correlativo'] ? String(d['correlativo']) : '';
+    if (serie && corr) return `${serie}-${corr}`;
+    return serie || corr || '-';
+  }
+
+  getDirectaTipo(e: any): string {
+    const m: Record<string, string> = {
+      factura: 'Factura', planilla_movilidad: 'Planilla', otros_gastos: 'Otros',
+      recibo_caja: 'Recibo', comprobante_caja: 'Comprobante',
+    };
+    return m[e.expenseType] ?? e.expenseType ?? '—';
+  }
+
+  getDirectaConcepto(e: any): string {
+    const type = e?.expenseType;
+    if (type === 'planilla_movilidad') {
+      const rows: any[] = e?.mobilityRows || [];
+      const first = rows[0];
+      return first?.gestion || `${rows.length} filas`;
+    }
+    if (type === 'otros_gastos') return e?.description || 'DJ firmada';
+    if (type === 'comprobante_caja') {
+      try {
+        const d = this.getData(e);
+        const raw = d['payload'];
+        const obj: any = typeof raw === 'string' ? JSON.parse(raw) : (raw ?? {});
+        return String(obj['concepto'] || '');
+      } catch { return ''; }
+    }
+    const d = this.getData(e);
+    return String(d['concepto'] || e.description || '');
+  }
+
+  getDirectaProveedor(e: any): string {
+    const type = e?.expenseType;
+    if (type === 'planilla_movilidad' || type === 'comprobante_caja' || type === 'otros_gastos') return '-';
+    const d = this.getData(e);
+    const r = d['razonSocial'];
+    if (typeof r === 'string' && r.trim()) return r.trim();
+    return e?.provider || '-';
+  }
+
+  getDirectaEstado(e: any): { label: string; cls: string } {
+    if (!e.expenseReportId) return { label: 'Sin enviar', cls: 'bg-gray-100 text-gray-600' };
+    const st = e._reportStatus;
+    if (st === 'pending_accounting') return { label: 'En revision', cls: 'bg-yellow-100 text-yellow-700' };
+    if (st === 'approved') return { label: 'Aprobado', cls: 'bg-green-100 text-green-700' };
+    if (st === 'rejected') return { label: 'Rechazado', cls: 'bg-red-100 text-red-700' };
+    if (e.approvalCont?.status === 'approved') return { label: 'Revisado', cls: 'bg-teal-100 text-teal-700' };
+    return { label: 'Enviado', cls: 'bg-blue-100 text-blue-700' };
+  }
+
+  get directaTotalMonto(): number {
+    return this.directaExpenses().reduce((sum, e) => sum + (Number(e.total) || 0), 0);
+  }
+
+  goToDirectaReport(e: any): void {
+    this.router.navigate(['/mis-rendiciones/gasto', String(e._id)]);
   }
 
   loadMyAdvances() {
@@ -104,8 +317,18 @@ export class MisRendicionesComponent implements OnInit {
     this.showCreateModal = true;
   }
 
-  openNuevaRendicion() {
-    this.router.navigate(['/mis-rendiciones/nueva']);
+  openAddGasto(): void {
+    this.showTypeModal = true;
+  }
+
+  closeTypeModal(): void {
+    this.showTypeModal = false;
+  }
+
+  selectGastoType(tipo: string): void {
+    this.showTypeModal = false;
+    // Navega directamente al formulario en modo directa — sin crear rendición previa
+    this.router.navigate(['/invoices/add'], { queryParams: { tipo, mode: 'directa' } });
   }
 
   openViaticosModal() {
@@ -291,6 +514,11 @@ export class MisRendicionesComponent implements OnInit {
     if (report.startDate && report.endDate) return `${fmt(report.startDate)} al ${fmt(report.endDate)}`;
     if (report.startDate) return fmt(report.startDate);
     return '';
+  }
+
+  reportDisplayTitle(report: IExpenseReport): string {
+    if (report.isDirecta) return report.motivo || report.description || 'Rendicion directa';
+    return report.description || report.title || 'Rendicion de viaticos';
   }
 
   panelStatusText(report: IExpenseReport): string {
