@@ -185,6 +185,14 @@ export const routes: Routes = [
         canActivate: [AuthColaboradorGuard],
       },
       {
+        path: 'mis-rendiciones/nueva',
+        loadComponent: () =>
+          import('./modules/mis-rendiciones/nueva-rendicion-directa/nueva-rendicion-directa.component').then(
+            (m) => m.NuevaRendicionDirectaComponent
+          ),
+        canActivate: [authModuleGuard('nueva-rendicion')],
+      },
+      {
         path: 'mis-rendiciones/solicitud-viaticos/nueva',
         loadComponent: () =>
           import('./modules/mis-rendiciones/solicitud-viaticos/solicitud-viaticos.component').then(
