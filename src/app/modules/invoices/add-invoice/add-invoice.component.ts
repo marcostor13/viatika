@@ -1,4 +1,4 @@
-import { Component, inject, signal, OnInit } from '@angular/core';
+import { Component, inject, signal, computed, OnInit } from '@angular/core';
 import { Router, ActivatedRoute } from '@angular/router';
 import {
   FormBuilder,
@@ -11,6 +11,7 @@ import {
 import { NotificationService } from '../../../services/notification.service';
 import { InvoicesService } from '../services/invoices.service';
 import { ExpenseReportsService } from '../../../services/expense-reports.service';
+import { AdvanceService } from '../../../services/advance.service';
 import { UserStateService } from '../../../services/user-state.service';
 import { DomSanitizer, SafeUrl } from '@angular/platform-browser';
 import { UploadService } from '../../../services/upload.service';
@@ -47,6 +48,7 @@ export default class AddInvoiceComponent implements OnInit {
   private fb = inject(FormBuilder);
   private notificationService = inject(NotificationService);
   private expenseReportsService = inject(ExpenseReportsService);
+  private advanceService = inject(AdvanceService);
   private userStateService = inject(UserStateService);
   private route = inject(ActivatedRoute);
   private sanitizer = inject(DomSanitizer);
@@ -65,6 +67,14 @@ export default class AddInvoiceComponent implements OnInit {
   rendicionId: string | null = null;
 
   expenseType = signal<ExpenseType>('factura');
+  rendicionBudget = signal<number>(0);
+  rendicionSpent = signal<number>(0);
+  rendicionSettlementDiff = signal<number | null>(null);
+  rendicionAvailable = computed(() => {
+    const diff = this.rendicionSettlementDiff();
+    if (diff !== null) return diff;
+    return this.rendicionBudget() - this.rendicionSpent();
+  });
   percentage = signal(0);
   rucLookupLoading = signal(false);
   fetchedRazonSocial = signal<string | null>(null);
@@ -412,8 +422,40 @@ export default class AddInvoiceComponent implements OnInit {
           this.form.patchValue({ proyectId: pId });
           this.form.get('proyectId')?.disable();
         }
+        const expenses = Array.isArray(report?.expenseIds) ? report.expenseIds : [];
+        const spent = expenses.reduce(
+          (sum: number, exp: any) => sum + (parseFloat(exp?.total) || 0),
+          0,
+        );
+        this.rendicionSpent.set(spent);
+        const settlement = (report as any)?.settlement;
+        if (settlement && settlement.difference !== undefined && settlement.difference !== null) {
+          this.rendicionSettlementDiff.set(Number(settlement.difference) || 0);
+        } else {
+          this.rendicionSettlementDiff.set(null);
+        }
+        this.loadRendicionAdvances();
       },
       error: (err) => console.error('Error loading report project', err)
+    });
+  }
+
+  private loadRendicionAdvances() {
+    if (!this.rendicionId) return;
+    this.advanceService.findMy().subscribe({
+      next: (advances) => {
+        const totalAnticipado = advances
+          .filter((a) => {
+            const rid = typeof a.expenseReportId === 'object'
+              ? (a.expenseReportId as any)?._id
+              : a.expenseReportId;
+            return rid === this.rendicionId
+              && ['approved', 'paid', 'settled'].includes(a.status);
+          })
+          .reduce((sum, a) => sum + (Number(a.amount) || 0), 0);
+        this.rendicionBudget.set(totalAnticipado);
+      },
+      error: (err) => console.error('Error loading advances', err),
     });
   }
 
