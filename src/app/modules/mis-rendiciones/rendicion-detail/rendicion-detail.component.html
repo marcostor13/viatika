@@ -915,29 +915,32 @@
               </div>
               <!-- Row 3: concepto -->
               <p class="text-xs text-gray-600 mt-1 leading-snug line-clamp-2">{{ getExpenseConcepto(expense) }}</p>
-              <!-- Row 4: estado cont + coord (oculto en rendicion directa) -->
-              @if (!report.isDirecta) {
+              <!-- Row 4: estado cont (+ coord en flujo normal) -->
               <div class="mt-2 flex flex-wrap gap-x-3 gap-y-1">
+                <!-- Est. Cont.: "Revisado" en directa, "Aprobado/Rechazado" en normal -->
                 <div class="flex items-center gap-1">
-                  <span class="text-xs text-gray-400 font-medium">Cont.</span>
+                  <span class="text-xs text-gray-400 font-medium">{{ report.isDirecta ? 'Rev.' : 'Cont.' }}</span>
                   @switch (getExpenseApprovalCont(expense).status) {
                     @case ('approved') {
                       <span class="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-xs font-semibold bg-green-100 text-green-700">
                         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-3 h-3"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>
-                        Aprobado
+                        {{ report.isDirecta ? 'Revisado' : 'Aprobado' }}
                       </span>
                     }
                     @case ('rejected') {
+                      @if (!report.isDirecta) {
                       <span class="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-xs font-semibold bg-red-100 text-red-700">
                         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-3 h-3"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" /></svg>
                         Rechazado
                       </span>
+                      }
                     }
                     @default {
                       <span class="inline-flex px-1.5 py-0.5 rounded text-xs font-semibold bg-yellow-100 text-yellow-700">Pendiente</span>
                     }
                   }
                 </div>
+                @if (!report.isDirecta) {
                 <div class="flex items-center gap-1">
                   <span class="text-xs text-gray-400 font-medium">Coord.</span>
                   @switch (getExpenseApprovalCoord(expense).status) {
@@ -958,8 +961,8 @@
                     }
                   }
                 </div>
+                }
               </div>
-              }
               <!-- Row 5: acciones -->
               <div class="mt-3 flex flex-wrap gap-2">
                 <button type="button" (click)="openExpenseDetail(expense)"
@@ -1031,19 +1034,21 @@
                     Rechazar Coord.
                   </button>
                 }
-                @if (!report.isDirecta && canApproveExpenseAsCont && getExpenseApprovalCont(expense).status !== 'approved') {
+                @if (canApproveExpenseAsCont && getExpenseApprovalCont(expense).status !== 'approved') {
                   <button type="button"
                     [disabled]="approvingExpenseRoleId() === 'cont:' + expense._id"
                     (click)="approveExpenseByRole(expense._id, 'cont')"
                     class="inline-flex items-center gap-1 min-h-[36px] px-3 rounded-lg text-xs font-semibold border border-teal-200 bg-teal-50 text-teal-700 hover:bg-teal-100 disabled:opacity-50 touch-manipulation">
                     @if (approvingExpenseRoleId() === 'cont:' + expense._id) {
                       <span class="w-3 h-3 border border-teal-400 border-t-teal-700 rounded-full animate-spin"></span>
-                    } @else { Aprobar Cont. }
+                    } @else { {{ report.isDirecta ? 'Marcar revisado' : 'Aprobar Cont.' }} }
                   </button>
+                  @if (!report.isDirecta) {
                   <button type="button" (click)="openRejectRoleModal(expense._id, 'cont')"
                     class="inline-flex items-center gap-1 min-h-[36px] px-3 rounded-lg text-xs font-semibold border border-red-200 bg-red-50 text-red-700 hover:bg-red-100 touch-manipulation">
                     Rechazar Cont.
                   </button>
+                  }
                 }
               </div>
               <!-- Planilla movilidad: filas accordion (mobile) -->
@@ -1103,8 +1108,8 @@
                   <th class="px-3 py-3 whitespace-nowrap">Proveedor</th>
                   <th class="px-3 py-3">Concepto</th>
                   <th class="px-3 py-3 text-right whitespace-nowrap">Monto</th>
+                  <th class="px-3 py-3 text-center whitespace-nowrap text-teal-600">{{ report.isDirecta ? 'Revisado Cont.' : 'Est. Cont.' }}</th>
                   @if (!report.isDirecta) {
-                  <th class="px-3 py-3 text-center whitespace-nowrap text-teal-600">Est. Cont.</th>
                   <th class="px-3 py-3 text-center whitespace-nowrap text-indigo-600">Est. Coord.</th>
                   }
                   <th class="px-3 py-3 text-center whitespace-nowrap">Opciones</th>
@@ -1172,22 +1177,23 @@
                       }
                     </div>
                   </td>
-                  <!-- Estado Contabilidad (oculto en rendicion directa) -->
-                  @if (!report.isDirecta) {
+                  <!-- Estado Contabilidad -->
                   <td class="px-3 py-3 text-center">
                     <div class="flex flex-col items-center gap-1">
                       @switch (getExpenseApprovalCont(expense).status) {
                         @case ('approved') {
                           <span class="inline-flex items-center gap-0.5 px-2 py-0.5 rounded text-xs font-semibold bg-green-100 text-green-700 whitespace-nowrap">
                             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-3 h-3 shrink-0"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>
-                            Aprobado
+                            {{ report.isDirecta ? 'Revisado' : 'Aprobado' }}
                           </span>
                         }
                         @case ('rejected') {
+                          @if (!report.isDirecta) {
                           <span class="inline-flex items-center gap-0.5 px-2 py-0.5 rounded text-xs font-semibold bg-red-100 text-red-700 whitespace-nowrap">
                             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-3 h-3 shrink-0"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" /></svg>
                             Rechazado
                           </span>
+                          }
                         }
                         @default {
                           @if (canApproveExpenseAsCont) {
@@ -1196,19 +1202,21 @@
                                 [disabled]="approvingExpenseRoleId() === 'cont:' + expense._id"
                                 (click)="approveExpenseByRole(expense._id, 'cont')"
                                 class="p-1.5 rounded-lg text-teal-600 hover:bg-teal-50 disabled:opacity-50 transition-colors"
-                                title="Aprobar como Contabilidad">
+                                [title]="report.isDirecta ? 'Marcar como revisado' : 'Aprobar como Contabilidad'">
                                 @if (approvingExpenseRoleId() === 'cont:' + expense._id) {
                                   <span class="inline-block w-4 h-4 border-2 border-teal-200 border-t-teal-600 rounded-full animate-spin"></span>
                                 } @else {
                                   <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" /></svg>
                                 }
                               </button>
+                              @if (!report.isDirecta) {
                               <button type="button"
                                 (click)="openRejectRoleModal(expense._id, 'cont')"
                                 class="p-1.5 rounded-lg text-red-500 hover:bg-red-50 transition-colors"
                                 title="Rechazar como Contabilidad">
                                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="m9.75 9.75 4.5 4.5m0-4.5-4.5 4.5M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" /></svg>
                               </button>
+                              }
                             </div>
                           } @else {
                             <span class="inline-flex px-2 py-0.5 rounded text-xs font-semibold bg-yellow-100 text-yellow-700 whitespace-nowrap">Pendiente</span>
@@ -1217,7 +1225,8 @@
                       }
                     </div>
                   </td>
-                  <!-- Estado Coordinador -->
+                  <!-- Estado Coordinador (oculto en rendicion directa) -->
+                  @if (!report.isDirecta) {
                   <td class="px-3 py-3 text-center">
                     <div class="flex flex-col items-center gap-1">
                       @switch (getExpenseApprovalCoord(expense).status) {
@@ -2046,7 +2055,7 @@
           </svg>
         </div>
         <div>
-          <p class="font-semibold text-gray-900 text-sm">Factura / Documento escaneado</p>
+          <p class="font-semibold text-gray-900 text-sm">Factura</p>
           <p class="text-xs text-gray-500">Sube un PDF o imagen de la factura</p>
         </div>
       </button>
@@ -2073,7 +2082,7 @@
         </div>
         <div>
           <p class="font-semibold text-gray-900 text-sm">Otros Gastos</p>
-          <p class="text-xs text-gray-500">Requiere firma de Declaración Jurada</p>
+          <p class="text-xs text-gray-500">Ticket, recibos, DJ u otros</p>
         </div>
       </button>
       <button type="button" (click)="selectExpenseType('comprobante_caja')"

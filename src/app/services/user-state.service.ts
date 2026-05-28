@@ -193,7 +193,10 @@ export class UserStateService {
   }
 
   canCreateRendicion(): boolean {
-    return this.hasModulePermission('nueva-rendicion');
+    // Solo colaboradores con el permiso explícito; admins/contabilidad no usan este flujo
+    if (!this.isColaborador()) return false;
+    const perms = this.getPermissions();
+    return perms.modules?.includes('nueva-rendicion') ?? false;
   }
 
   /** True when Contabilidad has selected a company (companyId is set) */

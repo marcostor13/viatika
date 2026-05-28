@@ -13,6 +13,7 @@ import { InvoicesService } from '../services/invoices.service';
 import { ExpenseReportsService } from '../../../services/expense-reports.service';
 import { AdvanceService } from '../../../services/advance.service';
 import { UserStateService } from '../../../services/user-state.service';
+import { ExpenseService } from '../../../services/expense.service';
 import { DomSanitizer, SafeUrl } from '@angular/platform-browser';
 import { UploadService } from '../../../services/upload.service';
 import { environment } from '../../../../environments/environment';
@@ -54,6 +55,7 @@ export default class AddInvoiceComponent implements OnInit {
   private sanitizer = inject(DomSanitizer);
   private uploadService = inject(UploadService);
   private companyConfigService = inject(CompanyConfigService);
+  private expenseService = inject(ExpenseService);
 
   form!: FormGroup;
   id: string = this.route.snapshot.params['id'];
@@ -65,8 +67,11 @@ export default class AddInvoiceComponent implements OnInit {
   sunatValidation: SunatValidationInfo | null = null;
   isSunatValidating = signal(false);
   rendicionId: string | null = null;
+  isDirectaMode = false;
 
   expenseType = signal<ExpenseType>('factura');
+  /** Sub-tipo para otros_gastos: TK | RC | DJ | OT */
+  otrosSubTipo = signal<string>('DJ');
   rendicionBudget = signal<number>(0);
   rendicionSpent = signal<number>(0);
   rendicionSettlementDiff = signal<number | null>(null);
@@ -135,9 +140,20 @@ export default class AddInvoiceComponent implements OnInit {
     this.notificationService.show(`${response.categoryLimitWarning}${pct}`, 'warning');
   }
 
-  /** Tras crear/actualizar gasto: vuelve al detalle de rendición o al listado de facturas. */
+  /** Tras crear/actualizar gasto: vuelve según el contexto. */
   private navigateAfterExpenseSave(): void {
-    if (this.rendicionId) {
+    if (this.isDirectaMode) {
+      // Auto-enviar a contabilidad después de guardar en modo directa
+      this.expenseService.submitMyDirectExpenses().subscribe({
+        next: () => {
+          this.router.navigate(['/mis-rendiciones'], { queryParams: { tab: 'directas' } });
+        },
+        error: () => {
+          // Si falla el submit, igual navegar — el usuario puede enviarlo manualmente
+          this.router.navigate(['/mis-rendiciones'], { queryParams: { tab: 'directas' } });
+        },
+      });
+    } else if (this.rendicionId) {
       this.router.navigate(['/mis-rendiciones', this.rendicionId, 'detalle']);
     } else {
       this.router.navigate(['/invoices']);
@@ -147,8 +163,9 @@ export default class AddInvoiceComponent implements OnInit {
   private guardRendiciones() {
     if (this.id) return; // edición: siempre permitida
     if (!this.userStateService.isColaborador()) return;
-    // Desde detalle de rendición siempre hay contexto; no redirigir a /invoices
     if (this.rendicionId) return;
+    // Modo directa: colaborador con permiso puede subir sin rendición
+    if (this.isDirectaMode && this.userStateService.canCreateRendicion()) return;
 
     const user = this.userStateService.getUser();
     const userId = user?._id;
@@ -252,11 +269,13 @@ export default class AddInvoiceComponent implements OnInit {
       this.mobilityDailyLimit = config?.limits?.movilidadDiario ?? null;
     });
     this.rendicionId = this.route.snapshot.queryParamMap.get('rendicionId');
+    this.isDirectaMode = this.route.snapshot.queryParamMap.get('mode') === 'directa';
     this.guardRendiciones();
     this.loadCategories();
     this.loadProjects();
     this.route.queryParamMap.subscribe(params => {
       this.rendicionId = params.get('rendicionId');
+      this.isDirectaMode = params.get('mode') === 'directa';
       const tipo = params.get('tipo') as ExpenseType | null;
       if (tipo) {
         this.setExpenseType(tipo);
@@ -418,9 +437,12 @@ export default class AddInvoiceComponent implements OnInit {
     this.expenseReportsService.findOne(this.rendicionId).subscribe({
       next: (report) => {
         if (report && report.projectId) {
-          const pId = typeof report.projectId === 'string' ? report.projectId : report.projectId._id;
+          const pId = typeof report.projectId === 'string' ? report.projectId : (report.projectId as any)._id;
           this.form.patchValue({ proyectId: pId });
-          this.form.get('proyectId')?.disable();
+          // En rendición directa el colaborador puede cambiar el proyecto por gasto
+          if (!(report as any).isDirecta) {
+            this.form.get('proyectId')?.disable();
+          }
         }
         const expenses = Array.isArray(report?.expenseIds) ? report.expenseIds : [];
         const spent = expenses.reduce(
@@ -787,13 +809,16 @@ export default class AddInvoiceComponent implements OnInit {
           this.mobilityRowsArray.valid &&
           !this.hasAnyMobilityLimitExceeded()
         );
-      case 'otros_gastos':
+      case 'otros_gastos': {
+        const isDJ = this.otrosSubTipo() === 'DJ';
         return (
           proyectOk &&
           this.form.get('categoryId')?.valid === true &&
-          (!!this.id || !!this.form.get('declaracionJurada')?.value) &&
+          // DJ requiere checkbox; otros sub-tipos no
+          (!!this.id || !isDJ || !!this.form.get('declaracionJurada')?.value) &&
           (this.form.get('totalOtros')?.value > 0)
         );
+      }
       case 'recibo_caja':
         return (
           proyectOk &&
@@ -999,6 +1024,8 @@ export default class AddInvoiceComponent implements OnInit {
     const declaracionJurada = this.form.get('declaracionJurada')?.value;
     const total = this.form.get('totalOtros')?.value;
     const description = this.form.get('description')?.value;
+    const subTipo = this.otrosSubTipo();
+    const isDJ = subTipo === 'DJ';
 
     const proyectCtrl = this.form.get('proyectId');
     const proyectOk = !!(proyectCtrl?.disabled || proyectCtrl?.valid);
@@ -1007,18 +1034,23 @@ export default class AddInvoiceComponent implements OnInit {
       return;
     }
     const currentUser = this.userStateService.getUser();
-    if (!currentUser?.signature) {
-      this.notificationService.show(
-        'Debes registrar tu firma digital antes de enviar una Declaracion Jurada. Ve a Mi Firma en el menu.',
-        'error'
-      );
-      return;
+
+    // Solo DJ requiere firma y DJ checkbox
+    if (isDJ) {
+      if (!currentUser?.signature) {
+        this.notificationService.show(
+          'Debes registrar tu firma digital antes de enviar una Declaracion Jurada. Ve a Mi Firma en el menu.',
+          'error'
+        );
+        return;
+      }
+      if (!declaracionJurada) {
+        this.notificationService.show('Debes aceptar y firmar la declaración jurada', 'error');
+        return;
+      }
     }
-    if (!declaracionJurada) {
-      this.notificationService.show('Debes aceptar y firmar la declaración jurada', 'error');
-      return;
-    }
-    const firmante = (currentUser?.name || '').trim();
+
+    const firmante = isDJ ? (currentUser?.name || '').trim() : '';
     if (!total || total <= 0) {
       this.notificationService.show('Ingresa un monto válido', 'error');
       return;
@@ -1027,14 +1059,15 @@ export default class AddInvoiceComponent implements OnInit {
     this.isLoading.set(true);
 
     const proceed = (imageUrl?: string) => {
-      const payload = {
+      const payload: any = {
         proyectId: this.form.get('proyectId')?.value,
         categoryId: this.form.get('categoryId')?.value,
         expenseReportId: this.rendicionId || undefined,
         total,
         data: description,
-        declaracionJurada: true as const,
-        declaracionJuradaFirmante: firmante,
+        subTipo,
+        declaracionJurada: isDJ ? true : false,
+        declaracionJuradaFirmante: isDJ ? firmante : undefined,
         imageUrl,
       };
       this.invoiceService.createOtherExpense(payload).subscribe({

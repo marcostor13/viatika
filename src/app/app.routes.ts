@@ -193,6 +193,14 @@ export const routes: Routes = [
         canActivate: [authModuleGuard('nueva-rendicion')],
       },
       {
+        path: 'mis-rendiciones/gasto/:id',
+        loadComponent: () =>
+          import('./modules/mis-rendiciones/gasto-detalle/gasto-detalle.component').then(
+            (m) => m.GastoDetalleComponent
+          ),
+        canActivate: [AuthColaboradorGuard],
+      },
+      {
         path: 'mis-rendiciones/solicitud-viaticos/nueva',
         loadComponent: () =>
           import('./modules/mis-rendiciones/solicitud-viaticos/solicitud-viaticos.component').then(
@@ -246,6 +254,14 @@ export const routes: Routes = [
             (m) => m.ViaticosDetailComponent
           ),
         canActivate: [AuthViaticosGuard],
+      },
+      {
+        path: 'rendiciones-directas',
+        loadComponent: () =>
+          import('./modules/rendiciones-directas/rendiciones-directas.component').then(
+            (m) => m.RendicionesDirectasComponent
+          ),
+        canActivate: [AuthAdmin2Guard],
       },
       {
         path: 'tesoreria',

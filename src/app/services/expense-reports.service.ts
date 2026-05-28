@@ -1,5 +1,5 @@
 import { Injectable, inject } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpParams } from '@angular/common/http';
 import { environment } from '../../environments/environment';
 import {
   IExpenseReport,
@@ -156,5 +156,24 @@ export class ExpenseReportsService {
       generatedBy: string;
       generatedAt: string;
     }>(`${this.apiUrl}/expense-report/${reportId}/affidavit`, payload);
+  }
+
+  findDirectRendicionExpenses(clientId: string, filters: {
+    page?: number; limit?: number;
+    dateFrom?: string; dateTo?: string;
+    projectId?: string; categoryId?: string; docNumber?: string;
+  } = {}): Observable<{ data: any[]; total: number; page: number; limit: number; pages: number }> {
+    let params = new HttpParams();
+    if (filters.page) params = params.set('page', String(filters.page));
+    if (filters.limit) params = params.set('limit', String(filters.limit));
+    if (filters.dateFrom) params = params.set('dateFrom', filters.dateFrom);
+    if (filters.dateTo) params = params.set('dateTo', filters.dateTo);
+    if (filters.projectId) params = params.set('projectId', filters.projectId);
+    if (filters.categoryId) params = params.set('categoryId', filters.categoryId);
+    if (filters.docNumber) params = params.set('docNumber', filters.docNumber);
+    return this.http.get<{ data: any[]; total: number; page: number; limit: number; pages: number }>(
+      `${this.apiUrl}/expense-report/directas/expenses/${clientId}`,
+      { params }
+    );
   }
 }

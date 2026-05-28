@@ -156,6 +156,17 @@
         <span class="font-medium">Pagos</span>
       </a>
       }
+      @if (isContabilidadInCompany()) {
+      <a
+        [routerLink]="['/rendiciones-directas']"
+        routerLinkActive="bg-primary text-white"
+        [class.bg-primary]="isSelected('/rendiciones-directas')"
+        [class.text-quaternary]="isSelected('/rendiciones-directas')"
+        class="flex items-center px-4 py-3 text-secondary rounded-xl hover:bg-background hover:text-primary transition-all duration-200 group"
+      >
+        <span class="font-medium">Rendiciones Directas</span>
+      </a>
+      }
 
       <!-- Módulos opcionales: controlados 100% por permisos configurados -->
       @if (!isColaborador() && !isContabilidadInCompany() && hasModulePermission('mis-rendiciones')) {
@@ -554,6 +565,17 @@
           class="flex items-center px-4 py-4 text-secondary rounded-xl hover:bg-background hover:text-primary transition-all duration-200 group"
         >
           <span class="font-medium text-lg">Pagos</span>
+        </a>
+        }
+        @if (isContabilidadInCompany()) {
+        <a
+          [routerLink]="['/rendiciones-directas']"
+          (click)="toggleSidebar()"
+          [class.bg-primary]="isSelected('/rendiciones-directas')"
+          [class.text-quaternary]="isSelected('/rendiciones-directas')"
+          class="flex items-center px-4 py-4 text-secondary rounded-xl hover:bg-background hover:text-primary transition-all duration-200 group"
+        >
+          <span class="font-medium text-lg">Rendiciones Directas</span>
         </a>
         }
 
