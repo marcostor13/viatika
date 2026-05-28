@@ -314,7 +314,7 @@ export class RendicionDetailComponent implements OnInit {
     if (!this.report || this.isAdminView) return false;
     if (this.report.status !== 'open') return false;
     // Rendición directa: no necesita anticipo pagado para agregar gastos
-    if ((this.report as any).isDirecta) return true;
+    if (this.report.isDirecta) return true;
     return this.hasPaidAdvanceForReport;
   }
 
@@ -606,7 +606,14 @@ export class RendicionDetailComponent implements OnInit {
     if (type === 'planilla_movilidad') return 'PM';
     if (type === 'comprobante_caja') return 'CC';
     if (type === 'recibo_caja') return 'H';
-    if (type === 'otros_gastos') return 'SC';
+    if (type === 'otros_gastos') {
+      const sub = expense?.subTipo ?? this.getExpenseDataObject(expense)['subTipo'];
+      if (sub === 'TK') return 'TK';
+      if (sub === 'RC') return 'RC';
+      if (sub === 'DJ') return 'DJ';
+      if (sub === 'OT') return 'OT';
+      return 'SC';
+    }
     const dataObj = this.getExpenseDataObject(expense);
     const tipoComp = String(dataObj['tipoComprobante'] ?? '').trim();
     if (tipoComp === '03') return 'BV';
@@ -621,7 +628,10 @@ export class RendicionDetailComponent implements OnInit {
     if (code === 'PM') return 'bg-yellow-100 text-yellow-800';
     if (code === 'CC') return 'bg-purple-100 text-purple-800';
     if (code === 'H')  return 'bg-green-100 text-green-800';
-    if (code === 'SC') return 'bg-gray-100 text-gray-600';
+    if (code === 'SC' || code === 'OT') return 'bg-gray-100 text-gray-600';
+    if (code === 'DJ') return 'bg-amber-100 text-amber-800';
+    if (code === 'TK') return 'bg-teal-100 text-teal-700';
+    if (code === 'RC') return 'bg-indigo-100 text-indigo-700';
     return 'bg-blue-100 text-blue-700';
   }
 
