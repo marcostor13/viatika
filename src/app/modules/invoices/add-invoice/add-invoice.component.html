@@ -834,6 +834,43 @@
       </div>
     </div>
 
+    @if (otrosSubTipoMuestraDocumento()) {
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div class="flex flex-col gap-2">
+        <label for="otrosRucEmisor" class="text-sm font-medium text-secondary">
+          RUC Emisor
+          @if (otrosSubTipo() === 'BV') { <span class="text-error">*</span> }
+        </label>
+        <input id="otrosRucEmisor" type="text" formControlName="rucEmisor"
+          (blur)="lookupRazonSocial($any($event.target).value)"
+          class="w-full h-[42px] px-4 rounded-lg border border-gray-200 bg-background focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-sm" />
+        @if (rucLookupLoading()) {
+          <span class="text-xs text-gray-400">Consultando SUNAT...</span>
+        } @else if (fetchedRazonSocial()) {
+          <span class="text-xs text-green-700 font-medium">{{ fetchedRazonSocial() }}</span>
+        } @else if (rucNotFound()) {
+          <span class="text-xs text-red-600 font-medium">RUC inválido o no encontrado</span>
+        }
+      </div>
+      <div class="flex flex-col gap-2">
+        <label for="otrosSerie" class="text-sm font-medium text-secondary">
+          Serie
+          @if (otrosSubTipo() === 'BV') { <span class="text-error">*</span> }
+        </label>
+        <input id="otrosSerie" type="text" formControlName="serie" placeholder="Ej: B001"
+          class="w-full h-[42px] px-4 rounded-lg border border-gray-200 bg-background focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-sm" />
+      </div>
+      <div class="flex flex-col gap-2">
+        <label for="otrosCorrelativo" class="text-sm font-medium text-secondary">
+          Número
+          @if (otrosSubTipo() === 'BV') { <span class="text-error">*</span> }
+        </label>
+        <input id="otrosCorrelativo" type="text" formControlName="correlativo" placeholder="Ej: 00001234"
+          class="w-full h-[42px] px-4 rounded-lg border border-gray-200 bg-background focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-sm" />
+      </div>
+    </div>
+    }
+
     <div class="flex flex-col gap-2">
       <label class="text-sm font-medium text-secondary">Descripción del gasto</label>
       <input type="text" formControlName="description" placeholder="Ej: Refrigerio de trabajo, útiles de escritorio..."

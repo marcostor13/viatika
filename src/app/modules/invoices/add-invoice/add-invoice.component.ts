@@ -70,8 +70,12 @@ export default class AddInvoiceComponent implements OnInit {
   isDirectaMode = false;
 
   expenseType = signal<ExpenseType>('factura');
-  /** Sub-tipo para otros_gastos: TK | RC | DJ | OT */
+  /** Sub-tipo para otros_gastos: TK | BV | RC | DJ | OT */
   otrosSubTipo = signal<string>('DJ');
+  /** Sub-tipos que llevan documento físico con RUC/serie/correlativo. */
+  otrosSubTipoMuestraDocumento = computed(() =>
+    ['TK', 'BV', 'RC'].includes(this.otrosSubTipo())
+  );
   rendicionBudget = signal<number>(0);
   rendicionSpent = signal<number>(0);
   rendicionSettlementDiff = signal<number | null>(null);
@@ -354,11 +358,21 @@ export default class AddInvoiceComponent implements OnInit {
             if (!description && typeof (res as any).description === 'string') {
               description = (res as any).description;
             }
+            const persistedSubTipo = (res as any).subTipo || dataObj.subTipo;
+            if (persistedSubTipo) {
+              this.otrosSubTipo.set(persistedSubTipo);
+            }
+            if (dataObj.rucEmisor) {
+              this.fetchedRazonSocial.set(dataObj.razonSocialEmisor || null);
+            }
             this.form.patchValue({
               ...baseValues,
               description,
               totalOtros: res.total ?? 0,
               declaracionJurada: true,
+              rucEmisor: dataObj.rucEmisor || '',
+              serie: dataObj.serie || '',
+              correlativo: dataObj.correlativo || '',
             });
           } else if (type === 'recibo_caja') {
             this.form.patchValue({
@@ -810,13 +824,21 @@ export default class AddInvoiceComponent implements OnInit {
           !this.hasAnyMobilityLimitExceeded()
         );
       case 'otros_gastos': {
-        const isDJ = this.otrosSubTipo() === 'DJ';
+        const sub = this.otrosSubTipo();
+        const isDJ = sub === 'DJ';
+        const isBV = sub === 'BV';
+        const bvDocOk = !isBV || (
+          !!(this.form.get('rucEmisor')?.value || '').toString().trim() &&
+          !!(this.form.get('serie')?.value || '').toString().trim() &&
+          !!(this.form.get('correlativo')?.value || '').toString().trim()
+        );
         return (
           proyectOk &&
           this.form.get('categoryId')?.valid === true &&
           // DJ requiere checkbox; otros sub-tipos no
           (!!this.id || !isDJ || !!this.form.get('declaracionJurada')?.value) &&
-          (this.form.get('totalOtros')?.value > 0)
+          (this.form.get('totalOtros')?.value > 0) &&
+          bvDocOk
         );
       }
       case 'recibo_caja':
@@ -1058,6 +1080,11 @@ export default class AddInvoiceComponent implements OnInit {
 
     this.isLoading.set(true);
 
+    const muestraDoc = this.otrosSubTipoMuestraDocumento();
+    const serie = muestraDoc ? (this.form.get('serie')?.value || '').toString().trim() : '';
+    const correlativo = muestraDoc ? (this.form.get('correlativo')?.value || '').toString().trim() : '';
+    const rucEmisor = muestraDoc ? (this.form.get('rucEmisor')?.value || '').toString().trim() : '';
+
     const proceed = (imageUrl?: string) => {
       const payload: any = {
         proyectId: this.form.get('proyectId')?.value,
@@ -1069,6 +1096,9 @@ export default class AddInvoiceComponent implements OnInit {
         declaracionJurada: isDJ ? true : false,
         declaracionJuradaFirmante: isDJ ? firmante : undefined,
         imageUrl,
+        ...(serie ? { serie } : {}),
+        ...(correlativo ? { correlativo } : {}),
+        ...(rucEmisor ? { rucEmisor } : {}),
       };
       this.invoiceService.createOtherExpense(payload).subscribe({
         next: (res) => {
@@ -1179,8 +1209,21 @@ export default class AddInvoiceComponent implements OnInit {
       payload.total = finalTotal;
       payload.placaVehiculo = (formValue.placaVehiculo || '').trim() || undefined;
     } else if (type === 'otros_gastos') {
-      payload.description = (formValue.description || '').trim();
+      const description = (formValue.description || '').trim();
+      payload.description = description;
       payload.total = Number(formValue.totalOtros) || 0;
+      const muestraDoc = this.otrosSubTipoMuestraDocumento();
+      const { serie: _s, correlativo: _c, rucEmisor: _r, ...prevWithoutDoc } = previousData || {};
+      const dataObj = {
+        ...prevWithoutDoc,
+        description,
+        ...(muestraDoc ? {
+          serie: (formValue.serie || '').trim() || undefined,
+          correlativo: (formValue.correlativo || '').trim() || undefined,
+          rucEmisor: (formValue.rucEmisor || '').trim() || undefined,
+        } : {}),
+      };
+      payload.data = JSON.stringify(dataObj);
     } else if (type === 'recibo_caja') {
       const dataObj = {
         ...previousData,
