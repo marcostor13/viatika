@@ -68,6 +68,7 @@ export default class AddInvoiceComponent implements OnInit {
   isSunatValidating = signal(false);
   rendicionId: string | null = null;
   isDirectaMode = false;
+  fromContabilidad = false;
 
   expenseType = signal<ExpenseType>('factura');
   /** Sub-tipo para otros_gastos: TK | RC | DJ | OT */
@@ -140,18 +141,17 @@ export default class AddInvoiceComponent implements OnInit {
     this.notificationService.show(`${response.categoryLimitWarning}${pct}`, 'warning');
   }
 
-  /** Tras crear/actualizar gasto: vuelve según el contexto. */
+  /** Tras crear/actualizar gasto: vuelve según el contexto y rol. */
   private navigateAfterExpenseSave(): void {
+    if (this.fromContabilidad) {
+      this.router.navigate(['/rendiciones-directas']);
+      return;
+    }
     if (this.isDirectaMode) {
       // Auto-enviar a contabilidad después de guardar en modo directa
       this.expenseService.submitMyDirectExpenses().subscribe({
-        next: () => {
-          this.router.navigate(['/mis-rendiciones'], { queryParams: { tab: 'directas' } });
-        },
-        error: () => {
-          // Si falla el submit, igual navegar — el usuario puede enviarlo manualmente
-          this.router.navigate(['/mis-rendiciones'], { queryParams: { tab: 'directas' } });
-        },
+        next: () => { this.router.navigate(['/mis-rendiciones'], { queryParams: { tab: 'directas' } }); },
+        error: () => { this.router.navigate(['/mis-rendiciones'], { queryParams: { tab: 'directas' } }); },
       });
     } else if (this.rendicionId) {
       this.router.navigate(['/mis-rendiciones', this.rendicionId, 'detalle']);
@@ -270,12 +270,14 @@ export default class AddInvoiceComponent implements OnInit {
     });
     this.rendicionId = this.route.snapshot.queryParamMap.get('rendicionId');
     this.isDirectaMode = this.route.snapshot.queryParamMap.get('mode') === 'directa';
+    this.fromContabilidad = this.route.snapshot.queryParamMap.get('from') === 'contabilidad' || this.userStateService.isContabilidad();
     this.guardRendiciones();
     this.loadCategories();
     this.loadProjects();
     this.route.queryParamMap.subscribe(params => {
       this.rendicionId = params.get('rendicionId');
       this.isDirectaMode = params.get('mode') === 'directa';
+      this.fromContabilidad = params.get('from') === 'contabilidad' || this.userStateService.isContabilidad();
       const tipo = params.get('tipo') as ExpenseType | null;
       if (tipo) {
         this.setExpenseType(tipo);
