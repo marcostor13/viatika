@@ -382,7 +382,10 @@
           </svg>
           <div class="min-w-0">
             <p id="rejection-heading" class="font-semibold text-red-900">
-              {{ isSolicitudPhase ? 'Solicitud rechazada por el administrador' : 'Rendición rechazada por el administrador' }}
+              {{
+                (isSolicitudPhase ? 'Solicitud rechazada por ' : 'Rendición rechazada por ') +
+                (report.rejectedByRole === 'contabilidad' ? 'Contabilidad' : 'el Coordinador')
+              }}
             </p>
             @if (report.rejectionReason) {
               <p class="mt-2 text-base text-red-950 whitespace-pre-wrap break-words font-medium">{{ report.rejectionReason }}</p>

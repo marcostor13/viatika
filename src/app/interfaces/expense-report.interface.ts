@@ -53,6 +53,8 @@ export interface IExpenseReport {
   status: 'solicited' | 'open' | 'submitted' | 'pending_accounting' | 'approved' | 'rejected' | 'reimbursed' | 'closed' | 'cancelled';
   /** Motivo indicado por el administrador al rechazar */
   rejectionReason?: string;
+  /** Quién rechazó: coordinador (revisión inicial) o contabilidad (aprobación final). */
+  rejectedByRole?: 'coordinador' | 'contabilidad';
   expenseIds: any[];
   createdBy: any; // User who created it
   approvedBy?: any; // Admin who approved it
