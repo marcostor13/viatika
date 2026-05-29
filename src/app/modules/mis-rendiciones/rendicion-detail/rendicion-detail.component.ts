@@ -609,6 +609,7 @@ export class RendicionDetailComponent implements OnInit {
     if (type === 'otros_gastos') {
       const sub = expense?.subTipo ?? this.getExpenseDataObject(expense)['subTipo'];
       if (sub === 'TK') return 'TK';
+      if (sub === 'BV') return 'BV';
       if (sub === 'RC') return 'RC';
       if (sub === 'DJ') return 'DJ';
       if (sub === 'OT') return 'OT';
