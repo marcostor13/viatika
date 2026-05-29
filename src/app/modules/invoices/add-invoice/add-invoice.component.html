@@ -809,9 +809,10 @@
     <!-- Selector de sub-tipo (solo para otros_gastos) -->
     <div>
       <label class="block text-sm font-medium text-secondary mb-3">Tipo de documento <span class="text-error">*</span></label>
-      <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+      <div class="grid grid-cols-2 sm:grid-cols-5 gap-2">
         @for (opt of [
           {code:'TK', label:'Ticket'},
+          {code:'BV', label:'Boleta'},
           {code:'RC', label:'Recibos diversos'},
           {code:'DJ', label:'Declaración Jurada'},
           {code:'OT', label:'Otros'}
