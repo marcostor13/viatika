@@ -159,6 +159,7 @@ export class MisRendicionesComponent implements OnInit {
     if (type === 'otros_gastos') {
       const sub = e?.subTipo ?? this.getData(e)['subTipo'];
       if (sub === 'TK') return 'TK';
+      if (sub === 'BV') return 'BV';
       if (sub === 'RC') return 'RC';
       if (sub === 'DJ') return 'DJ';
       if (sub === 'OT') return 'OT';
