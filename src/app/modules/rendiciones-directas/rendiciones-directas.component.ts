@@ -1,6 +1,7 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { Router } from '@angular/router';
 import { ExpenseReportsService } from '../../services/expense-reports.service';
 import { UserStateService } from '../../services/user-state.service';
 import { InvoicesService } from '../invoices/services/invoices.service';
@@ -9,6 +10,7 @@ import { IProject } from '../invoices/interfaces/project.interface';
 import { ICategory } from '../invoices/interfaces/category.interface';
 import {
   RendicionExportService,
+  RendicionExportData,
   MobilitySheetExportData,
   CashVoucherExportData,
   ReceiptExportData,
@@ -17,11 +19,6 @@ import {
   formatFechaEmisionDdMmYyyy,
   resolveExpenseFechaEmision,
 } from '../../utils/fecha-emision.util';
-import ExcelJS from 'exceljs';
-import { jsPDF } from 'jspdf';
-import autoTable from 'jspdf-autotable';
-
-type JsPdfAT = jsPDF & { lastAutoTable?: { finalY: number } };
 
 @Component({
   selector: 'app-rendiciones-directas',
@@ -35,25 +32,61 @@ export class RendicionesDirectasComponent implements OnInit {
   private invoicesService = inject(InvoicesService);
   private notifications = inject(NotificationService);
   private exportService = inject(RendicionExportService);
+  private router = inject(Router);
 
+  // Estado
   loading = signal(false);
   data = signal<any[]>([]);
   total = signal(0);
   pages = signal(0);
 
+  // Filtros
   filterDateFrom = '';
   filterDateTo = '';
   filterProjectId = '';
   filterCategoryId = '';
   filterDocNumber = '';
+  filterTipo = '';
   page = 1;
   readonly limit = 50;
 
+  // Catálogos
   projects = signal<IProject[]>([]);
   categories = signal<ICategory[]>([]);
 
-  expandedId = signal<string | null>(null);
+  // Acciones
   approvingId = signal<string | null>(null);
+  deletingId = signal<string | null>(null);
+  confirmDeleteExpense = signal<any | null>(null);
+  isExportingExcel = signal(false);
+  isExportingPdf = signal(false);
+
+  // Selección para exportar
+  selectedIds = signal<Set<string>>(new Set<string>());
+
+  toggleSelectAll(): void {
+    const all = this.data();
+    const sel = this.selectedIds();
+    if (sel.size === all.length && all.length > 0) {
+      this.selectedIds.set(new Set<string>());
+    } else {
+      this.selectedIds.set(new Set<string>(all.map((e: any) => String(e._id))));
+    }
+  }
+
+  toggleSelect(id: string, event: Event): void {
+    event.stopPropagation();
+    const sel = new Set<string>(this.selectedIds());
+    sel.has(id) ? sel.delete(id) : sel.add(id);
+    this.selectedIds.set(sel);
+  }
+
+  isRowSelected(id: string): boolean { return this.selectedIds().has(id); }
+
+  get allSelected(): boolean { const d = this.data(); return d.length > 0 && this.selectedIds().size === d.length; }
+  get anySelected(): boolean { return this.selectedIds().size > 0; }
+  get selectedCount(): number { return this.selectedIds().size; }
+  clearSelection(): void { this.selectedIds.set(new Set<string>()); }
 
   ngOnInit(): void {
     this.loadCatalogs();
@@ -81,35 +114,45 @@ export class RendicionesDirectasComponent implements OnInit {
       page: this.page, limit: this.limit,
       dateFrom: this.filterDateFrom || undefined, dateTo: this.filterDateTo || undefined,
       projectId: this.filterProjectId || undefined, categoryId: this.filterCategoryId || undefined,
-      docNumber: this.filterDocNumber || undefined,
+      docNumber: this.filterDocNumber || undefined, tipo: this.filterTipo || undefined,
     }).subscribe({
-      next: res => { this.data.set(res.data ?? []); this.total.set(res.total ?? 0); this.pages.set(res.pages ?? 0); this.loading.set(false); },
+      next: res => { this.data.set(res.data ?? []); this.total.set(res.total ?? 0); this.pages.set(res.pages ?? 0); this.loading.set(false); this.selectedIds.set(new Set<string>()); },
       error: () => { this.loading.set(false); this.notifications.show('Error al cargar los datos', 'error'); },
     });
   }
 
   applyFilters(): void { this.page = 1; this.loadData(); }
-  clearFilters(): void { this.filterDateFrom = ''; this.filterDateTo = ''; this.filterProjectId = ''; this.filterCategoryId = ''; this.filterDocNumber = ''; this.page = 1; this.loadData(); }
+
+  clearFilters(): void {
+    this.filterDateFrom = ''; this.filterDateTo = ''; this.filterProjectId = '';
+    this.filterCategoryId = ''; this.filterDocNumber = ''; this.filterTipo = '';
+    this.page = 1; this.loadData();
+  }
+
   goToPage(p: number): void { if (p < 1 || p > this.pages()) return; this.page = p; this.loadData(); }
 
-  toggleExpand(id: string): void {
-    this.expandedId.set(this.expandedId() === id ? null : id);
+  // ─── Navegación ──────────────────────────────────────────────────────────────
+
+  viewDetail(e: any): void {
+    this.router.navigate(['/mis-rendiciones/gasto', String(e._id)]);
+  }
+
+  editExpense(e: any): void {
+    this.router.navigate(['/invoices/edit', String(e._id)], { queryParams: { mode: 'directa' } });
   }
 
   // ─── Aprobación ──────────────────────────────────────────────────────────────
 
-  approveExpense(e: any): void {
-    if (this.approvingId()) return;
+  approveExpense(e: any, event: Event): void {
+    event.stopPropagation();
+    if (this.approvingId() || this.isRevisado(e)) return;
     this.approvingId.set(e._id);
     this.invoicesService.approveByContabilidad(e._id).subscribe({
       next: () => {
         this.approvingId.set(null);
         this.notifications.show('Documento marcado como revisado.', 'success');
-        // Actualizar localmente sin recargar
         this.data.update(list => list.map(row =>
-          row._id === e._id
-            ? { ...row, approvalCont: { status: 'approved' } }
-            : row
+          row._id === e._id ? { ...row, approvalCont: { status: 'approved' } } : row
         ));
       },
       error: (err) => {
@@ -120,15 +163,40 @@ export class RendicionesDirectasComponent implements OnInit {
     });
   }
 
+  // ─── Eliminación ─────────────────────────────────────────────────────────────
+
+  openDeleteConfirm(e: any, event: Event): void {
+    event.stopPropagation();
+    this.confirmDeleteExpense.set(e);
+  }
+
+  cancelDelete(): void { this.confirmDeleteExpense.set(null); }
+
+  doDelete(): void {
+    const e = this.confirmDeleteExpense();
+    if (!e) return;
+    this.deletingId.set(e._id);
+    const clientId = String(e.clientId ?? this.clientId);
+    this.invoicesService.deleteInvoice(e._id).subscribe({
+      next: () => {
+        this.deletingId.set(null);
+        this.confirmDeleteExpense.set(null);
+        this.notifications.show('Documento eliminado.', 'success');
+        this.loadData();
+      },
+      error: (err) => {
+        this.deletingId.set(null);
+        const msg = err?.error?.message;
+        this.notifications.show(Array.isArray(msg) ? msg.join(', ') : msg || 'Error al eliminar.', 'error');
+      },
+    });
+  }
+
   // ─── Helpers display ─────────────────────────────────────────────────────────
 
   getData(e: any): Record<string, unknown> {
     const raw = e?.data;
-    try {
-      if (raw == null) return {};
-      if (typeof raw === 'string') return JSON.parse(raw);
-      if (typeof raw === 'object') return { ...raw };
-    } catch { return {}; }
+    try { if (raw == null) return {}; if (typeof raw === 'string') return JSON.parse(raw); if (typeof raw === 'object') return { ...raw }; } catch { return {}; }
     return {};
   }
 
@@ -171,11 +239,6 @@ export class RendicionesDirectasComponent implements OnInit {
     if (code === 'TK') return 'bg-teal-100 text-teal-700';
     if (code === 'RC') return 'bg-indigo-100 text-indigo-700';
     return 'bg-blue-100 text-blue-700';
-  }
-
-  getTipoLabel(e: any): string {
-    const map: Record<string, string> = { factura: 'Factura', planilla_movilidad: 'Planilla de Movilidad', otros_gastos: 'Otros Gastos', recibo_caja: 'Recibo de Caja', comprobante_caja: 'Comprobante de Caja' };
-    return map[e.expenseType] ?? e.expenseType ?? '—';
   }
 
   getColaborador(e: any): string {
@@ -260,11 +323,7 @@ export class RendicionesDirectasComponent implements OnInit {
     return obj;
   }
 
-  cashVoucherText(e: any, key: string): string {
-    const v = this.cashVoucherPayload(e)[key];
-    if (v == null || v === '') return '—';
-    return String(v);
-  }
+  cashVoucherText(e: any, key: string): string { const v = this.cashVoucherPayload(e)[key]; if (v == null || v === '') return '—'; return String(v); }
 
   mobilityRows(e: any): any[] { const r = e?.mobilityRows; return Array.isArray(r) ? r : []; }
   mobilityRowTotal(row: any): number { const t = row?.total; if (typeof t === 'number') return t; const n = Number(t); return Number.isNaN(n) ? 0 : n; }
@@ -272,225 +331,115 @@ export class RendicionesDirectasComponent implements OnInit {
 
   getFileUrl(e: any): string | null { const f = e?.file; return (typeof f === 'string' && f.trim()) ? f.trim() : null; }
   hasFile(e: any): boolean { return this.getFileUrl(e) !== null; }
-  isPreviewImage(e: any): boolean { const u = this.getFileUrl(e); return u ? /\.(jpe?g|png|gif|webp)(\?|#|$)/i.test(u) : false; }
-  openFile(e: any): void { const url = this.getFileUrl(e); url ? window.open(url, '_blank', 'noopener,noreferrer') : this.notifications.show('Sin documento adjunto', 'warning'); }
-
-  getPopulatedName(field: any): string {
-    if (field && typeof field === 'object' && 'name' in field) return String(field.name);
-    return '—';
-  }
+  openFile(e: any, event: Event): void { event.stopPropagation(); const url = this.getFileUrl(e); url ? window.open(url, '_blank', 'noopener,noreferrer') : this.notifications.show('Sin documento adjunto', 'warning'); }
 
   getEstadoCont(e: any): string { return e.approvalCont?.status === 'approved' ? 'Revisado' : 'Pendiente'; }
   getEstadoContClass(e: any): string { return e.approvalCont?.status === 'approved' ? 'bg-teal-100 text-teal-700' : 'bg-yellow-100 text-yellow-700'; }
   isRevisado(e: any): boolean { return e.approvalCont?.status === 'approved'; }
   getTotal(e: any): number { const t = e?.total; if (typeof t === 'number') return t; const n = Number(t); return Number.isNaN(n) ? 0 : n; }
-
-  sunatBlock(e: any): any | null {
-    const d = this.getData(e);
-    const s = d['sunatValidation'];
-    return (s && typeof s === 'object') ? s : null;
-  }
-
-  reviewHistory(e: any): any[] {
-    const r = e?.reviewHistory;
-    return Array.isArray(r) ? r.filter(Boolean) : [];
-  }
-
-  reviewActionLabel(action: unknown): string { return action === 'rejected' ? 'Rechazado' : 'Aprobado'; }
-
   get totalMonto(): number { return this.data().reduce((sum, e) => sum + this.getTotal(e), 0); }
+
+  private mapExpenseStatus(status?: string): string {
+    const s = String(status || 'pending').toLowerCase();
+    const labels: Record<string, string> = { pending: 'Pendiente', approved: 'Aprobada', rejected: 'Rechazada', sunat_valid: 'Validado SUNAT', sunat_valid_not_ours: 'SUNAT (no propio)', sunat_not_found: 'SUNAT no encontrado' };
+    return labels[s] ?? 'Pendiente';
+  }
 
   // ─── Exports individuales ────────────────────────────────────────────────────
 
-  async exportMobilityPdf(e: any): Promise<void> {
-    const collab = this.getColaborador(e);
-    const rows = this.mobilityRows(e).map((r: any) => ({
-      fecha: String(r.fecha || ''), clienteProveedor: String(r.clienteProveedor || ''),
-      origen: String(r.origen || ''), destino: String(r.destino || ''),
-      gestion: String(r.gestion || ''), total: this.mobilityRowTotal(r),
-    }));
-    const data: MobilitySheetExportData = {
-      fileBaseName: `planilla_${String(e._id || 'doc')}`,
-      collaborator: collab, internalCode: e.internalCode || undefined,
-      generatedAt: new Date().toLocaleString('es-PE', { dateStyle: 'short', timeStyle: 'short' }),
-      proyecto: this.getProject(e), rows, total: this.getTotal(e),
-    };
+  async exportMobilityPdf(e: any, event: Event): Promise<void> {
+    event.stopPropagation();
+    const rows = this.mobilityRows(e).map((r: any) => ({ fecha: String(r.fecha || ''), clienteProveedor: String(r.clienteProveedor || ''), origen: String(r.origen || ''), destino: String(r.destino || ''), gestion: String(r.gestion || ''), total: this.mobilityRowTotal(r) }));
+    const data: MobilitySheetExportData = { fileBaseName: `planilla_${e._id}`, collaborator: this.getColaborador(e), internalCode: e.internalCode, generatedAt: new Date().toLocaleString('es-PE', { dateStyle: 'short', timeStyle: 'short' }), proyecto: this.getProject(e), rows, total: this.getTotal(e) };
     await this.exportService.exportMobilitySheetToPdf(data);
   }
 
-  async exportMobilityExcel(e: any): Promise<void> {
-    const collab = this.getColaborador(e);
-    const rows = this.mobilityRows(e).map((r: any) => ({
-      fecha: String(r.fecha || ''), clienteProveedor: String(r.clienteProveedor || ''),
-      origen: String(r.origen || ''), destino: String(r.destino || ''),
-      gestion: String(r.gestion || ''), total: this.mobilityRowTotal(r),
-    }));
-    const data: MobilitySheetExportData = {
-      fileBaseName: `planilla_${String(e._id || 'doc')}`,
-      collaborator: collab, internalCode: e.internalCode || undefined,
-      generatedAt: new Date().toLocaleString('es-PE', { dateStyle: 'short', timeStyle: 'short' }),
-      proyecto: this.getProject(e), rows, total: this.getTotal(e),
-    };
+  async exportMobilityExcel(e: any, event: Event): Promise<void> {
+    event.stopPropagation();
+    const rows = this.mobilityRows(e).map((r: any) => ({ fecha: String(r.fecha || ''), clienteProveedor: String(r.clienteProveedor || ''), origen: String(r.origen || ''), destino: String(r.destino || ''), gestion: String(r.gestion || ''), total: this.mobilityRowTotal(r) }));
+    const data: MobilitySheetExportData = { fileBaseName: `planilla_${e._id}`, collaborator: this.getColaborador(e), internalCode: e.internalCode, generatedAt: new Date().toLocaleString('es-PE', { dateStyle: 'short', timeStyle: 'short' }), proyecto: this.getProject(e), rows, total: this.getTotal(e) };
     await this.exportService.exportMobilitySheetToExcel(data);
   }
 
-  exportCashVoucherPdf(e: any): void {
+  exportCashVoucherPdf(e: any, event: Event): void {
+    event.stopPropagation();
     const payload = this.cashVoucherPayload(e);
-    const data: CashVoucherExportData = {
-      fileBaseName: `comprobante_caja_${String(e._id || 'doc')}`,
-      collaborator: this.getColaborador(e),
-      internalCode: e.internalCode || undefined,
-      entregadoA: String(payload['entregadoA'] || ''),
-      direccion: String(payload['direccion'] || ''),
-      concepto: String(payload['concepto'] || ''),
-      monto: this.getTotal(e),
-      generatedAt: new Date().toLocaleString('es-PE', { dateStyle: 'short', timeStyle: 'short' }),
-      projectName: this.getProject(e),
-      fechaEmision: this.emissionDateText(e),
-    };
+    const data: CashVoucherExportData = { fileBaseName: `comprobante_${e._id}`, collaborator: this.getColaborador(e), internalCode: e.internalCode, entregadoA: String(payload['entregadoA'] || ''), direccion: String(payload['direccion'] || ''), concepto: String(payload['concepto'] || ''), monto: this.getTotal(e), generatedAt: new Date().toLocaleString('es-PE', { dateStyle: 'short', timeStyle: 'short' }), projectName: this.getProject(e), fechaEmision: this.emissionDateText(e) };
     this.exportService.exportCashVoucherToPdf(data);
   }
 
-  exportReceiptPdf(e: any): void {
+  exportReceiptPdf(e: any, event: Event): void {
+    event.stopPropagation();
     const d = this.getData(e);
     const payload: any = typeof d['payload'] === 'string' ? (() => { try { return JSON.parse(String(d['payload'])); } catch { return {}; } })() : (d['payload'] ?? {});
-    const data: ReceiptExportData = {
-      fileBaseName: `recibo_${String(e._id || 'doc')}`,
-      collaborator: this.getColaborador(e),
-      razonSocial: String(e.receiptRazonSocial || payload['razonSocial'] || ''),
-      ruc: String(e.receiptRuc || payload['ruc'] || ''),
-      numeroDocumento: String(payload['numeroDocumento'] || e.receiptNumeroDocumento || ''),
-      concepto: String(e.receiptConcepto || payload['concepto'] || ''),
-      fecha: this.emissionDateText(e),
-      monto: this.getTotal(e),
-    };
+    const data: ReceiptExportData = { fileBaseName: `recibo_${e._id}`, collaborator: this.getColaborador(e), razonSocial: String(e.receiptRazonSocial || payload['razonSocial'] || ''), ruc: String(e.receiptRuc || payload['ruc'] || ''), numeroDocumento: String(payload['numeroDocumento'] || e.receiptNumeroDocumento || ''), concepto: String(e.receiptConcepto || payload['concepto'] || ''), fecha: this.emissionDateText(e), monto: this.getTotal(e) };
     this.exportService.exportReceiptToPdf(data);
   }
 
-  // ─── Export global (todos los filtrados) ────────────────────────────────────
+  // ─── Export global (igual formato que rendición detail) ──────────────────────
 
-  private readonly HEADERS = ['Fecha', 'Tipo', 'N° Doc', 'Colaborador', 'Rendicion', 'Proyecto', 'Categoria', 'Proveedor', 'Concepto', 'Monto S/', 'Revisado'];
+  private buildRendicionExportData(): RendicionExportData {
+    const sel = this.selectedIds();
+    const expenses = sel.size > 0
+      ? this.data().filter((e: any) => sel.has(String(e._id)))
+      : this.data();
+    const totalGastado = this.totalMonto;
+    const filters: string[] = [];
+    if (this.filterDateFrom || this.filterDateTo) filters.push(`Periodo: ${this.filterDateFrom || '...'} al ${this.filterDateTo || '...'}`);
+    if (this.filterTipo) filters.push(`Tipo: ${this.filterTipo}`);
 
-  private buildExportRows(): any[][] {
-    return this.data().map(e => [
-      this.getFecha(e), this.getTypeCode(e), this.getDocNumber(e),
-      this.getColaborador(e), this.getRendicionTitle(e),
-      this.getProject(e), this.getCategory(e),
-      this.getProveedor(e), this.getConcepto(e),
-      Number(this.getTotal(e)).toFixed(2),
-      this.getEstadoCont(e),
-    ]);
+    const comprobantes = expenses.map(e => {
+      const type = e?.expenseType;
+      let provider = this.getProveedor(e);
+      if (type === 'planilla_movilidad') provider = 'Planilla de Movilidad';
+      return {
+        tipo: this.getTypeCode(e),
+        fecha: this.getFecha(e),
+        descripcion: this.getConcepto(e),
+        monto: this.getTotal(e),
+        estadoComprobante: this.mapExpenseStatus(e.status),
+        proveedor: provider !== '-' ? provider : undefined,
+        numeroDocumento: this.getDocNumber(e) !== '-' ? this.getDocNumber(e) : undefined,
+        comentario: (typeof e['comentario'] === 'string' && e['comentario']) ? e['comentario'] : undefined,
+      };
+    });
+
+    return {
+      fileBaseName: `rendiciones_directas_${new Date().toISOString().slice(0, 10)}`,
+      titulo: 'Rendiciones Directas',
+      estado: `${this.total()} documento(s)`,
+      descripcionRendicion: filters.length ? filters.join(' | ') : undefined,
+      colaborador: 'Reporte consolidado',
+      presupuesto: 0,
+      totalGastado,
+      totalAnticipado: 0,
+      saldoLibre: 0,
+      fechaGeneracion: new Date().toLocaleString('es-PE', { dateStyle: 'long', timeStyle: 'short' }),
+      comprobantes,
+      anticipos: [],
+      startDate: this.filterDateFrom || undefined,
+      endDate: this.filterDateTo || undefined,
+    };
   }
 
   async exportExcel(): Promise<void> {
-    const wb = new ExcelJS.Workbook();
-    const ws = wb.addWorksheet('Rendiciones Directas');
-
-    // Título
-    ws.mergeCells('A1:K1');
-    const titleRow = ws.getCell('A1');
-    titleRow.value = 'Reporte de Rendiciones Directas';
-    titleRow.font = { bold: true, size: 14 };
-    titleRow.alignment = { horizontal: 'center' };
-
-    // Filtros aplicados
-    ws.mergeCells('A2:K2');
-    const subtitle = [`Generado: ${new Date().toLocaleDateString('es-PE')}`, `Total: ${this.total()} registros`];
-    if (this.filterDateFrom || this.filterDateTo) subtitle.push(`Periodo: ${this.filterDateFrom || '...'} al ${this.filterDateTo || '...'}`);
-    ws.getCell('A2').value = subtitle.join('   |   ');
-    ws.getCell('A2').font = { size: 9, italic: true };
-    ws.getCell('A2').alignment = { horizontal: 'center' };
-
-    ws.addRow([]); // spacer
-
-    // Headers
-    const headerRow = ws.addRow(this.HEADERS);
-    headerRow.eachCell(cell => {
-      cell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
-      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF4763B1' } };
-      cell.border = { bottom: { style: 'medium', color: { argb: 'FF4763B1' } } };
-      cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
-    });
-    headerRow.height = 28;
-
-    // Data rows
-    this.buildExportRows().forEach((r, i) => {
-      const row = ws.addRow(r);
-      const fill = i % 2 === 0 ? 'FFFAFAFA' : 'FFF5F7FF';
-      row.eachCell(cell => {
-        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: fill } };
-        cell.border = { bottom: { style: 'thin', color: { argb: 'FFE5E7EB' } } };
-      });
-      // Colorear columna Revisado
-      const revisadoCell = row.getCell(11);
-      const isRevisado = r[10] === 'Revisado';
-      revisadoCell.font = { bold: true, color: { argb: isRevisado ? 'FF0D9488' : 'FFB45309' } };
-    });
-
-    // Fila total
-    ws.addRow([]);
-    const totalRow = ws.addRow(['', '', '', '', '', '', '', '', 'TOTAL', this.totalMonto.toFixed(2), '']);
-    totalRow.eachCell(cell => { cell.font = { bold: true }; });
-    totalRow.getCell(9).alignment = { horizontal: 'right' };
-
-    // Anchos de columna
-    ws.columns.forEach((col, i) => {
-      const widths = [12, 6, 14, 20, 22, 22, 16, 20, 24, 12, 10];
-      col.width = widths[i] ?? 14;
-    });
-
-    const buf = await wb.xlsx.writeBuffer();
-    const blob = new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `rendiciones_directas_${new Date().toISOString().slice(0, 10)}.xlsx`;
-    a.click();
-    URL.revokeObjectURL(url);
+    if (this.data().length === 0) { this.notifications.show('No hay datos para exportar.', 'warning'); return; }
+    this.isExportingExcel.set(true);
+    try {
+      await this.exportService.exportToExcel(this.buildRendicionExportData());
+      this.notifications.show('Excel descargado correctamente.', 'success');
+    } catch { this.notifications.show('No se pudo generar el Excel.', 'error'); }
+    finally { this.isExportingExcel.set(false); }
   }
 
   exportPdf(): void {
-    const doc = new jsPDF({ orientation: 'landscape', format: 'a4' }) as JsPdfAT;
-    const pageWidth = doc.internal.pageSize.getWidth();
-
-    doc.setFontSize(14);
-    doc.setFont('helvetica', 'bold');
-    doc.text('Reporte de Rendiciones Directas', pageWidth / 2, 14, { align: 'center' });
-
-    doc.setFontSize(8);
-    doc.setFont('helvetica', 'normal');
-    const subtitle = [`Generado: ${new Date().toLocaleDateString('es-PE')}`, `Total: ${this.total()} registros`];
-    if (this.filterDateFrom || this.filterDateTo) subtitle.push(`Periodo: ${this.filterDateFrom || '...'} - ${this.filterDateTo || '...'}`);
-    doc.text(subtitle.join('   |   '), pageWidth / 2, 20, { align: 'center' });
-
-    autoTable(doc, {
-      startY: 26,
-      head: [this.HEADERS],
-      body: this.buildExportRows(),
-      styles: { fontSize: 6.5, cellPadding: 2 },
-      headStyles: { fillColor: [71, 99, 177], textColor: 255, fontStyle: 'bold', halign: 'center' },
-      alternateRowStyles: { fillColor: [245, 247, 255] },
-      columnStyles: {
-        0: { cellWidth: 18 }, 1: { cellWidth: 10, halign: 'center' }, 2: { cellWidth: 20 },
-        3: { cellWidth: 26 }, 4: { cellWidth: 28 }, 5: { cellWidth: 28 },
-        6: { cellWidth: 22 }, 7: { cellWidth: 26 }, 8: { cellWidth: 30 },
-        9: { cellWidth: 16, halign: 'right' }, 10: { cellWidth: 16, halign: 'center' },
-      },
-      didDrawPage: (d) => {
-        // Página numeración
-        const pageCount = (doc as any).internal.getNumberOfPages();
-        doc.setFontSize(7);
-        doc.text(`Pag ${d.pageNumber} de ${pageCount}`, pageWidth - 14, doc.internal.pageSize.getHeight() - 8, { align: 'right' });
-      },
-    });
-
-    // Fila de totales
-    const finalY = doc.lastAutoTable?.finalY ?? 30;
-    doc.setFontSize(8);
-    doc.setFont('helvetica', 'bold');
-    doc.text(`Total general: S/ ${this.totalMonto.toFixed(2)}`, pageWidth - 14, finalY + 8, { align: 'right' });
-
-    doc.save(`rendiciones_directas_${new Date().toISOString().slice(0, 10)}.pdf`);
+    if (this.data().length === 0) { this.notifications.show('No hay datos para exportar.', 'warning'); return; }
+    this.isExportingPdf.set(true);
+    try {
+      this.exportService.exportToPdf(this.buildRendicionExportData());
+      this.notifications.show('PDF descargado correctamente.', 'success');
+    } catch { this.notifications.show('No se pudo generar el PDF.', 'error'); }
+    finally { this.isExportingPdf.set(false); }
   }
 
   get pageNumbers(): number[] {
