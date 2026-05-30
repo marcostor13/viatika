@@ -1889,11 +1889,11 @@
       <div class="bg-gray-50 rounded-xl p-4 mb-4 space-y-2">
         <div class="flex justify-between text-sm">
           <span class="text-gray-500">Presupuesto asignado</span>
-          <span class="font-semibold text-gray-900">S/ {{ report.budget | number:'1.2-2' }}</span>
+          <span class="font-semibold text-gray-900">S/ {{ totalAnticipado | number:'1.2-2' }}</span>
         </div>
         <div class="flex justify-between text-sm">
           <span class="text-gray-500">Total gastado</span>
-          <span class="font-semibold" [class.text-red-600]="totalGastado > report.budget" [class.text-gray-900]="totalGastado <= report.budget">
+          <span class="font-semibold" [class.text-red-600]="totalGastado > totalAnticipado" [class.text-gray-900]="totalGastado <= totalAnticipado">
             S/ {{ totalGastado | number:'1.2-2' }}
           </span>
         </div>
@@ -1978,7 +1978,7 @@
       </div>
       <div class="flex justify-between gap-4">
         <span class="text-gray-500">Presupuesto</span>
-        <span class="font-semibold text-gray-900 tabular-nums">S/ {{ report.budget | number:'1.2-2' }}</span>
+        <span class="font-semibold text-gray-900 tabular-nums">S/ {{ totalAnticipado | number:'1.2-2' }}</span>
       </div>
       <div class="flex justify-between gap-4">
         <span class="text-gray-500">Total gastado</span>
