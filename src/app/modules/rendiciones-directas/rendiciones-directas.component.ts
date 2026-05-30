@@ -335,7 +335,7 @@ export class RendicionesDirectasComponent implements OnInit {
     await this.exportService.exportMobilitySheetToExcel(data);
   }
 
-  exportCashVoucherPdf(e: any): void {
+  async exportCashVoucherPdf(e: any): Promise<void> {
     const payload = this.cashVoucherPayload(e);
     const data: CashVoucherExportData = {
       fileBaseName: `comprobante_caja_${String(e._id || 'doc')}`,
@@ -349,10 +349,10 @@ export class RendicionesDirectasComponent implements OnInit {
       projectName: this.getProject(e),
       fechaEmision: this.emissionDateText(e),
     };
-    this.exportService.exportCashVoucherToPdf(data);
+    await this.exportService.exportCashVoucherToPdf(data);
   }
 
-  exportReceiptPdf(e: any): void {
+  async exportReceiptPdf(e: any): Promise<void> {
     const d = this.getData(e);
     const payload: any = typeof d['payload'] === 'string' ? (() => { try { return JSON.parse(String(d['payload'])); } catch { return {}; } })() : (d['payload'] ?? {});
     const data: ReceiptExportData = {
@@ -365,7 +365,7 @@ export class RendicionesDirectasComponent implements OnInit {
       fecha: this.emissionDateText(e),
       monto: this.getTotal(e),
     };
-    this.exportService.exportReceiptToPdf(data);
+    await this.exportService.exportReceiptToPdf(data);
   }
 
   // ─── Export global (todos los filtrados) ────────────────────────────────────

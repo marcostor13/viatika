@@ -60,10 +60,10 @@ describe('RendicionExportService', () => {
     expect(service).toBeTruthy();
   });
 
-  // ─── Sync PDF methods ─────────────────────────────────────────────────
+  // ─── Async PDF methods ────────────────────────────────────────────────
 
   describe('exportAffidavitToPdf', () => {
-    it('does not throw for minimal data', () => {
+    it('resolves for minimal data', async () => {
       const data: AffidavitExportData = {
         fileBaseName: 'afidavit-2026',
         tipo: 'viaticos_nacionales',
@@ -74,10 +74,10 @@ describe('RendicionExportService', () => {
         total: 500,
         rows: [],
       };
-      expect(() => service.exportAffidavitToPdf(data)).not.toThrow();
+      await expectAsync(service.exportAffidavitToPdf(data)).toBeResolved();
     });
 
-    it('does not throw when rows array is populated', () => {
+    it('resolves when rows array is populated', async () => {
       const data: AffidavitExportData = {
         fileBaseName: 'afidavit',
         tipo: 'viajes_exterior',
@@ -92,12 +92,12 @@ describe('RendicionExportService', () => {
         ],
         signature: undefined,
       };
-      expect(() => service.exportAffidavitToPdf(data)).not.toThrow();
+      await expectAsync(service.exportAffidavitToPdf(data)).toBeResolved();
     });
   });
 
   describe('exportReceiptToPdf', () => {
-    it('does not throw for full data', () => {
+    it('resolves for full data', async () => {
       const data: ReceiptExportData = {
         fileBaseName: 'recibo-test',
         collaborator: 'Juan Pérez',
@@ -109,10 +109,10 @@ describe('RendicionExportService', () => {
         fecha: '01/01/2026',
         monto: 250,
       };
-      expect(() => service.exportReceiptToPdf(data)).not.toThrow();
+      await expectAsync(service.exportReceiptToPdf(data)).toBeResolved();
     });
 
-    it('does not throw when optional fields are absent', () => {
+    it('resolves when optional fields are absent', async () => {
       const data: ReceiptExportData = {
         fileBaseName: 'recibo-minimal',
         collaborator: 'Ana López',
@@ -121,12 +121,12 @@ describe('RendicionExportService', () => {
         fecha: '01/01/2026',
         monto: 100,
       };
-      expect(() => service.exportReceiptToPdf(data)).not.toThrow();
+      await expectAsync(service.exportReceiptToPdf(data)).toBeResolved();
     });
   });
 
   describe('exportSingleExpenseAffidavitToPdf', () => {
-    it('does not throw for minimal data', () => {
+    it('resolves for minimal data', async () => {
       const data: SingleExpenseAffidavitData = {
         fileBaseName: 'single-dj-test',
         titulo: 'Declaración Jurada de Gastos',
@@ -135,10 +135,10 @@ describe('RendicionExportService', () => {
         fechaGeneracion: '01/01/2026',
         total: 50,
       };
-      expect(() => service.exportSingleExpenseAffidavitToPdf(data)).not.toThrow();
+      await expectAsync(service.exportSingleExpenseAffidavitToPdf(data)).toBeResolved();
     });
 
-    it('does not throw with mobility rows', () => {
+    it('resolves with mobility rows', async () => {
       const data: SingleExpenseAffidavitData = {
         fileBaseName: 'single-mobility',
         titulo: 'DJ Movilidad',
@@ -149,11 +149,11 @@ describe('RendicionExportService', () => {
           { fecha: '01/01', clienteProveedor: 'Empresa', origen: 'Lima', destino: 'Callao', gestion: 'Reunión', total: 40 },
         ],
       };
-      expect(() => service.exportSingleExpenseAffidavitToPdf(data)).not.toThrow();
+      await expectAsync(service.exportSingleExpenseAffidavitToPdf(data)).toBeResolved();
     });
   });
 
-  // ─── Async PDF methods ────────────────────────────────────────────────
+  // ─── Other async PDF/Excel methods ────────────────────────────────────
 
   describe('exportToPdf', () => {
     it('resolves without throwing for minimal rendicion data', async () => {

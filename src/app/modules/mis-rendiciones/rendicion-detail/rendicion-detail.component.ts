@@ -1382,9 +1382,9 @@ export class RendicionDetailComponent implements OnInit {
         expenseIds: selectedIds,
       })
       .subscribe({
-        next: () => {
+        next: async () => {
           const data = this.buildAffidavitExportData(selectedExpenses);
-          this.rendicionExportService.exportAffidavitToPdf(data);
+          await this.rendicionExportService.exportAffidavitToPdf(data);
           this.isGeneratingAffidavit.set(false);
           this.showAffidavitModal.set(false);
           this.notificationService.show(
@@ -2034,7 +2034,7 @@ export class RendicionDetailComponent implements OnInit {
     this.notificationService.show('Planilla de movilidad descargada en Excel', 'success');
   }
 
-  exportMobilityAffidavit(expense: Record<string, unknown>): void {
+  async exportMobilityAffidavit(expense: Record<string, unknown>): Promise<void> {
     if (this.getExpenseTypeKey(expense) !== 'planilla_movilidad') return;
     const rows = this.mobilityRows(expense).map(r => ({
       fecha: String(r['fecha'] || ''),
@@ -2057,11 +2057,11 @@ export class RendicionDetailComponent implements OnInit {
       mobilityRows: rows,
       signature: this.getCollaboratorSignature(),
     };
-    this.rendicionExportService.exportSingleExpenseAffidavitToPdf(data);
+    await this.rendicionExportService.exportSingleExpenseAffidavitToPdf(data);
     this.notificationService.show('Declaración jurada descargada', 'success');
   }
 
-  exportReceiptPdf(expense: Record<string, unknown>): void {
+  async exportReceiptPdf(expense: Record<string, unknown>): Promise<void> {
     if (expense['expenseType'] !== 'recibo_caja') return;
     const dataObj = this.getExpenseDataObject(expense);
     const fecha = this.emissionDateText(expense);
@@ -2077,11 +2077,11 @@ export class RendicionDetailComponent implements OnInit {
       monto: this.getExpenseTotal(expense),
       signature: this.getCollaboratorSignature(),
     };
-    this.rendicionExportService.exportReceiptToPdf(data);
+    await this.rendicionExportService.exportReceiptToPdf(data);
     this.notificationService.show('Recibo de caja descargado en PDF', 'success');
   }
 
-  exportReceiptAffidavit(expense: Record<string, unknown>): void {
+  async exportReceiptAffidavit(expense: Record<string, unknown>): Promise<void> {
     if (expense['expenseType'] !== 'recibo_caja') return;
     const dataObj = this.getExpenseDataObject(expense);
     const fecha = this.emissionDateText(expense);
@@ -2104,11 +2104,11 @@ export class RendicionDetailComponent implements OnInit {
       receiptFields,
       signature: this.getCollaboratorSignature(),
     };
-    this.rendicionExportService.exportSingleExpenseAffidavitToPdf(data);
+    await this.rendicionExportService.exportSingleExpenseAffidavitToPdf(data);
     this.notificationService.show('Declaración jurada descargada', 'success');
   }
 
-  exportCashVoucherAffidavit(expense: Record<string, unknown>): void {
+  async exportCashVoucherAffidavit(expense: Record<string, unknown>): Promise<void> {
     if (this.getExpenseTypeKey(expense) !== 'comprobante_caja') return;
     const payloadObj = this.getCashVoucherPayload(expense);
     const client = this.userStateService.getUser()?.client;
@@ -2128,11 +2128,11 @@ export class RendicionDetailComponent implements OnInit {
       receiptFields,
       signature: this.getCollaboratorSignature(),
     };
-    this.rendicionExportService.exportSingleExpenseAffidavitToPdf(data);
+    await this.rendicionExportService.exportSingleExpenseAffidavitToPdf(data);
     this.notificationService.show('Declaración jurada descargada', 'success');
   }
 
-  exportOtherExpenseAffidavit(expense: Record<string, unknown>): void {
+  async exportOtherExpenseAffidavit(expense: Record<string, unknown>): Promise<void> {
     if (this.getExpenseTypeKey(expense) !== 'otros_gastos') return;
     const client = this.userStateService.getUser()?.client;
     const data: SingleExpenseAffidavitData = {
@@ -2146,7 +2146,7 @@ export class RendicionDetailComponent implements OnInit {
       descripcion: String(expense['description'] || '—'),
       signature: this.getCollaboratorSignature(),
     };
-    this.rendicionExportService.exportSingleExpenseAffidavitToPdf(data);
+    await this.rendicionExportService.exportSingleExpenseAffidavitToPdf(data);
     this.notificationService.show('Declaración jurada descargada', 'success');
   }
 
