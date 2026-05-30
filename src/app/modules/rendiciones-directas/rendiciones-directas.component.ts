@@ -362,19 +362,19 @@ export class RendicionesDirectasComponent implements OnInit {
     await this.exportService.exportMobilitySheetToExcel(data);
   }
 
-  exportCashVoucherPdf(e: any, event: Event): void {
+  async exportCashVoucherPdf(e: any, event: Event): Promise<void> {
     event.stopPropagation();
     const payload = this.cashVoucherPayload(e);
     const data: CashVoucherExportData = { fileBaseName: `comprobante_${e._id}`, collaborator: this.getColaborador(e), internalCode: e.internalCode, entregadoA: String(payload['entregadoA'] || ''), direccion: String(payload['direccion'] || ''), concepto: String(payload['concepto'] || ''), monto: this.getTotal(e), generatedAt: new Date().toLocaleString('es-PE', { dateStyle: 'short', timeStyle: 'short' }), projectName: this.getProject(e), fechaEmision: this.emissionDateText(e) };
-    this.exportService.exportCashVoucherToPdf(data);
+    await this.exportService.exportCashVoucherToPdf(data);
   }
 
-  exportReceiptPdf(e: any, event: Event): void {
+  async exportReceiptPdf(e: any, event: Event): Promise<void> {
     event.stopPropagation();
     const d = this.getData(e);
     const payload: any = typeof d['payload'] === 'string' ? (() => { try { return JSON.parse(String(d['payload'])); } catch { return {}; } })() : (d['payload'] ?? {});
     const data: ReceiptExportData = { fileBaseName: `recibo_${e._id}`, collaborator: this.getColaborador(e), razonSocial: String(e.receiptRazonSocial || payload['razonSocial'] || ''), ruc: String(e.receiptRuc || payload['ruc'] || ''), numeroDocumento: String(payload['numeroDocumento'] || e.receiptNumeroDocumento || ''), concepto: String(e.receiptConcepto || payload['concepto'] || ''), fecha: this.emissionDateText(e), monto: this.getTotal(e) };
-    this.exportService.exportReceiptToPdf(data);
+    await this.exportService.exportReceiptToPdf(data);
   }
 
   // ─── Export global (igual formato que rendición detail) ──────────────────────

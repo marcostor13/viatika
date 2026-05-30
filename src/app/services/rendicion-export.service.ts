@@ -183,6 +183,33 @@ export class RendicionExportService {
     return `${dd}/${mm}/${d.getFullYear()}`;
   }
 
+  /**
+   * Normaliza una firma a un data URL base64 PNG.
+   * - Si ya es un data URL, lo devuelve tal cual.
+   * - Si es una URL HTTP/HTTPS (subida vía S3 desde Configuración de Firma Digital),
+   *   la descarga y la convierte a data URL para poder embeberla en Excel/PDF.
+   */
+  private async resolveSignature(sig?: string): Promise<string | undefined> {
+    if (!sig) return undefined;
+    const trimmed = sig.trim();
+    if (!trimmed) return undefined;
+    if (trimmed.startsWith('data:')) return trimmed;
+    if (!/^https?:\/\//i.test(trimmed)) return undefined;
+    try {
+      const response = await fetch(trimmed);
+      if (!response.ok) return undefined;
+      const blob = await response.blob();
+      return await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result as string);
+        reader.onerror = () => reject(reader.error);
+        reader.readAsDataURL(blob);
+      });
+    } catch {
+      return undefined;
+    }
+  }
+
   private async getLogoBase64(): Promise<string | null> {
     const logoUrl = this.companyConfigService.getCompanyConfig()?.logo;
     const url = logoUrl || '/logo_header.png';
@@ -212,6 +239,7 @@ export class RendicionExportService {
   }
 
   async exportToExcel(data: RendicionExportData): Promise<void> {
+    data = { ...data, signature: await this.resolveSignature(data.signature) };
     const wb = new ExcelJS.Workbook();
     wb.creator = 'Viatika';
     wb.created = new Date();
@@ -484,6 +512,7 @@ export class RendicionExportService {
   }
 
   async exportToPdf(data: RendicionExportData): Promise<void> {
+    data = { ...data, signature: await this.resolveSignature(data.signature) };
     const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
     let y = 15;
 
@@ -673,7 +702,8 @@ export class RendicionExportService {
     doc.save(`${data.fileBaseName}.pdf`);
   }
 
-  exportAffidavitToPdf(data: AffidavitExportData): void {
+  async exportAffidavitToPdf(data: AffidavitExportData): Promise<void> {
+    data = { ...data, signature: await this.resolveSignature(data.signature) };
     const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(13);
@@ -713,6 +743,7 @@ export class RendicionExportService {
   }
 
   async exportMobilitySheetToPdf(data: MobilitySheetExportData): Promise<void> {
+    data = { ...data, signature: await this.resolveSignature(data.signature) };
     const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
     const lm = 14;
     const rm = 196;
@@ -936,6 +967,7 @@ export class RendicionExportService {
   }
 
   async exportCashVoucherToPdf(data: CashVoucherExportData): Promise<void> {
+    data = { ...data, signature: await this.resolveSignature(data.signature) };
     // Quarter A4: 105 x 148 mm
     const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: [105, 148] });
     const pageW = 105;
@@ -1045,7 +1077,8 @@ export class RendicionExportService {
     doc.save(`${data.fileBaseName}.pdf`);
   }
 
-  exportReceiptToPdf(data: ReceiptExportData): void {
+  async exportReceiptToPdf(data: ReceiptExportData): Promise<void> {
+    data = { ...data, signature: await this.resolveSignature(data.signature) };
     const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(13);
@@ -1088,6 +1121,7 @@ export class RendicionExportService {
   }
 
   async exportMobilitySheetToExcel(data: MobilitySheetExportData): Promise<void> {
+    data = { ...data, signature: await this.resolveSignature(data.signature) };
     const wb = new ExcelJS.Workbook();
     wb.creator = 'Viatika';
     wb.created = new Date();
@@ -1309,7 +1343,8 @@ export class RendicionExportService {
     );
   }
 
-  exportSingleExpenseAffidavitToPdf(data: SingleExpenseAffidavitData): void {
+  async exportSingleExpenseAffidavitToPdf(data: SingleExpenseAffidavitData): Promise<void> {
+    data = { ...data, signature: await this.resolveSignature(data.signature) };
     const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
 
     doc.setFont('helvetica', 'bold');
