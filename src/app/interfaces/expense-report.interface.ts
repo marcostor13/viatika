@@ -37,7 +37,7 @@ export interface IReimbursementPaymentInfo {
   cci?: string;
   transferDate: string;
   reference?: string;
-  paymentReceiptUrl: string;
+  paymentReceiptUrl?: string;
   paymentReceiptFileName?: string;
   paymentReceiptMimeType?: string;
   paymentReceiptSizeBytes?: number;
@@ -116,7 +116,7 @@ export interface IRegisterReimbursementPaymentPayload {
   cci?: string;
   transferDate: string;
   reference?: string;
-  paymentReceiptUrl: string;
+  paymentReceiptUrl?: string;
   paymentReceiptFileName?: string;
   paymentReceiptMimeType?: string;
   paymentReceiptSizeBytes?: number;
