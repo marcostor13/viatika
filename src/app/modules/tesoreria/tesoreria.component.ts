@@ -333,7 +333,8 @@ export class TesoreriaComponent implements OnInit {
 
   confirmReimbursementPayment(): void {
     if (!this.selectedReportReimbursement || this.paymentForm.invalid) return;
-    if (!this.reimbursementReceiptUrl) {
+    const method = this.paymentForm.get('method')?.value;
+    if (method !== 'efectivo' && !this.reimbursementReceiptUrl) {
       this.notificationService.show('Debes adjuntar el comprobante de pago del reembolso.', 'error');
       return;
     }
@@ -341,7 +342,7 @@ export class TesoreriaComponent implements OnInit {
     this.expenseReportsService
       .registerReimbursementPayment(this.selectedReportReimbursement._id, {
         ...this.paymentForm.value,
-        paymentReceiptUrl: this.reimbursementReceiptUrl,
+        paymentReceiptUrl: this.reimbursementReceiptUrl || undefined,
         paymentReceiptFileName: this.reimbursementReceiptName || undefined,
         paymentReceiptMimeType: this.reimbursementReceiptMimeType || undefined,
         paymentReceiptSizeBytes: this.reimbursementReceiptSizeBytes || undefined,
