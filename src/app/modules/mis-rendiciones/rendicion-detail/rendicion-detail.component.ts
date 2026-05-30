@@ -1575,17 +1575,22 @@ export class RendicionDetailComponent implements OnInit {
 
   submitAdminReembolso(): void {
     const fileUrl = this.adminReembolsoUrl();
-    if (!fileUrl || !this.adminReembolsoDate()) {
-      this.notificationService.show('Sube el comprobante e ingresa la fecha de pago', 'warning');
+    const method = this.adminReembolsoMethod();
+    if (!this.adminReembolsoDate()) {
+      this.notificationService.show('Ingresa la fecha de pago', 'warning');
+      return;
+    }
+    if (method !== 'efectivo' && !fileUrl) {
+      this.notificationService.show('Sube el comprobante de pago', 'warning');
       return;
     }
     this.isSubmittingAdminReembolso.set(true);
     this.expenseReportsService.registerReimbursementPayment(this.id, {
-      method: this.adminReembolsoMethod(),
+      method,
       bankName: this.adminReembolsoBank() || undefined,
       transferDate: this.adminReembolsoDate(),
       reference: this.adminReembolsoRef() || undefined,
-      paymentReceiptUrl: fileUrl,
+      paymentReceiptUrl: fileUrl || undefined,
       paymentReceiptFileName: this.adminReembolsoFileName() || undefined,
     }).subscribe({
       next: (res) => {
