@@ -87,6 +87,13 @@ export class SidebarComponent implements OnInit, OnDestroy {
   }
 
   isSelected(path: string) {
+    // Paths que pueden ser prefijo de otros necesitan match más estricto
+    if (path === '/rendiciones') {
+      return this.currentPath === '/rendiciones' || this.currentPath.startsWith('/rendiciones/');
+    }
+    if (path === '/mis-rendiciones') {
+      return this.currentPath === '/mis-rendiciones' || this.currentPath.startsWith('/mis-rendiciones/');
+    }
     return this.currentPath.includes(path);
   }
 

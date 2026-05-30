@@ -39,12 +39,22 @@ export class GastoDetalleComponent implements OnInit {
     });
   }
 
+  private get backRoute(): string[] {
+    return this.userState.isContabilidad() ? ['/rendiciones-directas'] : ['/mis-rendiciones'];
+  }
+
+  private get backQueryParams(): object {
+    return this.userState.isContabilidad() ? {} : { tab: 'directas' };
+  }
+
   goBack(): void {
-    this.router.navigate(['/mis-rendiciones'], { queryParams: { tab: 'directas' } });
+    this.router.navigate(this.backRoute, { queryParams: this.backQueryParams });
   }
 
   editExpense(): void {
-    this.router.navigate(['/invoices/edit', this.id], { queryParams: { mode: 'directa' } });
+    this.router.navigate(['/invoices/edit', this.id], {
+      queryParams: { mode: 'directa', from: this.userState.isContabilidad() ? 'contabilidad' : 'colaborador' },
+    });
   }
 
   confirmDelete(): void { this.showDeleteConfirm.set(true); }
@@ -59,7 +69,7 @@ export class GastoDetalleComponent implements OnInit {
       next: () => {
         this.deleting.set(false);
         this.notifications.show('Documento eliminado.', 'success');
-        this.router.navigate(['/mis-rendiciones'], { queryParams: { tab: 'directas' } });
+        this.router.navigate(this.backRoute, { queryParams: this.backQueryParams });
       },
       error: (err) => {
         this.deleting.set(false);
