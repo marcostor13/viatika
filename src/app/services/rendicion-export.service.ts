@@ -1007,11 +1007,15 @@ export class RendicionExportService {
     doc.line(lm + labelW, y + 0.5, rm, y + 0.5);
     y += 6;
     doc.text('Dirección:', lm, y);
-    doc.text(data.direccion || '', lm + labelW, y);
+    const direccionLines = (doc.splitTextToSize(data.direccion || '', rm - (lm + labelW)) as string[]).slice(0, 2);
+    doc.text(direccionLines[0] || '', lm + labelW, y);
     doc.line(lm + labelW, y + 0.5, rm, y + 0.5);
     y += 7;
 
-    // Separator
+    // Segunda línea (si la dirección es larga) va sobre la línea separadora existente
+    if (direccionLines.length > 1) {
+      doc.text(direccionLines[1], lm, y - 1);
+    }
     doc.line(lm, y, rm, y);
     y += 5;
 
@@ -1021,11 +1025,15 @@ export class RendicionExportService {
     const conceptoLabel = 'Por concepto de:  ';
     doc.text(conceptoLabel, lm, y);
     const conceptoX = lm + doc.getTextWidth(conceptoLabel);
-    doc.text(data.concepto, conceptoX, y);
+    const conceptoLines = (doc.splitTextToSize(data.concepto || '', rm - conceptoX) as string[]).slice(0, 2);
+    doc.text(conceptoLines[0] || '', conceptoX, y);
     doc.line(conceptoX, y + 0.5, rm, y + 0.5);
     y += 7;
 
-    // Separator
+    // Segunda línea (si el concepto es largo) va sobre la línea separadora existente
+    if (conceptoLines.length > 1) {
+      doc.text(conceptoLines[1], lm, y - 1);
+    }
     doc.line(lm, y, rm, y);
     y += 5;
 
