@@ -25,6 +25,7 @@ import {
   PlacesAutocompleteDirective,
   PlaceResult,
 } from '../../../directives/places-autocomplete.directive';
+import { ProjectSelectComponent } from '../../../design-system/project-select/project-select.component';
 import { IProject } from '../../invoices/interfaces/project.interface';
 import { ICategory } from '../../invoices/interfaces/category.interface';
 import {
@@ -42,7 +43,12 @@ import {
 @Component({
   selector: 'app-solicitud-viaticos-modal',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, PlacesAutocompleteDirective],
+  imports: [
+    CommonModule,
+    ReactiveFormsModule,
+    PlacesAutocompleteDirective,
+    ProjectSelectComponent,
+  ],
   templateUrl: './solicitud-viaticos-modal.component.html',
   styleUrls: ['./solicitud-viaticos-modal.component.scss'],
 })

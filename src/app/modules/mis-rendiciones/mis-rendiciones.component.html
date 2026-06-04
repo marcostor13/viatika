@@ -21,6 +21,7 @@
 
   <!-- Tabs -->
   <div class="flex gap-1 border-b border-gray-200 mb-6">
+    @if (canViewViaticos) {
     <button
       type="button"
       (click)="setTab('viaticos')"
@@ -35,6 +36,7 @@
         <span class="ml-1.5 px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-primary/10 text-primary">{{ pendingAdvances.length }}</span>
       }
     </button>
+    }
     @if (canCreateRendicion) {
     <button
       type="button"

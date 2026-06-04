@@ -169,7 +169,7 @@
       }
 
       <!-- Módulos opcionales: controlados 100% por permisos configurados -->
-      @if (!isColaborador() && !isContabilidadInCompany() && hasModulePermission('mis-rendiciones')) {
+      @if (!isColaborador() && !isContabilidadInCompany() && (hasModulePermission('mis-rendiciones') || hasModulePermission('nueva-rendicion'))) {
       <a
         [routerLink]="['/mis-rendiciones']"
         routerLinkActive="bg-primary text-white"
@@ -580,7 +580,7 @@
         }
 
         <!-- Módulos opcionales: controlados 100% por permisos configurados -->
-        @if (!isColaborador() && !isContabilidadInCompany() && hasModulePermission('mis-rendiciones')) {
+        @if (!isColaborador() && !isContabilidadInCompany() && (hasModulePermission('mis-rendiciones') || hasModulePermission('nueva-rendicion'))) {
         <a
           [routerLink]="['/mis-rendiciones']"
           (click)="toggleSidebar()"
