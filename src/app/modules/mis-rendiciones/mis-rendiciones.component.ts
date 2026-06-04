@@ -67,13 +67,17 @@ export class MisRendicionesComponent implements OnInit {
     return this.userStateService.canCreateRendicion();
   }
 
+  get canViewViaticos(): boolean {
+    return this.userStateService.isColaborador() || this.userStateService.hasModulePermission('mis-rendiciones');
+  }
+
   ngOnInit(): void {
     this.loadMyReports();
     this.loadMyAdvances();
     const tab = this.route.snapshot.queryParamMap.get('tab');
     if (tab === 'directas') {
       this.setTab('directas');
-    } else if (this.canCreateRendicion) {
+    } else if (this.canCreateRendicion || !this.canViewViaticos) {
       this.setTab('directas');
     }
   }
