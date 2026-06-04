@@ -12,11 +12,12 @@ import { NotificationService } from '../../../services/notification.service';
 import { UserStateService } from '../../../services/user-state.service';
 import { InvoicesService } from '../../invoices/services/invoices.service';
 import { IProject } from '../../invoices/interfaces/project.interface';
+import { ProjectSelectComponent } from '../../../design-system/project-select/project-select.component';
 
 @Component({
   selector: 'app-nueva-rendicion-directa',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule],
+  imports: [CommonModule, ReactiveFormsModule, ProjectSelectComponent],
   templateUrl: './nueva-rendicion-directa.component.html',
 })
 export class NuevaRendicionDirectaComponent implements OnInit {

@@ -193,8 +193,8 @@ export class UserStateService {
   }
 
   canCreateRendicion(): boolean {
-    // Solo colaboradores con el permiso explícito; admins/contabilidad no usan este flujo
-    if (!this.isColaborador()) return false;
+    // Colaboradores y coordinadores con el permiso explícito; admins/contabilidad usan otro flujo
+    if (!this.isColaborador() && !this.isCoordinador()) return false;
     const perms = this.getPermissions();
     return perms.modules?.includes('nueva-rendicion') ?? false;
   }

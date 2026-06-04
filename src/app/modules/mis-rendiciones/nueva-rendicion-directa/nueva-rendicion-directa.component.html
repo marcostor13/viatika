@@ -112,15 +112,13 @@
         @if (projects().length > 0) {
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-1.5">Centro de costo / Proyecto</label>
-            <select
+            <app-project-select
               formControlName="projectId"
-              class="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 transition-colors bg-white"
-            >
-              <option value="">Sin asignar</option>
-              @for (p of projects(); track p._id) {
-                <option [value]="p._id">{{ p.code ? p.code + ' — ' : '' }}{{ p.name }}</option>
-              }
-            </select>
+              [projects]="projects()"
+              [allowEmpty]="true"
+              emptyLabel="Sin asignar"
+              placeholder="Sin asignar"
+            />
           </div>
         }
 
