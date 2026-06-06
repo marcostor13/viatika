@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import {
   FormBuilder,
@@ -10,55 +10,25 @@ import { Router } from '@angular/router';
 import { ExpenseReportsService } from '../../../services/expense-reports.service';
 import { NotificationService } from '../../../services/notification.service';
 import { UserStateService } from '../../../services/user-state.service';
-import { InvoicesService } from '../../invoices/services/invoices.service';
-import { IProject } from '../../invoices/interfaces/project.interface';
-import { ProjectSelectComponent } from '../../../design-system/project-select/project-select.component';
 
 @Component({
   selector: 'app-nueva-rendicion-directa',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, ProjectSelectComponent],
+  imports: [CommonModule, ReactiveFormsModule],
   templateUrl: './nueva-rendicion-directa.component.html',
 })
-export class NuevaRendicionDirectaComponent implements OnInit {
+export class NuevaRendicionDirectaComponent {
   private fb = inject(FormBuilder);
   private router = inject(Router);
   private expenseReportsService = inject(ExpenseReportsService);
   private notifications = inject(NotificationService);
   private userState = inject(UserStateService);
-  private invoicesService = inject(InvoicesService);
 
   submitting = signal(false);
-  projects = signal<IProject[]>([]);
 
   form: FormGroup = this.fb.group({
-    motivo: ['', [Validators.required, Validators.minLength(5)]],
-    location: [''],
-    startDate: [''],
-    endDate: [''],
-    projectId: [''],
-    peopleNames: [''],
-    budget: [null],
-    description: [''],
+    gestion: ['', [Validators.required, Validators.minLength(3)]],
   });
-
-  ngOnInit(): void {
-    this.loadProjects();
-  }
-
-  private loadProjects(): void {
-    const user = this.userState.getUser() as any;
-    const clientId =
-      user?.companyId ||
-      user?.client?._id ||
-      (typeof user?.clientId === 'string' ? user.clientId : user?.clientId?._id) ||
-      '';
-    if (!clientId) return;
-    this.invoicesService.getProjects(clientId).subscribe({
-      next: (list) => this.projects.set(list ?? []),
-      error: () => this.projects.set([]),
-    });
-  }
 
   goBack(): void {
     this.router.navigate(['/mis-rendiciones']);
@@ -83,29 +53,13 @@ export class NuevaRendicionDirectaComponent implements OnInit {
       return;
     }
 
-    const raw = this.form.value;
-
-    const peopleNames: string[] = raw.peopleNames
-      ? (raw.peopleNames as string)
-          .split(',')
-          .map((s: string) => s.trim())
-          .filter(Boolean)
-      : [];
-
     this.submitting.set(true);
     this.expenseReportsService
       .create({
-        motivo: raw.motivo?.trim(),
+        gestion: this.form.value.gestion?.trim(),
         isDirecta: true,
         userId,
         clientId,
-        location: raw.location?.trim() || undefined,
-        startDate: raw.startDate || undefined,
-        endDate: raw.endDate || undefined,
-        projectId: raw.projectId || undefined,
-        peopleNames: peopleNames.length ? peopleNames : undefined,
-        budget: raw.budget ? Number(raw.budget) : undefined,
-        description: raw.description?.trim() || undefined,
       })
       .subscribe({
         next: (report) => {

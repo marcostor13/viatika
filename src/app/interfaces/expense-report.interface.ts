@@ -87,6 +87,10 @@ export interface IExpenseReport {
   contabilidadApprovedBy?: any;
   reopenHistory?: Array<{ reason: string; reopenedBy: string; reopenedAt: string; fromStatus: string }>;
   motivo?: string;
+  /** Código autoincremental único de la rendición directa (ej. RD-0001). */
+  codigo?: string;
+  /** Gestión que el colaborador realizará para estos gastos. */
+  gestion?: string;
   isDirecta?: boolean;
 }
 
@@ -98,6 +102,7 @@ export interface ICreateExpenseReport {
   clientId: string;
   projectId?: string;
   motivo?: string;
+  gestion?: string;
   isDirecta?: boolean;
   // New fields
   accountNumber?: string;

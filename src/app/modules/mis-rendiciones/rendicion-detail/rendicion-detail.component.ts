@@ -1212,9 +1212,11 @@ export class RendicionDetailComponent implements OnInit {
       return [{ descripcion: a.description, monto: a.amount, estado, fechaSolicitud }];
     });
     return {
-      fileBaseName: `rendicion_${this.id}_${safeName}`.replace(/_+/g, '_'),
+      fileBaseName: `rendicion_${this.report.codigo || this.id}_${safeName}`.replace(/_+/g, '_'),
       titulo: this.getProjectName() !== '—' ? this.getProjectName() : (this.report.title || 'Sin título'),
       estado: this.getReportStatusLabel(),
+      codigo: this.report.codigo || undefined,
+      gestion: this.report.gestion || undefined,
       descripcionRendicion: this.report.description || undefined,
       colaborador: this.getCollaboratorDisplayName(),
       presupuesto: this.report.budget ?? 0,

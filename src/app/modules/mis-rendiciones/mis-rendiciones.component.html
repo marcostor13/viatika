@@ -48,8 +48,8 @@
       [class.text-gray-500]="activeTab() !== 'directas'"
     >
       Rendiciones Directas
-      @if (loosePendingCount > 0) {
-        <span class="ml-1.5 px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-700">{{ loosePendingCount }}</span>
+      @if (directaReports.length > 0) {
+        <span class="ml-1.5 px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-primary/10 text-primary">{{ directaReports.length }}</span>
       }
     </button>
     }
@@ -345,153 +345,69 @@
 
   <!-- Barra de acciones -->
   <div class="flex flex-wrap items-center justify-between gap-3 mb-5">
-    <div class="flex items-center gap-3 flex-wrap">
-      @if (loosePendingCount > 0) {
-        <div class="flex items-center gap-2 px-3 py-2 bg-amber-50 border border-amber-200 rounded-xl text-sm text-amber-800">
-          <span class="font-semibold">{{ loosePendingCount }}</span> doc. sin enviar
-          <span class="text-amber-400">·</span>
-          <span class="font-semibold">S/ {{ loosePendingTotal | number:'1.2-2' }}</span>
-        </div>
-        <button
-          type="button"
-          (click)="submitDirectas()"
-          [disabled]="isSubmittingDirectas()"
-          class="inline-flex items-center gap-2 px-4 py-2 bg-primary text-white text-sm font-semibold rounded-lg hover:bg-primary/90 disabled:opacity-50 transition-all"
-        >
-          @if (isSubmittingDirectas()) {
-            <span class="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin"></span>
-            Enviando...
-          } @else {
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M6 12 3.269 3.125A59.769 59.769 0 0 1 21.485 12 59.768 59.768 0 0 1 3.27 20.875L5.999 12Zm0 0h7.5" />
-            </svg>
-            Enviar a Contabilidad
-          }
-        </button>
-      }
-    </div>
-    <div class="flex items-center gap-2">
-      <!-- Filtro tipo -->
-      <select [(ngModel)]="directaFilterTipo" (change)="directaLoaded=false; loadDirectaExpenses()"
-        class="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 bg-white">
-        <option value="">Todos los tipos</option>
-        <option value="factura">Factura</option>
-        <option value="planilla_movilidad">Planilla Movilidad</option>
-        <option value="otros_gastos">Otros Gastos</option>
-        <option value="recibo_caja">Recibo de Caja</option>
-        <option value="comprobante_caja">Comprobante Caja</option>
-      </select>
-      <button
-        type="button"
-        (click)="openAddGasto()"
-        class="inline-flex items-center gap-2 px-4 py-2 bg-primary text-white text-sm font-semibold rounded-lg hover:bg-primary/90 active:scale-[0.98] transition-all shadow-sm"
-      >
-        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-        </svg>
-        Añadir gasto
-      </button>
-    </div>
+    <p class="text-sm text-gray-500">
+      Crea primero la rendición y luego agrega los gastos desde su detalle.
+    </p>
+    <button
+      type="button"
+      (click)="openNuevaRendicionDirecta()"
+      class="inline-flex items-center gap-2 px-4 py-2 bg-primary text-white text-sm font-semibold rounded-lg hover:bg-primary/90 active:scale-[0.98] transition-all shadow-sm"
+    >
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+      </svg>
+      Nueva Rendición Directa
+    </button>
   </div>
 
-  <!-- Tabla de documentos -->
-  @if (directaLoading()) {
+  @if (isLoading) {
     <div class="flex justify-center py-16">
       <span class="w-8 h-8 border-4 border-primary/20 border-t-primary rounded-full animate-spin"></span>
     </div>
-  } @else if (directaExpenses().length === 0) {
+  } @else if (directaReports.length === 0) {
     <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-12 text-center">
       <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-14 h-14 mx-auto text-gray-300 mb-4">
         <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
       </svg>
-      <p class="text-gray-900 font-semibold mb-1">No tienes gastos directos aún</p>
-      <p class="text-sm text-gray-500 mb-4">Sube tus documentos de gastos con el botón "Añadir gasto".</p>
-      <button type="button" (click)="openAddGasto()"
+      <p class="text-gray-900 font-semibold mb-1">No tienes rendiciones directas aún</p>
+      <p class="text-sm text-gray-500 mb-4">Crea una rendición directa y luego agrega los gastos desde su detalle.</p>
+      <button type="button" (click)="openNuevaRendicionDirecta()"
         class="inline-flex items-center gap-2 px-4 py-2 bg-primary text-white text-sm font-semibold rounded-lg hover:bg-primary/90 transition-all">
         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4">
           <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
         </svg>
-        Añadir primer gasto
+        Crear primera rendición directa
       </button>
     </div>
   } @else {
 
-    <!-- Desktop: tabla -->
-    <div class="hidden md:block bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
-      <table class="w-full text-sm divide-y divide-gray-100">
-        <thead class="bg-gray-50 text-xs font-semibold text-gray-500 uppercase tracking-wider text-left">
-          <tr>
-            <th class="px-4 py-3">Fecha</th>
-            <th class="px-4 py-3">Tipo</th>
-            <th class="px-4 py-3 whitespace-nowrap">N° Doc</th>
-            <th class="px-4 py-3">Proveedor / Concepto</th>
-            <th class="px-4 py-3 text-right whitespace-nowrap">Monto S/</th>
-            <th class="px-4 py-3 text-center">Estado</th>
-          </tr>
-        </thead>
-        <tbody class="divide-y divide-gray-100">
-          @for (e of directaExpenses(); track e._id) {
-          <tr class="hover:bg-gray-50 transition-colors cursor-pointer group" (click)="goToDirectaReport(e)">
-            <!-- Fecha -->
-            <td class="px-4 py-3 text-gray-700 whitespace-nowrap text-xs">{{ getDirectaFecha(e) }}</td>
-            <!-- Tipo badge -->
-            <td class="px-4 py-3">
-              <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-bold tabular-nums" [ngClass]="getDirectaTipoBadgeClass(e)">
-                {{ getDirectaTipoCode(e) }}
-              </span>
-            </td>
-            <!-- N° documento -->
-            <td class="px-4 py-3 font-mono text-xs text-gray-700 whitespace-nowrap">{{ getDirectaDocNumber(e) }}</td>
-            <!-- Proveedor / Concepto -->
-            <td class="px-4 py-3 max-w-[220px]">
-              <p class="text-xs font-medium text-gray-800 truncate" [title]="getDirectaProveedor(e)">{{ getDirectaProveedor(e) }}</p>
-              <p class="text-xs text-gray-400 truncate" [title]="getDirectaConcepto(e)">{{ getDirectaConcepto(e) }}</p>
-            </td>
-            <!-- Monto -->
-            <td class="px-4 py-3 text-right font-semibold tabular-nums whitespace-nowrap">S/ {{ e.total | number:'1.2-2' }}</td>
-            <!-- Estado -->
-            <td class="px-4 py-3 text-center">
-              <span class="inline-flex px-2.5 py-1 rounded-full text-xs font-semibold" [ngClass]="getDirectaEstado(e).cls">
-                {{ getDirectaEstado(e).label }}
-              </span>
-            </td>
-          </tr>
-          }
-        </tbody>
-        <tfoot class="bg-gray-50 border-t border-gray-200">
-          <tr>
-            <td colspan="4" class="px-4 py-3 text-xs text-gray-500">{{ directaTotal() }} documento(s)</td>
-            <td class="px-4 py-3 text-right font-bold text-gray-900">
-              S/ {{ directaTotalMonto | number:'1.2-2' }}
-            </td>
-            <td></td>
-          </tr>
-        </tfoot>
-      </table>
-    </div>
-
-    <!-- Mobile: tarjetas -->
-    <div class="md:hidden flex flex-col gap-3">
-      @for (e of directaExpenses(); track e._id) {
-      <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-4 cursor-pointer" (click)="goToDirectaReport(e)">
-        <div class="flex items-start justify-between gap-2 mb-2">
-          <div class="flex items-center gap-2 flex-wrap">
-            <span class="px-2 py-0.5 rounded text-xs font-bold tabular-nums" [ngClass]="getDirectaTipoBadgeClass(e)">{{ getDirectaTipoCode(e) }}</span>
-            <span class="inline-flex px-2 py-0.5 rounded-full text-xs font-semibold" [ngClass]="getDirectaEstado(e).cls">{{ getDirectaEstado(e).label }}</span>
+    <div class="flex flex-col gap-3">
+      @for (r of directaReports; track r._id) {
+      <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-4 cursor-pointer hover:border-primary/40 transition-colors"
+        (click)="goToReportDetail(r, $event)">
+        <div class="flex items-start justify-between gap-3">
+          <div class="min-w-0">
+            <div class="flex items-center gap-2 flex-wrap">
+              @if (r.codigo) {
+                <span class="font-mono text-xs font-bold text-primary bg-primary/10 px-2 py-0.5 rounded">{{ r.codigo }}</span>
+              }
+              <span class="inline-flex px-2 py-0.5 rounded-full text-[10px] font-bold tracking-wide bg-gray-100 text-gray-600">{{ panelStatusText(r) }}</span>
+            </div>
+            <p class="text-sm font-semibold text-gray-900 mt-1.5 truncate">{{ reportDisplayTitle(r) }}</p>
+            <div class="flex items-center gap-3 mt-1 text-xs text-gray-400">
+              <span>{{ (r.expenseIds.length || 0) }} gasto(s)</span>
+              @if (reportDateRange(r)) { <span>· {{ reportDateRange(r) }}</span> }
+            </div>
           </div>
-          <span class="text-base font-bold text-gray-900 whitespace-nowrap">S/ {{ e.total | number:'1.2-2' }}</span>
-        </div>
-        <p class="text-sm font-medium text-gray-800 truncate">{{ getDirectaProveedor(e) }}</p>
-        <p class="text-xs text-gray-500 truncate mt-0.5">{{ getDirectaConcepto(e) }}</p>
-        <div class="flex items-center justify-between mt-2 pt-2 border-t border-gray-100 text-xs text-gray-400">
-          <span>{{ getDirectaFecha(e) }}</span>
-          <span class="font-mono">{{ getDirectaDocNumber(e) }}</span>
+          <div class="text-right shrink-0">
+            <p class="text-base font-bold text-gray-900 whitespace-nowrap">S/ {{ getTotalGastado(r) | number:'1.2-2' }}</p>
+          </div>
         </div>
       </div>
       }
     </div>
 
-  } <!-- fin @else directaExpenses -->
+  }
 
   } <!-- fin @if activeTab === 'directas' -->
 
