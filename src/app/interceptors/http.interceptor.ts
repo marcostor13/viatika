@@ -50,6 +50,7 @@ export const httpInterceptor: HttpInterceptorFn = (req, next) => {
     '/config',
     '/logo',
     '/api/client',
+    '/dashboard',
     '/expense-report',
     '/advance',
     '/role',
