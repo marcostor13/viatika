@@ -84,9 +84,18 @@ export class MisRendicionesComponent implements OnInit {
 
   setTab(tab: 'viaticos' | 'directas'): void {
     this.activeTab.set(tab);
-    if (tab === 'directas' && !this.directaLoaded) {
-      this.loadDirectaExpenses();
-    }
+  }
+
+  /** Rendiciones directas del colaborador (creadas primero, luego se agregan gastos). */
+  get directaReports(): IExpenseReport[] {
+    return this.expenseReports
+      .filter((r) => r.isDirecta)
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  }
+
+  /** Crea primero la rendición directa; los gastos se agregan luego en el detalle. */
+  openNuevaRendicionDirecta(): void {
+    this.router.navigate(['/mis-rendiciones/nueva']);
   }
 
   loadDirectaExpenses(): void {
@@ -522,7 +531,7 @@ export class MisRendicionesComponent implements OnInit {
   }
 
   reportDisplayTitle(report: IExpenseReport): string {
-    if (report.isDirecta) return report.motivo || report.description || 'Rendicion directa';
+    if (report.isDirecta) return report.gestion || report.motivo || report.description || 'Rendicion directa';
     return report.description || report.title || 'Rendicion de viaticos';
   }
 

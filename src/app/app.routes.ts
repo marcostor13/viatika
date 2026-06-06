@@ -51,12 +51,17 @@ export const routes: Routes = [
         canActivate: [AuthColaboradorGuard],
       },
       {
-        path: 'consolidated-invoices',
+        path: 'dashboard',
         loadComponent: () =>
-          import(
-            './modules/consolidated-invoices/consolidated-invoices.component'
-          ).then((m) => m.ConsolidatedInvoicesComponent),
+          import('./modules/dashboard/dashboard.component').then(
+            (m) => m.DashboardComponent
+          ),
         canActivate: [authModuleGuard('consolidated-invoices')],
+      },
+      {
+        path: 'consolidated-invoices',
+        redirectTo: 'dashboard',
+        pathMatch: 'full',
       },
       {
         path: 'notificaciones',
@@ -66,7 +71,7 @@ export const routes: Routes = [
           ).then((m) => m.NotificationListComponent),
       },
       {
-        path: 'consolidated-invoices/add-category',
+        path: 'dashboard/add-category',
         loadComponent: () =>
           import(
             './modules/consolidated-invoices/add-category/add-category.component'
@@ -74,7 +79,7 @@ export const routes: Routes = [
         canActivate: [authModuleGuard('consolidated-invoices', true)],
       },
       {
-        path: 'consolidated-invoices/edit-category/:id',
+        path: 'dashboard/edit-category/:id',
         loadComponent: () =>
           import(
             './modules/consolidated-invoices/add-category/add-category.component'
@@ -82,7 +87,7 @@ export const routes: Routes = [
         canActivate: [authModuleGuard('consolidated-invoices', true)],
       },
       {
-        path: 'consolidated-invoices/add-project',
+        path: 'dashboard/add-project',
         loadComponent: () =>
           import(
             './modules/consolidated-invoices/add-project/add-project.component'
@@ -90,7 +95,7 @@ export const routes: Routes = [
         canActivate: [authModuleGuard('consolidated-invoices', true)],
       },
       {
-        path: 'consolidated-invoices/edit-project/:id',
+        path: 'dashboard/edit-project/:id',
         loadComponent: () =>
           import(
             './modules/consolidated-invoices/add-project/add-project.component'
@@ -151,6 +156,54 @@ export const routes: Routes = [
             (m) => m.ConfiguracionComponent
           ),
         canActivate: [authModuleGuard('configuracion')],
+      },
+      {
+        path: 'lineas-negocio',
+        loadComponent: () =>
+          import('./modules/lineas-negocio/lineas-negocio.component').then(
+            (m) => m.LineasNegocioComponent
+          ),
+        canActivate: [AuthAdmin2Guard],
+      },
+      {
+        path: 'lineas-negocio/nueva',
+        loadComponent: () =>
+          import(
+            './modules/lineas-negocio/form/lineas-negocio-form.component'
+          ).then((m) => m.LineasNegocioFormComponent),
+        canActivate: [AuthAdmin2Guard],
+      },
+      {
+        path: 'lineas-negocio/:id/editar',
+        loadComponent: () =>
+          import(
+            './modules/lineas-negocio/form/lineas-negocio-form.component'
+          ).then((m) => m.LineasNegocioFormComponent),
+        canActivate: [AuthAdmin2Guard],
+      },
+      {
+        path: 'perfiles-categoria',
+        loadComponent: () =>
+          import('./modules/perfiles-categoria/perfiles-categoria.component').then(
+            (m) => m.PerfilesCategoriaComponent
+          ),
+        canActivate: [AuthAdmin2Guard],
+      },
+      {
+        path: 'perfiles-categoria/nueva',
+        loadComponent: () =>
+          import(
+            './modules/perfiles-categoria/form/perfiles-categoria-form.component'
+          ).then((m) => m.PerfilesCategoriaFormComponent),
+        canActivate: [AuthAdmin2Guard],
+      },
+      {
+        path: 'perfiles-categoria/:id/editar',
+        loadComponent: () =>
+          import(
+            './modules/perfiles-categoria/form/perfiles-categoria-form.component'
+          ).then((m) => m.PerfilesCategoriaFormComponent),
+        canActivate: [AuthAdmin2Guard],
       },
       {
         path: 'mi-perfil',

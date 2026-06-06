@@ -5,9 +5,13 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { HttpErrorResponse } from '@angular/common/http';
 import { NotificationService } from '../../../services/notification.service';
 import { InvoicesService } from '../../invoices/services/invoices.service';
+import { LineaNegocioService } from '../../../services/linea-negocio.service';
+import { CategoryGroupService } from '../../../services/category-group.service';
 import { UserStateService } from '../../../services/user-state.service';
 import { ButtonComponent } from '../../../design-system/button/button.component';
 import { IProject } from '../../invoices/interfaces/project.interface';
+import { ILineaNegocio } from '../../../interfaces/linea-negocio.interface';
+import { ICategoryGroup } from '../../categorias/interfaces/category-group.interface';
 
 @Component({
   selector: 'app-centros-de-costo-form',
@@ -20,12 +24,16 @@ export class CentrosDeCostoFormComponent implements OnInit {
   private route = inject(ActivatedRoute);
   private notification = inject(NotificationService);
   private invoicesService = inject(InvoicesService);
+  private lineaNegocioService = inject(LineaNegocioService);
+  private categoryGroupService = inject(CategoryGroupService);
   private userStateService = inject(UserStateService);
 
   isEditing = false;
   projectId: string | null = null;
   saving = false;
-  form = { name: '', code: '', isActive: true };
+  form = { name: '', code: '', isActive: true, lineaNegocioId: '', categoryGroupId: '' };
+  lineas: ILineaNegocio[] = [];
+  perfiles: ICategoryGroup[] = [];
 
   private getErrorMessage(error: HttpErrorResponse, fallback: string) {
     const apiMessage = Array.isArray(error.error?.message)
@@ -35,6 +43,8 @@ export class CentrosDeCostoFormComponent implements OnInit {
   }
 
   ngOnInit() {
+    this.loadLineas();
+    this.loadPerfiles();
     this.projectId = this.route.snapshot.paramMap.get('id');
     if (this.projectId) {
       this.isEditing = true;
@@ -42,11 +52,31 @@ export class CentrosDeCostoFormComponent implements OnInit {
     }
   }
 
+  loadLineas() {
+    this.lineaNegocioService.getAll().subscribe({
+      next: (lineas) => { this.lineas = lineas ?? []; },
+      error: () => { this.lineas = []; },
+    });
+  }
+
+  loadPerfiles() {
+    this.categoryGroupService.getAll().subscribe({
+      next: (perfiles) => { this.perfiles = perfiles ?? []; },
+      error: () => { this.perfiles = []; },
+    });
+  }
+
   loadProject(id: string) {
     const companyId = this.userStateService.getUser()?.companyId || '';
     this.invoicesService.getProjectById(id, companyId).subscribe({
       next: (p) => {
-        this.form = { name: p.name, code: p.code ?? '', isActive: p.isActive ?? true };
+        this.form = {
+          name: p.name,
+          code: p.code ?? '',
+          isActive: p.isActive ?? true,
+          lineaNegocioId: p.lineaNegocioId ?? '',
+          categoryGroupId: p.categoryGroupId ?? '',
+        };
       },
       error: (error: HttpErrorResponse) => {
         this.notification.show(this.getErrorMessage(error, 'Error al cargar el centro de costo'), 'error');
@@ -70,6 +100,8 @@ export class CentrosDeCostoFormComponent implements OnInit {
       name: this.form.name.trim(),
       code: this.form.code.trim() || undefined,
       isActive: this.form.isActive,
+      lineaNegocioId: this.form.lineaNegocioId || '',
+      categoryGroupId: this.form.categoryGroupId || '',
     };
 
     if (this.isEditing) {

@@ -52,6 +52,8 @@ export interface RendicionExportData {
   fileBaseName: string;
   titulo: string;
   estado: string;
+  codigo?: string;
+  gestion?: string;
   descripcionRendicion?: string;
   colaborador: string;
   presupuesto: number;
@@ -296,6 +298,18 @@ export class RendicionExportService {
     dateCell.font = { bold: true, size: 10 };
     dateCell.alignment = { horizontal: 'center' };
 
+    if (data.codigo || data.gestion) {
+      ws.mergeCells('A8:I8');
+      const infoCell = ws.getCell('A8');
+      const parts: string[] = [];
+      if (data.codigo) parts.push(`CÓDIGO: ${data.codigo}`);
+      if (data.gestion) parts.push(`GESTIÓN: ${data.gestion}`);
+      infoCell.value = parts.join('      ');
+      infoCell.font = { bold: true, size: 10 };
+      infoCell.alignment = { horizontal: 'center', wrapText: true };
+      ws.getRow(8).height = 22;
+    }
+
     ws.getCell('A9').value = 'Colaborador:';
     ws.mergeCells('B9:D9');
     ws.getCell('B9').value = data.colaborador;
@@ -535,7 +549,13 @@ export class RendicionExportService {
       doc.setFont("helvetica", "bold");
       doc.text(`DEL ${data.startDate} AL ${data.endDate}`, doc.internal.pageSize.getWidth() / 2, 40, { align: 'center' });
     }
-    
+
+    if (data.codigo) {
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(10);
+      doc.text(`CÓDIGO: ${data.codigo}`, doc.internal.pageSize.getWidth() / 2, 45, { align: 'center' });
+    }
+
     y = 50;
     doc.setFontSize(9);
     doc.setFont("helvetica", "normal");
@@ -549,6 +569,10 @@ export class RendicionExportService {
     y += 5;
     if (data.peopleNames && data.peopleNames.length > 0) {
       doc.text(`Personas:     ${data.peopleNames.join(', ')}`, 14, y);
+      y += 5;
+    }
+    if (data.gestion) {
+      doc.text(`Gestión:      ${data.gestion}`, 14, y);
       y += 5;
     }
     y += 3;
