@@ -71,6 +71,8 @@ export class SolicitudViaticosModalComponent implements OnChanges {
 
   submitting = signal(false);
   projects = signal<IProject[]>([]);
+  private selectedLat: number | undefined;
+  private selectedLng: number | undefined;
   categories = signal<ICategory[]>([]);
 
   form = this.fb.group({
@@ -242,6 +244,8 @@ export class SolicitudViaticosModalComponent implements OnChanges {
 
   onPlaceSelected(ev: PlaceResult): void {
     this.form.patchValue({ place: ev.address });
+    this.selectedLat = ev.lat;
+    this.selectedLng = ev.lng;
   }
 
   dismiss(success = false): void {
@@ -336,6 +340,8 @@ export class SolicitudViaticosModalComponent implements OnChanges {
       amount: total,
       description: metaDesc,
       place,
+      ...(this.selectedLat != null && { lat: this.selectedLat }),
+      ...(this.selectedLng != null && { lng: this.selectedLng }),
       startDate: `${startStr}T12:00:00.000Z`,
       endDate: `${endStr}T12:00:00.000Z`,
       projectId: this.form.value.projectId as string,

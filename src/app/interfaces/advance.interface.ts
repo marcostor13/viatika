@@ -157,6 +157,8 @@ export interface ICreateAdvancePayload {
   description: string;
   expenseReportId?: string;
   place?: string;
+  lat?: number;
+  lng?: number;
   startDate?: string;
   endDate?: string;
   projectId?: string;
