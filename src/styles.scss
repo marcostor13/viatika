@@ -73,6 +73,40 @@ h1, h2, h3 {
   }
 }
 
+/* ── Google PlaceAutocompleteElement (new Places API) ──────────────────────
+   Replicates the Tailwind input styles used across all forms in the project.
+   ::part(input) targets the internal text input inside gmp-placeautocomplete.
+   ───────────────────────────────────────────────────────────────────────── */
+gmp-placeautocomplete {
+  display: block;
+  width: 100%;
+}
+
+gmp-placeautocomplete::part(input) {
+  width: 100%;
+  height: 2.625rem;
+  padding: 0 0.875rem;
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  font-family: var(--font-body);
+  border-radius: 0.75rem;
+  border: 1px solid rgb(209 213 219);
+  background-color: #ffffff;
+  color: rgb(17 24 39);
+  box-sizing: border-box;
+  outline: none;
+  transition: box-shadow 0.15s, border-color 0.15s;
+}
+
+gmp-placeautocomplete::part(input)::placeholder {
+  color: rgb(156 163 175);
+}
+
+gmp-placeautocomplete::part(input):focus {
+  border-color: var(--tema-primary);
+  box-shadow: 0 0 0 3px rgba(211, 18, 18, 0.2);
+}
+
 /* Select: remove native arrow, add consistent custom chevron */
 select:not([multiple]) {
   appearance: none;

@@ -18,6 +18,7 @@ import {
   DashboardService,
   IDashboardResponse,
   IDashboardKpis,
+  ILocationPoint,
 } from './services/dashboard.service';
 import { InvoicesService } from '../invoices/services/invoices.service';
 import { AdminUsersService } from '../admin-users/services/admin-users.service';
@@ -27,6 +28,7 @@ import { IUserResponse } from '../../interfaces/user.interface';
 import { NotificationService } from '../../services/notification.service';
 
 declare var Chart: any;
+declare var L: any;
 
 const EMPTY_KPIS: IDashboardKpis = {
   totalGasto: 0,
@@ -67,6 +69,8 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
   @ViewChild('advanceChart') advanceChartRef!: ElementRef<HTMLCanvasElement>;
   @ViewChild('collaboratorChart')
   collaboratorChartRef!: ElementRef<HTMLCanvasElement>;
+  @ViewChild('locationChart')
+  locationChartRef!: ElementRef<HTMLCanvasElement>;
 
   private dashboardService = inject(DashboardService);
   private invoicesService = inject(InvoicesService);
@@ -100,8 +104,64 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
   );
 
   private chartLibraryLoaded = false;
+  private leafletLoaded = false;
   private charts: Record<string, any> = {};
+  private mapInstance: any = null;
   private tweenHandles: Record<string, number> = {};
+
+  // Coordinates for Peruvian departments/cities used as fallback
+  private readonly peruCityCoords: Record<string, [number, number]> = {
+    'lima': [-12.0464, -77.0428],
+    'arequipa': [-16.409, -71.5375],
+    'cusco': [-13.532, -71.9675],
+    'cuzco': [-13.532, -71.9675],
+    'trujillo': [-8.112, -79.0288],
+    'chiclayo': [-6.7714, -79.8409],
+    'piura': [-5.1945, -80.6328],
+    'iquitos': [-3.7491, -73.2538],
+    'huancayo': [-12.0651, -75.2049],
+    'puno': [-15.8402, -70.0219],
+    'tacna': [-18.0146, -70.2536],
+    'ica': [-14.0674, -75.7286],
+    'pucallpa': [-8.3791, -74.5539],
+    'ayacucho': [-13.1588, -74.2236],
+    'juliaca': [-15.4997, -70.133],
+    'cajamarca': [-7.1639, -78.5003],
+    'huaraz': [-9.527, -77.5278],
+    'tarapoto': [-6.4853, -76.3607],
+    'moquegua': [-17.1939, -70.9355],
+    'tumbes': [-3.5669, -80.4515],
+    'moyobamba': [-6.034, -76.9724],
+    'cerro de pasco': [-10.6882, -76.2588],
+    'pasco': [-10.6882, -76.2588],
+    'huanuco': [-9.9306, -76.2401],
+    'huánuco': [-9.9306, -76.2401],
+    'abancay': [-13.6354, -72.8814],
+    'puerto maldonado': [-12.5931, -69.1891],
+    'chimbote': [-9.0746, -78.5936],
+    'sullana': [-4.9048, -80.6855],
+    'ilo': [-17.6394, -71.3369],
+    'nazca': [-14.8296, -74.9436],
+    'nasc': [-14.8296, -74.9436],
+    'andahuaylas': [-13.6569, -73.3808],
+    'huancavelica': [-12.7842, -74.9731],
+    'amazonas': [-6.2299, -77.8697],
+    'chachapoyas': [-6.2299, -77.8697],
+    'loreto': [-3.7491, -73.2538],
+    'madre de dios': [-12.5931, -69.1891],
+    'san martin': [-6.4853, -76.3607],
+    'san martín': [-6.4853, -76.3607],
+    'ucayali': [-8.3791, -74.5539],
+    'apurimac': [-13.6354, -72.8814],
+    'apurímac': [-13.6354, -72.8814],
+    'miraflores': [-12.1219, -77.0295],
+    'san isidro': [-12.0974, -77.0365],
+    'barranco': [-12.1531, -77.0216],
+    'surco': [-12.1484, -76.9898],
+    'callao': [-12.0565, -77.1181],
+    'ate': [-12.0186, -76.9246],
+    'villa el salvador': [-12.2138, -76.9313],
+  };
 
   readonly palette = [
     '#D31212',
@@ -185,6 +245,7 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
   ngOnInit() {
     this.loadFilterSources();
     this.loadChartLibrary();
+    this.loadLeaflet();
     this.loadDashboard();
   }
 
@@ -195,6 +256,10 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
   ngOnDestroy() {
     Object.values(this.tweenHandles).forEach((h) => cancelAnimationFrame(h));
     Object.values(this.charts).forEach((c) => c?.destroy?.());
+    if (this.mapInstance) {
+      this.mapInstance.remove();
+      this.mapInstance = null;
+    }
   }
 
   // ─── Data loading ─────────────────────────────────────────────────────────
@@ -231,6 +296,8 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
           this.animateKpis(res.kpis);
           this.cdr.detectChanges();
           this.tryRenderCharts();
+          // Map needs a tick for the DOM element to exist
+          setTimeout(() => this.tryRenderMap(), 50);
         },
         error: (err) => {
           this.loading.set(false);
@@ -326,6 +393,8 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
     this.renderStatusChart();
     this.renderAdvanceChart();
     this.renderCollaboratorChart();
+    this.renderLocationChart();
+    this.tryRenderMap();
   }
 
   private baseAnimation() {
@@ -607,6 +676,227 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
         },
       },
     });
+  }
+
+  private renderLocationChart() {
+    const ref = this.locationChartRef?.nativeElement;
+    if (!ref) return;
+    this.destroyChart('location');
+    const rows = (this.data()?.topLocations ?? []).slice(0, 8);
+    if (!rows.length) return;
+    this.charts['location'] = new Chart(ref, {
+      type: 'bar',
+      data: {
+        labels: rows.map((r) =>
+          r.place.length > 20 ? r.place.slice(0, 20) + '…' : r.place
+        ),
+        datasets: [
+          {
+            label: 'Monto (S/)',
+            data: rows.map((r) => r.amount),
+            backgroundColor: rows.map(
+              (_, i) => this.palette[i % this.palette.length]
+            ),
+            borderRadius: 6,
+          },
+        ],
+      },
+      options: {
+        indexAxis: 'y',
+        responsive: true,
+        maintainAspectRatio: false,
+        animation: this.baseAnimation(),
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              label: (ctx: any) =>
+                `${this.formatCurrency(ctx.parsed.x)} · ${rows[ctx.dataIndex]?.count ?? 0} viáticos`,
+            },
+          },
+        },
+        scales: {
+          x: {
+            beginAtZero: true,
+            ticks: { callback: (v: any) => this.formatCompact(v) },
+            grid: { color: 'rgba(0,0,0,0.05)' },
+          },
+          y: { grid: { display: false } },
+        },
+      },
+    });
+  }
+
+  // ─── Leaflet map ─────────────────────────────────────────────────────────
+
+  private loadLeaflet() {
+    if (typeof L !== 'undefined') {
+      this.leafletLoaded = true;
+      return;
+    }
+    const existingLink = document.getElementById('leaflet-css');
+    if (!existingLink) {
+      const link = document.createElement('link');
+      link.id = 'leaflet-css';
+      link.rel = 'stylesheet';
+      link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
+      document.head.appendChild(link);
+    }
+    const existing = document.getElementById('leaflet-js');
+    if (existing) {
+      existing.addEventListener('load', () => {
+        this.leafletLoaded = true;
+        this.tryRenderMap();
+      });
+      return;
+    }
+    const script = document.createElement('script');
+    script.id = 'leaflet-js';
+    script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
+    script.onload = () => {
+      this.leafletLoaded = true;
+      this.tryRenderMap();
+    };
+    document.body.appendChild(script);
+  }
+
+  private tryRenderMap() {
+    const locations = this.data()?.topLocations ?? [];
+    if (!this.leafletLoaded || typeof L === 'undefined' || !locations.length) {
+      return;
+    }
+    const el = document.getElementById('viaticos-map');
+    if (!el) return;
+
+    if (this.mapInstance) {
+      this.mapInstance.remove();
+      this.mapInstance = null;
+    }
+
+    const points = this.resolveCoordinates(locations);
+    if (!points.length) return;
+
+    this.mapInstance = L.map('viaticos-map', {
+      zoomControl: true,
+      scrollWheelZoom: false,
+    });
+
+    L.tileLayer(
+      'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
+      {
+        attribution: '&copy; OpenStreetMap &copy; CARTO',
+        subdomains: 'abcd',
+        maxZoom: 19,
+      }
+    ).addTo(this.mapInstance);
+
+    const maxAmount = Math.max(...points.map((p) => p.amount), 1);
+
+    points.forEach((p) => {
+      const marker = L.marker([p.lat, p.lng], {
+        icon: this.createLeafletIcon(p.amount, maxAmount, p.count),
+      });
+      const popup = `
+        <div style="font-family:sans-serif;min-width:160px">
+          <div style="font-weight:700;font-size:14px;color:#1e293b;margin-bottom:6px">${p.place}</div>
+          <div style="display:flex;justify-content:space-between;font-size:12px;color:#64748b;margin-bottom:2px">
+            <span>Viáticos</span><strong style="color:#1e293b">${p.count}</strong>
+          </div>
+          <div style="display:flex;justify-content:space-between;font-size:12px;color:#64748b">
+            <span>Total</span><strong style="color:#D31212">${this.formatCurrency(p.amount)}</strong>
+          </div>
+        </div>
+      `;
+      marker.bindPopup(popup, { maxWidth: 200 });
+      marker.addTo(this.mapInstance);
+    });
+
+    const latLngs = points.map((p) => [p.lat, p.lng] as [number, number]);
+    this.mapInstance.fitBounds(L.latLngBounds(latLngs), { padding: [40, 40] });
+  }
+
+  private createLeafletIcon(amount: number, maxAmount: number, count: number): any {
+    const ratio = amount / maxAmount;
+    const size = Math.round(28 + ratio * 24);
+    const color =
+      ratio > 0.66 ? '#D31212' : ratio > 0.33 ? '#F59E0B' : '#3B82F6';
+    const glow =
+      ratio > 0.66 ? 'rgba(211,18,18,0.25)' : ratio > 0.33 ? 'rgba(245,158,11,0.25)' : 'rgba(59,130,246,0.25)';
+    const labelSize = count >= 100 ? 7 : count >= 10 ? 8 : 9;
+
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${Math.round(size * 1.3)}" viewBox="0 0 40 52">
+      <defs>
+        <filter id="glow" x="-30%" y="-30%" width="160%" height="160%">
+          <feGaussianBlur stdDeviation="3" result="blur"/>
+          <feFlood flood-color="${glow}" result="color"/>
+          <feComposite in="color" in2="blur" operator="in" result="shadow"/>
+          <feMerge><feMergeNode in="shadow"/><feMergeNode in="SourceGraphic"/></feMerge>
+        </filter>
+        <radialGradient id="pinGrad" cx="40%" cy="35%">
+          <stop offset="0%" stop-color="${color}" stop-opacity="0.9"/>
+          <stop offset="100%" stop-color="${color}" stop-opacity="1"/>
+        </radialGradient>
+      </defs>
+      <path d="M20 1C11.16 1 4 8.16 4 17C4 28.5 20 51 20 51S36 28.5 36 17C36 8.16 28.84 1 20 1Z"
+            fill="url(#pinGrad)" filter="url(#glow)" stroke="white" stroke-width="1.5"/>
+      <circle cx="20" cy="17" r="9" fill="white" opacity="0.95"/>
+      <text x="20" y="${count >= 100 ? 21 : 22}" text-anchor="middle"
+            font-family="system-ui,sans-serif" font-size="${labelSize}" font-weight="700"
+            fill="${color}">${count}</text>
+    </svg>`;
+
+    return L.divIcon({
+      html: svg,
+      className: '',
+      iconSize: [size, Math.round(size * 1.3)],
+      iconAnchor: [size / 2, Math.round(size * 1.3)],
+      popupAnchor: [0, -Math.round(size * 1.3)],
+    });
+  }
+
+  private resolveCoordinates(
+    locations: ILocationPoint[]
+  ): (ILocationPoint & { lat: number; lng: number })[] {
+    return locations
+      .map((loc) => {
+        if (loc.lat != null && loc.lng != null) {
+          return { ...loc, lat: loc.lat, lng: loc.lng };
+        }
+        const key = loc.place.toLowerCase().trim();
+        const coords = this.peruCityCoords[key];
+        if (coords) {
+          return { ...loc, lat: coords[0], lng: coords[1] };
+        }
+        // Partial match
+        for (const [city, ll] of Object.entries(this.peruCityCoords)) {
+          if (key.includes(city) || city.includes(key)) {
+            return { ...loc, lat: ll[0], lng: ll[1] };
+          }
+        }
+        return null;
+      })
+      .filter((x): x is ILocationPoint & { lat: number; lng: number } => x !== null);
+  }
+
+  // ─── Location KPI helpers ─────────────────────────────────────────────────
+
+  get topLocationName(): string {
+    return this.data()?.topLocations?.[0]?.place ?? '—';
+  }
+
+  get topLocationAmount(): number {
+    return this.data()?.topLocations?.[0]?.amount ?? 0;
+  }
+
+  get uniqueDestinos(): number {
+    return this.data()?.topLocations?.length ?? 0;
+  }
+
+  get avgAnticipoPorDestino(): number {
+    const locs = this.data()?.topLocations ?? [];
+    if (!locs.length) return 0;
+    const total = locs.reduce((s, l) => s + l.amount, 0);
+    return total / locs.length;
   }
 
   // ─── Template helpers ──────────────────────────────────────────────────────

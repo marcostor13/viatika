@@ -64,6 +64,9 @@ export class SolicitudViaticosComponent implements OnInit {
   categories = signal<ICategory[]>([]);
   advanceToResubmit = signal<IAdvance | null>(null);
 
+  private selectedLat: number | undefined;
+  private selectedLng: number | undefined;
+
   /** ID de la rendición de origen cuando se traslada saldo pendiente. */
   pendingBalanceFromReportId = signal<string | null>(null);
   /** Monto del saldo pendiente trasladado desde la rendición de origen. */
@@ -247,6 +250,8 @@ export class SolicitudViaticosComponent implements OnInit {
 
   onPlaceSelected(ev: PlaceResult): void {
     this.form.patchValue({ place: ev.address });
+    this.selectedLat = ev.lat;
+    this.selectedLng = ev.lng;
   }
 
   goBack(): void {
@@ -345,6 +350,8 @@ export class SolicitudViaticosComponent implements OnInit {
       amount: hasPending ? this.totalAnticipo() : linesTotal,
       description: metaDesc,
       place,
+      ...(this.selectedLat != null && { lat: this.selectedLat }),
+      ...(this.selectedLng != null && { lng: this.selectedLng }),
       startDate: `${startStr}T12:00:00.000Z`,
       endDate: `${endStr}T12:00:00.000Z`,
       projectId: this.form.value.projectId as string,
