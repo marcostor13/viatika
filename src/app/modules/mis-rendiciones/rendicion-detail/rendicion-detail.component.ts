@@ -289,7 +289,19 @@ export class RendicionDetailComponent implements OnInit {
   showAdminRejectModal = signal(false);
   adminRejectionReason = signal('');
 
+  /** La rendición pertenece al usuario actual (es su propia rendición). */
+  get isOwnReport(): boolean {
+    const uid = this.userStateService.getUser()?._id;
+    if (!uid || !this.report) return false;
+    const owner = this.report.userId;
+    const ownerId = owner && typeof owner === 'object' ? owner._id : owner;
+    return String(ownerId ?? '') === String(uid);
+  }
+
   get isAdminView(): boolean {
+    // Sobre su propia rendición, cualquier rol (incl. coordinador) actúa como
+    // colaborador: agrega/envía sus gastos y no puede auto-aprobarse.
+    if (this.isOwnReport) return false;
     return this.userStateService.isAdmin() || this.userStateService.isSuperAdmin() || this.userStateService.isContabilidad() || this.userStateService.canApproveL2()
       || (this.userStateService.isCoordinador() && this.userStateService.hasModulePermission('rendiciones'));
   }
