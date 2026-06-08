@@ -26,6 +26,7 @@ import {
   ExpenseType,
 } from '../interfaces/invoices.interface';
 import { ButtonComponent } from '../../../design-system/button/button.component';
+import { ProjectSelectComponent } from '../../../design-system/project-select/project-select.component';
 import { PlacesAutocompleteDirective, PlaceResult } from '../../../directives/places-autocomplete.directive';
 import { CompanyConfigService } from '../../../services/company-config.service';
 import { PERU_LOCATIONS, Departamento } from '../../../constants/peru-locations';
@@ -39,7 +40,7 @@ declare const google: any;
 @Component({
   selector: 'app-add-invoice',
   standalone: true,
-  imports: [ReactiveFormsModule, FormsModule, CommonModule, ButtonComponent, PlacesAutocompleteDirective],
+  imports: [ReactiveFormsModule, FormsModule, CommonModule, ButtonComponent, ProjectSelectComponent, PlacesAutocompleteDirective],
   templateUrl: './add-invoice.component.html',
   styleUrl: './add-invoice.component.scss',
 })
