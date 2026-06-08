@@ -75,7 +75,9 @@ export class MisRendicionesComponent implements OnInit {
     this.loadMyReports();
     this.loadMyAdvances();
     const tab = this.route.snapshot.queryParamMap.get('tab');
-    if (tab === 'directas') {
+    if (tab === 'viaticos') {
+      this.setTab('viaticos');
+    } else if (tab === 'directas') {
       this.setTab('directas');
     } else if (this.canCreateRendicion || !this.canViewViaticos) {
       this.setTab('directas');
