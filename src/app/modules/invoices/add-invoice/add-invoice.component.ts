@@ -20,6 +20,7 @@ import { environment } from '../../../../environments/environment';
 import { CommonModule } from '@angular/common';
 import { IProject } from '../interfaces/project.interface';
 import { ICategory } from '../interfaces/category.interface';
+import { ICategoryGroup } from '../../categorias/interfaces/category-group.interface';
 import {
   InvoiceStatus,
   SunatValidationInfo,
@@ -29,6 +30,7 @@ import { ButtonComponent } from '../../../design-system/button/button.component'
 import { ProjectSelectComponent } from '../../../design-system/project-select/project-select.component';
 import { PlacesAutocompleteDirective, PlaceResult } from '../../../directives/places-autocomplete.directive';
 import { CompanyConfigService } from '../../../services/company-config.service';
+import { CategoryGroupService } from '../../../services/category-group.service';
 import { PERU_LOCATIONS, Departamento } from '../../../constants/peru-locations';
 
 function findDepartamento(label: string): Departamento | undefined {
@@ -57,10 +59,13 @@ export default class AddInvoiceComponent implements OnInit {
   private uploadService = inject(UploadService);
   private companyConfigService = inject(CompanyConfigService);
   private expenseService = inject(ExpenseService);
+  private categoryGroupService = inject(CategoryGroupService);
 
   form!: FormGroup;
   id: string = this.route.snapshot.params['id'];
   categories: ICategory[] = [];
+  /** Perfiles de categoría (category-groups). Cada proyecto referencia uno y de él se derivan sus categorías. */
+  categoryGroups: ICategoryGroup[] = [];
   proyects: IProject[] = [];
   previewImage: SafeUrl | null = null;
   selectedFile!: File;
@@ -278,7 +283,16 @@ export default class AddInvoiceComponent implements OnInit {
     this.fromContabilidad = this.route.snapshot.queryParamMap.get('from') === 'contabilidad' || this.userStateService.isContabilidad();
     this.guardRendiciones();
     this.loadCategories();
+    this.loadCategoryGroups();
     this.loadProjects();
+    // Al cambiar de proyecto, si la categoría elegida no pertenece a su perfil, se limpia.
+    this.form.get('proyectId')?.valueChanges.subscribe(() => {
+      const allowed = this.allowedCategoryIds();
+      const selected = this.form.get('categoryId')?.value;
+      if (allowed && selected && !allowed.has(String(selected))) {
+        this.form.get('categoryId')?.setValue('');
+      }
+    });
     this.route.queryParamMap.subscribe(params => {
       this.rendicionId = params.get('rendicionId');
       this.isDirectaMode = params.get('mode') === 'directa';
@@ -507,12 +521,50 @@ export default class AddInvoiceComponent implements OnInit {
     });
   }
 
+  loadCategoryGroups() {
+    this.categoryGroupService.getAll().subscribe({
+      next: (groups) => {
+        this.categoryGroups = groups ?? [];
+      },
+      error: () => {},
+    });
+  }
+
   loadProjects() {
     this.invoiceService.getProjects().subscribe({
       next: (projects) => {
         this.proyects = projects;
       },
     });
+  }
+
+  /**
+   * IDs de categoría permitidas por el perfil (category-group) del proyecto
+   * seleccionado, o `null` cuando no aplica filtro (sin proyecto, proyecto sin
+   * perfil, o perfil sin categorías) — en cuyo caso se muestran todas.
+   */
+  private allowedCategoryIds(): Set<string> | null {
+    const projId = this.form.get('proyectId')?.value;
+    if (!projId) return null;
+    const project = this.proyects.find((p) => String(p._id) === String(projId));
+    const groupId = project?.categoryGroupId;
+    if (!groupId) return null;
+    const group = this.categoryGroups.find((g) => String(g._id) === String(groupId));
+    const ids = (group?.categoryIds ?? []).map(String);
+    if (!ids.length) return null;
+    return new Set(ids);
+  }
+
+  /** Categorías visibles en el selector: filtradas por el perfil del proyecto elegido. */
+  get filteredCategories(): ICategory[] {
+    const allowed = this.allowedCategoryIds();
+    if (!allowed) return this.categories;
+    // Mantiene visible la categoría ya seleccionada aunque no pertenezca al perfil
+    // (p. ej. al editar un gasto creado antes de asignar el perfil).
+    const selected = this.form.get('categoryId')?.value;
+    return this.categories.filter(
+      (c) => allowed.has(String(c._id)) || String(c._id) === String(selected)
+    );
   }
 
   lookupRazonSocial(ruc: string) {

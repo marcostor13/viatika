@@ -135,7 +135,7 @@
           style="-webkit-appearance: none; -moz-appearance: none; appearance: none; background-image: none;"
         >
           <option value="">Seleccione una categoría</option>
-          @for(category of categories; track category._id){
+          @for(category of filteredCategories; track category._id){
           <option value="{{ category._id }}">{{ category.name }}</option>
           }
         </select>

@@ -258,7 +258,7 @@
                     [class.border-gray-300]="!($any(lineCtrl).get('categoryId')?.invalid && $any(lineCtrl).get('categoryId')?.touched)"
                   >
                     <option value="">—</option>
-                    @for (c of categories(); track c._id) {
+                    @for (c of categoriesForLine($any(lineCtrl)); track c._id) {
                     <option [value]="c._id">{{ c.name }}</option>
                     }
                   </select>

@@ -114,7 +114,7 @@
                 <td class="px-3 py-2 align-middle">
                   <select formControlName="categoryId" class="w-full max-w-[200px] h-10 px-2 rounded-xl border border-tertiary/30 bg-background text-secondary text-xs md:text-sm">
                     <option value="">—</option>
-                    @for (c of categories(); track c._id) {
+                    @for (c of categoriesForLine($any(lineCtrl)); track c._id) {
                     <option [value]="c._id">{{ c.name }}</option>
                     }
                   </select>
