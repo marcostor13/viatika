@@ -717,7 +717,48 @@ export default class AddInvoiceComponent implements OnInit {
       }
     }
 
+    // Fallback: si Google no entregó un distrito reconocible (p. ej. lo devolvió
+    // como `locality` igual a la provincia —Callao, Lima— o simplemente no vino),
+    // lo deducimos del texto de la dirección, acotado a la provincia ya resuelta.
+    if (prov && !dist) {
+      dist = this.matchDistritoFromText(dep, prov, result.address);
+    }
+
     return { dep, prov, dist };
+  }
+
+  /**
+   * Deduce el distrito a partir del texto de la dirección ("..., Surco, Perú" →
+   * "Santiago de Surco"; "..., Callao" → "Callao"), buscando solo entre los
+   * distritos de la provincia resuelta. Ignora el primer segmento (la calle) y
+   * el país para minimizar falsos positivos por calles homónimas.
+   */
+  private matchDistritoFromText(depLabel: string, provLabel: string, text: string): string {
+    if (!text) return '';
+    const dep = findDepartamento(depLabel);
+    const prov = dep?.provincias.find(p => p.label === provLabel);
+    if (!prov) return '';
+
+    const segments = text
+      .split(',')
+      .map(s => this.normalizeStr(s).replace(/\d+/g, '').trim())
+      .filter(s => s && s !== 'peru')
+      .slice(1);
+    if (!segments.length) return '';
+
+    const matches = (dn: string, seg: string): boolean => {
+      if (dn === seg) return true;
+      if (Math.min(dn.length, seg.length) < 4) return false; // evita ruido de pocas letras
+      return dn.includes(seg) || seg.includes(dn);
+    };
+
+    // Preferimos la etiqueta más larga (más específica) ante varios candidatos.
+    const sorted = [...prov.distritos].sort((a, b) => b.label.length - a.label.length);
+    for (const seg of segments) {
+      const found = sorted.find(d => matches(this.normalizeStr(d.label), seg));
+      if (found) return found.label;
+    }
+    return '';
   }
 
   private findDistritoInDepartamento(depLabel: string, distLabel: string): { prov: string; dist: string } | null {
