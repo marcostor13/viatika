@@ -97,8 +97,16 @@ export class PlacesAutocompleteDirective implements AfterViewInit, OnDestroy {
       });
     });
 
-    pac.addEventListener('gmp-placeselect', async (event: any) => {
-      const place = event.detail.place as any;
+    // La API actual de Places emite `gmp-select` con un PlacePrediction en el
+    // evento; las builds preview antiguas usaban `gmp-placeselect` con
+    // `detail.place`. Soportamos ambas formas para ser robustos a la versión.
+    pac.addEventListener('gmp-select', async (event: any) => {
+      const prediction = event.placePrediction ?? event.detail?.placePrediction;
+      const place = prediction?.toPlace
+        ? prediction.toPlace()
+        : (event.place ?? event.detail?.place);
+      if (!place) return;
+
       await place.fetchFields({
         fields: ['displayName', 'formattedAddress', 'location', 'addressComponents'],
       });
