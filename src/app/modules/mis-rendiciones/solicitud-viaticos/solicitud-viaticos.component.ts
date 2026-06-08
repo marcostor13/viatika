@@ -377,7 +377,7 @@ export class SolicitudViaticosComponent implements OnInit {
           : 'Solicitud de viáticos enviada correctamente';
         this.notifications.show(msg, 'success');
         this.submitting.set(false);
-        this.router.navigate(['/mis-rendiciones']);
+        this.router.navigate(['/mis-rendiciones'], { queryParams: { tab: 'viaticos' } });
       },
       error: (e) => {
         const raw = e?.error?.message;

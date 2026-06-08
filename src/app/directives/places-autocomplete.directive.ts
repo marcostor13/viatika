@@ -61,9 +61,36 @@ export class PlacesAutocompleteDirective implements AfterViewInit, OnDestroy {
 
     this.pacElement = pac;
 
+    // Forward placeholder from original input
+    const placeholder = input.getAttribute('placeholder');
+    if (placeholder) pac.setAttribute('placeholder', placeholder);
+
+    // Border and theming on the host element — reliable regardless of shadow DOM.
+    // color-scheme:only light prevents dark mode from affecting the shadow DOM.
+    pac.style.cssText = [
+      'display:block',
+      'width:100%',
+      'color-scheme:only light',
+      'border:1px solid rgb(209 213 219)',
+      'border-radius:0.75rem',
+      'background-color:#ffffff',
+      '--gmp-color-surface:#ffffff',
+      '--gmp-color-on-surface:rgb(17 24 39)',
+      '--gmp-color-outline:transparent',
+      '--gmp-color-primary:var(--tema-primary,#D31212)',
+    ].join(';');
+
     // Insert PAC before the hidden original input; keep input in DOM for Angular form
     input.insertAdjacentElement('beforebegin', pac);
     input.style.cssText = 'position:absolute;width:1px;height:1px;opacity:0;pointer-events:none;';
+
+    // Sync typed text to the form control so validation works without selecting from dropdown
+    pac.addEventListener('input', (e: Event) => {
+      const target = e.composedPath()[0] as HTMLInputElement;
+      const val = target?.value ?? '';
+      input.value = val;
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+    });
 
     pac.addEventListener('gmp-placeselect', async (event: any) => {
       const place = event.detail.place as any;
