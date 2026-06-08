@@ -6,6 +6,7 @@ import {
   AfterViewInit,
   Output,
   OnDestroy,
+  NgZone,
   inject,
 } from '@angular/core';
 import { ControlContainer } from '@angular/forms';
@@ -19,6 +20,7 @@ export interface PlaceResult {
   departamento?: string;
   provincia?: string;
   distrito?: string;
+  formattedAddress?: string;
 }
 
 declare const google: any;
@@ -33,6 +35,7 @@ export class PlacesAutocompleteDirective implements AfterViewInit, OnDestroy {
 
   private el = inject(ElementRef);
   private mapsLoader = inject(GoogleMapsLoaderService);
+  private ngZone = inject(NgZone);
   private controlContainer = inject(ControlContainer, { optional: true });
 
   private pacElement: HTMLElement | null = null;
@@ -88,8 +91,10 @@ export class PlacesAutocompleteDirective implements AfterViewInit, OnDestroy {
     pac.addEventListener('input', (e: Event) => {
       const target = e.composedPath()[0] as HTMLInputElement;
       const val = target?.value ?? '';
-      input.value = val;
-      input.dispatchEvent(new Event('input', { bubbles: true }));
+      this.ngZone.run(() => {
+        input.value = val;
+        input.dispatchEvent(new Event('input', { bubbles: true }));
+      });
     });
 
     pac.addEventListener('gmp-placeselect', async (event: any) => {
@@ -100,11 +105,12 @@ export class PlacesAutocompleteDirective implements AfterViewInit, OnDestroy {
 
       const result = this.buildNewResult(place);
 
-      // Sync to hidden input so Angular reactive form picks it up
-      input.value = result.address;
-      input.dispatchEvent(new Event('input', { bubbles: true }));
-
-      this.placeSelected.emit(result);
+      // Run inside Angular zone so patchValue triggers change detection
+      this.ngZone.run(() => {
+        input.value = result.address;
+        input.dispatchEvent(new Event('input', { bubbles: true }));
+        this.placeSelected.emit(result);
+      });
     });
 
     this.watchFormControl(pac, input);
@@ -112,15 +118,21 @@ export class PlacesAutocompleteDirective implements AfterViewInit, OnDestroy {
 
   private buildNewResult(place: any): PlaceResult {
     const components: any[] = place.addressComponents ?? [];
-    const get = (type: string) =>
-      (components.find((c: any) => c.types?.includes(type))?.longText as string) ?? '';
+    // Handle both new API format (longText) and legacy format (long_name)
+    const get = (type: string) => {
+      const comp = components.find((c: any) => c.types?.includes(type));
+      return ((comp?.longText ?? comp?.long_name) as string) ?? '';
+    };
 
-    const rawDep = get('administrative_area_level_1');
+    let rawDep = get('administrative_area_level_1');
     const rawProv = get('administrative_area_level_2');
     const locality = get('locality');
     const sublocality = get('sublocality_level_1') || get('sublocality');
     const adminL3 = get('administrative_area_level_3');
     const neighborhood = get('neighborhood');
+
+    // For establishments/POIs, administrative_area_level_1 is often absent — fall back to locality
+    if (!rawDep) rawDep = locality;
 
     const specificDistrict = sublocality || neighborhood || adminL3;
     const cleanedDep = this.cleanName(rawDep);
@@ -143,6 +155,7 @@ export class PlacesAutocompleteDirective implements AfterViewInit, OnDestroy {
       departamento: cleanedDep,
       provincia: cleanedProv,
       distrito: cleanedDistrito,
+      formattedAddress,
     };
   }
 
