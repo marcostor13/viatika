@@ -1,6 +1,7 @@
 import {
   Component,
   OnInit,
+  computed,
   inject,
   signal,
 } from '@angular/core';
@@ -18,6 +19,7 @@ import { NotificationService } from '../../../services/notification.service';
 import { UserStateService } from '../../../services/user-state.service';
 import { InvoicesService } from '../../invoices/services/invoices.service';
 import { CategoriaService } from '../../../services/categoria.service';
+import { CategoryGroupService } from '../../../services/category-group.service';
 import {
   PlacesAutocompleteDirective,
   PlaceResult,
@@ -25,6 +27,7 @@ import {
 import { ProjectSelectComponent } from '../../../design-system/project-select/project-select.component';
 import { IProject } from '../../invoices/interfaces/project.interface';
 import { ICategory } from '../../invoices/interfaces/category.interface';
+import { ICategoryGroup } from '../../categorias/interfaces/category-group.interface';
 import {
   ICreateAdvancePayload,
   IAdvanceLinePayload,
@@ -57,12 +60,41 @@ export class SolicitudViaticosComponent implements OnInit {
   private userState = inject(UserStateService);
   private invoicesService = inject(InvoicesService);
   private categoriaService = inject(CategoriaService);
+  private categoryGroupService = inject(CategoryGroupService);
 
   submitting = signal(false);
   loading = signal(false);
   projects = signal<IProject[]>([]);
   categories = signal<ICategory[]>([]);
+  /** Perfiles de categoría (category-groups). El centro de costo referencia uno y de él se derivan sus categorías. */
+  categoryGroups = signal<ICategoryGroup[]>([]);
+  /** ID del centro de costo elegido; espeja el control `projectId` para alimentar los computeds. */
+  selectedProjectId = signal<string>('');
   advanceToResubmit = signal<IAdvance | null>(null);
+
+  /**
+   * IDs de categoría permitidas por el perfil del centro de costo elegido, o
+   * `null` cuando no aplica filtro (sin proyecto, proyecto sin perfil, o perfil
+   * sin categorías) — en cuyo caso se muestran todas.
+   */
+  private allowedCategoryIdSet = computed<Set<string> | null>(() => {
+    const pid = this.selectedProjectId();
+    if (!pid) return null;
+    const project = this.projects().find((p) => String(p._id) === String(pid));
+    const groupId = project?.categoryGroupId;
+    if (!groupId) return null;
+    const group = this.categoryGroups().find((g) => String(g._id) === String(groupId));
+    const ids = (group?.categoryIds ?? []).map(String);
+    if (!ids.length) return null;
+    return new Set(ids);
+  });
+
+  /** Categorías del perfil del proyecto (lista base compartida por todas las líneas). */
+  private perfilCategories = computed<ICategory[]>(() => {
+    const allowed = this.allowedCategoryIdSet();
+    if (!allowed) return this.categories();
+    return this.categories().filter((c) => allowed.has(String(c._id)));
+  });
 
   private selectedLat: number | undefined;
   private selectedLng: number | undefined;
@@ -112,6 +144,14 @@ export class SolicitudViaticosComponent implements OnInit {
   }
 
   ngOnInit(): void {
+    // Espeja el centro de costo elegido y, al cambiarlo, limpia las categorías
+    // de línea que no pertenezcan a su perfil. (En restauración se actualiza el
+    // signal sin emitir, por lo que esto no borra las líneas precargadas.)
+    this.form.get('projectId')?.valueChanges.subscribe((pid) => {
+      this.selectedProjectId.set(pid ?? '');
+      this.clearInvalidLineCategories();
+    });
+
     const id = this.route.snapshot.paramMap.get('id');
     if (id) {
       this.loadAdvanceForResubmit(id);
@@ -154,6 +194,10 @@ export class SolicitudViaticosComponent implements OnInit {
       next: (res) => this.categories.set((res || []).filter((c) => c.isActive !== false)),
       error: () => this.categories.set([]),
     });
+    this.categoryGroupService.getAll().subscribe({
+      next: (groups) => this.categoryGroups.set(groups ?? []),
+      error: () => this.categoryGroups.set([]),
+    });
   }
 
   private bootstrapFromAdvance(adv: IAdvance): void {
@@ -182,9 +226,12 @@ export class SolicitudViaticosComponent implements OnInit {
       place: adv.place ?? '',
       startDate: this.ymdFromDate(adv.startDate),
       endDate: this.ymdFromDate(adv.endDate),
-      projectId: pid,
       observations: adv.observations ?? '',
     });
+    // Sin emitir: evita que el listener de `projectId` borre las categorías
+    // de las líneas que acabamos de restaurar.
+    this.form.get('projectId')?.setValue(pid, { emitEvent: false });
+    this.selectedProjectId.set(pid);
 
     this.loadCatalogues();
   }
@@ -237,6 +284,31 @@ export class SolicitudViaticosComponent implements OnInit {
       Number(v.days),
       Number(v.peopleCount)
     );
+  }
+
+  /**
+   * Categorías visibles en una línea: las del perfil del proyecto, más la propia
+   * categoría ya elegida (para no ocultar selecciones previas al corregir/reenviar).
+   */
+  categoriesForLine(ctrl: FormGroup): ICategory[] {
+    const base = this.perfilCategories();
+    const selected = ctrl.get('categoryId')?.value;
+    if (!selected || base.some((c) => String(c._id) === String(selected))) {
+      return base;
+    }
+    const own = this.categories().find((c) => String(c._id) === String(selected));
+    return own ? [...base, own] : base;
+  }
+
+  /** Limpia las categorías de línea que no pertenezcan al perfil del proyecto actual. */
+  private clearInvalidLineCategories(): void {
+    const allowed = this.allowedCategoryIdSet();
+    if (!allowed) return;
+    for (let i = 0; i < this.lines.length; i++) {
+      const ctrl = this.lines.at(i).get('categoryId');
+      const val = ctrl?.value;
+      if (val && !allowed.has(String(val))) ctrl?.setValue('');
+    }
   }
 
   addLine(): void {
