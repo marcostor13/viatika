@@ -761,7 +761,7 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   private tryRenderMap() {
-    const locations = this.data()?.topLocations ?? [];
+    const locations = (this.data()?.topLocations ?? []).slice(0, 5);
     if (!this.leafletLoaded || typeof L === 'undefined' || !locations.length) {
       return;
     }
@@ -813,6 +813,7 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
 
     const latLngs = points.map((p) => [p.lat, p.lng] as [number, number]);
     this.mapInstance.fitBounds(L.latLngBounds(latLngs), { padding: [40, 40] });
+    setTimeout(() => this.mapInstance?.invalidateSize(), 0);
   }
 
   private createLeafletIcon(amount: number, maxAmount: number, count: number): any {

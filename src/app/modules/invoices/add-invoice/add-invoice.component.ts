@@ -660,32 +660,72 @@ export default class AddInvoiceComponent implements OnInit {
 
   onOrigenSelected(result: PlaceResult, index: number) {
     const { dep, prov, dist } = this.resolveLocation(result);
-    this.mobilityRowsArray.at(index).patchValue({
+    const row = this.mobilityRowsArray.at(index);
+    // Patch dep first; options for prov/dist depend on dep being set
+    row.patchValue({
       origen: result.address,
       origenLat: result.lat,
       origenLng: result.lng,
       origenDepartamento: dep,
-      origenProvincia: prov,
-      origenDistrito: dist,
+      origenProvincia: '',
+      origenDistrito: '',
     });
+    if (dep && prov) {
+      // Defer until Angular renders province options for the new dep
+      setTimeout(() => {
+        row.patchValue({ origenProvincia: prov, origenDistrito: '' });
+        if (dist) {
+          // Defer until Angular renders district options for the new prov
+          setTimeout(() => {
+            row.patchValue({ origenDistrito: dist });
+          });
+        }
+      });
+    }
     this.calculateDistance(index);
   }
 
   onDestinoSelected(result: PlaceResult, index: number) {
     const { dep, prov, dist } = this.resolveLocation(result);
-    this.mobilityRowsArray.at(index).patchValue({
+    const row = this.mobilityRowsArray.at(index);
+    row.patchValue({
       destino: result.address,
       destinoLat: result.lat,
       destinoLng: result.lng,
       destinoDepartamento: dep,
-      destinoProvincia: prov,
-      destinoDistrito: dist,
+      destinoProvincia: '',
+      destinoDistrito: '',
     });
+    if (dep && prov) {
+      setTimeout(() => {
+        row.patchValue({ destinoProvincia: prov, destinoDistrito: '' });
+        if (dist) {
+          setTimeout(() => {
+            row.patchValue({ destinoDistrito: dist });
+          });
+        }
+      });
+    }
     this.calculateDistance(index);
   }
 
   private resolveLocation(result: PlaceResult): { dep: string; prov: string; dist: string } {
-    const dep = this.matchDepartamento(result.departamento);
+    let dep = this.matchDepartamento(result.departamento);
+
+    // formattedAddress fallback: when addressComponents lack administrative_area_level_1
+    // (common for POIs/establishments in Google's new Places API)
+    if (!dep && result.formattedAddress) {
+      const parts = result.formattedAddress
+        .split(',')
+        .map(p => p.trim().replace(/\s+\d{4,6}$/, '').trim())
+        .filter(p => p && p !== 'Perú' && p !== 'Peru');
+      // Scan from end to start — broader geo info appears at the end in Peru
+      for (let j = parts.length - 1; j >= 0; j--) {
+        dep = this.matchDepartamento(parts[j]);
+        if (dep) break;
+      }
+    }
+
     if (!dep) return { dep: '', prov: '', dist: '' };
 
     let prov = this.matchProvincia(dep, result.provincia);

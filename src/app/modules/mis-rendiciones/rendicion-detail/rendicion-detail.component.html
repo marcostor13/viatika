@@ -1923,7 +1923,7 @@
         }
         <div class="flex justify-between text-sm">
           <span class="text-gray-500">Total gastado</span>
-          <span class="font-semibold" [class.text-red-600]="totalGastado > totalAnticipado" [class.text-gray-900]="totalGastado <= totalAnticipado">
+          <span class="font-semibold" [class.text-red-600]="!report.isDirecta && totalGastado > totalAnticipado" [class.text-gray-900]="report.isDirecta || totalGastado <= totalAnticipado">
             S/ {{ totalGastado | number:'1.2-2' }}
           </span>
         </div>
