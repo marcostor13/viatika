@@ -92,6 +92,20 @@ export interface IExpenseReport {
   /** Gestión que el colaborador realizará para estos gastos. */
   gestion?: string;
   isDirecta?: boolean;
+  /** Depósito inicial cuando la rendición directa fue iniciada por Contabilidad. */
+  directaDeposit?: IDirectaDepositInfo;
+}
+
+export interface IDirectaDepositInfo {
+  amount: number;
+  scannedAmount?: number;
+  receiptUrl: string;
+  receiptFileName?: string;
+  receiptMimeType?: string;
+  receiptSizeBytes?: number;
+  depositDate?: string;
+  createdBy?: any;
+  createdAt?: string;
 }
 
 export interface ICreateExpenseReport {

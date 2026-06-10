@@ -47,6 +47,39 @@ export class ExpenseReportsService {
     );
   }
 
+  /** Contabilidad: crea una rendición directa con depósito inicial para un colaborador/coordinador. */
+  createDirectaDeposit(payload: {
+    userId: string;
+    gestion?: string;
+    amount: number;
+    scannedAmount?: number;
+    receiptUrl: string;
+    receiptFileName?: string;
+    receiptMimeType?: string;
+    receiptSizeBytes?: number;
+    depositDate?: string;
+  }): Observable<IExpenseReport> {
+    return this.http.post<IExpenseReport>(
+      `${this.apiUrl}/expense-report/directa-deposit`,
+      payload
+    );
+  }
+
+  /** Contabilidad: lista las rendiciones directas iniciadas con depósito. */
+  findDirectaDepositReports(clientId: string): Observable<any[]> {
+    return this.http.get<any[]>(
+      `${this.apiUrl}/expense-report/directas-deposito/client/${clientId}`
+    );
+  }
+
+  /** Escanea el comprobante de depósito (por URL) y devuelve el monto detectado. */
+  scanDepositAmount(url: string): Observable<{ amount: number }> {
+    return this.http.post<{ amount: number }>(
+      `${this.apiUrl}/expense/scan-deposit-amount`,
+      { url }
+    );
+  }
+
   findMyDocuments(): Observable<{ items: IMisDocumentoItem[] }> {
     return this.http.get<{ items: IMisDocumentoItem[] }>(
       `${this.apiUrl}/expense-report/documents/my`

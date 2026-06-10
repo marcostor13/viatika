@@ -401,6 +401,12 @@
           </div>
           <div class="text-right shrink-0">
             <p class="text-base font-bold text-gray-900 whitespace-nowrap">S/ {{ getTotalGastado(r) | number:'1.2-2' }}</p>
+            @if (r.directaDeposit) {
+            <p class="text-[11px] mt-0.5 whitespace-nowrap"
+              [ngClass]="getSaldoLibre(r) >= 0 ? 'text-green-600' : 'text-red-600'">
+              Saldo: S/ {{ getSaldoLibre(r) | number:'1.2-2' }}
+            </p>
+            }
           </div>
         </div>
       </div>

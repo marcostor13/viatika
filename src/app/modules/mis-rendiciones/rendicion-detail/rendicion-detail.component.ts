@@ -130,6 +130,19 @@ export class RendicionDetailComponent implements OnInit {
     return this.totalAnticipado - this.totalGastado;
   }
 
+  /** Rendición directa iniciada por Contabilidad (tiene depósito con saldo). */
+  get hasDirectaDeposit(): boolean {
+    return !!(this.report?.isDirecta && this.report?.directaDeposit);
+  }
+
+  get directaDeposited(): number {
+    return Number(this.report?.directaDeposit?.amount ?? this.report?.budget ?? 0);
+  }
+
+  get directaSaldo(): number {
+    return this.directaDeposited - this.totalGastado;
+  }
+
   ngOnInit(): void {
     this.companyConfigService.refreshConfig();
     if (this.id) {
@@ -161,9 +174,12 @@ export class RendicionDetailComponent implements OnInit {
   }
 
   get totalAnticipado(): number {
-    return this.advances
+    const advances = this.advances
       .filter(a => ['approved', 'paid', 'settled'].includes(a.status))
       .reduce((sum, a) => sum + a.amount, 0);
+    // El depósito de una rendición directa iniciada por Contabilidad funciona como
+    // anticipo: el saldo no gastado debe devolverlo el colaborador/coordinador.
+    return advances + (this.hasDirectaDeposit ? this.directaDeposited : 0);
   }
 
   get paidAdvances(): IAdvance[] {
