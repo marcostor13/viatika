@@ -115,6 +115,13 @@
         }
       </button>
       }
+      @if (canManageDirectaDeposit) {
+      <button type="button" (click)="activeTab.set('rendiciones-directas')"
+        [class]="activeTab() === 'rendiciones-directas' ? 'bg-quaternary text-secondary shadow-soft' : 'text-tertiary hover:text-secondary'"
+        class="px-4 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap">
+        Rendiciones Directas
+      </button>
+      }
     </div>
   </div>
 
@@ -204,8 +211,91 @@
   </div>
   }
 
+  <!-- Rendiciones Directas tab (iniciadas por Contabilidad) -->
+  @if (activeTab() === 'rendiciones-directas') {
+  <div class="flex flex-col gap-4">
+    <div class="flex items-center justify-between gap-3">
+      <p class="text-sm text-tertiary">Rendiciones directas asignadas a colaboradores/coordinadores con saldo inicial.</p>
+      <button type="button" (click)="openCreateDirectaModal()"
+        class="text-sm px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors font-medium whitespace-nowrap">
+        + Nueva rendición directa
+      </button>
+    </div>
+
+    <div class="bg-quaternary rounded-2xl border border-tertiary/20 shadow-soft overflow-hidden">
+      @if (isLoadingDirectas()) {
+      <div class="flex justify-center p-12">
+        <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
+      } @else if (directaReports().length === 0) {
+      <div class="p-12 text-center text-tertiary text-sm">No hay rendiciones directas con saldo. Crea una con el botón "Nueva rendición directa".</div>
+      } @else {
+      <!-- Desktop -->
+      <div class="hidden md:block overflow-x-auto">
+        <table class="min-w-full text-sm">
+          <thead class="border-b border-tertiary/20 bg-background">
+            <tr>
+              <th class="px-5 py-3 text-left text-xs font-semibold text-tertiary uppercase tracking-wider">Código</th>
+              <th class="px-5 py-3 text-left text-xs font-semibold text-tertiary uppercase tracking-wider">Destinatario</th>
+              <th class="px-5 py-3 text-left text-xs font-semibold text-tertiary uppercase tracking-wider">Gestión</th>
+              <th class="px-5 py-3 text-right text-xs font-semibold text-tertiary uppercase tracking-wider">Depositado</th>
+              <th class="px-5 py-3 text-right text-xs font-semibold text-tertiary uppercase tracking-wider">Gastado</th>
+              <th class="px-5 py-3 text-right text-xs font-semibold text-tertiary uppercase tracking-wider">Saldo</th>
+              <th class="px-5 py-3 text-right text-xs font-semibold text-tertiary uppercase tracking-wider">Acciones</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-tertiary/10">
+            @for (rep of directaReports(); track rep._id) {
+            <tr class="hover:bg-background/60 transition-colors">
+              <td class="px-5 py-3.5 font-medium text-secondary">{{ rep.codigo || '—' }}</td>
+              <td class="px-5 py-3.5 text-secondary">{{ directaUserName(rep) }}</td>
+              <td class="px-5 py-3.5 text-tertiary max-w-[180px] truncate">{{ rep.gestion || rep.title || '—' }}</td>
+              <td class="px-5 py-3.5 text-right font-semibold text-secondary">S/ {{ (rep.directaDeposit?.amount ?? rep.budget) | number:'1.2-2' }}</td>
+              <td class="px-5 py-3.5 text-right text-secondary">S/ {{ rep.totalGastado | number:'1.2-2' }}</td>
+              <td class="px-5 py-3.5 text-right font-bold" [class]="rep.saldoDisponible >= 0 ? 'text-green-700' : 'text-error'">S/ {{ rep.saldoDisponible | number:'1.2-2' }}</td>
+              <td class="px-5 py-3.5 text-right">
+                <a [routerLink]="['/mis-rendiciones', rep._id, 'detalle']"
+                  class="text-xs px-3 py-1.5 border border-primary/30 text-primary rounded-lg hover:bg-primary/5 transition-colors font-medium">
+                  Ver detalle
+                </a>
+              </td>
+            </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+      <!-- Mobile -->
+      <div class="md:hidden divide-y divide-tertiary/10">
+        @for (rep of directaReports(); track rep._id) {
+        <div class="p-4">
+          <div class="flex items-start justify-between gap-3 mb-2">
+            <div class="min-w-0">
+              <p class="text-sm font-semibold text-secondary">{{ directaUserName(rep) }}</p>
+              <p class="text-xs text-tertiary mt-0.5">{{ rep.codigo }} · {{ rep.gestion || rep.title }}</p>
+            </div>
+            <div class="text-right shrink-0">
+              <p class="text-base font-bold" [class]="rep.saldoDisponible >= 0 ? 'text-green-700' : 'text-error'">S/ {{ rep.saldoDisponible | number:'1.2-2' }}</p>
+              <p class="text-[11px] text-tertiary mt-0.5">Saldo</p>
+            </div>
+          </div>
+          <div class="flex items-center justify-between text-xs text-tertiary mb-3">
+            <span>Depositado: <span class="font-semibold text-secondary">S/ {{ (rep.directaDeposit?.amount ?? rep.budget) | number:'1.2-2' }}</span></span>
+            <span>Gastado: <span class="font-semibold text-secondary">S/ {{ rep.totalGastado | number:'1.2-2' }}</span></span>
+          </div>
+          <a [routerLink]="['/mis-rendiciones', rep._id, 'detalle']"
+            class="block text-center h-10 leading-10 text-sm font-medium border border-primary/30 text-primary rounded-xl hover:bg-primary/5 transition-colors">
+            Ver detalle
+          </a>
+        </div>
+        }
+      </div>
+      }
+    </div>
+  </div>
+  }
+
   <!-- Main advances table -->
-  @if (activeTab() !== 'devoluciones') {
+  @if (activeTab() !== 'devoluciones' && activeTab() !== 'rendiciones-directas') {
   <div class="bg-quaternary rounded-2xl border border-tertiary/20 shadow-soft overflow-hidden">
     @if(isLoading()) {
     <div class="flex justify-center p-12">
@@ -703,6 +793,99 @@
         <button type="button" (click)="confirmReturn()" [disabled]="returnForm.invalid || isActing()"
           class="flex-1 h-[42px] bg-purple-600 text-white rounded-xl text-sm font-medium hover:bg-purple-700 disabled:opacity-50 transition-colors">
           {{ isActing() ? 'Guardando...' : 'Confirmar devolución' }}
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+}
+
+<!-- Modal: Nueva rendición directa con saldo (Contabilidad) -->
+@if (showCreateDirectaModal()) {
+<div class="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4" (click)="closeCreateDirectaModal()">
+  <div class="absolute inset-0 bg-secondary/50 backdrop-blur-sm"></div>
+  <div class="relative bg-quaternary rounded-t-2xl sm:rounded-2xl shadow-soft border border-tertiary/20 w-full sm:max-w-md max-h-[90vh] overflow-y-auto"
+       (click)="$event.stopPropagation()">
+    <div class="p-6">
+      <h3 class="text-lg font-bold text-secondary mb-0.5">Nueva rendición directa</h3>
+      <p class="text-sm text-tertiary mb-5">Asigna un saldo a un colaborador o coordinador adjuntando el comprobante de depósito.</p>
+
+      <form [formGroup]="directaForm" class="space-y-4">
+        <!-- Usuario destino -->
+        <div class="flex flex-col gap-1.5">
+          <label class="text-xs font-semibold text-tertiary uppercase tracking-wider">Destinatario <span class="text-error">*</span></label>
+          <select formControlName="userId"
+            class="w-full h-[42px] px-3 rounded-xl border border-tertiary/30 text-sm text-secondary bg-quaternary focus:outline-none focus:ring-2 focus:ring-primary/30">
+            <option value="" disabled>Selecciona un usuario...</option>
+            @for (u of directaTargetUsers(); track u._id) {
+            <option [value]="u._id">{{ directaTargetUserLabel(u) }}</option>
+            }
+          </select>
+        </div>
+
+        <!-- Gestión -->
+        <div class="flex flex-col gap-1.5">
+          <label class="text-xs font-semibold text-tertiary uppercase tracking-wider">Gestión / motivo</label>
+          <input type="text" formControlName="gestion" placeholder="Ej. Compra de materiales obra X"
+            class="w-full h-[42px] px-3 rounded-xl border border-tertiary/30 text-sm text-secondary bg-quaternary focus:outline-none focus:ring-2 focus:ring-primary/30" />
+        </div>
+
+        <!-- Comprobante de depósito -->
+        <div class="flex flex-col gap-1.5">
+          <label class="text-xs font-semibold text-tertiary uppercase tracking-wider">Comprobante de depósito <span class="text-error">*</span></label>
+          @if (!depositReceiptName) {
+          <label class="flex flex-col items-center justify-center gap-2 h-24 rounded-xl border-2 border-dashed border-tertiary/30 hover:border-primary/40 hover:bg-primary/5 cursor-pointer transition-colors">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6 text-tertiary">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5" />
+            </svg>
+            <span class="text-xs text-tertiary">PDF, JPG o PNG (máx. 10MB)</span>
+            <input type="file" accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png"
+              (change)="onDepositReceiptSelected($event)" class="hidden" />
+          </label>
+          } @else {
+          <div class="flex items-center gap-3 p-3 rounded-xl bg-green-50 border border-green-200">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 text-green-600 shrink-0">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+            </svg>
+            <span class="text-xs text-green-700 font-medium truncate flex-1">{{ depositReceiptName }}</span>
+            <button type="button" (click)="removeDepositReceipt()"
+              class="text-xs text-tertiary hover:text-error transition-colors shrink-0">Quitar</button>
+          </div>
+          }
+          @if (isUploadingDeposit()) {
+          <p class="text-xs text-primary flex items-center gap-1.5">
+            <span class="inline-block w-3 h-3 border-2 border-primary border-t-transparent rounded-full animate-spin"></span>
+            Subiendo comprobante...
+          </p>
+          }
+          @if (isScanningDeposit()) {
+          <p class="text-xs text-primary flex items-center gap-1.5">
+            <span class="inline-block w-3 h-3 border-2 border-primary border-t-transparent rounded-full animate-spin"></span>
+            Escaneando monto del depósito...
+          </p>
+          }
+        </div>
+
+        <!-- Monto (autocompletado por OCR, editable) -->
+        <div class="flex flex-col gap-1.5">
+          <label class="text-xs font-semibold text-tertiary uppercase tracking-wider">Monto depositado S/ <span class="text-error">*</span></label>
+          <input type="number" formControlName="amount" min="0" step="0.01" placeholder="0.00"
+            class="w-full h-[42px] px-3 rounded-xl border border-tertiary/30 text-sm text-secondary bg-quaternary focus:outline-none focus:ring-2 focus:ring-primary/30" />
+          @if (depositScannedAmount !== null) {
+          <p class="text-[11px] text-tertiary">Monto detectado del comprobante: S/ {{ depositScannedAmount | number:'1.2-2' }}. Puedes editarlo.</p>
+          }
+        </div>
+      </form>
+
+      <div class="flex gap-3 mt-6">
+        <button type="button" (click)="closeCreateDirectaModal()"
+          class="flex-1 h-[42px] border border-tertiary/30 rounded-xl text-sm text-secondary hover:bg-background transition-colors">
+          Cancelar
+        </button>
+        <button type="button" (click)="confirmCreateDirecta()"
+          [disabled]="directaForm.invalid || isCreatingDirecta() || isUploadingDeposit() || isScanningDeposit() || !depositReceiptUrl"
+          class="flex-1 h-[42px] bg-primary text-white rounded-xl text-sm font-medium hover:bg-primary/90 disabled:opacity-50 transition-colors">
+          {{ isCreatingDirecta() ? 'Creando...' : 'Crear y asignar' }}
         </button>
       </div>
     </div>
