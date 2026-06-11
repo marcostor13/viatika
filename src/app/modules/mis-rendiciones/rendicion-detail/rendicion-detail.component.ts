@@ -124,6 +124,11 @@ export class RendicionDetailComponent implements OnInit {
   }
 
   get saldoLibre(): number {
+    // Rendición directa con depósito de Contabilidad: el saldo a devolver es el
+    // depósito menos lo gastado (en vivo), no el monto del settlement almacenado.
+    if (this.hasDirectaDeposit) {
+      return this.directaSaldo;
+    }
     if (this.settlement?.difference !== undefined && this.settlement.difference !== null) {
       return this.settlement.difference;
     }
