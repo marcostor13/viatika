@@ -256,6 +256,16 @@ export class RendicionesDirectasComponent implements OnInit {
     return p.code ? `${p.code} — ${p.name}` : p.name || '—';
   }
 
+  /** Resuelve la etiqueta de un proyecto (código — nombre) a partir de su id, usando el catálogo cargado. */
+  private resolveProjectLabel(id: any): string {
+    if (!id) return '';
+    const pid = typeof id === 'object' ? String(id._id ?? '') : String(id);
+    if (!pid) return '';
+    const p = this.projects().find(pr => String(pr._id) === pid);
+    if (!p) return '';
+    return p.code ? `${p.code} — ${p.name}` : p.name || '';
+  }
+
   getCategory(e: any): string {
     const c = e._categoryDoc || e._category?.[0];
     return c?.name || '—';
@@ -350,14 +360,14 @@ export class RendicionesDirectasComponent implements OnInit {
 
   async exportMobilityPdf(e: any, event: Event): Promise<void> {
     event.stopPropagation();
-    const rows = this.mobilityRows(e).map((r: any) => ({ fecha: String(r.fecha || ''), clienteProveedor: String(r.clienteProveedor || ''), origen: String(r.origen || ''), destino: String(r.destino || ''), gestion: String(r.gestion || ''), total: this.mobilityRowTotal(r) }));
+    const rows = this.mobilityRows(e).map((r: any) => ({ fecha: String(r.fecha || ''), clienteProveedor: String(r.clienteProveedor || ''), origen: String(r.origen || ''), destino: String(r.destino || ''), gestion: String(r.gestion || ''), total: this.mobilityRowTotal(r), proyecto: this.resolveProjectLabel(r.proyectId) }));
     const data: MobilitySheetExportData = { fileBaseName: `planilla_${e._id}`, collaborator: this.getColaborador(e), internalCode: e.internalCode, generatedAt: new Date().toLocaleString('es-PE', { dateStyle: 'short', timeStyle: 'short' }), proyecto: this.getProject(e), rows, total: this.getTotal(e) };
     await this.exportService.exportMobilitySheetToPdf(data);
   }
 
   async exportMobilityExcel(e: any, event: Event): Promise<void> {
     event.stopPropagation();
-    const rows = this.mobilityRows(e).map((r: any) => ({ fecha: String(r.fecha || ''), clienteProveedor: String(r.clienteProveedor || ''), origen: String(r.origen || ''), destino: String(r.destino || ''), gestion: String(r.gestion || ''), total: this.mobilityRowTotal(r) }));
+    const rows = this.mobilityRows(e).map((r: any) => ({ fecha: String(r.fecha || ''), clienteProveedor: String(r.clienteProveedor || ''), origen: String(r.origen || ''), destino: String(r.destino || ''), gestion: String(r.gestion || ''), total: this.mobilityRowTotal(r), proyecto: this.resolveProjectLabel(r.proyectId) }));
     const data: MobilitySheetExportData = { fileBaseName: `planilla_${e._id}`, collaborator: this.getColaborador(e), internalCode: e.internalCode, generatedAt: new Date().toLocaleString('es-PE', { dateStyle: 'short', timeStyle: 'short' }), proyecto: this.getProject(e), rows, total: this.getTotal(e) };
     await this.exportService.exportMobilitySheetToExcel(data);
   }

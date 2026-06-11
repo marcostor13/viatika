@@ -115,6 +115,8 @@ export interface MobilitySheetExportData {
     destino: string;
     gestion: string;
     total: number;
+    /** Proyecto propio de la fila. Si falta, se usa `proyecto` (nivel planilla). */
+    proyecto?: string;
   }>;
   total: number;
   signature?: string;
@@ -879,8 +881,9 @@ export class RendicionExportService {
       if (row.clienteProveedor) {
         doc.text(doc.splitTextToSize(row.clienteProveedor, cols[2] - cols[1] - 2)[0], cols[1] + 1, y + 4.5);
       }
-      if (data.proyecto && (row.fecha || row.origen || row.destino || row.gestion)) {
-        doc.text(doc.splitTextToSize(data.proyecto, cols[3] - cols[2] - 2)[0], cols[2] + 1, y + 4.5);
+      const proyectoCell = row.proyecto || data.proyecto;
+      if (proyectoCell && (row.fecha || row.origen || row.destino || row.gestion)) {
+        doc.text(doc.splitTextToSize(proyectoCell, cols[3] - cols[2] - 2)[0], cols[2] + 1, y + 4.5);
       }
       if (row.origen) {
         const prevSize = doc.getFontSize();
@@ -1271,7 +1274,7 @@ export class RendicionExportService {
       const hasContent = !!(row.fecha || row.origen || row.destino || row.gestion);
       ws.getCell(r, 1).value = this.formatDateDdMmYyyy(row.fecha);
       ws.getCell(r, 2).value = row.clienteProveedor || '';
-      ws.getCell(r, 3).value = hasContent ? (data.proyecto || '') : '';
+      ws.getCell(r, 3).value = hasContent ? (row.proyecto || data.proyecto || '') : '';
       ws.getCell(r, 4).value = row.origen || '';
       ws.getCell(r, 4).alignment = { wrapText: true, vertical: 'middle' };
       ws.getCell(r, 5).value = row.destino || '';
