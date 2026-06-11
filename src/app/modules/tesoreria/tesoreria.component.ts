@@ -13,10 +13,7 @@ import {
 } from '../../interfaces/advance.interface';
 import { ExpenseReportsService } from '../../services/expense-reports.service';
 import { IExpenseReport } from '../../interfaces/expense-report.interface';
-import { RouterModule } from '@angular/router';
-import { AdminUsersService } from '../admin-users/services/admin-users.service';
-import { IUserResponse } from '../../interfaces/user.interface';
-import { ERoles } from '../admin-users/interfaces/roles.enum';
+import { RouterModule, Router, ActivatedRoute } from '@angular/router';
 type Tab = 'pendientes' | 'aprobados' | 'devoluciones' | 'rendiciones-directas';
 
 @Component({
@@ -31,7 +28,8 @@ export class TesoreriaComponent implements OnInit {
   private userStateService = inject(UserStateService);
   private notificationService = inject(NotificationService);
   private uploadService = inject(UploadService);
-  private adminUsersService = inject(AdminUsersService);
+  private router = inject(Router);
+  private route = inject(ActivatedRoute);
   private fb = inject(FormBuilder);
 
   activeTab = signal<Tab>('pendientes');
@@ -88,20 +86,13 @@ export class TesoreriaComponent implements OnInit {
   // ─── Rendiciones Directas iniciadas por Contabilidad (con saldo) ─────────────
   directaReports = signal<any[]>([]);
   isLoadingDirectas = signal(false);
-  showCreateDirectaModal = signal(false);
-  directaTargetUsers = signal<IUserResponse[]>([]);
-  isUploadingDeposit = signal(false);
-  isScanningDeposit = signal(false);
-  isCreatingDirecta = signal(false);
-  depositReceiptUrl: string | null = null;
-  depositReceiptName: string | null = null;
-  depositReceiptMimeType: string | null = null;
-  depositReceiptSizeBytes: number | null = null;
-  depositScannedAmount: number | null = null;
-  directaForm!: FormGroup;
 
   ngOnInit() {
     this.initForms();
+    const tab = this.route.snapshot.queryParamMap.get('tab');
+    if (tab === 'rendiciones-directas' && this.canManageDirectaDeposit) {
+      this.activeTab.set('rendiciones-directas');
+    }
     this.loadData();
   }
 
@@ -129,11 +120,6 @@ export class TesoreriaComponent implements OnInit {
     });
     this.returnForm = this.fb.group({
       returnedAmount: [null, [Validators.required, Validators.min(0.01)]],
-    });
-    this.directaForm = this.fb.group({
-      userId: ['', Validators.required],
-      gestion: [''],
-      amount: [null, [Validators.required, Validators.min(0.01)]],
     });
   }
 
@@ -591,140 +577,14 @@ export class TesoreriaComponent implements OnInit {
     });
   }
 
-  private loadDirectaTargetUsers(): void {
-    this.adminUsersService.getUsers().subscribe({
-      next: users => {
-        const allowed = [ERoles.Colaborador, ERoles.Coordinador].map(r => String(r).toLowerCase());
-        const filtered = (users ?? []).filter(u => {
-          const roleName = String((u as any).roleName || (u as any).role?.name || '').toLowerCase();
-          return allowed.includes(roleName);
-        });
-        this.directaTargetUsers.set(filtered.length ? filtered : (users ?? []));
-      },
-      error: () => this.directaTargetUsers.set([]),
-    });
-  }
-
-  openCreateDirectaModal(): void {
-    this.directaForm.reset({ userId: '', gestion: '', amount: null });
-    this.depositReceiptUrl = null;
-    this.depositReceiptName = null;
-    this.depositReceiptMimeType = null;
-    this.depositReceiptSizeBytes = null;
-    this.depositScannedAmount = null;
-    if (this.directaTargetUsers().length === 0) this.loadDirectaTargetUsers();
-    this.showCreateDirectaModal.set(true);
-  }
-
-  closeCreateDirectaModal(): void {
-    this.showCreateDirectaModal.set(false);
-  }
-
-  onDepositReceiptSelected(event: Event): void {
-    const input = event.target as HTMLInputElement;
-    const file = input.files?.[0];
-    if (!file) return;
-    const allowedTypes = ['application/pdf', 'image/jpeg', 'image/png'];
-    if (!allowedTypes.includes(file.type)) {
-      this.notificationService.show('Formato inválido. Usa PDF, JPG o PNG.', 'error');
-      input.value = '';
-      return;
-    }
-    if (file.size > 10 * 1024 * 1024) {
-      this.notificationService.show('El comprobante no puede superar 10MB.', 'error');
-      input.value = '';
-      return;
-    }
-    this.isUploadingDeposit.set(true);
-    this.uploadService.upload(file).subscribe({
-      next: res => {
-        this.depositReceiptUrl = res.url;
-        this.depositReceiptName = file.name;
-        this.depositReceiptMimeType = file.type;
-        this.depositReceiptSizeBytes = file.size;
-        this.isUploadingDeposit.set(false);
-        this.scanDepositReceipt(res.url);
-      },
-      error: () => {
-        this.notificationService.show('No se pudo subir el comprobante', 'error');
-        this.isUploadingDeposit.set(false);
-      },
-    });
-  }
-
-  private scanDepositReceipt(url: string): void {
-    this.isScanningDeposit.set(true);
-    this.expenseReportsService.scanDepositAmount(url).subscribe({
-      next: res => {
-        this.isScanningDeposit.set(false);
-        const amount = Number(res?.amount) || 0;
-        this.depositScannedAmount = amount;
-        if (amount > 0) {
-          this.directaForm.patchValue({ amount });
-          this.notificationService.show('Monto detectado del comprobante. Puedes editarlo si es necesario.', 'success');
-        } else {
-          this.notificationService.show('No se pudo detectar el monto. Ingrésalo manualmente.', 'warning');
-        }
-      },
-      error: () => {
-        this.isScanningDeposit.set(false);
-        this.notificationService.show('No se pudo escanear el comprobante. Ingresa el monto manualmente.', 'warning');
-      },
-    });
-  }
-
-  removeDepositReceipt(): void {
-    this.depositReceiptUrl = null;
-    this.depositReceiptName = null;
-    this.depositReceiptMimeType = null;
-    this.depositReceiptSizeBytes = null;
-    this.depositScannedAmount = null;
-  }
-
-  confirmCreateDirecta(): void {
-    if (this.directaForm.invalid) {
-      this.directaForm.markAllAsTouched();
-      return;
-    }
-    if (!this.depositReceiptUrl) {
-      this.notificationService.show('Debes adjuntar el comprobante de depósito.', 'error');
-      return;
-    }
-    this.isCreatingDirecta.set(true);
-    const v = this.directaForm.value;
-    this.expenseReportsService.createDirectaDeposit({
-      userId: v.userId,
-      gestion: v.gestion?.trim() || undefined,
-      amount: Number(v.amount),
-      scannedAmount: this.depositScannedAmount ?? undefined,
-      receiptUrl: this.depositReceiptUrl,
-      receiptFileName: this.depositReceiptName || undefined,
-      receiptMimeType: this.depositReceiptMimeType || undefined,
-      receiptSizeBytes: this.depositReceiptSizeBytes || undefined,
-    }).subscribe({
-      next: () => {
-        this.isCreatingDirecta.set(false);
-        this.showCreateDirectaModal.set(false);
-        this.notificationService.show('Rendición directa creada y asignada correctamente.', 'success');
-        this.loadDirectaDepositReports();
-      },
-      error: e => {
-        this.isCreatingDirecta.set(false);
-        const raw = e?.error?.message;
-        const msg = Array.isArray(raw) ? raw.join(', ') : raw;
-        this.notificationService.show(msg || 'Error al crear la rendición directa.', 'error');
-      },
-    });
+  /** Abre la página independiente para crear una rendición directa con depósito. */
+  goToNuevaRendicionDirecta(): void {
+    this.router.navigate(['/tesoreria/rendicion-directa/nueva']);
   }
 
   directaUserName(rep: any): string {
     const u = rep?.userId;
     if (u && typeof u === 'object') return u.name || u.email || '—';
     return '—';
-  }
-
-  directaTargetUserLabel(u: IUserResponse): string {
-    const role = String((u as any).roleName || (u as any).role?.name || '');
-    return role ? `${u.name} (${role})` : u.name;
   }
 }

@@ -58,6 +58,10 @@ export class ExpenseReportsService {
     receiptMimeType?: string;
     receiptSizeBytes?: number;
     depositDate?: string;
+    operationNumber?: string;
+    operationDate?: string;
+    operationTime?: string;
+    titular?: string;
   }): Observable<IExpenseReport> {
     return this.http.post<IExpenseReport>(
       `${this.apiUrl}/expense-report/directa-deposit`,
@@ -72,12 +76,21 @@ export class ExpenseReportsService {
     );
   }
 
-  /** Escanea el comprobante de depósito (por URL) y devuelve el monto detectado. */
-  scanDepositAmount(url: string): Observable<{ amount: number }> {
-    return this.http.post<{ amount: number }>(
-      `${this.apiUrl}/expense/scan-deposit-amount`,
-      { url }
-    );
+  /** Escanea el comprobante de depósito (imagen o PDF, por URL) y extrae monto, fecha, hora, n° de operación y titular. */
+  scanDepositAmount(url: string, mimeType?: string): Observable<{
+    amount: number;
+    fecha?: string;
+    hora?: string;
+    operationNumber?: string;
+    titular?: string;
+  }> {
+    return this.http.post<{
+      amount: number;
+      fecha?: string;
+      hora?: string;
+      operationNumber?: string;
+      titular?: string;
+    }>(`${this.apiUrl}/expense/scan-deposit-amount`, { url, mimeType });
   }
 
   findMyDocuments(): Observable<{ items: IMisDocumentoItem[] }> {

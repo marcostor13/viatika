@@ -104,6 +104,10 @@ export interface IDirectaDepositInfo {
   receiptMimeType?: string;
   receiptSizeBytes?: number;
   depositDate?: string;
+  operationNumber?: string;
+  operationDate?: string;
+  operationTime?: string;
+  titular?: string;
   createdBy?: any;
   createdAt?: string;
 }
