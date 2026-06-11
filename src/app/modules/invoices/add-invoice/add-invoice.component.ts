@@ -503,9 +503,10 @@ export default class AddInvoiceComponent implements OnInit {
               ? (a.expenseReportId as any)?._id
               : a.expenseReportId;
             return rid === this.rendicionId
-              && ['approved', 'paid', 'settled'].includes(a.status);
+              && ['approved', 'partially_paid', 'paid', 'settled'].includes(a.status);
           })
-          .reduce((sum, a) => sum + (Number(a.amount) || 0), 0);
+          // Presupuesto = lo realmente pagado (paidAmount); 'approved' sin pago aporta 0.
+          .reduce((sum, a) => sum + (a.status === 'approved' ? 0 : Number(a.paidAmount ?? a.amount) || 0), 0);
         this.rendicionBudget.set(totalAnticipado);
       },
       error: (err) => console.error('Error loading advances', err),
