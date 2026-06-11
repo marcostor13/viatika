@@ -310,9 +310,10 @@ export class MisRendicionesComponent implements OnInit {
       const clientId = user.companyId || (user.client?._id) || (user.clientId?._id) || user.clientId;
 
       if (clientId) {
-        const obs = this.userStateService.isCoordinador()
-          ? this.expenseReportsService.findAllByClient(clientId)
-          : this.expenseReportsService.findAllByUser(user._id, clientId);
+        // "Mis Rendiciones" siempre muestra SOLO las rendiciones propias del usuario,
+        // sin importar el rol. El coordinador revisa las de su equipo en el módulo
+        // "Rendiciones" (vista admin), no aquí, para evitar duplicidad/confusión.
+        const obs = this.expenseReportsService.findAllByUser(user._id, clientId);
         obs.subscribe({
           next: (reports) => {
             this.expenseReports = reports;
