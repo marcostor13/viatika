@@ -11,7 +11,7 @@ import { ConfirmationService } from '../../../services/confirmation.service';
 import { InvoicesService } from '../../invoices/services/invoices.service';
 import { UploadService } from '../../../services/upload.service';
 import { IExpenseReport } from '../../../interfaces/expense-report.interface';
-import { IAdvance, ADVANCE_STATUS_LABELS, ADVANCE_STATUS_COLORS } from '../../../interfaces/advance.interface';
+import { IAdvance, IAdvancePayment, ADVANCE_STATUS_LABELS, ADVANCE_STATUS_COLORS } from '../../../interfaces/advance.interface';
 import { ButtonComponent } from '../../../design-system/button/button.component';
 import {
   CashVoucherExportData,
@@ -179,20 +179,31 @@ export class RendicionDetailComponent implements OnInit {
   }
 
   get totalAnticipado(): number {
+    // El presupuesto refleja lo realmente pagado (paidAmount) — soporta pagos parciales.
     const advances = this.advances
-      .filter(a => ['approved', 'paid', 'settled'].includes(a.status))
-      .reduce((sum, a) => sum + a.amount, 0);
+      .filter(a => ['approved', 'partially_paid', 'paid', 'settled'].includes(a.status))
+      .reduce((sum, a) => sum + Number(a.paidAmount ?? a.amount), 0);
     // El depósito de una rendición directa iniciada por Contabilidad funciona como
     // anticipo: el saldo no gastado debe devolverlo el colaborador/coordinador.
     return advances + (this.hasDirectaDeposit ? this.directaDeposited : 0);
   }
 
   get paidAdvances(): IAdvance[] {
-    return this.advances.filter(a => ['approved', 'paid', 'settled'].includes(a.status));
+    return this.advances.filter(a => ['approved', 'partially_paid', 'paid', 'settled'].includes(a.status));
   }
 
   get hasPaidAdvanceForReport(): boolean {
-    return this.advances.some(a => ['paid', 'settled'].includes(a.status));
+    // Con el primer pago (parcial o total) el colaborador ya puede rendir.
+    return this.advances.some(a => ['partially_paid', 'paid', 'settled'].includes(a.status));
+  }
+
+  /** Pagos parciales de un anticipo (para el desglose del presupuesto). */
+  advancePayments(adv: IAdvance): IAdvancePayment[] {
+    return Array.isArray(adv?.payments) ? adv.payments : [];
+  }
+
+  advancePaidAmount(adv: IAdvance): number {
+    return Number(adv?.paidAmount ?? adv?.amount ?? 0);
   }
 
   get settlement(): any {

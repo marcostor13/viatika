@@ -77,7 +77,7 @@ export class InicioComponent implements OnInit {
 
   paidAdvances = computed(() =>
     this.advances()
-      .filter((a) => a.status === 'paid')
+      .filter((a) => a.status === 'paid' || a.status === 'partially_paid')
       .filter((a) => {
         const reportId = this.getAdvanceReportId(a);
         if (!reportId) return true;
@@ -88,8 +88,8 @@ export class InicioComponent implements OnInit {
 
   kpiAnticiposMonto = computed(() =>
     this.advances()
-      .filter((a) => ['approved', 'paid', 'settled'].includes(a.status))
-      .reduce((sum, a) => sum + a.amount, 0)
+      .filter((a) => ['approved', 'partially_paid', 'paid', 'settled'].includes(a.status))
+      .reduce((sum, a) => sum + (a.status === 'approved' ? 0 : Number(a.paidAmount ?? a.amount) || 0), 0)
   );
 
   // ── Recientes ────────────────────────────────────────────────────
