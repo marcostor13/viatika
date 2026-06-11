@@ -310,7 +310,10 @@ export class MisRendicionesComponent implements OnInit {
       const clientId = user.companyId || (user.client?._id) || (user.clientId?._id) || user.clientId;
 
       if (clientId) {
-        this.expenseReportsService.findAllByUser(user._id, clientId).subscribe({
+        const obs = this.userStateService.isCoordinador()
+          ? this.expenseReportsService.findAllByClient(clientId)
+          : this.expenseReportsService.findAllByUser(user._id, clientId);
+        obs.subscribe({
           next: (reports) => {
             this.expenseReports = reports;
             this.isLoading = false;
