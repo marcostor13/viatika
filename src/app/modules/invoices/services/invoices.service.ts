@@ -31,6 +31,7 @@ export class InvoicesService {
   projectUrl: string = `${environment.api}/project`;
   companyConfigUrl: string = `${environment.api}/client`;
   sunatConfigUrl: string = `${environment.api}/sunat-config`;
+  userUrl: string = `${environment.api}/user`;
 
   private http = inject(HttpClient);
 
@@ -159,6 +160,16 @@ export class InvoicesService {
   getProjects(companyId?: string): Observable<IProject[]> {
     const url = companyId ? `${this.projectUrl}/${companyId}` : this.projectUrl;
     return this.http.get<IProject[]>(url);
+  }
+
+  /**
+   * Lista mínima de trabajadores/colaboradores de la empresa del usuario, para selectores
+   * (colaborador por fila en planilla). Endpoint liviano accesible a cualquier autenticado.
+   */
+  getClientUsers(): Observable<{ _id: string; name?: string; email?: string; dni?: string }[]> {
+    return this.http
+      .get<any[]>(`${this.userUrl}/colaboradores`)
+      .pipe(map((users) => (Array.isArray(users) ? users : [])));
   }
 
   getProjectById(id: string, companyId: string): Observable<IProject> {

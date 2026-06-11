@@ -1989,6 +1989,7 @@ export class RendicionDetailComponent implements OnInit {
       destino: String(r['destino'] || ''),
       gestion: String(r['gestion'] || ''),
       total: this.mobilityRowTotal(r),
+      colaborador: String(r['colaboradorNombre'] || this.getCollaboratorDisplayName() || ''),
     }));
     const total = rows.reduce((sum, r) => sum + (r.total || 0), 0);
     const firstFecha = rows.find(r => r.fecha)?.fecha;
@@ -2053,6 +2054,7 @@ export class RendicionDetailComponent implements OnInit {
       destino: String(r['destino'] || ''),
       gestion: String(r['gestion'] || ''),
       total: this.mobilityRowTotal(r),
+      colaborador: String(r['colaboradorNombre'] || this.getCollaboratorDisplayName() || ''),
     }));
     const total = rows.reduce((sum, r) => sum + (r.total || 0), 0);
     const firstFecha = rows.find(r => r.fecha)?.fecha;
@@ -2089,6 +2091,7 @@ export class RendicionDetailComponent implements OnInit {
       destino: String(r['destino'] || ''),
       gestion: String(r['gestion'] || ''),
       total: this.mobilityRowTotal(r),
+      colaborador: String(r['colaboradorNombre'] || this.getCollaboratorDisplayName() || ''),
     }));
     const total = rows.reduce((sum, r) => sum + (r.total || 0), 0);
     const client = this.userStateService.getUser()?.client;

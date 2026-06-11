@@ -28,6 +28,7 @@ import {
 } from '../interfaces/invoices.interface';
 import { ButtonComponent } from '../../../design-system/button/button.component';
 import { ProjectSelectComponent } from '../../../design-system/project-select/project-select.component';
+import { WorkerSelectComponent, WorkerOption } from '../../../design-system/worker-select/worker-select.component';
 import { PlacesAutocompleteDirective, PlaceResult } from '../../../directives/places-autocomplete.directive';
 import { CompanyConfigService } from '../../../services/company-config.service';
 import { CategoryGroupService } from '../../../services/category-group.service';
@@ -42,7 +43,7 @@ declare const google: any;
 @Component({
   selector: 'app-add-invoice',
   standalone: true,
-  imports: [ReactiveFormsModule, FormsModule, CommonModule, ButtonComponent, ProjectSelectComponent, PlacesAutocompleteDirective],
+  imports: [ReactiveFormsModule, FormsModule, CommonModule, ButtonComponent, ProjectSelectComponent, WorkerSelectComponent, PlacesAutocompleteDirective],
   templateUrl: './add-invoice.component.html',
   styleUrl: './add-invoice.component.scss',
 })
@@ -67,6 +68,8 @@ export default class AddInvoiceComponent implements OnInit {
   /** Perfiles de categoría (category-groups). Cada proyecto referencia uno y de él se derivan sus categorías. */
   categoryGroups: ICategoryGroup[] = [];
   proyects: IProject[] = [];
+  /** Trabajadores del cliente, para el selector de colaborador por fila de la planilla. */
+  workers: WorkerOption[] = [];
   previewImage: SafeUrl | null = null;
   selectedFile!: File;
   originalInvoice: any = null;
@@ -74,6 +77,8 @@ export default class AddInvoiceComponent implements OnInit {
   isSunatValidating = signal(false);
   rendicionId: string | null = null;
   isDirectaMode = false;
+  /** True cuando la rendición asociada es directa (report.isDirecta), aunque no venga `mode=directa` en la URL. */
+  isDirectaReport = signal<boolean>(false);
   fromContabilidad = false;
 
   expenseType = signal<ExpenseType>('factura');
@@ -285,6 +290,7 @@ export default class AddInvoiceComponent implements OnInit {
     this.loadCategories();
     this.loadCategoryGroups();
     this.loadProjects();
+    this.loadClientUsers();
     // Al cambiar de proyecto, si la categoría elegida no pertenece a su perfil, se limpia.
     this.form.get('proyectId')?.valueChanges.subscribe(() => {
       const allowed = this.allowedCategoryIds();
@@ -300,6 +306,8 @@ export default class AddInvoiceComponent implements OnInit {
       const tipo = params.get('tipo') as ExpenseType | null;
       if (tipo) {
         this.setExpenseType(tipo);
+      } else {
+        this.syncTopProjectValidator();
       }
       if (this.rendicionId) {
         this.loadRendicionProject();
@@ -429,6 +437,9 @@ export default class AddInvoiceComponent implements OnInit {
               this.mobilityRowsArray.push(this.fb.group({
                 fecha: [row.fecha || '', Validators.required],
                 total: [row.total ?? null, [Validators.required, Validators.min(0)]],
+                proyectId: [row.proyectId || '', this.isDirectaContext() ? [Validators.required] : []],
+                colaboradorEsTercero: [!!(row.colaboradorId && String(row.colaboradorId) !== this.currentUserId)],
+                colaboradorId: [row.colaboradorId && String(row.colaboradorId) !== this.currentUserId ? String(row.colaboradorId) : ''],
                 clienteProveedor: [row.clienteProveedor || ''],
                 origen: [row.origen || '', Validators.required],
                 origenLat: [row.origenCoords?.lat ?? null],
@@ -467,14 +478,19 @@ export default class AddInvoiceComponent implements OnInit {
     if (!this.rendicionId) return;
     this.expenseReportsService.findOne(this.rendicionId).subscribe({
       next: (report) => {
+        const isDirecta = !!(report as any)?.isDirecta;
+        this.isDirectaReport.set(isDirecta);
         if (report && report.projectId) {
           const pId = typeof report.projectId === 'string' ? report.projectId : (report.projectId as any)._id;
           this.form.patchValue({ proyectId: pId });
           // En rendición directa el colaborador puede cambiar el proyecto por gasto
-          if (!(report as any).isDirecta) {
+          if (!isDirecta) {
             this.form.get('proyectId')?.disable();
           }
         }
+        // El flag directa puede llegar después de que el usuario ya agregó filas:
+        // re-sincroniza validadores del proyecto (superior y por fila).
+        this.syncMobilityProjectValidators();
         const expenses = Array.isArray(report?.expenseIds) ? report.expenseIds : [];
         const spent = expenses.reduce(
           (sum: number, exp: any) => sum + (parseFloat(exp?.total) || 0),
@@ -537,6 +553,71 @@ export default class AddInvoiceComponent implements OnInit {
         this.proyects = projects;
       },
     });
+  }
+
+  loadClientUsers() {
+    this.invoiceService.getClientUsers().subscribe({
+      next: (users) => {
+        this.workers = (users ?? []).map((u) => ({
+          _id: String(u._id),
+          name: u.name,
+          email: u.email,
+          dni: u.dni,
+        }));
+      },
+      error: () => {},
+    });
+  }
+
+  /** Usuario actual (quien rinde): id por defecto de cada fila. */
+  get currentUserId(): string {
+    return String(this.userStateService.getUser()?._id || '');
+  }
+
+  /** Nombre del usuario actual (quien rinde): se muestra por defecto en cada fila. */
+  get currentUserName(): string {
+    const u = this.userStateService.getUser();
+    return (u?.name || u?.email || '').trim();
+  }
+
+  /** Resuelve id + nombre del colaborador de una fila a partir de sus valores de formulario. */
+  private resolveRowColaborador(r: any): { colaboradorId: string; colaboradorNombre: string } {
+    if (r?.colaboradorEsTercero && r?.colaboradorId) {
+      const w = this.workers.find((x) => x._id === String(r.colaboradorId));
+      return {
+        colaboradorId: String(r.colaboradorId),
+        colaboradorNombre: w?.name?.trim() || w?.email || '',
+      };
+    }
+    return { colaboradorId: this.currentUserId, colaboradorNombre: this.currentUserName };
+  }
+
+  /** True si alguna fila está marcada como tercero pero sin trabajador seleccionado. */
+  private hasMobilityTerceroSinColaborador(): boolean {
+    return this.mobilityRowsArray.controls.some(
+      (c) => !!c.get('colaboradorEsTercero')?.value && !c.get('colaboradorId')?.value
+    );
+  }
+
+  /** Error inline del colaborador en una fila (tercero marcado, sin selección, tocado). */
+  isRowColaboradorInvalid(index: number): boolean {
+    const row = this.mobilityRowsArray.at(index);
+    if (!row) return false;
+    const esTercero = !!row.get('colaboradorEsTercero')?.value;
+    const ctrl = row.get('colaboradorId');
+    return esTercero && !ctrl?.value && !!ctrl?.touched;
+  }
+
+  /** Al alternar el check de tercero: limpia la selección si se desmarca. */
+  onColaboradorTerceroToggle(index: number): void {
+    const row = this.mobilityRowsArray.at(index);
+    if (!row) return;
+    const esTercero = !!row.get('colaboradorEsTercero')?.value;
+    const projCtrl = row.get('colaboradorId');
+    if (!esTercero) {
+      projCtrl?.setValue('');
+    }
+    projCtrl?.updateValueAndValidity({ emitEvent: false });
   }
 
   /**
@@ -635,12 +716,53 @@ export default class AddInvoiceComponent implements OnInit {
       this.form.get('file')?.clearValidators();
     }
     this.form.get('file')?.updateValueAndValidity();
+    this.syncTopProjectValidator();
+  }
+
+  /**
+   * En Rendiciones Directas la planilla de movilidad lleva el proyecto en cada fila
+   * (no a nivel de gasto), por lo que el selector de proyecto superior se oculta y
+   * deja de ser obligatorio. En el resto de casos sí es requerido.
+   */
+  /** Contexto directa: por query param (`mode=directa`) o por el flag de la rendición asociada. */
+  isDirectaContext(): boolean {
+    return this.isDirectaMode || this.isDirectaReport();
+  }
+
+  isDirectaPlanilla(): boolean {
+    return this.isDirectaContext() && this.expenseType() === 'planilla_movilidad';
+  }
+
+  private syncTopProjectValidator(): void {
+    const ctrl = this.form.get('proyectId');
+    if (!ctrl || ctrl.disabled) return;
+    if (this.isDirectaPlanilla()) {
+      ctrl.clearValidators();
+    } else {
+      ctrl.setValidators([Validators.required]);
+    }
+    ctrl.updateValueAndValidity({ emitEvent: false });
+  }
+
+  /** Sincroniza validadores de proyecto (selector superior + por fila) según el contexto directa. */
+  private syncMobilityProjectValidators(): void {
+    this.syncTopProjectValidator();
+    const rowRequired = this.isDirectaContext();
+    for (const ctrl of this.mobilityRowsArray.controls) {
+      const proj = ctrl.get('proyectId');
+      if (!proj) continue;
+      proj.setValidators(rowRequired ? [Validators.required] : []);
+      proj.updateValueAndValidity({ emitEvent: false });
+    }
   }
 
   addMobilityRow() {
     this.mobilityRowsArray.push(this.fb.group({
       fecha: ['', Validators.required],
       total: [null, [Validators.required, Validators.min(0)]],
+      proyectId: ['', this.isDirectaContext() ? [Validators.required] : []],
+      colaboradorEsTercero: [false],
+      colaboradorId: [''],
       clienteProveedor: [''],
       origen: ['', Validators.required],
       origenLat: [null],
@@ -1110,6 +1232,21 @@ export default class AddInvoiceComponent implements OnInit {
       this.notificationService.show('Completa los campos requeridos', 'error');
       return;
     }
+    if (this.isDirectaContext()) {
+      const allRowsHaveProject = this.mobilityRowsArray.controls.every(
+        (c) => !!c.get('proyectId')?.value
+      );
+      if (!allRowsHaveProject) {
+        this.mobilityRowsArray.markAllAsTouched();
+        this.notificationService.show('Selecciona el proyecto de cada fila', 'error');
+        return;
+      }
+    }
+    if (this.hasMobilityTerceroSinColaborador()) {
+      this.mobilityRowsArray.markAllAsTouched();
+      this.notificationService.show('Selecciona el trabajador en las filas marcadas como tercero', 'error');
+      return;
+    }
     if (this.hasAnyMobilityLimitExceeded()) {
       this.notificationService.show(
         `El total diario supera el límite configurado de S/ ${this.mobilityDailyLimit?.toFixed(2)}`,
@@ -1123,6 +1260,8 @@ export default class AddInvoiceComponent implements OnInit {
       const rows = this.mobilityRowsArray.value.map((r: any) => ({
         fecha: r.fecha,
         total: r.total,
+        ...(r.proyectId ? { proyectId: r.proyectId } : {}),
+        ...this.resolveRowColaborador(r),
         clienteProveedor: r.clienteProveedor,
         origen: r.origen,
         origenDepartamento: r.origenDepartamento,
@@ -1141,8 +1280,12 @@ export default class AddInvoiceComponent implements OnInit {
         ...(r.distanciaKm != null ? { distanciaKm: r.distanciaKm } : {}),
         gestion: r.gestion,
       }));
+      // En modo directa el proyecto vive en cada fila; el proyecto del gasto se toma de la primera fila.
+      const expenseProjectId = this.isDirectaContext()
+        ? (rows[0]?.proyectId || '')
+        : this.form.get('proyectId')?.value;
       const payload = {
-        proyectId: this.form.get('proyectId')?.value,
+        proyectId: expenseProjectId,
         categoryId: this.form.get('categoryId')?.value,
         expenseReportId: this.rendicionId || undefined,
         mobilityRows: rows,
@@ -1407,9 +1550,16 @@ export default class AddInvoiceComponent implements OnInit {
       payload.fechaEmision = formValue.voucherFecha || undefined;
       payload.total = monto;
     } else if (type === 'planilla_movilidad') {
+      if (this.hasMobilityTerceroSinColaborador()) {
+        this.mobilityRowsArray.markAllAsTouched();
+        this.notificationService.show('Selecciona el trabajador en las filas marcadas como tercero', 'error');
+        return;
+      }
       const rows = this.mobilityRowsArray.value.map((r: any) => ({
         fecha: r.fecha,
         total: r.total,
+        ...(r.proyectId ? { proyectId: r.proyectId } : {}),
+        ...this.resolveRowColaborador(r),
         clienteProveedor: r.clienteProveedor,
         origen: r.origen,
         origenDepartamento: r.origenDepartamento,
@@ -1429,6 +1579,10 @@ export default class AddInvoiceComponent implements OnInit {
         gestion: r.gestion,
       }));
       payload.mobilityRows = rows;
+      // En modo directa el proyecto del gasto se toma de la primera fila.
+      if (this.isDirectaContext() && rows[0]?.proyectId) {
+        payload.proyectId = rows[0].proyectId;
+      }
     }
 
     this.isLoading.set(true);
