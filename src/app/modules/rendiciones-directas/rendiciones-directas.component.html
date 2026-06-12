@@ -31,7 +31,7 @@
 
   <!-- Filtros -->
   <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-4 mb-5">
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3">
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7 gap-3">
       <div>
         <label class="block text-xs font-medium text-gray-500 mb-1">Fecha desde</label>
         <input type="date" [(ngModel)]="filterDateFrom" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30" />
@@ -39,6 +39,13 @@
       <div>
         <label class="block text-xs font-medium text-gray-500 mb-1">Fecha hasta</label>
         <input type="date" [(ngModel)]="filterDateTo" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30" />
+      </div>
+      <div>
+        <label class="block text-xs font-medium text-gray-500 mb-1">Colaborador</label>
+        <select [(ngModel)]="filterUserId" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 bg-white">
+          <option value="">Todos</option>
+          @for (u of users(); track u._id) { <option [value]="u._id">{{ u.name || u.email }}</option> }
+        </select>
       </div>
       <div>
         <label class="block text-xs font-medium text-gray-500 mb-1">Tipo</label>

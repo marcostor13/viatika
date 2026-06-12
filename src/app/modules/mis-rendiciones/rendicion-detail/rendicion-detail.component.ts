@@ -11,7 +11,8 @@ import { ConfirmationService } from '../../../services/confirmation.service';
 import { InvoicesService } from '../../invoices/services/invoices.service';
 import { UploadService } from '../../../services/upload.service';
 import { IExpenseReport } from '../../../interfaces/expense-report.interface';
-import { IAdvance, ADVANCE_STATUS_LABELS, ADVANCE_STATUS_COLORS } from '../../../interfaces/advance.interface';
+import { IProject } from '../../invoices/interfaces/project.interface';
+import { IAdvance, IAdvancePayment, ADVANCE_STATUS_LABELS, ADVANCE_STATUS_COLORS } from '../../../interfaces/advance.interface';
 import { ButtonComponent } from '../../../design-system/button/button.component';
 import {
   CashVoucherExportData,
@@ -57,6 +58,8 @@ export class RendicionDetailComponent implements OnInit {
   report: IExpenseReport | null = null;
   isLoading = true;
   advances: IAdvance[] = [];
+  /** Catálogo de proyectos del cliente, para resolver el proyecto por fila de las planillas (Rendiciones Directas). */
+  projects: IProject[] = [];
   showAdvanceModal = false;
 
   // Comprobantes paginados
@@ -124,18 +127,54 @@ export class RendicionDetailComponent implements OnInit {
   }
 
   get saldoLibre(): number {
+    // Rendición directa con depósito de Contabilidad: el saldo a devolver es el
+    // depósito menos lo gastado (en vivo), no el monto del settlement almacenado.
+    if (this.hasDirectaDeposit) {
+      return this.directaSaldo;
+    }
     if (this.settlement?.difference !== undefined && this.settlement.difference !== null) {
       return this.settlement.difference;
     }
     return this.totalAnticipado - this.totalGastado;
   }
 
+  /** Rendición directa iniciada por Contabilidad (tiene depósito con saldo). */
+  get hasDirectaDeposit(): boolean {
+    return !!(this.report?.isDirecta && this.report?.directaDeposit);
+  }
+
+  get directaDeposited(): number {
+    return Number(this.report?.directaDeposit?.amount ?? this.report?.budget ?? 0);
+  }
+
+  get directaSaldo(): number {
+    return this.directaDeposited - this.totalGastado;
+  }
+
   ngOnInit(): void {
     this.companyConfigService.refreshConfig();
+    this.loadProjects();
     if (this.id) {
       this.loadReport();
       this.loadAdvances();
     }
+  }
+
+  private loadProjects(): void {
+    this.invoicesService.getProjects().subscribe({
+      next: (list) => { this.projects = list ?? []; },
+      error: () => {},
+    });
+  }
+
+  /** Resuelve el código de un proyecto a partir de su id (proyecto por fila en Rendiciones Directas). En los reportes solo se muestra el código. */
+  private resolveRowProjectLabel(id: unknown): string {
+    if (!id) return '';
+    const pid = typeof id === 'object' ? String((id as { _id?: string })._id ?? '') : String(id);
+    if (!pid) return '';
+    const p = this.projects.find((pr) => String(pr._id) === pid);
+    if (!p) return '';
+    return p.code || '';
   }
 
   get reportProjectId(): string | null {
@@ -161,17 +200,31 @@ export class RendicionDetailComponent implements OnInit {
   }
 
   get totalAnticipado(): number {
-    return this.advances
-      .filter(a => ['approved', 'paid', 'settled'].includes(a.status))
-      .reduce((sum, a) => sum + a.amount, 0);
+    // El presupuesto refleja lo realmente pagado (paidAmount) — soporta pagos parciales.
+    const advances = this.advances
+      .filter(a => ['approved', 'partially_paid', 'paid', 'settled'].includes(a.status))
+      .reduce((sum, a) => sum + Number(a.paidAmount ?? a.amount), 0);
+    // El depósito de una rendición directa iniciada por Contabilidad funciona como
+    // anticipo: el saldo no gastado debe devolverlo el colaborador/coordinador.
+    return advances + (this.hasDirectaDeposit ? this.directaDeposited : 0);
   }
 
   get paidAdvances(): IAdvance[] {
-    return this.advances.filter(a => ['approved', 'paid', 'settled'].includes(a.status));
+    return this.advances.filter(a => ['approved', 'partially_paid', 'paid', 'settled'].includes(a.status));
   }
 
   get hasPaidAdvanceForReport(): boolean {
-    return this.advances.some(a => ['paid', 'settled'].includes(a.status));
+    // Con el primer pago (parcial o total) el colaborador ya puede rendir.
+    return this.advances.some(a => ['partially_paid', 'paid', 'settled'].includes(a.status));
+  }
+
+  /** Pagos parciales de un anticipo (para el desglose del presupuesto). */
+  advancePayments(adv: IAdvance): IAdvancePayment[] {
+    return Array.isArray(adv?.payments) ? adv.payments : [];
+  }
+
+  advancePaidAmount(adv: IAdvance): number {
+    return Number(adv?.paidAmount ?? adv?.amount ?? 0);
   }
 
   get settlement(): any {
@@ -289,7 +342,19 @@ export class RendicionDetailComponent implements OnInit {
   showAdminRejectModal = signal(false);
   adminRejectionReason = signal('');
 
+  /** La rendición pertenece al usuario actual (es su propia rendición). */
+  get isOwnReport(): boolean {
+    const uid = this.userStateService.getUser()?._id;
+    if (!uid || !this.report) return false;
+    const owner = this.report.userId;
+    const ownerId = owner && typeof owner === 'object' ? owner._id : owner;
+    return String(ownerId ?? '') === String(uid);
+  }
+
   get isAdminView(): boolean {
+    // Sobre su propia rendición, cualquier rol (incl. coordinador) actúa como
+    // colaborador: agrega/envía sus gastos y no puede auto-aprobarse.
+    if (this.isOwnReport) return false;
     return this.userStateService.isAdmin() || this.userStateService.isSuperAdmin() || this.userStateService.isContabilidad() || this.userStateService.canApproveL2()
       || (this.userStateService.isCoordinador() && this.userStateService.hasModulePermission('rendiciones'));
   }
@@ -1180,12 +1245,15 @@ export class RendicionDetailComponent implements OnInit {
       const comentario = this.getExpenseComentario(exp);
       const placaVehiculo = this.getExpensePlaca(exp);
       const concepto = this.getExpenseConcepto(exp);
+      // Rendición directa: el proyecto es individual por gasto. En el reporte solo va el código.
+      const proyecto = this.resolveRowProjectLabel(exp['proyectId']);
       return {
         tipo: this.getExpenseTypeCode(exp),
         fecha: this.getExpenseDate(exp),
         descripcion: concepto,
         comentario: comentario || undefined,
         placaVehiculo: placaVehiculo || undefined,
+        proyecto: proyecto || undefined,
         monto: Number(exp['total']) || 0,
         estadoComprobante: this.mapExpenseStatusExport(
           typeof exp['status'] === 'string' ? exp['status'] : undefined,
@@ -1211,9 +1279,33 @@ export class RendicionDetailComponent implements OnInit {
       }
       return [{ descripcion: a.description, monto: a.amount, estado, fechaSolicitud }];
     });
+    // Rendición directa con depósito de Contabilidad: el depósito funciona como
+    // anticipo (igual que en la solicitud de viáticos), por lo que debe figurar
+    // como una "Transferencia" en la columna Ingresos del reporte.
+    if (this.hasDirectaDeposit && this.report.directaDeposit) {
+      const dep = this.report.directaDeposit;
+      const rawDate = dep.depositDate || dep.operationDate || dep.createdAt;
+      const fechaSolicitud = rawDate
+        ? new Date(rawDate).toLocaleDateString('es-PE', {
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric',
+          })
+        : '—';
+      anticipos.unshift({
+        descripcion: 'Depósito de Contabilidad',
+        monto: this.directaDeposited,
+        estado: 'Depositado',
+        fechaSolicitud,
+      });
+    }
     return {
       fileBaseName: `rendicion_${this.report.codigo || this.id}_${safeName}`.replace(/_+/g, '_'),
-      titulo: this.getProjectName() !== '—' ? this.getProjectName() : (this.report.title || 'Sin título'),
+      // En directas el proyecto es por gasto: el título no debe llevar proyecto.
+      titulo: this.report.isDirecta
+        ? (this.report.title || this.report.description || 'Rendición directa')
+        : (this.getProjectName() !== '—' ? this.getProjectName() : (this.report.title || 'Sin título')),
+      isDirecta: !!this.report.isDirecta,
       estado: this.getReportStatusLabel(),
       codigo: this.report.codigo || undefined,
       gestion: this.report.gestion || undefined,
@@ -1417,6 +1509,11 @@ export class RendicionDetailComponent implements OnInit {
   returnVoucherBank = signal('');
   returnVoucherOperation = signal('');
 
+  /** Saldo de esta rendición ya fue utilizado para crear otra solicitud. */
+  get isSaldoUsadoEnOtraRendicion(): boolean {
+    return !!(this.report as any)?.pendingBalanceUsedInAdvanceId;
+  }
+
   /** Devuelve true cuando el saldo esperado corresponde a una devolución del colaborador. */
   private get isDevolucionExpected(): boolean {
     const settlementType = (this.report as any)?.settlement?.type;
@@ -1426,6 +1523,7 @@ export class RendicionDetailComponent implements OnInit {
   /** Colaborador puede cargar su comprobante de devolución en cuanto la rendición está aprobada y tiene saldo a devolver. */
   get canUploadReturnVoucher(): boolean {
     if (this.isAdminView) return false;
+    if (this.isSaldoUsadoEnOtraRendicion) return false;
     const status = this.report?.status;
     if (status !== 'approved' && status !== 'closed') return false;
     if (!this.isDevolucionExpected) return false;
@@ -1435,6 +1533,7 @@ export class RendicionDetailComponent implements OnInit {
   /** Panel informativo para contabilidad: la rendición está aprobada con saldo a devolver pero el colaborador aún no adjuntó el comprobante. */
   get approvedPendingVoucher(): boolean {
     if (!this.isAdminView) return false;
+    if (this.isSaldoUsadoEnOtraRendicion) return false;
     if (this.report?.status !== 'approved') return false;
     return this.isDevolucionExpected && !(this.report as any)?.returnVoucher;
   }
@@ -1945,6 +2044,8 @@ export class RendicionDetailComponent implements OnInit {
       destino: String(r['destino'] || ''),
       gestion: String(r['gestion'] || ''),
       total: this.mobilityRowTotal(r),
+      proyecto: this.resolveRowProjectLabel(r['proyectId']),
+      colaborador: String(r['colaboradorNombre'] || this.getCollaboratorDisplayName() || ''),
     }));
     const total = rows.reduce((sum, r) => sum + (r.total || 0), 0);
     const firstFecha = rows.find(r => r.fecha)?.fecha;
@@ -2009,6 +2110,8 @@ export class RendicionDetailComponent implements OnInit {
       destino: String(r['destino'] || ''),
       gestion: String(r['gestion'] || ''),
       total: this.mobilityRowTotal(r),
+      proyecto: this.resolveRowProjectLabel(r['proyectId']),
+      colaborador: String(r['colaboradorNombre'] || this.getCollaboratorDisplayName() || ''),
     }));
     const total = rows.reduce((sum, r) => sum + (r.total || 0), 0);
     const firstFecha = rows.find(r => r.fecha)?.fecha;
@@ -2045,6 +2148,7 @@ export class RendicionDetailComponent implements OnInit {
       destino: String(r['destino'] || ''),
       gestion: String(r['gestion'] || ''),
       total: this.mobilityRowTotal(r),
+      colaborador: String(r['colaboradorNombre'] || this.getCollaboratorDisplayName() || ''),
     }));
     const total = rows.reduce((sum, r) => sum + (r.total || 0), 0);
     const client = this.userStateService.getUser()?.client;

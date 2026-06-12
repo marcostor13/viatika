@@ -75,7 +75,9 @@ export class MisRendicionesComponent implements OnInit {
     this.loadMyReports();
     this.loadMyAdvances();
     const tab = this.route.snapshot.queryParamMap.get('tab');
-    if (tab === 'directas') {
+    if (tab === 'viaticos') {
+      this.setTab('viaticos');
+    } else if (tab === 'directas') {
       this.setTab('directas');
     } else if (this.canCreateRendicion || !this.canViewViaticos) {
       this.setTab('directas');
@@ -308,7 +310,11 @@ export class MisRendicionesComponent implements OnInit {
       const clientId = user.companyId || (user.client?._id) || (user.clientId?._id) || user.clientId;
 
       if (clientId) {
-        this.expenseReportsService.findAllByUser(user._id, clientId).subscribe({
+        // "Mis Rendiciones" siempre muestra SOLO las rendiciones propias del usuario,
+        // sin importar el rol. El coordinador revisa las de su equipo en el módulo
+        // "Rendiciones" (vista admin), no aquí, para evitar duplicidad/confusión.
+        const obs = this.expenseReportsService.findAllByUser(user._id, clientId);
+        obs.subscribe({
           next: (reports) => {
             this.expenseReports = reports;
             this.isLoading = false;
@@ -398,12 +404,17 @@ export class MisRendicionesComponent implements OnInit {
   }
 
   advanceStatusText(adv: IAdvance): string {
-    if (adv.status === 'paid') return 'En Progreso - Registrando Gastos';
+    if (adv.status === 'paid' || adv.status === 'partially_paid') return 'En Progreso - Registrando Gastos';
     return this.ADVANCE_STATUS_LABELS[adv.status];
   }
 
   hasExpenseReportLink(adv: IAdvance): boolean {
     return !!this.getExpenseReportId(adv);
+  }
+
+  /** El viático ya tiene pago (parcial o total) → el colaborador puede registrar gastos. */
+  isAdvancePaidOrPartial(adv: IAdvance): boolean {
+    return adv.status === 'paid' || adv.status === 'partially_paid';
   }
 
   get pendingAdvances(): IAdvance[] {
@@ -518,7 +529,7 @@ export class MisRendicionesComponent implements OnInit {
         adv.expenseReportId && typeof adv.expenseReportId === 'object'
           ? adv.expenseReportId._id
           : null;
-      return rid === report._id && (adv.status === 'paid' || adv.status === 'settled');
+      return rid === report._id && ['partially_paid', 'paid', 'settled'].includes(adv.status);
     });
   }
 

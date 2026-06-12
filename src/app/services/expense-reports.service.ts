@@ -47,6 +47,52 @@ export class ExpenseReportsService {
     );
   }
 
+  /** Contabilidad: crea una rendición directa con depósito inicial para un colaborador/coordinador. */
+  createDirectaDeposit(payload: {
+    userId: string;
+    gestion?: string;
+    amount: number;
+    scannedAmount?: number;
+    receiptUrl: string;
+    receiptFileName?: string;
+    receiptMimeType?: string;
+    receiptSizeBytes?: number;
+    depositDate?: string;
+    operationNumber?: string;
+    operationDate?: string;
+    operationTime?: string;
+    titular?: string;
+  }): Observable<IExpenseReport> {
+    return this.http.post<IExpenseReport>(
+      `${this.apiUrl}/expense-report/directa-deposit`,
+      payload
+    );
+  }
+
+  /** Contabilidad: lista las rendiciones directas iniciadas con depósito. */
+  findDirectaDepositReports(clientId: string): Observable<any[]> {
+    return this.http.get<any[]>(
+      `${this.apiUrl}/expense-report/directas-deposito/client/${clientId}`
+    );
+  }
+
+  /** Escanea el comprobante de depósito (imagen o PDF, por URL) y extrae monto, fecha, hora, n° de operación y titular. */
+  scanDepositAmount(url: string, mimeType?: string): Observable<{
+    amount: number;
+    fecha?: string;
+    hora?: string;
+    operationNumber?: string;
+    titular?: string;
+  }> {
+    return this.http.post<{
+      amount: number;
+      fecha?: string;
+      hora?: string;
+      operationNumber?: string;
+      titular?: string;
+    }>(`${this.apiUrl}/expense/scan-deposit-amount`, { url, mimeType });
+  }
+
   findMyDocuments(): Observable<{ items: IMisDocumentoItem[] }> {
     return this.http.get<{ items: IMisDocumentoItem[] }>(
       `${this.apiUrl}/expense-report/documents/my`
@@ -162,6 +208,7 @@ export class ExpenseReportsService {
     page?: number; limit?: number;
     dateFrom?: string; dateTo?: string;
     projectId?: string; categoryId?: string; docNumber?: string; tipo?: string;
+    userId?: string;
   } = {}): Observable<{ data: any[]; total: number; page: number; limit: number; pages: number }> {
     let params = new HttpParams();
     if (filters.page) params = params.set('page', String(filters.page));
@@ -172,6 +219,7 @@ export class ExpenseReportsService {
     if (filters.categoryId) params = params.set('categoryId', filters.categoryId);
     if (filters.docNumber) params = params.set('docNumber', filters.docNumber);
     if (filters.tipo) params = params.set('tipo', filters.tipo);
+    if (filters.userId) params = params.set('userId', filters.userId);
     return this.http.get<{ data: any[]; total: number; page: number; limit: number; pages: number }>(
       `${this.apiUrl}/expense-report/directas/expenses/${clientId}`,
       { params }

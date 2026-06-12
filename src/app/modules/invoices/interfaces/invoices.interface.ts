@@ -16,6 +16,10 @@ export interface IMobilityRowCoords {
 export interface IMobilityRow {
   fecha: string;
   total: number;
+  /** Proyecto de la fila (Rendiciones Directas: el proyecto se elige por fila). */
+  proyectId?: string;
+  /** Categoría de la fila, según el perfil del proyecto de la fila (Rendiciones Directas). */
+  categoryId?: string;
   clienteProveedor: string;
   origen: string;
   origenDepartamento?: string;

@@ -68,6 +68,14 @@ export interface IDashboardKpis {
   rendicionesAprobadas: number;
 }
 
+export interface ILocationPoint {
+  place: string;
+  count: number;
+  amount: number;
+  lat?: number;
+  lng?: number;
+}
+
 export interface IDashboardResponse {
   range: { dateFrom: string; dateTo: string };
   currency: string;
@@ -79,6 +87,7 @@ export interface IDashboardResponse {
   topCategories: INamedAmount[];
   topProjects: INamedAmount[];
   topCollaborators: INamedAmount[];
+  topLocations: ILocationPoint[];
   monthlySeries: IMonthlyPoint[];
 }
 

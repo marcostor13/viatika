@@ -325,6 +325,14 @@ export const routes: Routes = [
         canActivate: [AuthTesoreroGuard],
       },
       {
+        path: 'tesoreria/rendicion-directa/nueva',
+        loadComponent: () =>
+          import('./modules/tesoreria/nueva-rendicion-directa-deposito/nueva-rendicion-directa-deposito.component').then(
+            (m) => m.NuevaRendicionDirectaDepositoComponent
+          ),
+        canActivate: [AuthTesoreroGuard],
+      },
+      {
         path: 'tesoreria/:id',
         loadComponent: () =>
           import('./modules/tesoreria/tesoreria-detalle/tesoreria-detalle.component').then(
