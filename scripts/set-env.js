@@ -43,8 +43,10 @@ loadDotEnv();
 // --- Lectura de variables -----------------------------------------------------
 const REQUIRED = ['GOOGLE_MAPS_API_KEY'];
 
-const e = (k, fallback = '') =>
-  process.env[k] !== undefined ? process.env[k] : fallback;
+const e = (k, fallback = '') => {
+  const val = process.env[k];
+  return val !== undefined && val.trim() !== '' ? val.trim() : fallback;
+};
 
 const missing = REQUIRED.filter((k) => !process.env[k]);
 if (missing.length) {
@@ -60,12 +62,18 @@ const googleMapsApiKey = e('GOOGLE_MAPS_API_KEY');
 
 // Campos no sensibles (URL de API y claves de localStorage) con valores por defecto.
 // API_URL_DEV -> environment.ts (ng serve / build development, uso local).
-// API_URL     -> environment.prod.ts (build production: Amplify y Netlify).
-//                Cada plataforma define su propio valor (prod vs develop).
+// API_URL     -> environment.prod.ts (build production: Coolify).
+//                Define esta variable como "Build Variable" en Coolify.
 const apiDev = e('API_URL_DEV', 'http://localhost:3016/api');
 const apiProd = e('API_URL', 'https://apiviatika.marcostorresalarcon.com/api');
 const storage = e('STORAGE_KEY', 'user-data-ls-gastos');
 const storagePath = e('STORAGE_PATH', 'gastos-images');
+
+// Advertencia explícita cuando se usa el valor por defecto en producción.
+if (!process.env['API_URL']) {
+  console.warn('[set-env] AVISO: API_URL no definida. Usando URL de produccion por defecto: ' + apiProd);
+  console.warn('[set-env] En Coolify, marca API_URL como "Build Variable" para que esté disponible al compilar.');
+}
 
 // --- Render -------------------------------------------------------------------
 function render(production, api) {
@@ -88,4 +96,5 @@ fs.mkdirSync(ENV_DIR, { recursive: true });
 fs.writeFileSync(path.join(ENV_DIR, 'environment.ts'), render(false, apiDev));
 fs.writeFileSync(path.join(ENV_DIR, 'environment.prod.ts'), render(true, apiProd));
 
-console.log('[set-env] environment.ts y environment.prod.ts generados.');
+console.log('[set-env] environment.ts  -> api: ' + apiDev);
+console.log('[set-env] environment.prod.ts -> api: ' + apiProd);
