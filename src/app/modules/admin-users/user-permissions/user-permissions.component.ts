@@ -44,7 +44,7 @@ export class UserPermissionsComponent implements OnInit {
     { key: 'colaboradores', label: 'Colaboradores', description: 'Gestionar usuarios y permisos de la empresa' },
     { key: 'rendiciones', label: 'Rendiciones', description: 'Ver y gestionar rendiciones de todos los colaboradores' },
     { key: 'mis-rendiciones', label: 'Mis Rendiciones', description: 'Ver y gestionar rendiciones propias' },
-    { key: 'nueva-rendicion', label: 'Nueva Rendición', description: 'Crear nuevas rendiciones desde la pantalla Mis Rendiciones' },
+    { key: 'nueva-rendicion', label: 'Rendición directa', description: 'Crear nuevas rendiciones directas desde la pantalla de Tesorería' },
     { key: 'viaticos', label: 'Viáticos', description: 'Acceder a la gestión y seguimiento de anticipos de viáticos' },
     { key: 'consolidated-invoices', label: 'Dashboard', description: 'Ver el dashboard con KPIs y reportes consolidados de gastos' },
     { key: 'tesoreria', label: 'Pagos', description: 'Registrar comprobantes de pago de viáticos' },

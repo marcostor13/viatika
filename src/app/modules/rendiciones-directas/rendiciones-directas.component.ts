@@ -6,6 +6,8 @@ import { ExpenseReportsService } from '../../services/expense-reports.service';
 import { UserStateService } from '../../services/user-state.service';
 import { InvoicesService } from '../invoices/services/invoices.service';
 import { NotificationService } from '../../services/notification.service';
+import { AdminUsersService } from '../admin-users/services/admin-users.service';
+import { IUserResponse } from '../../interfaces/user.interface';
 import { IProject } from '../invoices/interfaces/project.interface';
 import { ICategory } from '../invoices/interfaces/category.interface';
 import {
@@ -33,6 +35,7 @@ export class RendicionesDirectasComponent implements OnInit {
   private notifications = inject(NotificationService);
   private exportService = inject(RendicionExportService);
   private router = inject(Router);
+  private adminUsersService = inject(AdminUsersService);
 
   // Estado
   loading = signal(false);
@@ -47,12 +50,14 @@ export class RendicionesDirectasComponent implements OnInit {
   filterCategoryId = '';
   filterDocNumber = '';
   filterTipo = '';
+  filterUserId = '';
   page = 1;
   readonly limit = 50;
 
   // Catálogos
   projects = signal<IProject[]>([]);
   categories = signal<ICategory[]>([]);
+  users = signal<IUserResponse[]>([]);
 
   // Acciones
   approvingId = signal<string | null>(null);
@@ -104,6 +109,7 @@ export class RendicionesDirectasComponent implements OnInit {
     if (!cid) return;
     this.invoicesService.getProjects(cid).subscribe({ next: list => this.projects.set(list ?? []) });
     this.invoicesService.getCategories().subscribe({ next: list => this.categories.set(list ?? []) });
+    this.adminUsersService.getUsers().subscribe({ next: list => this.users.set(list ?? []) });
   }
 
   loadData(): void {
@@ -115,6 +121,7 @@ export class RendicionesDirectasComponent implements OnInit {
       dateFrom: this.filterDateFrom || undefined, dateTo: this.filterDateTo || undefined,
       projectId: this.filterProjectId || undefined, categoryId: this.filterCategoryId || undefined,
       docNumber: this.filterDocNumber || undefined, tipo: this.filterTipo || undefined,
+      userId: this.filterUserId || undefined,
     }).subscribe({
       next: res => { this.data.set(res.data ?? []); this.total.set(res.total ?? 0); this.pages.set(res.pages ?? 0); this.loading.set(false); this.selectedIds.set(new Set<string>()); },
       error: () => { this.loading.set(false); this.notifications.show('Error al cargar los datos', 'error'); },
@@ -126,6 +133,7 @@ export class RendicionesDirectasComponent implements OnInit {
   clearFilters(): void {
     this.filterDateFrom = ''; this.filterDateTo = ''; this.filterProjectId = '';
     this.filterCategoryId = ''; this.filterDocNumber = ''; this.filterTipo = '';
+    this.filterUserId = '';
     this.page = 1; this.loadData();
   }
 

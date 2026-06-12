@@ -1509,6 +1509,11 @@ export class RendicionDetailComponent implements OnInit {
   returnVoucherBank = signal('');
   returnVoucherOperation = signal('');
 
+  /** Saldo de esta rendición ya fue utilizado para crear otra solicitud. */
+  get isSaldoUsadoEnOtraRendicion(): boolean {
+    return !!(this.report as any)?.pendingBalanceUsedInAdvanceId;
+  }
+
   /** Devuelve true cuando el saldo esperado corresponde a una devolución del colaborador. */
   private get isDevolucionExpected(): boolean {
     const settlementType = (this.report as any)?.settlement?.type;
@@ -1518,6 +1523,7 @@ export class RendicionDetailComponent implements OnInit {
   /** Colaborador puede cargar su comprobante de devolución en cuanto la rendición está aprobada y tiene saldo a devolver. */
   get canUploadReturnVoucher(): boolean {
     if (this.isAdminView) return false;
+    if (this.isSaldoUsadoEnOtraRendicion) return false;
     const status = this.report?.status;
     if (status !== 'approved' && status !== 'closed') return false;
     if (!this.isDevolucionExpected) return false;
@@ -1527,6 +1533,7 @@ export class RendicionDetailComponent implements OnInit {
   /** Panel informativo para contabilidad: la rendición está aprobada con saldo a devolver pero el colaborador aún no adjuntó el comprobante. */
   get approvedPendingVoucher(): boolean {
     if (!this.isAdminView) return false;
+    if (this.isSaldoUsadoEnOtraRendicion) return false;
     if (this.report?.status !== 'approved') return false;
     return this.isDevolucionExpected && !(this.report as any)?.returnVoucher;
   }
