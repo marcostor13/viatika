@@ -167,14 +167,14 @@ export class RendicionDetailComponent implements OnInit {
     });
   }
 
-  /** Resuelve "código — nombre" de un proyecto a partir de su id (proyecto por fila en Rendiciones Directas). */
+  /** Resuelve el código de un proyecto a partir de su id (proyecto por fila en Rendiciones Directas). En los reportes solo se muestra el código. */
   private resolveRowProjectLabel(id: unknown): string {
     if (!id) return '';
     const pid = typeof id === 'object' ? String((id as { _id?: string })._id ?? '') : String(id);
     if (!pid) return '';
     const p = this.projects.find((pr) => String(pr._id) === pid);
     if (!p) return '';
-    return p.code ? `${p.code} — ${p.name}` : p.name || '';
+    return p.code || '';
   }
 
   get reportProjectId(): string | null {
@@ -1245,12 +1245,15 @@ export class RendicionDetailComponent implements OnInit {
       const comentario = this.getExpenseComentario(exp);
       const placaVehiculo = this.getExpensePlaca(exp);
       const concepto = this.getExpenseConcepto(exp);
+      // Rendición directa: el proyecto es individual por gasto. En el reporte solo va el código.
+      const proyecto = this.resolveRowProjectLabel(exp['proyectId']);
       return {
         tipo: this.getExpenseTypeCode(exp),
         fecha: this.getExpenseDate(exp),
         descripcion: concepto,
         comentario: comentario || undefined,
         placaVehiculo: placaVehiculo || undefined,
+        proyecto: proyecto || undefined,
         monto: Number(exp['total']) || 0,
         estadoComprobante: this.mapExpenseStatusExport(
           typeof exp['status'] === 'string' ? exp['status'] : undefined,
@@ -1276,9 +1279,33 @@ export class RendicionDetailComponent implements OnInit {
       }
       return [{ descripcion: a.description, monto: a.amount, estado, fechaSolicitud }];
     });
+    // Rendición directa con depósito de Contabilidad: el depósito funciona como
+    // anticipo (igual que en la solicitud de viáticos), por lo que debe figurar
+    // como una "Transferencia" en la columna Ingresos del reporte.
+    if (this.hasDirectaDeposit && this.report.directaDeposit) {
+      const dep = this.report.directaDeposit;
+      const rawDate = dep.depositDate || dep.operationDate || dep.createdAt;
+      const fechaSolicitud = rawDate
+        ? new Date(rawDate).toLocaleDateString('es-PE', {
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric',
+          })
+        : '—';
+      anticipos.unshift({
+        descripcion: 'Depósito de Contabilidad',
+        monto: this.directaDeposited,
+        estado: 'Depositado',
+        fechaSolicitud,
+      });
+    }
     return {
       fileBaseName: `rendicion_${this.report.codigo || this.id}_${safeName}`.replace(/_+/g, '_'),
-      titulo: this.getProjectName() !== '—' ? this.getProjectName() : (this.report.title || 'Sin título'),
+      // En directas el proyecto es por gasto: el título no debe llevar proyecto.
+      titulo: this.report.isDirecta
+        ? (this.report.title || this.report.description || 'Rendición directa')
+        : (this.getProjectName() !== '—' ? this.getProjectName() : (this.report.title || 'Sin título')),
+      isDirecta: !!this.report.isDirecta,
       estado: this.getReportStatusLabel(),
       codigo: this.report.codigo || undefined,
       gestion: this.report.gestion || undefined,
