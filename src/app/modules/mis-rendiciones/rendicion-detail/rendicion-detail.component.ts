@@ -167,14 +167,14 @@ export class RendicionDetailComponent implements OnInit {
     });
   }
 
-  /** Resuelve "código — nombre" de un proyecto a partir de su id (proyecto por fila en Rendiciones Directas). */
+  /** Resuelve el código de un proyecto a partir de su id (proyecto por fila en Rendiciones Directas). En los reportes solo se muestra el código. */
   private resolveRowProjectLabel(id: unknown): string {
     if (!id) return '';
     const pid = typeof id === 'object' ? String((id as { _id?: string })._id ?? '') : String(id);
     if (!pid) return '';
     const p = this.projects.find((pr) => String(pr._id) === pid);
     if (!p) return '';
-    return p.code ? `${p.code} — ${p.name}` : p.name || '';
+    return p.code || '';
   }
 
   get reportProjectId(): string | null {
@@ -1245,8 +1245,8 @@ export class RendicionDetailComponent implements OnInit {
       const comentario = this.getExpenseComentario(exp);
       const placaVehiculo = this.getExpensePlaca(exp);
       const concepto = this.getExpenseConcepto(exp);
-      // Rendición directa: el proyecto es individual por gasto.
-      const proyecto = this.resolveRowProjectLabel(exp['proyectId']) || this.getExpenseProjectName(exp);
+      // Rendición directa: el proyecto es individual por gasto. En el reporte solo va el código.
+      const proyecto = this.resolveRowProjectLabel(exp['proyectId']);
       return {
         tipo: this.getExpenseTypeCode(exp),
         fecha: this.getExpenseDate(exp),
