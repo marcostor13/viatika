@@ -11,6 +11,7 @@ import { ConfirmationService } from '../../../services/confirmation.service';
 import { InvoicesService } from '../../invoices/services/invoices.service';
 import { UploadService } from '../../../services/upload.service';
 import { IExpenseReport } from '../../../interfaces/expense-report.interface';
+import { IProject } from '../../invoices/interfaces/project.interface';
 import { IAdvance, IAdvancePayment, ADVANCE_STATUS_LABELS, ADVANCE_STATUS_COLORS } from '../../../interfaces/advance.interface';
 import { ButtonComponent } from '../../../design-system/button/button.component';
 import {
@@ -57,6 +58,8 @@ export class RendicionDetailComponent implements OnInit {
   report: IExpenseReport | null = null;
   isLoading = true;
   advances: IAdvance[] = [];
+  /** Catálogo de proyectos del cliente, para resolver el proyecto por fila de las planillas (Rendiciones Directas). */
+  projects: IProject[] = [];
   showAdvanceModal = false;
 
   // Comprobantes paginados
@@ -150,10 +153,28 @@ export class RendicionDetailComponent implements OnInit {
 
   ngOnInit(): void {
     this.companyConfigService.refreshConfig();
+    this.loadProjects();
     if (this.id) {
       this.loadReport();
       this.loadAdvances();
     }
+  }
+
+  private loadProjects(): void {
+    this.invoicesService.getProjects().subscribe({
+      next: (list) => { this.projects = list ?? []; },
+      error: () => {},
+    });
+  }
+
+  /** Resuelve "código — nombre" de un proyecto a partir de su id (proyecto por fila en Rendiciones Directas). */
+  private resolveRowProjectLabel(id: unknown): string {
+    if (!id) return '';
+    const pid = typeof id === 'object' ? String((id as { _id?: string })._id ?? '') : String(id);
+    if (!pid) return '';
+    const p = this.projects.find((pr) => String(pr._id) === pid);
+    if (!p) return '';
+    return p.code ? `${p.code} — ${p.name}` : p.name || '';
   }
 
   get reportProjectId(): string | null {
@@ -1989,6 +2010,7 @@ export class RendicionDetailComponent implements OnInit {
       destino: String(r['destino'] || ''),
       gestion: String(r['gestion'] || ''),
       total: this.mobilityRowTotal(r),
+      proyecto: this.resolveRowProjectLabel(r['proyectId']),
       colaborador: String(r['colaboradorNombre'] || this.getCollaboratorDisplayName() || ''),
     }));
     const total = rows.reduce((sum, r) => sum + (r.total || 0), 0);
@@ -2054,6 +2076,7 @@ export class RendicionDetailComponent implements OnInit {
       destino: String(r['destino'] || ''),
       gestion: String(r['gestion'] || ''),
       total: this.mobilityRowTotal(r),
+      proyecto: this.resolveRowProjectLabel(r['proyectId']),
       colaborador: String(r['colaboradorNombre'] || this.getCollaboratorDisplayName() || ''),
     }));
     const total = rows.reduce((sum, r) => sum + (r.total || 0), 0);

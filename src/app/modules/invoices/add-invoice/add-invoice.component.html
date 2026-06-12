@@ -761,9 +761,14 @@
             }
           </div>
           <div class="flex flex-col gap-1">
-            <label class="text-xs font-medium text-secondary">Cliente / Proveedor</label>
+            <label class="text-xs font-medium text-secondary">Cliente / Proveedor <span class="text-error">*</span></label>
             <input type="text" formControlName="clienteProveedor" placeholder="Nombre"
-              class="w-full h-[42px] px-3 rounded-lg border border-tertiary/40 bg-background focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm" />
+              class="w-full h-[42px] px-3 rounded-lg border border-tertiary/40 bg-background focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm"
+              [class.border-error]="row.get('clienteProveedor')?.invalid && row.get('clienteProveedor')?.touched"
+              [class.ring-error]="row.get('clienteProveedor')?.invalid && row.get('clienteProveedor')?.touched" />
+            @if (row.get('clienteProveedor')?.invalid && row.get('clienteProveedor')?.touched) {
+            <p class="text-xs text-error">Indica el cliente o proveedor.</p>
+            }
           </div>
           <!-- Gestión -->
           <div class="flex flex-col gap-1 sm:col-span-3">
