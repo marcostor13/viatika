@@ -726,7 +726,10 @@ export class RendicionDetailComponent implements OnInit {
 
   getExpenseProveedor(expense: any): string {
     const type = expense?.expenseType;
-    if (type === 'planilla_movilidad' || type === 'comprobante_caja' || type === 'otros_gastos') return '-';
+    if (type === 'planilla_movilidad' || type === 'otros_gastos') return '-';
+    if (type === 'comprobante_caja') {
+      return String(this.getCashVoucherPayload(expense)['entregadoA'] || '-');
+    }
     const d = this.getExpenseDataObject(expense);
     const razonSocial = d['razonSocial'];
     if (typeof razonSocial === 'string' && razonSocial.trim()) return razonSocial.trim();
@@ -1221,11 +1224,14 @@ export class RendicionDetailComponent implements OnInit {
       .slice(0, 50);
     const comprobantes = (this.report.expenseIds || []).map((exp: Record<string, unknown>) => {
       const dataObj = this.getExpenseDataObject(exp);
+      const expType = exp['expenseType'] as string;
       let provider = exp['provider'] as string || dataObj['razonSocial'] as string || '';
+      if (!provider && expType === 'comprobante_caja') {
+        provider = String(this.getCashVoucherPayload(exp)['entregadoA'] || '');
+      }
       if (!provider && this.getExpenseTypeLabel(exp) === 'Planilla movilidad') {
         provider = 'Planilla de Movilidad';
       }
-      const expType = exp['expenseType'] as string;
       let numDoc = '';
       if (expType === 'planilla_movilidad' || expType === 'comprobante_caja') {
         numDoc = typeof exp['internalCode'] === 'string' ? exp['internalCode'] : '';

@@ -299,7 +299,15 @@ export class RendicionesDirectasComponent implements OnInit {
 
   getProveedor(e: any): string {
     const type = e?.expenseType;
-    if (type === 'planilla_movilidad' || type === 'comprobante_caja' || type === 'otros_gastos') return '-';
+    if (type === 'planilla_movilidad' || type === 'otros_gastos') return '-';
+    if (type === 'comprobante_caja') {
+      try {
+        const d = this.getData(e);
+        const raw = d['payload'];
+        const obj: any = typeof raw === 'string' ? JSON.parse(raw) : (raw ?? {});
+        return String(obj['entregadoA'] || '-');
+      } catch { return '-'; }
+    }
     const d = this.getData(e);
     const r = d['razonSocial'];
     if (typeof r === 'string' && r.trim()) return r.trim();
