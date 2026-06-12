@@ -167,6 +167,17 @@
         <span class="font-medium">Rendiciones Directas</span>
       </a>
       }
+      @if (isContabilidadInCompany()) {
+      <a
+        [routerLink]="['/rendiciones-caja-chica']"
+        routerLinkActive="bg-primary text-white"
+        [class.bg-primary]="isSelected('/rendiciones-caja-chica')"
+        [class.text-quaternary]="isSelected('/rendiciones-caja-chica')"
+        class="flex items-center px-4 py-3 text-secondary rounded-xl hover:bg-background hover:text-primary transition-all duration-200 group"
+      >
+        <span class="font-medium">Rendiciones Caja Chica</span>
+      </a>
+      }
 
       <!-- Módulos opcionales: controlados 100% por permisos configurados -->
       @if (!isColaborador() && !isContabilidadInCompany() && (hasModulePermission('mis-rendiciones') || hasModulePermission('nueva-rendicion'))) {
@@ -588,6 +599,17 @@
           class="flex items-center px-4 py-4 text-secondary rounded-xl hover:bg-background hover:text-primary transition-all duration-200 group"
         >
           <span class="font-medium text-lg">Rendiciones Directas</span>
+        </a>
+        }
+        @if (isContabilidadInCompany()) {
+        <a
+          [routerLink]="['/rendiciones-caja-chica']"
+          (click)="toggleSidebar()"
+          [class.bg-primary]="isSelected('/rendiciones-caja-chica')"
+          [class.text-quaternary]="isSelected('/rendiciones-caja-chica')"
+          class="flex items-center px-4 py-4 text-secondary rounded-xl hover:bg-background hover:text-primary transition-all duration-200 group"
+        >
+          <span class="font-medium text-lg">Rendiciones Caja Chica</span>
         </a>
         }
 

@@ -132,6 +132,10 @@ export class RendicionDetailComponent implements OnInit {
     if (this.hasDirectaDeposit) {
       return this.directaSaldo;
     }
+    // Rendición directa creada desde el saldo de otra: el presupuesto es el saldo heredado.
+    if (this.hasPendingBalanceCredit) {
+      return this.pendingBalanceCreditAmount - this.totalGastado;
+    }
     if (this.settlement?.difference !== undefined && this.settlement.difference !== null) {
       return this.settlement.difference;
     }
@@ -1515,9 +1519,22 @@ export class RendicionDetailComponent implements OnInit {
   returnVoucherBank = signal('');
   returnVoucherOperation = signal('');
 
-  /** Saldo de esta rendición ya fue utilizado para crear otra solicitud. */
+  /** Saldo de esta rendición ya fue utilizado para crear otra solicitud o rendición directa. */
   get isSaldoUsadoEnOtraRendicion(): boolean {
-    return !!(this.report as any)?.pendingBalanceUsedInAdvanceId;
+    return !!(this.report as any)?.pendingBalanceUsedInAdvanceId
+      || !!(this.report as any)?.pendingBalanceUsedInRendicionId;
+  }
+
+  /** Esta rendición directa fue creada usando el saldo de otra (saldo heredado). */
+  get hasPendingBalanceCredit(): boolean {
+    return !!(this.report?.isDirecta
+      && !this.report?.directaDeposit
+      && this.report?.pendingBalanceFromReportId
+      && (this.report?.pendingBalanceAmount ?? 0) > 0);
+  }
+
+  get pendingBalanceCreditAmount(): number {
+    return Number(this.report?.pendingBalanceAmount ?? 0);
   }
 
   /** Devuelve true cuando el saldo esperado corresponde a una devolución del colaborador. */
@@ -2262,11 +2279,63 @@ export class RendicionDetailComponent implements OnInit {
     this.notificationService.show('Declaración jurada descargada', 'success');
   }
 
+  // ─── Nueva solicitud con saldo (bifurca según tipo de rendición) ─────────────
+
+  showNuevaDirectaConSaldoModal = signal(false);
+  nuevaDirectaGestion = signal('');
+  isCreatingDirectaConSaldo = signal(false);
+
   openNuevaSolicitudConSaldo(): void {
-    this.router.navigate(['/mis-rendiciones/solicitud-viaticos/nueva'], {
-      queryParams: {
-        pendingBalanceFromReportId: this.id,
-        pendingBalanceAmount: this.saldoLibre,
+    if (this.report?.isDirecta) {
+      this.nuevaDirectaGestion.set('');
+      this.showNuevaDirectaConSaldoModal.set(true);
+    } else {
+      this.router.navigate(['/mis-rendiciones/solicitud-viaticos/nueva'], {
+        queryParams: {
+          pendingBalanceFromReportId: this.id,
+          pendingBalanceAmount: this.saldoLibre,
+        },
+      });
+    }
+  }
+
+  createNuevaDirectaConSaldo(): void {
+    const gestion = this.nuevaDirectaGestion().trim();
+    if (!gestion) {
+      this.notificationService.show('Ingresa una descripción de gestión', 'warning');
+      return;
+    }
+    const user = this.userStateService.getUser() as any;
+    const userId = user?._id ?? '';
+    const clientId =
+      user?.companyId ||
+      user?.client?._id ||
+      (typeof user?.clientId === 'string' ? user.clientId : user?.clientId?._id) ||
+      '';
+    if (!userId || !clientId) {
+      this.notificationService.show('No se pudo identificar al usuario o empresa.', 'error');
+      return;
+    }
+    this.isCreatingDirectaConSaldo.set(true);
+    this.expenseReportsService.create({
+      isDirecta: true,
+      gestion,
+      userId,
+      clientId,
+      pendingBalanceFromReportId: this.id,
+      pendingBalanceAmount: this.saldoLibre,
+    }).subscribe({
+      next: (_newReport) => {
+        this.isCreatingDirectaConSaldo.set(false);
+        this.showNuevaDirectaConSaldoModal.set(false);
+        this.notificationService.show('Nueva rendición creada con el saldo disponible.', 'success');
+        this.router.navigate(['/mis-rendiciones'], { queryParams: { tab: 'directas' } });
+      },
+      error: (err) => {
+        this.isCreatingDirectaConSaldo.set(false);
+        const raw = err?.error?.message;
+        const msg = Array.isArray(raw) ? raw.join(', ') : raw;
+        this.notificationService.show(msg || 'Error al crear la nueva rendición.', 'error');
       },
     });
   }

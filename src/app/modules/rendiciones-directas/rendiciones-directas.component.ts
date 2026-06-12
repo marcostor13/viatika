@@ -63,6 +63,7 @@ export class RendicionesDirectasComponent implements OnInit {
   approvingId = signal<string | null>(null);
   deletingId = signal<string | null>(null);
   confirmDeleteExpense = signal<any | null>(null);
+  confirmApproveExpense = signal<any | null>(null);
   isExportingExcel = signal(false);
   isExportingPdf = signal(false);
 
@@ -151,9 +152,18 @@ export class RendicionesDirectasComponent implements OnInit {
 
   // ─── Aprobación ──────────────────────────────────────────────────────────────
 
-  approveExpense(e: any, event: Event): void {
+  openApproveConfirm(e: any, event: Event): void {
     event.stopPropagation();
     if (this.approvingId() || this.isRevisado(e)) return;
+    this.confirmApproveExpense.set(e);
+  }
+
+  cancelApprove(): void { this.confirmApproveExpense.set(null); }
+
+  doApprove(): void {
+    const e = this.confirmApproveExpense();
+    if (!e) return;
+    this.confirmApproveExpense.set(null);
     this.approvingId.set(e._id);
     this.invoicesService.approveByContabilidad(e._id).subscribe({
       next: () => {
@@ -170,6 +180,8 @@ export class RendicionesDirectasComponent implements OnInit {
       },
     });
   }
+
+  approveExpense(e: any, event: Event): void { this.openApproveConfirm(e, event); }
 
   // ─── Eliminación ─────────────────────────────────────────────────────────────
 

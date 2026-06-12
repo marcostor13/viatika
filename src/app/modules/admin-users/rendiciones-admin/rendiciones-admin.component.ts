@@ -6,6 +6,7 @@ import { ExpenseReportsService } from '../../../services/expense-reports.service
 import { AdminUsersService } from '../services/admin-users.service';
 import { InvoicesService } from '../../invoices/services/invoices.service';
 import { UserStateService } from '../../../services/user-state.service';
+import { NotificationService } from '../../../services/notification.service';
 import { IExpenseReport } from '../../../interfaces/expense-report.interface';
 import { IUserResponse } from '../../../interfaces/user.interface';
 import { IProject } from '../../invoices/interfaces/project.interface';
@@ -47,6 +48,7 @@ export class RendicionesAdminComponent implements OnInit {
   private adminUsersService = inject(AdminUsersService);
   private invoicesService = inject(InvoicesService);
   private userStateService = inject(UserStateService);
+  private notifications = inject(NotificationService);
 
   allReports: IExpenseReport[] = [];
   filteredReports: IExpenseReport[] = [];
@@ -54,6 +56,8 @@ export class RendicionesAdminComponent implements OnInit {
   projects: IProject[] = [];
 
   isLoading = true;
+  reportToDelete: IExpenseReport | null = null;
+  isDeleting = false;
 
   filterUserId = '';
   filterProjectId = '';
@@ -178,5 +182,37 @@ export class RendicionesAdminComponent implements OnInit {
   goToUserDetail(report: IExpenseReport): void {
     const uid = this.getUserId(report);
     if (uid) this.router.navigate(['/admin-users', uid, 'details']);
+  }
+
+  canDelete(report: IExpenseReport): boolean {
+    return report.expenseIds.length === 0;
+  }
+
+  openDeleteModal(report: IExpenseReport): void {
+    this.reportToDelete = report;
+  }
+
+  cancelDelete(): void {
+    this.reportToDelete = null;
+  }
+
+  confirmDelete(): void {
+    if (!this.reportToDelete) return;
+    this.isDeleting = true;
+    this.expenseReportsService.delete(this.reportToDelete._id).subscribe({
+      next: () => {
+        const id = this.reportToDelete!._id;
+        this.allReports = this.allReports.filter(r => r._id !== id);
+        this.applyFilters();
+        this.reportToDelete = null;
+        this.isDeleting = false;
+        this.notifications.show('Rendicion eliminada.', 'success');
+      },
+      error: (err) => {
+        this.isDeleting = false;
+        const msg = err?.error?.message ?? 'Error al eliminar la rendicion.';
+        this.notifications.show(msg, 'error');
+      },
+    });
   }
 }

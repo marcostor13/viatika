@@ -69,6 +69,16 @@ export class ExpenseReportsService {
     );
   }
 
+  /** Colaborador: sus propias rendiciones de caja chica. */
+  getMyCajaChica(): Observable<any[]> {
+    return this.http.get<any[]>(`${this.apiUrl}/expense-report/my/caja-chica`);
+  }
+
+  /** Contabilidad: todas las rendiciones de caja chica disponibles del cliente. */
+  getAllCajaChicaAvailable(): Observable<any[]> {
+    return this.http.get<any[]>(`${this.apiUrl}/expense-report/caja-chica/available`);
+  }
+
   /** Contabilidad: lista las rendiciones directas iniciadas con depósito. */
   findDirectaDepositReports(clientId: string): Observable<any[]> {
     return this.http.get<any[]>(

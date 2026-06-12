@@ -192,6 +192,11 @@ export class UserStateService {
     return this.canAccessTesoreria();
   }
 
+  canAccessCajaChica(): boolean {
+    if (this.isSuperAdmin() || this.isContabilidad() || this.isAdmin()) return true;
+    return this.hasModulePermission('caja-chica');
+  }
+
   canCreateRendicion(): boolean {
     // Colaboradores y coordinadores con el permiso explícito; admins/contabilidad usan otro flujo
     if (!this.isColaborador() && !this.isCoordinador()) return false;

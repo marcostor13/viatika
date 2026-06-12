@@ -179,6 +179,16 @@
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
                 </svg>
               </button>
+              @if (canDelete(report)) {
+                <button
+                  (click)="openDeleteModal(report); $event.stopPropagation()" title="Eliminar"
+                  class="p-2 rounded-lg text-tertiary hover:text-error hover:bg-error/10 transition-colors"
+                >
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                  </svg>
+                </button>
+              }
             </div>
           </td>
 
@@ -226,7 +236,7 @@
           </div>
         </div>
 
-        <div class="flex items-center gap-1 pl-[52px] mt-3">
+        <div class="flex items-center gap-2 pl-[52px] mt-3">
           <button
             (click)="goToDetail(report)"
             class="flex items-center gap-1.5 px-3 py-2 text-xs font-medium rounded-lg bg-primary/10 text-primary hover:bg-primary hover:text-white transition-colors"
@@ -237,6 +247,17 @@
             </svg>
             Ver detalle
           </button>
+          @if (canDelete(report)) {
+            <button
+              (click)="openDeleteModal(report)"
+              class="flex items-center gap-1.5 px-3 py-2 text-xs font-medium rounded-lg bg-error/10 text-error hover:bg-error hover:text-white transition-colors"
+            >
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+              </svg>
+              Eliminar
+            </button>
+          }
         </div>
 
       </div>
@@ -248,3 +269,37 @@
 
   }
 </div>
+
+@if (reportToDelete) {
+<div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-secondary/50 backdrop-blur-sm"
+     (click)="cancelDelete()">
+  <div class="bg-quaternary rounded-2xl shadow-soft border border-tertiary/20 w-full max-w-sm p-6"
+       (click)="$event.stopPropagation()">
+    <div class="flex items-center gap-3 mb-4">
+      <div class="w-10 h-10 rounded-full bg-error/10 flex items-center justify-center shrink-0">
+        <svg class="w-5 h-5 text-error" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+        </svg>
+      </div>
+      <div>
+        <h2 class="text-base font-bold text-secondary">Eliminar rendicion</h2>
+        <p class="text-xs text-tertiary">Esta accion no se puede deshacer.</p>
+      </div>
+    </div>
+    <p class="text-sm text-secondary mb-1">
+      ¿Eliminar la rendicion de <span class="font-semibold">{{ getUserName(reportToDelete) }}</span>?
+    </p>
+    <p class="text-xs text-tertiary mb-5 truncate" [title]="reportToDelete.title">{{ reportToDelete.title || '—' }}</p>
+    <div class="flex gap-3">
+      <button (click)="cancelDelete()"
+        class="flex-1 h-[42px] border border-tertiary/30 rounded-xl text-sm text-secondary hover:bg-background transition-colors">
+        Cancelar
+      </button>
+      <button (click)="confirmDelete()" [disabled]="isDeleting"
+        class="flex-1 h-[42px] bg-error text-white rounded-xl text-sm font-semibold hover:bg-error/90 transition-colors disabled:opacity-50">
+        @if (isDeleting) { Eliminando... } @else { Eliminar }
+      </button>
+    </div>
+  </div>
+</div>
+}

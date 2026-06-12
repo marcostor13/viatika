@@ -7,6 +7,7 @@ import { UserStateService } from '../../services/user-state.service';
 import { NotificationService } from '../../services/notification.service';
 import { IExpenseReport } from '../../interfaces/expense-report.interface';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
+import { CajaChicaReportService } from '../../services/caja-chica-report.service';
 import { CreateRendicionModalComponent } from '../admin-users/user-details/create-rendicion-modal/create-rendicion-modal.component';
 import { AdvanceService } from '../../services/advance.service';
 import {
@@ -28,6 +29,7 @@ export class MisRendicionesComponent implements OnInit {
   private userStateService = inject(UserStateService);
   private advanceService = inject(AdvanceService);
   private notificationService = inject(NotificationService);
+  private cajaChicaReportService = inject(CajaChicaReportService);
   private router = inject(Router);
   private route = inject(ActivatedRoute);
 
@@ -40,7 +42,12 @@ export class MisRendicionesComponent implements OnInit {
   isCreatingGasto = signal(false);
 
   // Tabs
-  activeTab = signal<'viaticos' | 'directas'>('viaticos');
+  activeTab = signal<'viaticos' | 'directas' | 'caja-chica'>('viaticos');
+
+  // Tab caja chica
+  cajaChicaReports = signal<IExpenseReport[]>([]);
+  cajaChicaLoading = signal(false);
+  cajaChicaLoaded = false;
 
   // Tab gastos directos
   directaExpenses = signal<any[]>([]);
@@ -79,13 +86,43 @@ export class MisRendicionesComponent implements OnInit {
       this.setTab('viaticos');
     } else if (tab === 'directas') {
       this.setTab('directas');
+    } else if (tab === 'caja-chica') {
+      this.setTab('caja-chica');
     } else if (this.canCreateRendicion || !this.canViewViaticos) {
       this.setTab('directas');
     }
   }
 
-  setTab(tab: 'viaticos' | 'directas'): void {
+  setTab(tab: 'viaticos' | 'directas' | 'caja-chica'): void {
     this.activeTab.set(tab);
+    if (tab === 'caja-chica' && !this.cajaChicaLoaded) {
+      this.loadCajaChicaReports();
+    }
+  }
+
+  get canAccessCajaChica(): boolean {
+    return this.userStateService.canAccessCajaChica() && this.userStateService.isColaborador();
+  }
+
+  loadCajaChicaReports(): void {
+    this.cajaChicaLoading.set(true);
+    this.expenseReportsService.getMyCajaChica().subscribe({
+      next: (reports) => {
+        this.cajaChicaReports.set(reports as IExpenseReport[]);
+        this.cajaChicaLoading.set(false);
+        this.cajaChicaLoaded = true;
+      },
+      error: () => { this.cajaChicaLoading.set(false); },
+    });
+  }
+
+  navigateToNuevaCajaChica(): void {
+    this.router.navigate(['/mis-rendiciones/nueva-caja-chica']);
+  }
+
+  cajaChicaTotalExpenses(report: any): number {
+    if (!Array.isArray(report?.expenseIds)) return 0;
+    return report.expenseIds.reduce((s: number, e: any) => s + (Number(e?.total) || 0), 0);
   }
 
   /** Rendiciones directas del colaborador (creadas primero, luego se agregan gastos). */

@@ -490,6 +490,49 @@
           </p>
         </div>
       </div>
+      } @else if (report.isDirecta && hasPendingBalanceCredit) {
+      <!-- Rendición directa creada desde saldo heredado -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6 mb-6 md:mb-8">
+        <!-- Saldo heredado -->
+        <div class="bg-white rounded-xl shadow-sm border border-blue-200 p-4 sm:p-6">
+          <div class="flex items-center gap-3 mb-2">
+            <div class="p-2 bg-blue-50 text-blue-600 rounded-lg">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" />
+              </svg>
+            </div>
+            <p class="font-medium text-gray-500">Saldo Heredado</p>
+          </div>
+          <p class="text-2xl sm:text-3xl font-bold text-blue-700 tabular-nums">S/ {{ pendingBalanceCreditAmount | number:'1.2-2' }}</p>
+          <p class="text-xs text-gray-400 mt-1">Traspasado desde rendicion anterior</p>
+        </div>
+        <!-- Total gastado -->
+        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4 sm:p-6">
+          <div class="flex items-center gap-3 mb-2">
+            <div class="p-2 bg-red-50 text-red-600 rounded-lg">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v12m-3-2.818.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+              </svg>
+            </div>
+            <p class="font-medium text-gray-500">Total Gastado</p>
+          </div>
+          <p class="text-2xl sm:text-3xl font-bold text-gray-900 tabular-nums">S/ {{ totalGastado | number:'1.2-2' }}</p>
+        </div>
+        <!-- Saldo disponible -->
+        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4 sm:p-6">
+          <div class="flex items-center gap-3 mb-2">
+            <div class="p-2 bg-green-50 text-green-600 rounded-lg">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+              </svg>
+            </div>
+            <p class="font-medium text-gray-500">Saldo Disponible</p>
+          </div>
+          <p class="text-2xl sm:text-3xl font-bold tabular-nums" [ngClass]="{'text-green-600': saldoLibre >= 0, 'text-red-600': saldoLibre < 0}">
+            S/ {{ saldoLibre | number:'1.2-2' }}
+          </p>
+        </div>
+      </div>
       } @else if (report.isDirecta) {
       <div class="w-full max-w-xs mb-6 md:mb-8">
         <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4 sm:p-6">
@@ -2695,6 +2738,62 @@
     </div>
   </div>
   }
+
+<!-- Modal: Nueva rendición directa con saldo -->
+@if (showNuevaDirectaConSaldoModal()) {
+<div class="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-black/40" (click)="showNuevaDirectaConSaldoModal.set(false)">
+  <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm" (click)="$event.stopPropagation()">
+    <div class="px-6 pt-6 pb-2 flex items-center gap-3">
+      <div class="flex-shrink-0 w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 text-blue-600">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+        </svg>
+      </div>
+      <div>
+        <h3 class="text-base font-semibold text-gray-900">Nueva rendición directa</h3>
+        <p class="text-xs text-gray-500">Saldo disponible: S/ {{ saldoLibre | number:'1.2-2' }}</p>
+      </div>
+    </div>
+    <div class="px-6 py-4">
+      <p class="text-sm text-gray-600 mb-4">
+        Se creará una nueva rendición directa usando el saldo de <strong>S/ {{ saldoLibre | number:'1.2-2' }}</strong> disponible en esta rendición.
+      </p>
+      <label class="block text-sm font-medium text-gray-700 mb-1">Gestión <span class="text-red-500">*</span></label>
+      <input
+        type="text"
+        [value]="nuevaDirectaGestion()"
+        (input)="nuevaDirectaGestion.set($any($event.target).value)"
+        class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400/50 focus:border-blue-400"
+        placeholder="Ej: Viaje a Arequipa - Julio 2026"
+        [disabled]="isCreatingDirectaConSaldo()"
+      />
+    </div>
+    <div class="px-6 pb-6 flex gap-3">
+      <button
+        type="button"
+        class="flex-1 py-2.5 border border-gray-200 text-gray-700 rounded-xl text-sm font-medium hover:bg-gray-50 transition-colors"
+        [disabled]="isCreatingDirectaConSaldo()"
+        (click)="showNuevaDirectaConSaldoModal.set(false)"
+      >
+        Volver
+      </button>
+      <button
+        type="button"
+        class="flex-1 py-2.5 bg-blue-600 text-white rounded-xl text-sm font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors"
+        [disabled]="isCreatingDirectaConSaldo() || !nuevaDirectaGestion().trim()"
+        (click)="createNuevaDirectaConSaldo()"
+      >
+        @if (isCreatingDirectaConSaldo()) {
+          <span class="inline-block w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin mr-1"></span>
+          Creando...
+        } @else {
+          Crear rendición
+        }
+      </button>
+    </div>
+  </div>
+</div>
+}
 
 <!-- Modal: Adjuntar comprobante de devolución de saldo (colaborador, rendición cerrada) -->
 @if (showReturnVoucherModal()) {
