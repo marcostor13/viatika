@@ -225,4 +225,18 @@ export class ExpenseReportsService {
       { params }
     );
   }
+
+  /** Rendiciones directas a nivel de reporte (una fila por rendición) para la pestaña "Rendiciones directas". */
+  findDirectRendicionReports(clientId: string, filters: {
+    dateFrom?: string; dateTo?: string; userId?: string;
+  } = {}): Observable<any[]> {
+    let params = new HttpParams();
+    if (filters.dateFrom) params = params.set('dateFrom', filters.dateFrom);
+    if (filters.dateTo) params = params.set('dateTo', filters.dateTo);
+    if (filters.userId) params = params.set('userId', filters.userId);
+    return this.http.get<any[]>(
+      `${this.apiUrl}/expense-report/directas/reports/${clientId}`,
+      { params }
+    );
+  }
 }
