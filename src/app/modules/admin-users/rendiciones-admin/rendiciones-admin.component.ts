@@ -76,9 +76,13 @@ export class RendicionesAdminComponent implements OnInit {
 
     this.expenseReportsService.findAllByClient(clientId).subscribe({
       next: (reports) => {
-        this.allReports = reports.sort(
-          (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-        );
+        // Las rendiciones directas se gestionan en su propia sección
+        // (/rendiciones-directas). Aquí solo van las rendiciones con solicitud.
+        this.allReports = reports
+          .filter((r) => !r.isDirecta)
+          .sort(
+            (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+          );
         this.applyFilters();
         this.isLoading = false;
       },
