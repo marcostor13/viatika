@@ -208,6 +208,7 @@ export class ExpenseReportsService {
     page?: number; limit?: number;
     dateFrom?: string; dateTo?: string;
     projectId?: string; categoryId?: string; docNumber?: string; tipo?: string;
+    userId?: string;
   } = {}): Observable<{ data: any[]; total: number; page: number; limit: number; pages: number }> {
     let params = new HttpParams();
     if (filters.page) params = params.set('page', String(filters.page));
@@ -218,6 +219,7 @@ export class ExpenseReportsService {
     if (filters.categoryId) params = params.set('categoryId', filters.categoryId);
     if (filters.docNumber) params = params.set('docNumber', filters.docNumber);
     if (filters.tipo) params = params.set('tipo', filters.tipo);
+    if (filters.userId) params = params.set('userId', filters.userId);
     return this.http.get<{ data: any[]; total: number; page: number; limit: number; pages: number }>(
       `${this.apiUrl}/expense-report/directas/expenses/${clientId}`,
       { params }
