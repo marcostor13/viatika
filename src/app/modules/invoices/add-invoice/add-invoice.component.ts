@@ -1,5 +1,6 @@
 import { Component, inject, signal, computed, OnInit } from '@angular/core';
 import { Router, ActivatedRoute } from '@angular/router';
+import { Subscription } from 'rxjs';
 import {
   FormBuilder,
   FormGroup,
@@ -307,7 +308,7 @@ export default class AddInvoiceComponent implements OnInit {
       if (tipo) {
         this.setExpenseType(tipo);
       } else {
-        this.syncTopProjectValidator();
+        this.syncTopValidators();
       }
       if (this.rendicionId) {
         this.loadRendicionProject();
@@ -434,10 +435,12 @@ export default class AddInvoiceComponent implements OnInit {
             const rows: any[] = (res as any).mobilityRows || dataObj.rows || [];
             this.mobilityRowsArray.clear();
             for (const row of rows) {
-              this.mobilityRowsArray.push(this.fb.group({
+              const rowRequired = this.isDirectaContext() ? [Validators.required] : [];
+              const group = this.fb.group({
                 fecha: [row.fecha || '', Validators.required],
                 total: [row.total ?? null, [Validators.required, Validators.min(0)]],
-                proyectId: [row.proyectId || '', this.isDirectaContext() ? [Validators.required] : []],
+                proyectId: [row.proyectId || '', rowRequired],
+                categoryId: [row.categoryId || '', rowRequired],
                 colaboradorEsTercero: [!!(row.colaboradorId && String(row.colaboradorId) !== this.currentUserId)],
                 colaboradorId: [row.colaboradorId && String(row.colaboradorId) !== this.currentUserId ? String(row.colaboradorId) : ''],
                 clienteProveedor: [row.clienteProveedor || ''],
@@ -455,7 +458,9 @@ export default class AddInvoiceComponent implements OnInit {
                 destinoDistrito: [row.destinoDistrito || ''],
                 distanciaKm: [row.distanciaKm ?? null],
                 gestion: [row.gestion || '', Validators.required],
-              }));
+              });
+              this.mobilityRowsArray.push(group);
+              this.wireRowCategoryReset(group);
             }
           }
         },
@@ -490,7 +495,7 @@ export default class AddInvoiceComponent implements OnInit {
         }
         // El flag directa puede llegar después de que el usuario ya agregó filas:
         // re-sincroniza validadores del proyecto (superior y por fila).
-        this.syncMobilityProjectValidators();
+        this.syncMobilityRowValidators();
         const expenses = Array.isArray(report?.expenseIds) ? report.expenseIds : [];
         const spent = expenses.reduce(
           (sum: number, exp: any) => sum + (parseFloat(exp?.total) || 0),
@@ -621,12 +626,11 @@ export default class AddInvoiceComponent implements OnInit {
   }
 
   /**
-   * IDs de categoría permitidas por el perfil (category-group) del proyecto
-   * seleccionado, o `null` cuando no aplica filtro (sin proyecto, proyecto sin
-   * perfil, o perfil sin categorías) — en cuyo caso se muestran todas.
+   * IDs de categoría permitidas por el perfil (category-group) del proyecto `projId`,
+   * o `null` cuando no aplica filtro (sin proyecto, proyecto sin perfil, o perfil sin
+   * categorías) — en cuyo caso se muestran todas.
    */
-  private allowedCategoryIds(): Set<string> | null {
-    const projId = this.form.get('proyectId')?.value;
+  private allowedCategoryIdsFor(projId: string | null | undefined): Set<string> | null {
     if (!projId) return null;
     const project = this.proyects.find((p) => String(p._id) === String(projId));
     const groupId = project?.categoryGroupId;
@@ -637,16 +641,37 @@ export default class AddInvoiceComponent implements OnInit {
     return new Set(ids);
   }
 
-  /** Categorías visibles en el selector: filtradas por el perfil del proyecto elegido. */
-  get filteredCategories(): ICategory[] {
-    const allowed = this.allowedCategoryIds();
+  /** IDs de categoría permitidas por el perfil del proyecto del gasto (selector superior). */
+  private allowedCategoryIds(): Set<string> | null {
+    return this.allowedCategoryIdsFor(this.form.get('proyectId')?.value);
+  }
+
+  /**
+   * Filtra `categories` por un set permitido, manteniendo visible la categoría ya
+   * seleccionada aunque no pertenezca al perfil (p. ej. al editar un gasto creado
+   * antes de asignar el perfil). Con `allowed === null` no aplica filtro.
+   */
+  private filterCategoriesByAllowed(allowed: Set<string> | null, selected: any): ICategory[] {
     if (!allowed) return this.categories;
-    // Mantiene visible la categoría ya seleccionada aunque no pertenezca al perfil
-    // (p. ej. al editar un gasto creado antes de asignar el perfil).
-    const selected = this.form.get('categoryId')?.value;
     return this.categories.filter(
       (c) => allowed.has(String(c._id)) || String(c._id) === String(selected)
     );
+  }
+
+  /** Categorías visibles en el selector superior: filtradas por el perfil del proyecto del gasto. */
+  get filteredCategories(): ICategory[] {
+    return this.filterCategoriesByAllowed(this.allowedCategoryIds(), this.form.get('categoryId')?.value);
+  }
+
+  /**
+   * Categorías visibles para una fila de la planilla (Rendiciones Directas): filtradas
+   * por el perfil del proyecto elegido en esa misma fila, de modo que la categoría
+   * siempre corresponda al proyecto seleccionado en la fila.
+   */
+  getRowCategories(index: number): ICategory[] {
+    const row = this.mobilityRowsArray.at(index);
+    const allowed = this.allowedCategoryIdsFor(row?.get('proyectId')?.value);
+    return this.filterCategoriesByAllowed(allowed, row?.get('categoryId')?.value);
   }
 
   lookupRazonSocial(ruc: string) {
@@ -716,7 +741,7 @@ export default class AddInvoiceComponent implements OnInit {
       this.form.get('file')?.clearValidators();
     }
     this.form.get('file')?.updateValueAndValidity();
-    this.syncTopProjectValidator();
+    this.syncTopValidators();
   }
 
   /**
@@ -733,34 +758,42 @@ export default class AddInvoiceComponent implements OnInit {
     return this.isDirectaContext() && this.expenseType() === 'planilla_movilidad';
   }
 
-  private syncTopProjectValidator(): void {
-    const ctrl = this.form.get('proyectId');
-    if (!ctrl || ctrl.disabled) return;
-    if (this.isDirectaPlanilla()) {
-      ctrl.clearValidators();
-    } else {
-      ctrl.setValidators([Validators.required]);
+  /**
+   * Sincroniza los validadores del selector superior. En planilla directa el proyecto
+   * y la categoría viven en cada fila, por lo que ambos selectores superiores se ocultan
+   * y dejan de ser obligatorios; en el resto de casos son requeridos.
+   */
+  private syncTopValidators(): void {
+    const optional = this.isDirectaPlanilla();
+    for (const name of ['proyectId', 'categoryId']) {
+      const ctrl = this.form.get(name);
+      if (!ctrl || ctrl.disabled) continue;
+      ctrl.setValidators(optional ? [] : [Validators.required]);
+      ctrl.updateValueAndValidity({ emitEvent: false });
     }
-    ctrl.updateValueAndValidity({ emitEvent: false });
   }
 
-  /** Sincroniza validadores de proyecto (selector superior + por fila) según el contexto directa. */
-  private syncMobilityProjectValidators(): void {
-    this.syncTopProjectValidator();
+  /** Sincroniza validadores de proyecto y categoría (selector superior + por fila) según el contexto directa. */
+  private syncMobilityRowValidators(): void {
+    this.syncTopValidators();
     const rowRequired = this.isDirectaContext();
     for (const ctrl of this.mobilityRowsArray.controls) {
-      const proj = ctrl.get('proyectId');
-      if (!proj) continue;
-      proj.setValidators(rowRequired ? [Validators.required] : []);
-      proj.updateValueAndValidity({ emitEvent: false });
+      for (const name of ['proyectId', 'categoryId']) {
+        const c = ctrl.get(name);
+        if (!c) continue;
+        c.setValidators(rowRequired ? [Validators.required] : []);
+        c.updateValueAndValidity({ emitEvent: false });
+      }
     }
   }
 
   addMobilityRow() {
-    this.mobilityRowsArray.push(this.fb.group({
+    const rowRequired = this.isDirectaContext() ? [Validators.required] : [];
+    const group = this.fb.group({
       fecha: ['', Validators.required],
       total: [null, [Validators.required, Validators.min(0)]],
-      proyectId: ['', this.isDirectaContext() ? [Validators.required] : []],
+      proyectId: ['', rowRequired],
+      categoryId: ['', rowRequired],
       colaboradorEsTercero: [false],
       colaboradorId: [''],
       clienteProveedor: [''],
@@ -778,7 +811,28 @@ export default class AddInvoiceComponent implements OnInit {
       destinoDistrito: [''],
       distanciaKm: [null],
       gestion: ['', Validators.required],
-    }));
+    });
+    this.mobilityRowsArray.push(group);
+    this.wireRowCategoryReset(group);
+  }
+
+  /** Suscripciones por fila que limpian la categoría cuando cambia el proyecto de la fila. */
+  private rowCategorySubs = new WeakMap<FormGroup, Subscription>();
+
+  /**
+   * Al cambiar el proyecto de una fila, limpia su categoría si dejó de pertenecer al
+   * perfil del nuevo proyecto, para que la categoría corresponda siempre al proyecto
+   * seleccionado en esa fila (Rendiciones Directas).
+   */
+  private wireRowCategoryReset(group: FormGroup): void {
+    const sub = group.get('proyectId')!.valueChanges.subscribe((projId) => {
+      const allowed = this.allowedCategoryIdsFor(projId);
+      const selected = group.get('categoryId')?.value;
+      if (allowed && selected && !allowed.has(String(selected))) {
+        group.get('categoryId')?.setValue('');
+      }
+    });
+    this.rowCategorySubs.set(group, sub);
   }
 
   onOrigenSelected(result: PlaceResult, index: number) {
@@ -995,6 +1049,9 @@ export default class AddInvoiceComponent implements OnInit {
   }
 
   removeMobilityRow(index: number) {
+    const group = this.mobilityRowsArray.at(index) as FormGroup;
+    this.rowCategorySubs.get(group)?.unsubscribe();
+    this.rowCategorySubs.delete(group);
     this.mobilityRowsArray.removeAt(index);
   }
 
@@ -1074,14 +1131,17 @@ export default class AddInvoiceComponent implements OnInit {
       return c?.disabled || c?.valid === true;
     })();
     switch (this.expenseType()) {
-      case 'planilla_movilidad':
+      case 'planilla_movilidad': {
+        // En planilla directa la categoría vive en cada fila (cubierta por mobilityRowsArray.valid).
+        const categoryOk = this.isDirectaPlanilla() || this.form.get('categoryId')?.valid === true;
         return (
           proyectOk &&
-          this.form.get('categoryId')?.valid === true &&
+          categoryOk &&
           this.mobilityRowsArray.length > 0 &&
           this.mobilityRowsArray.valid &&
           !this.hasAnyMobilityLimitExceeded()
         );
+      }
       case 'otros_gastos': {
         const sub = this.otrosSubTipo();
         const isDJ = sub === 'DJ';
@@ -1228,17 +1288,19 @@ export default class AddInvoiceComponent implements OnInit {
     }
     const proyectCtrl = this.form.get('proyectId');
     const proyectOk = !!(proyectCtrl?.disabled || proyectCtrl?.valid);
-    if (!proyectOk || !this.form.get('categoryId')?.valid) {
+    // En planilla directa proyecto y categoría viven en cada fila; el selector superior se omite.
+    const categoryOk = this.isDirectaPlanilla() || !!this.form.get('categoryId')?.valid;
+    if (!proyectOk || !categoryOk) {
       this.notificationService.show('Completa los campos requeridos', 'error');
       return;
     }
     if (this.isDirectaContext()) {
-      const allRowsHaveProject = this.mobilityRowsArray.controls.every(
-        (c) => !!c.get('proyectId')?.value
+      const allRowsComplete = this.mobilityRowsArray.controls.every(
+        (c) => !!c.get('proyectId')?.value && !!c.get('categoryId')?.value
       );
-      if (!allRowsHaveProject) {
+      if (!allRowsComplete) {
         this.mobilityRowsArray.markAllAsTouched();
-        this.notificationService.show('Selecciona el proyecto de cada fila', 'error');
+        this.notificationService.show('Selecciona el proyecto y la categoría de cada fila', 'error');
         return;
       }
     }
@@ -1261,6 +1323,7 @@ export default class AddInvoiceComponent implements OnInit {
         fecha: r.fecha,
         total: r.total,
         ...(r.proyectId ? { proyectId: r.proyectId } : {}),
+        ...(r.categoryId ? { categoryId: r.categoryId } : {}),
         ...this.resolveRowColaborador(r),
         clienteProveedor: r.clienteProveedor,
         origen: r.origen,
@@ -1280,13 +1343,16 @@ export default class AddInvoiceComponent implements OnInit {
         ...(r.distanciaKm != null ? { distanciaKm: r.distanciaKm } : {}),
         gestion: r.gestion,
       }));
-      // En modo directa el proyecto vive en cada fila; el proyecto del gasto se toma de la primera fila.
+      // En modo directa el proyecto y la categoría viven en cada fila; los del gasto se toman de la primera.
       const expenseProjectId = this.isDirectaContext()
         ? (rows[0]?.proyectId || '')
         : this.form.get('proyectId')?.value;
+      const expenseCategoryId = this.isDirectaContext()
+        ? (rows[0]?.categoryId || '')
+        : this.form.get('categoryId')?.value;
       const payload = {
         proyectId: expenseProjectId,
-        categoryId: this.form.get('categoryId')?.value,
+        categoryId: expenseCategoryId,
         expenseReportId: this.rendicionId || undefined,
         mobilityRows: rows,
         imageUrl,
@@ -1559,6 +1625,7 @@ export default class AddInvoiceComponent implements OnInit {
         fecha: r.fecha,
         total: r.total,
         ...(r.proyectId ? { proyectId: r.proyectId } : {}),
+        ...(r.categoryId ? { categoryId: r.categoryId } : {}),
         ...this.resolveRowColaborador(r),
         clienteProveedor: r.clienteProveedor,
         origen: r.origen,
@@ -1579,9 +1646,12 @@ export default class AddInvoiceComponent implements OnInit {
         gestion: r.gestion,
       }));
       payload.mobilityRows = rows;
-      // En modo directa el proyecto del gasto se toma de la primera fila.
+      // En modo directa el proyecto y la categoría del gasto se toman de la primera fila.
       if (this.isDirectaContext() && rows[0]?.proyectId) {
         payload.proyectId = rows[0].proyectId;
+      }
+      if (this.isDirectaContext() && rows[0]?.categoryId) {
+        payload.categoryId = rows[0].categoryId;
       }
     }
 
