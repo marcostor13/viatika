@@ -26,9 +26,11 @@ import { IProject } from '../invoices/interfaces/project.interface';
 import { ICategory } from '../invoices/interfaces/category.interface';
 import { IUserResponse } from '../../interfaces/user.interface';
 import { NotificationService } from '../../services/notification.service';
+import { GoogleMapsLoaderService } from '../../services/google-maps-loader.service';
 
 declare var Chart: any;
 declare var L: any;
+declare var google: any;
 
 const EMPTY_KPIS: IDashboardKpis = {
   totalGasto: 0,
@@ -76,6 +78,7 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
   private invoicesService = inject(InvoicesService);
   private adminUsersService = inject(AdminUsersService);
   private notificationService = inject(NotificationService);
+  private mapsLoader = inject(GoogleMapsLoaderService);
   private cdr = inject(ChangeDetectorRef);
 
   loading = signal(true);
@@ -107,6 +110,13 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
   private leafletLoaded = false;
   private charts: Record<string, any> = {};
   private mapInstance: any = null;
+  /** Marcadores del mapa indexados por nombre de destino, para enfocarlos desde la lista/chart. */
+  private markersByPlace: Record<string, any> = {};
+  /** Caché de geocodificación (place -> [lat, lng]) para no repetir llamadas a Google. */
+  private geocodeCache: Record<string, [number, number] | null> = {};
+  private geocoder: any = null;
+  /** Token incremental: invalida marcadores geocodificados de un render anterior. */
+  private mapRenderToken = 0;
   private tweenHandles: Record<string, number> = {};
 
   // Coordinates for Peruvian departments/cities used as fallback
@@ -706,6 +716,15 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
         responsive: true,
         maintainAspectRatio: false,
         animation: this.baseAnimation(),
+        onHover: (event: any, elements: any[]) => {
+          event.native.target.style.cursor = elements?.length ? 'pointer' : 'default';
+        },
+        onClick: (_event: any, elements: any[]) => {
+          const idx = elements?.[0]?.index;
+          if (idx != null && rows[idx]) {
+            this.focusLocation(rows[idx].place);
+          }
+        },
         plugins: {
           legend: { display: false },
           tooltip: {
@@ -773,8 +792,7 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
       this.mapInstance = null;
     }
 
-    const points = this.resolveCoordinates(locations);
-    if (!points.length) return;
+    const token = ++this.mapRenderToken;
 
     this.mapInstance = L.map('viaticos-map', {
       zoomControl: true,
@@ -790,13 +808,34 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
       }
     ).addTo(this.mapInstance);
 
-    const maxAmount = Math.max(...points.map((p) => p.amount), 1);
+    this.markersByPlace = {};
+    const maxAmount = Math.max(...locations.map((l) => l.amount), 1);
 
-    points.forEach((p) => {
-      const marker = L.marker([p.lat, p.lng], {
-        icon: this.createLeafletIcon(p.amount, maxAmount, p.count),
-      });
-      const popup = `
+    // 1) Marcadores que se resuelven localmente (lat/lng del backend o ciudad conocida).
+    const resolved = this.resolveCoordinates(locations);
+    resolved.forEach((p) => this.addLocationMarker(p, maxAmount, token));
+    this.fitToMarkers();
+    setTimeout(() => this.mapInstance?.invalidateSize(), 0);
+
+    // 2) Los que no (direcciones completas) se geocodifican con Google y se agregan al llegar.
+    const resolvedPlaces = new Set(resolved.map((p) => p.place));
+    const missing = locations.filter((l) => !resolvedPlaces.has(l.place));
+    if (missing.length) {
+      this.geocodeAndAddMarkers(missing, maxAmount, token);
+    }
+  }
+
+  /** Crea y agrega al mapa un marcador para un destino con coordenadas. */
+  private addLocationMarker(
+    p: ILocationPoint & { lat: number; lng: number },
+    maxAmount: number,
+    token: number
+  ) {
+    if (!this.mapInstance || token !== this.mapRenderToken) return;
+    const marker = L.marker([p.lat, p.lng], {
+      icon: this.createLeafletIcon(p.amount, maxAmount, p.count),
+    });
+    const popup = `
         <div style="font-family:sans-serif;min-width:160px">
           <div style="font-weight:700;font-size:14px;color:#1e293b;margin-bottom:6px">${p.place}</div>
           <div style="display:flex;justify-content:space-between;font-size:12px;color:#64748b;margin-bottom:2px">
@@ -807,13 +846,212 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
           </div>
         </div>
       `;
-      marker.bindPopup(popup, { maxWidth: 200 });
-      marker.addTo(this.mapInstance);
-    });
+    marker.bindPopup(popup, { maxWidth: 200 });
+    marker.addTo(this.mapInstance);
+    this.markersByPlace[p.place] = marker;
+  }
 
-    const latLngs = points.map((p) => [p.lat, p.lng] as [number, number]);
-    this.mapInstance.fitBounds(L.latLngBounds(latLngs), { padding: [40, 40] });
-    setTimeout(() => this.mapInstance?.invalidateSize(), 0);
+  /** Reajusta el encuadre del mapa a los marcadores presentes. */
+  private fitToMarkers() {
+    if (!this.mapInstance) return;
+    const latLngs = Object.values(this.markersByPlace).map((m) => m.getLatLng());
+    if (latLngs.length) {
+      this.mapInstance.fitBounds(L.latLngBounds(latLngs), { padding: [40, 40] });
+    } else {
+      // Sin coordenadas todavía: centramos en Perú.
+      this.mapInstance.setView([-9.19, -75.0152], 5);
+    }
+  }
+
+  /**
+   * Geocodifica con Google los destinos sin coordenadas y agrega sus marcadores.
+   * Devuelve una promesa que resuelve cuando termina (útil para el enfoque on-demand).
+   */
+  private async geocodeAndAddMarkers(
+    missing: ILocationPoint[],
+    maxAmount: number,
+    token: number
+  ): Promise<void> {
+    try {
+      await this.mapsLoader.load();
+    } catch {
+      return;
+    }
+    if (typeof google === 'undefined') return;
+    if (!this.geocoder) this.geocoder = new google.maps.Geocoder();
+
+    for (const loc of missing) {
+      let coords = this.geocodeCache[loc.place];
+      if (coords === undefined) {
+        // Google → si falla, reutiliza coords de un destino "hermano" (misma calle).
+        coords = (await this.geocodeAddress(loc.place)) ?? this.siblingCoords(loc.place);
+        this.geocodeCache[loc.place] = coords;
+      }
+      if (!coords) continue;
+      if (!this.mapInstance || token !== this.mapRenderToken) return;
+      this.addLocationMarker(
+        { ...loc, lat: coords[0], lng: coords[1] },
+        maxAmount,
+        token
+      );
+      this.fitToMarkers();
+    }
+  }
+
+  /**
+   * Último recurso: si un destino no geocodifica, reutiliza las coordenadas de
+   * otro destino del top cuya calle (primer segmento, sin números) sea la misma.
+   */
+  private siblingCoords(place: string): [number, number] | null {
+    const norm = (s: string) =>
+      s
+        .toLowerCase()
+        .split(',')[0]
+        .replace(/\d+/g, '')
+        .replace(/\s+/g, ' ')
+        .trim();
+    const target = norm(place);
+    if (target.length < 5) return null;
+
+    // 1) Entre marcadores ya colocados en el mapa.
+    for (const [p, marker] of Object.entries(this.markersByPlace)) {
+      if (p !== place && norm(p) === target) {
+        const ll = marker.getLatLng();
+        return [ll.lat, ll.lng];
+      }
+    }
+    // 2) Entre destinos con coordenadas del backend.
+    for (const l of this.data()?.topLocations ?? []) {
+      if (l.place !== place && l.lat != null && l.lng != null && norm(l.place) === target) {
+        return [l.lat, l.lng];
+      }
+    }
+    return null;
+  }
+
+  /**
+   * Resuelve una dirección a [lat, lng] con el Geocoder de Google,
+   * probando varias variantes de la consulta hasta dar con una válida.
+   */
+  private async geocodeAddress(place: string): Promise<[number, number] | null> {
+    for (const query of this.geocodeQueries(place)) {
+      const coords = await this.geocodeOnce(query);
+      if (coords) return coords;
+    }
+    return null;
+  }
+
+  /** Genera variantes de consulta para mejorar la tasa de aciertos del geocoder. */
+  private geocodeQueries(place: string): string[] {
+    const queries: string[] = [];
+    const add = (q: string) => {
+      const v = q.replace(/\s+/g, ' ').trim();
+      if (v && v.length > 2 && !queries.includes(v)) queries.push(v);
+    };
+    // Quita números de calle y ruido tipo "Urb / Etapa N / Mz / Lt / Asoc".
+    const clean = (s: string) =>
+      s
+        .replace(/\b\d{2,}\b/g, '')
+        .replace(/\b(urb|urbanizaci[oó]n|etapa|mz|lt|lote|asoc|asociaci[oó]n)\b\.?/gi, '')
+        .replace(/\s+/g, ' ')
+        .trim();
+    const withPeru = (s: string) => (/per[uú]/i.test(s) ? s : `${s}, Perú`);
+    const parts = place.split(',').map((p) => p.trim()).filter(Boolean);
+
+    add(withPeru(place));
+    add(withPeru(clean(place)));
+    if (parts.length > 1) {
+      // Primer y último segmento por si el otro es ruido (p. ej. "Destino lima, ...").
+      add(withPeru(clean(parts[0])));
+      add(withPeru(clean(parts[parts.length - 1])));
+    }
+    return queries;
+  }
+
+  /** Una sola llamada al geocoder, con reintentos si Google limita el ritmo. */
+  private geocodeOnce(
+    query: string,
+    attempt = 0
+  ): Promise<[number, number] | null> {
+    return new Promise((resolve) => {
+      this.geocoder.geocode(
+        { address: query, componentRestrictions: { country: 'PE' } },
+        (results: any[], status: string) => {
+          if (status === 'OK' && results?.[0]?.geometry?.location) {
+            const l = results[0].geometry.location;
+            resolve([l.lat(), l.lng()]);
+          } else if (status === 'OVER_QUERY_LIMIT' && attempt < 3) {
+            setTimeout(
+              () => this.geocodeOnce(query, attempt + 1).then(resolve),
+              300 * (attempt + 1)
+            );
+          } else {
+            resolve(null);
+          }
+        }
+      );
+    });
+  }
+
+  /**
+   * Centra el mapa en el destino indicado y abre su popup.
+   * Se invoca al hacer click en la lista de ranking o en una barra del chart.
+   * Si el marcador aún no existe, intenta geocodificarlo bajo demanda.
+   */
+  focusLocation(place: string) {
+    if (!place || !this.mapInstance) return;
+    const marker = this.markersByPlace[place];
+    if (marker) {
+      this.panToMarker(marker);
+      return;
+    }
+    // El destino aún no tiene marcador (no resuelto o geocoding en curso): lo intentamos ahora.
+    const loc = (this.data()?.topLocations ?? []).find((l) => l.place === place);
+    if (!loc) return;
+    const maxAmount = Math.max(
+      ...(this.data()?.topLocations ?? []).map((l) => l.amount),
+      1
+    );
+
+    // 1) Resolución local (lat/lng del backend o ciudad conocida en el diccionario).
+    const local = this.resolveCoordinates([loc])[0];
+    if (local) {
+      this.addLocationMarker(local, maxAmount, this.mapRenderToken);
+      const m = this.markersByPlace[place];
+      if (m) {
+        this.panToMarker(m);
+        return;
+      }
+    }
+
+    // 2) Geocodificación con Google (+ fallback por hermano) como respaldo.
+    //    Descartamos cualquier resultado nulo cacheado para reintentar con la cadena completa.
+    if (!this.geocodeCache[place]) delete this.geocodeCache[place];
+    this.geocodeAndAddMarkers([loc], maxAmount, this.mapRenderToken).then(() => {
+      const m = this.markersByPlace[place];
+      if (m) {
+        this.panToMarker(m);
+      } else {
+        this.notificationService.show(
+          `No se pudo ubicar "${place}" en el mapa`,
+          'warning'
+        );
+      }
+    });
+  }
+
+  /** Hace scroll al mapa, lo recentra sobre el marcador y abre su popup. */
+  private panToMarker(marker: any) {
+    if (!this.mapInstance) return;
+    const el = document.getElementById('viaticos-map');
+    el?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    this.mapInstance.invalidateSize();
+    this.mapInstance.setView(
+      marker.getLatLng(),
+      Math.max(this.mapInstance.getZoom(), 7),
+      { animate: true }
+    );
+    marker.openPopup();
   }
 
   private createLeafletIcon(amount: number, maxAmount: number, count: number): any {
