@@ -102,8 +102,6 @@ export class MisRendicionesComponent implements OnInit {
       this.setTab('directas');
     } else if (tab === 'caja-chica') {
       this.setTab('caja-chica');
-    } else if (this.canCreateRendicion || !this.canViewViaticos) {
-      this.setTab('directas');
     }
   }
 
@@ -454,6 +452,18 @@ export class MisRendicionesComponent implements OnInit {
     return (report.budget ?? 0) - this.getTotalGastado(report);
   }
 
+  hasReportSaldo(report: IExpenseReport): boolean {
+    return !!(report.directaDeposit)
+      || !!(report.pendingBalanceFromReportId && (report.pendingBalanceAmount ?? 0) > 0);
+  }
+
+  getReportSaldo(report: IExpenseReport): number {
+    if (report.pendingBalanceFromReportId && (report.pendingBalanceAmount ?? 0) > 0) {
+      return (report.pendingBalanceAmount ?? 0) - this.getTotalGastado(report);
+    }
+    return this.getSaldoLibre(report);
+  }
+
   advanceStatusText(adv: IAdvance): string {
     if (adv.status === 'paid' || adv.status === 'partially_paid') return 'En Progreso - Registrando Gastos';
     return this.ADVANCE_STATUS_LABELS[adv.status];
@@ -538,7 +548,9 @@ export class MisRendicionesComponent implements OnInit {
   goToReportDetail(report: IExpenseReport, event: Event): void {
     event.preventDefault();
     event.stopPropagation();
-    this.router.navigate(['/mis-rendiciones', report._id, 'detalle']);
+    this.router.navigate(['/mis-rendiciones', report._id, 'detalle'], {
+      queryParams: { tab: this.activeTab() },
+    });
   }
 
   // ─── Cancelar / Eliminar solicitud de viáticos pendiente ─────────────────────

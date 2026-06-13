@@ -554,7 +554,7 @@
           </thead>
           <tbody class="divide-y divide-gray-100">
             @for (r of filteredDirectaReports; track r._id) {
-            <tr class="hover:bg-gray-50 transition-colors">
+            <tr class="hover:bg-gray-50 transition-colors cursor-pointer" (click)="goToReportDetail(r, $event)">
 
               <td class="px-4 py-3.5 whitespace-nowrap text-xs text-gray-500">
                 {{ r.createdAt | date:'dd/MM/yyyy' }}
@@ -598,9 +598,9 @@
               </td>
 
               <td class="px-4 py-3.5 hidden md:table-cell text-right whitespace-nowrap tabular-nums"
-                [ngClass]="r.directaDeposit ? (getSaldoLibre(r) >= 0 ? 'text-green-600 font-semibold' : 'text-red-600 font-semibold') : 'text-gray-400'">
-                @if (r.directaDeposit) {
-                  S/ {{ getSaldoLibre(r) | number:'1.2-2' }}
+                [ngClass]="hasReportSaldo(r) ? (getReportSaldo(r) >= 0 ? 'text-green-600 font-semibold' : 'text-red-600 font-semibold') : 'text-gray-400'">
+                @if (hasReportSaldo(r)) {
+                  S/ {{ getReportSaldo(r) | number:'1.2-2' }}
                 } @else {
                   —
                 }
@@ -745,6 +745,7 @@
               <td class="px-4 py-3.5 text-right">
                 <a
                   [routerLink]="['/mis-rendiciones', report._id, 'detalle']"
+                  [queryParams]="{tab: activeTab()}"
                   title="Ver detalle"
                   class="p-1.5 rounded-lg text-gray-400 hover:text-primary hover:bg-primary/10 transition-colors inline-flex"
                 >

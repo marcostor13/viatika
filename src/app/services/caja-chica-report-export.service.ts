@@ -120,82 +120,48 @@ export class CajaChicaReportExportService {
           row.proveedor !== '-' ? row.proveedor : '',
           row.descripcion !== 'N/A' ? row.descripcion : '',
           '',
+          '',
           row.monto.toFixed(2),
         ]);
         sumGastos += row.monto;
       }
 
-      // Fill min rows
-      const minRows = Math.max(5, bodyData.length);
-      while (bodyData.length < minRows) {
-        bodyData.push([itemIndexGlobal++, '', '', '', '', '', '', '']);
-      }
-
       autoTable(doc, {
         startY: y,
-        head: [['Item', 'Fecha\nEmisión', 'Tipo\nDoc.', 'Nº Documento', 'Proveedor', 'Concepto', 'Placa', 'Monto (S/)']],
+        head: [['Item', 'Fecha\nEmisión', 'Tipo\nde\nDoc.', 'Nº del Documento', 'Proveedor', 'Concepto', 'Placa', 'Ingresos', 'Gastos']],
         body: bodyData,
         theme: 'grid',
         headStyles: { fillColor: [145, 47, 44], textColor: 255, halign: 'center', valign: 'middle', fontSize: 8 },
         styles: { fontSize: 7.5, cellPadding: 2, textColor: 0 },
         columnStyles: {
           0: { halign: 'center', cellWidth: 9 },
-          1: { halign: 'center', cellWidth: 18 },
-          2: { halign: 'center', cellWidth: 16 },
+          1: { halign: 'center', cellWidth: 17 },
+          2: { halign: 'center', cellWidth: 18 },
           3: { cellWidth: 24 },
-          4: { cellWidth: 38 },
+          4: { cellWidth: 36 },
           5: { cellWidth: 'auto' },
-          6: { halign: 'center', cellWidth: 14 },
-          7: { halign: 'right', cellWidth: 18 },
+          6: { halign: 'center', cellWidth: 16 },
+          7: { halign: 'right', cellWidth: 16 },
+          8: { halign: 'right', cellWidth: 16 },
         },
         margin: { left: margin, right: margin },
       });
 
       const finalY = (doc as JsPdfWithAutoTable).lastAutoTable?.finalY ?? y;
 
-      // Totals row (matching rendicion style)
+      // Totals row — 2 red cells (Ingresos + Gastos) matching rendicion style
       const rightEdge = pageW - margin;
-      const colW = 18;
+      const colW = 16;
       doc.setFillColor(145, 47, 44);
+      doc.rect(rightEdge - colW * 2, finalY, colW, 6, 'F');
       doc.rect(rightEdge - colW, finalY, colW, 6, 'F');
       doc.setTextColor(255, 255, 255);
-      doc.setFont('helvetica', 'bold');
+      doc.setFont('helvetica', 'normal');
       doc.setFontSize(8);
+      doc.text((0).toFixed(2), rightEdge - colW - 2, finalY + 4, { align: 'right' });
       doc.text(sumGastos.toFixed(2), rightEdge - 2, finalY + 4, { align: 'right' });
       doc.setTextColor(0, 0, 0);
-      doc.setFont('helvetica', 'normal');
     }
-
-    // Final page — grand total summary
-    doc.addPage();
-    if (logoB64) doc.addImage(logoB64, 'PNG', margin, 8, 45, 12);
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(12);
-    doc.setTextColor(30);
-    doc.text('RESUMEN GENERAL', pageW / 2, 20, { align: 'center' });
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(9);
-    doc.setTextColor(80);
-    doc.text(report.title, pageW / 2, 27, { align: 'center' });
-
-    const summaryBody: any[][] = [];
-    for (const [colaborador, colRows] of groups) {
-      const sub = colRows.reduce((s, r) => s + r.monto, 0);
-      summaryBody.push([colaborador, colRows.length.toString(), `S/ ${sub.toFixed(2)}`]);
-    }
-
-    autoTable(doc, {
-      startY: 35,
-      head: [['Colaborador', 'Comprobantes', 'Total (S/)']],
-      body: summaryBody,
-      foot: [['TOTAL GENERAL', rows.length.toString(), `S/ ${report.totalAmount.toFixed(2)}`]],
-      theme: 'grid',
-      headStyles: { fillColor: [145, 47, 44], textColor: 255, halign: 'center', fontSize: 9 },
-      footStyles: { fillColor: [145, 47, 44], textColor: 255, fontStyle: 'bold', halign: 'right' },
-      bodyStyles: { fontSize: 8.5 },
-      columnStyles: { 2: { halign: 'right' } },
-      margin: { left: margin, right: margin },
-    });
 
     doc.save(`CC-${report.codigo}-${report.title.replace(/\s+/g, '_')}.pdf`);
   }
@@ -215,7 +181,8 @@ export class CajaChicaReportExportService {
       { width: 32 },  // Proveedor
       { width: 38 },  // Concepto
       { width: 12 },  // Placa
-      { width: 14 },  // Monto
+      { width: 12 },  // Ingresos
+      { width: 14 },  // Gastos
     ];
 
     const logoB64 = await this.getLogoBase64();
@@ -261,8 +228,8 @@ export class CajaChicaReportExportService {
     totalMetaCell.font = { bold: true };
 
     let r = 11;
-    // Same columns as rendicion: Item, Fecha Emisión, Tipo Doc., Nº Documento, Proveedor, Concepto, Placa, Monto
-    const headers = ['Item', 'Fecha\nEmisión', 'Tipo\nDoc.', 'Nº del Documento', 'Proveedor', 'Concepto', 'Placa', 'Monto (S/)'];
+    // Same columns as rendicion: Item, Fecha Emisión, Tipo de Doc., Nº del Documento, Proveedor, Concepto, Placa, Ingresos, Gastos
+    const headers = ['Item', 'Fecha\nEmisión', 'Tipo\nde\nDoc.', 'Nº del Documento', 'Proveedor', 'Concepto', 'Placa', 'Ingresos', 'Gastos'];
     headers.forEach((h, i) => {
       const c = ws.getCell(r, i + 1);
       c.value = h;
@@ -279,7 +246,7 @@ export class CajaChicaReportExportService {
     let itemIndex = 1;
     let currentColaborador = '';
     let subtotal = 0;
-    const lastDataCol = 8;
+    const lastDataCol = 9;
 
     const addDataRow = (vals: any[]) => {
       vals.forEach((val, i) => {
@@ -288,7 +255,7 @@ export class CajaChicaReportExportService {
         c.border = {
           top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' },
         };
-        if (i === 7) { // Monto
+        if (i === 7 || i === 8) { // Ingresos + Gastos
           c.numFmt = '#,##0.00';
           c.alignment = { horizontal: 'right' };
           if (!val) c.value = '';
@@ -302,24 +269,28 @@ export class CajaChicaReportExportService {
     };
 
     const addGroupRow = (label: string, amount: number, isTotal = false) => {
-      ws.mergeCells(r, 1, r, lastDataCol - 1);
+      const fillColor = { argb: isTotal ? RED_HEADER : 'FFF5F5F5' };
+      const bt = { top: { style: 'thin' as const }, left: { style: 'thin' as const }, bottom: { style: 'thin' as const }, right: { style: 'thin' as const } };
+      ws.mergeCells(r, 1, r, lastDataCol - 2); // cols 1..7
       const cLabel = ws.getCell(r, 1);
       cLabel.value = label;
       cLabel.font = { bold: true, color: isTotal ? { argb: 'FFFFFFFF' } : undefined };
       cLabel.alignment = { horizontal: 'right' };
-      cLabel.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: isTotal ? RED_HEADER : 'FFF5F5F5' } };
-      cLabel.border = {
-        top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' },
-      };
-      const cAmt = ws.getCell(r, lastDataCol);
-      cAmt.value = amount;
-      cAmt.numFmt = '#,##0.00';
-      cAmt.font = { bold: true, color: isTotal ? { argb: 'FFFFFFFF' } : undefined };
-      cAmt.alignment = { horizontal: 'right' };
-      cAmt.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: isTotal ? RED_HEADER : 'FFF5F5F5' } };
-      cAmt.border = {
-        top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' },
-      };
+      cLabel.fill = { type: 'pattern', pattern: 'solid', fgColor: fillColor };
+      cLabel.border = bt;
+      // Ingresos (col 8) — always empty for caja chica
+      const cIng = ws.getCell(r, lastDataCol - 1);
+      cIng.value = '';
+      cIng.fill = { type: 'pattern', pattern: 'solid', fgColor: fillColor };
+      cIng.border = bt;
+      // Gastos (col 9)
+      const cGas = ws.getCell(r, lastDataCol);
+      cGas.value = amount;
+      cGas.numFmt = '#,##0.00';
+      cGas.font = { bold: true, color: isTotal ? { argb: 'FFFFFFFF' } : undefined };
+      cGas.alignment = { horizontal: 'right' };
+      cGas.fill = { type: 'pattern', pattern: 'solid', fgColor: fillColor };
+      cGas.border = bt;
       r++;
     };
 
@@ -341,7 +312,7 @@ export class CajaChicaReportExportService {
         };
         r++;
       }
-      addDataRow([itemIndex++, row.fecha, row.tipo, row.numDoc, row.proveedor !== '-' ? row.proveedor : '', row.descripcion !== 'N/A' ? row.descripcion : '', '', row.monto]);
+      addDataRow([itemIndex++, row.fecha, row.tipo, row.numDoc, row.proveedor !== '-' ? row.proveedor : '', row.descripcion !== 'N/A' ? row.descripcion : '', '', '', row.monto]);
       subtotal += row.monto;
     }
 
