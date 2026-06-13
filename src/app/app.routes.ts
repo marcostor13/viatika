@@ -278,14 +278,6 @@ export const routes: Routes = [
         canActivate: [AuthColaboradorGuard],
       },
       {
-        path: 'mis-documentos',
-        loadComponent: () =>
-          import('./modules/mis-documentos/mis-documentos.component').then(
-            (m) => m.MisDocumentosComponent
-          ),
-        canActivate: [AuthColaboradorGuard],
-      },
-      {
         path: 'mi-firma',
         loadComponent: () =>
           import('./modules/firma-digital/firma-digital.component').then(
@@ -411,6 +403,30 @@ export const routes: Routes = [
             (m) => m.CajaChicaComponent
           ),
         canActivate: [AuthColaboradorGuard],
+      },
+      {
+        path: 'mis-rendiciones/nueva-caja-chica',
+        loadComponent: () =>
+          import('./modules/mis-rendiciones/nueva-caja-chica/nueva-caja-chica.component').then(
+            (m) => m.NuevaCajaChicaComponent
+          ),
+        canActivate: [AuthColaboradorGuard],
+      },
+      {
+        path: 'rendiciones-caja-chica',
+        loadComponent: () =>
+          import('./modules/rendiciones-caja-chica/rendiciones-caja-chica.component').then(
+            (m) => m.RendicionesCajaChicaComponent
+          ),
+        canActivate: [AuthAdmin2Guard],
+      },
+      {
+        path: 'rendiciones-caja-chica/:id',
+        loadComponent: () =>
+          import('./modules/rendiciones-caja-chica/rendicion-caja-chica-detalle/rendicion-caja-chica-detalle.component').then(
+            (m) => m.RendicionCajaChicaDetalleComponent
+          ),
+        canActivate: [AuthAdmin2Guard],
       },
     ],
   },

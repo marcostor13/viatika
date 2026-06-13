@@ -132,6 +132,10 @@ export class RendicionDetailComponent implements OnInit {
     if (this.hasDirectaDeposit) {
       return this.directaSaldo;
     }
+    // Rendición directa creada desde el saldo de otra: el presupuesto es el saldo heredado.
+    if (this.hasPendingBalanceCredit) {
+      return this.pendingBalanceCreditAmount - this.totalGastado;
+    }
     if (this.settlement?.difference !== undefined && this.settlement.difference !== null) {
       return this.settlement.difference;
     }
@@ -319,6 +323,8 @@ export class RendicionDetailComponent implements OnInit {
     const canViewAdminUsers = this.userStateService.isAdmin() || this.userStateService.isSuperAdmin();
     if (this.isAdminView && ownerId && canViewAdminUsers) {
       this.router.navigate(['/admin-users', ownerId, 'details']);
+    } else if (this.isAdminView && this.userStateService.isContabilidad()) {
+      this.router.navigate([this.report?.isDirecta ? '/rendiciones-directas' : '/rendiciones']);
     } else if (this.isAdminView) {
       this.router.navigate(['/tesoreria']);
     } else {
@@ -379,7 +385,7 @@ export class RendicionDetailComponent implements OnInit {
     if (!this.report || this.isAdminView) return false;
     if (this.report.status !== 'open') return false;
     // Rendición directa: no necesita anticipo pagado para agregar gastos
-    if (this.report.isDirecta) return true;
+    if (this.report.isDirecta || this.report.isCajaChica) return true;
     return this.hasPaidAdvanceForReport;
   }
 
@@ -402,6 +408,7 @@ export class RendicionDetailComponent implements OnInit {
 
   get canSubmitReport(): boolean {
     if (!this.report || this.isAdminView) return false;
+    if (this.report.isCajaChica) return false;
     if (!(this.report.status === 'open' || this.report.status === 'rejected')) return false;
     const expenses = this.report.expenseIds || [];
     return expenses.length > 0;
@@ -726,7 +733,10 @@ export class RendicionDetailComponent implements OnInit {
 
   getExpenseProveedor(expense: any): string {
     const type = expense?.expenseType;
-    if (type === 'planilla_movilidad' || type === 'comprobante_caja' || type === 'otros_gastos') return '-';
+    if (type === 'planilla_movilidad' || type === 'otros_gastos') return '-';
+    if (type === 'comprobante_caja') {
+      return String(this.getCashVoucherPayload(expense)['entregadoA'] || '-');
+    }
     const d = this.getExpenseDataObject(expense);
     const razonSocial = d['razonSocial'];
     if (typeof razonSocial === 'string' && razonSocial.trim()) return razonSocial.trim();
@@ -1080,6 +1090,20 @@ export class RendicionDetailComponent implements OnInit {
 
   getReportStatusLabel(): string {
     if (!this.report) return '';
+    if (this.report.isDirecta) {
+      const directaLabels: Record<IExpenseReport['status'], string> = {
+        solicited: 'Solicitada',
+        open: 'Abierta',
+        submitted: 'Enviada',
+        pending_accounting: 'Pendiente de Contabilidad',
+        approved: 'Aprobada',
+        rejected: 'Rechazada',
+        reimbursed: 'Reembolsada',
+        closed: 'Cerrada',
+        cancelled: 'Cancelada',
+      };
+      return directaLabels[this.report.status] ?? this.report.status;
+    }
     const labels: Record<IExpenseReport['status'], string> = {
       solicited: 'Solicitada',
       open: 'Abierta',
@@ -1229,11 +1253,14 @@ export class RendicionDetailComponent implements OnInit {
       .slice(0, 50);
     const comprobantes = (this.report.expenseIds || []).map((exp: Record<string, unknown>) => {
       const dataObj = this.getExpenseDataObject(exp);
+      const expType = exp['expenseType'] as string;
       let provider = exp['provider'] as string || dataObj['razonSocial'] as string || '';
+      if (!provider && expType === 'comprobante_caja') {
+        provider = String(this.getCashVoucherPayload(exp)['entregadoA'] || '');
+      }
       if (!provider && this.getExpenseTypeLabel(exp) === 'Planilla movilidad') {
         provider = 'Planilla de Movilidad';
       }
-      const expType = exp['expenseType'] as string;
       let numDoc = '';
       if (expType === 'planilla_movilidad' || expType === 'comprobante_caja') {
         numDoc = typeof exp['internalCode'] === 'string' ? exp['internalCode'] : '';
@@ -1517,9 +1544,22 @@ export class RendicionDetailComponent implements OnInit {
   returnVoucherBank = signal('');
   returnVoucherOperation = signal('');
 
-  /** Saldo de esta rendición ya fue utilizado para crear otra solicitud. */
+  /** Saldo de esta rendición ya fue utilizado para crear otra solicitud o rendición directa. */
   get isSaldoUsadoEnOtraRendicion(): boolean {
-    return !!(this.report as any)?.pendingBalanceUsedInAdvanceId;
+    return !!(this.report as any)?.pendingBalanceUsedInAdvanceId
+      || !!(this.report as any)?.pendingBalanceUsedInRendicionId;
+  }
+
+  /** Esta rendición directa fue creada usando el saldo de otra (saldo heredado). */
+  get hasPendingBalanceCredit(): boolean {
+    return !!(this.report?.isDirecta
+      && !this.report?.directaDeposit
+      && this.report?.pendingBalanceFromReportId
+      && (this.report?.pendingBalanceAmount ?? 0) > 0);
+  }
+
+  get pendingBalanceCreditAmount(): number {
+    return Number(this.report?.pendingBalanceAmount ?? 0);
   }
 
   /** Devuelve true cuando el saldo esperado corresponde a una devolución del colaborador. */
@@ -2264,11 +2304,63 @@ export class RendicionDetailComponent implements OnInit {
     this.notificationService.show('Declaración jurada descargada', 'success');
   }
 
+  // ─── Nueva solicitud con saldo (bifurca según tipo de rendición) ─────────────
+
+  showNuevaDirectaConSaldoModal = signal(false);
+  nuevaDirectaGestion = signal('');
+  isCreatingDirectaConSaldo = signal(false);
+
   openNuevaSolicitudConSaldo(): void {
-    this.router.navigate(['/mis-rendiciones/solicitud-viaticos/nueva'], {
-      queryParams: {
-        pendingBalanceFromReportId: this.id,
-        pendingBalanceAmount: this.saldoLibre,
+    if (this.report?.isDirecta) {
+      this.nuevaDirectaGestion.set('');
+      this.showNuevaDirectaConSaldoModal.set(true);
+    } else {
+      this.router.navigate(['/mis-rendiciones/solicitud-viaticos/nueva'], {
+        queryParams: {
+          pendingBalanceFromReportId: this.id,
+          pendingBalanceAmount: this.saldoLibre,
+        },
+      });
+    }
+  }
+
+  createNuevaDirectaConSaldo(): void {
+    const gestion = this.nuevaDirectaGestion().trim();
+    if (!gestion) {
+      this.notificationService.show('Ingresa una descripción de gestión', 'warning');
+      return;
+    }
+    const user = this.userStateService.getUser() as any;
+    const userId = user?._id ?? '';
+    const clientId =
+      user?.companyId ||
+      user?.client?._id ||
+      (typeof user?.clientId === 'string' ? user.clientId : user?.clientId?._id) ||
+      '';
+    if (!userId || !clientId) {
+      this.notificationService.show('No se pudo identificar al usuario o empresa.', 'error');
+      return;
+    }
+    this.isCreatingDirectaConSaldo.set(true);
+    this.expenseReportsService.create({
+      isDirecta: true,
+      gestion,
+      userId,
+      clientId,
+      pendingBalanceFromReportId: this.id,
+      pendingBalanceAmount: this.saldoLibre,
+    }).subscribe({
+      next: (_newReport) => {
+        this.isCreatingDirectaConSaldo.set(false);
+        this.showNuevaDirectaConSaldoModal.set(false);
+        this.notificationService.show('Nueva rendición creada con el saldo disponible.', 'success');
+        this.router.navigate(['/mis-rendiciones'], { queryParams: { tab: 'directas' } });
+      },
+      error: (err) => {
+        this.isCreatingDirectaConSaldo.set(false);
+        const raw = err?.error?.message;
+        const msg = Array.isArray(raw) ? raw.join(', ') : raw;
+        this.notificationService.show(msg || 'Error al crear la nueva rendición.', 'error');
       },
     });
   }

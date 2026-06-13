@@ -71,11 +71,14 @@ export class RendicionesDirectasComponent implements OnInit {
   approvingId = signal<string | null>(null);
   deletingId = signal<string | null>(null);
   confirmDeleteExpense = signal<any | null>(null);
+  confirmApproveExpense = signal<any | null>(null);
   isExportingExcel = signal(false);
   isExportingPdf = signal(false);
 
   // Selección para exportar
   selectedIds = signal<Set<string>>(new Set<string>());
+
+  get isContabilidad(): boolean { return this.userState.isContabilidad(); }
 
   toggleSelectAll(): void {
     const all = this.data();
@@ -184,6 +187,7 @@ export class RendicionesDirectasComponent implements OnInit {
       open: 'Abierta', solicited: 'Solicitada', submitted: 'Enviada',
       pending_accounting: 'En contabilidad', approved: 'Aprobada',
       rejected: 'Rechazada', closed: 'Cerrada', liquidated: 'Liquidada',
+      reimbursed: 'Reembolsada',
     };
     return map[String(r?.status || '')] ?? (r?.status || '—');
   }
@@ -218,9 +222,18 @@ export class RendicionesDirectasComponent implements OnInit {
 
   // ─── Aprobación ──────────────────────────────────────────────────────────────
 
-  approveExpense(e: any, event: Event): void {
+  openApproveConfirm(e: any, event: Event): void {
     event.stopPropagation();
     if (this.approvingId() || this.isRevisado(e)) return;
+    this.confirmApproveExpense.set(e);
+  }
+
+  cancelApprove(): void { this.confirmApproveExpense.set(null); }
+
+  doApprove(): void {
+    const e = this.confirmApproveExpense();
+    if (!e) return;
+    this.confirmApproveExpense.set(null);
     this.approvingId.set(e._id);
     this.invoicesService.approveByContabilidad(e._id).subscribe({
       next: () => {
@@ -237,6 +250,8 @@ export class RendicionesDirectasComponent implements OnInit {
       },
     });
   }
+
+  approveExpense(e: any, event: Event): void { this.openApproveConfirm(e, event); }
 
   // ─── Eliminación ─────────────────────────────────────────────────────────────
 
@@ -390,7 +405,15 @@ export class RendicionesDirectasComponent implements OnInit {
 
   getProveedor(e: any): string {
     const type = e?.expenseType;
-    if (type === 'planilla_movilidad' || type === 'comprobante_caja' || type === 'otros_gastos') return '-';
+    if (type === 'planilla_movilidad' || type === 'otros_gastos') return '-';
+    if (type === 'comprobante_caja') {
+      try {
+        const d = this.getData(e);
+        const raw = d['payload'];
+        const obj: any = typeof raw === 'string' ? JSON.parse(raw) : (raw ?? {});
+        return String(obj['entregadoA'] || '-');
+      } catch { return '-'; }
+    }
     const d = this.getData(e);
     const r = d['razonSocial'];
     if (typeof r === 'string' && r.trim()) return r.trim();

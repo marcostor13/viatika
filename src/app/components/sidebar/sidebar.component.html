@@ -34,15 +34,6 @@
         <span class="font-medium">Mis Rendiciones</span>
       </a>
       <a
-        [routerLink]="['/mis-documentos']"
-        routerLinkActive="bg-primary text-white"
-        [class.bg-primary]="isSelected('/mis-documentos')"
-        [class.text-white]="isSelected('/mis-documentos')"
-        class="flex items-center px-4 py-3 text-secondary rounded-xl hover:bg-background hover:text-primary transition-all duration-200 group"
-      >
-        <span class="font-medium">Mis Documentos</span>
-      </a>
-      <a
         [routerLink]="['/mi-perfil']"
         routerLinkActive="bg-primary text-white"
         [class.bg-primary]="isSelected('/mi-perfil')"
@@ -165,6 +156,17 @@
         class="flex items-center px-4 py-3 text-secondary rounded-xl hover:bg-background hover:text-primary transition-all duration-200 group"
       >
         <span class="font-medium">Rendiciones Directas</span>
+      </a>
+      }
+      @if (isContabilidadInCompany()) {
+      <a
+        [routerLink]="['/rendiciones-caja-chica']"
+        routerLinkActive="bg-primary text-white"
+        [class.bg-primary]="isSelected('/rendiciones-caja-chica')"
+        [class.text-quaternary]="isSelected('/rendiciones-caja-chica')"
+        class="flex items-center px-4 py-3 text-secondary rounded-xl hover:bg-background hover:text-primary transition-all duration-200 group"
+      >
+        <span class="font-medium">Rendiciones Caja Chica</span>
       </a>
       }
 
@@ -455,16 +457,6 @@
           <span class="font-medium text-lg">Mis Rendiciones</span>
         </a>
         <a
-          [routerLink]="['/mis-documentos']"
-          (click)="toggleSidebar()"
-          routerLinkActive="bg-primary text-white"
-          [class.bg-primary]="isSelected('/mis-documentos')"
-          [class.text-white]="isSelected('/mis-documentos')"
-          class="flex items-center px-4 py-4 text-secondary rounded-xl hover:bg-background hover:text-primary transition-all duration-200 group"
-        >
-          <span class="font-medium text-lg">Mis Documentos</span>
-        </a>
-        <a
           [routerLink]="['/mi-perfil']"
           (click)="toggleSidebar()"
           routerLinkActive="bg-primary text-white"
@@ -588,6 +580,17 @@
           class="flex items-center px-4 py-4 text-secondary rounded-xl hover:bg-background hover:text-primary transition-all duration-200 group"
         >
           <span class="font-medium text-lg">Rendiciones Directas</span>
+        </a>
+        }
+        @if (isContabilidadInCompany()) {
+        <a
+          [routerLink]="['/rendiciones-caja-chica']"
+          (click)="toggleSidebar()"
+          [class.bg-primary]="isSelected('/rendiciones-caja-chica')"
+          [class.text-quaternary]="isSelected('/rendiciones-caja-chica')"
+          class="flex items-center px-4 py-4 text-secondary rounded-xl hover:bg-background hover:text-primary transition-all duration-200 group"
+        >
+          <span class="font-medium text-lg">Rendiciones Caja Chica</span>
         </a>
         }
 

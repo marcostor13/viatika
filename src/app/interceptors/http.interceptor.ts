@@ -59,6 +59,7 @@ export const httpInterceptor: HttpInterceptorFn = (req, next) => {
     '/notifications',
     '/notifications/',
     '/bulk-import',
+    '/caja-chica-report',
   ];
 
   const isExcludedEndpoint = excludedEndpoints.some(

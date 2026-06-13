@@ -92,8 +92,15 @@ export interface IExpenseReport {
   /** Gestión que el colaborador realizará para estos gastos. */
   gestion?: string;
   isDirecta?: boolean;
+  isCajaChica?: boolean;
   /** Depósito inicial cuando la rendición directa fue iniciada por Contabilidad. */
   directaDeposit?: IDirectaDepositInfo;
+  /** ID de la rendición directa de la que proviene el saldo heredado. */
+  pendingBalanceFromReportId?: string;
+  /** Monto heredado desde la rendición directa de origen. */
+  pendingBalanceAmount?: number;
+  /** ID de la rendición directa que consumió el saldo de esta. */
+  pendingBalanceUsedInRendicionId?: string;
 }
 
 export interface IDirectaDepositInfo {
@@ -122,6 +129,9 @@ export interface ICreateExpenseReport {
   motivo?: string;
   gestion?: string;
   isDirecta?: boolean;
+  isCajaChica?: boolean;
+  pendingBalanceFromReportId?: string;
+  pendingBalanceAmount?: number;
   // New fields
   accountNumber?: string;
   idDocument?: string;
