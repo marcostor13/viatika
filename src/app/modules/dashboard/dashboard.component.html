@@ -376,7 +376,9 @@
             <h3 class="text-sm font-semibold text-secondary mb-3">Ranking de destinos</h3>
             <div class="space-y-2">
               @for (loc of data()?.topLocations?.slice(0, 5); track loc.place; let i = $index) {
-                <div class="flex items-center gap-3">
+                <div class="flex items-center gap-3 cursor-pointer rounded-lg px-1 -mx-1 py-1 transition-colors hover:bg-tertiary/5"
+                  (click)="focusLocation(loc.place)"
+                  title="Ver en el mapa">
                   <span class="w-5 h-5 rounded-full text-xs font-bold grid place-items-center flex-shrink-0"
                     [class]="i === 0 ? 'bg-primary text-white' : i === 1 ? 'bg-blue-500 text-white' : i === 2 ? 'bg-amber-400 text-white' : 'bg-tertiary/20 text-secondary'">
                     {{ i + 1 }}
