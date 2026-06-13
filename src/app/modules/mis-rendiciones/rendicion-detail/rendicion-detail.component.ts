@@ -1130,6 +1130,14 @@ export class RendicionDetailComponent implements OnInit {
     return undefined;
   }
 
+  getCollaboratorBankName(): string | undefined {
+    const u = this.report?.userId;
+    if (u && typeof u === 'object' && 'bankAccount' in u) {
+      return (u as { bankAccount?: { bankName?: string } }).bankAccount?.bankName?.toUpperCase();
+    }
+    return undefined;
+  }
+
   getApprovedByName(): string {
     const u = this.report?.approvedBy;
     if (u == null) return '—';
@@ -1557,7 +1565,7 @@ export class RendicionDetailComponent implements OnInit {
     this.returnVoucherUrl.set(null);
     this.returnVoucherFileName.set(null);
     this.returnVoucherDepositDate.set(new Date().toISOString().split('T')[0]);
-    this.returnVoucherBank.set('');
+    this.returnVoucherBank.set(this.getCollaboratorBankName() ?? '');
     this.returnVoucherOperation.set('');
     this.showReturnVoucherModal.set(true);
   }
@@ -1756,7 +1764,7 @@ export class RendicionDetailComponent implements OnInit {
     this.returnProofUrl.set(null);
     this.returnProofFileName.set(null);
     this.returnProofDepositDate.set(new Date().toISOString().split('T')[0]);
-    this.returnProofBank.set('');
+    this.returnProofBank.set(this.getCollaboratorBankName() ?? '');
     this.returnProofOperation.set('');
     this.returnProofNote.set('');
     this.showReturnProofModal.set(true);
