@@ -32,6 +32,7 @@ export class RendicionCajaChicaDetalleComponent implements OnInit {
   availableFilter = '';
 
   selectedToAdd = signal<Set<string>>(new Set());
+  expandedAvailId = signal<string | null>(null);
   adding = signal(false);
   finalizing = signal(false);
   exporting = signal(false);
@@ -54,8 +55,14 @@ export class RendicionCajaChicaDetalleComponent implements OnInit {
         if (r.status === 'draft') this.loadAvailable();
       },
       error: (err) => {
-        this.error.set(err?.error?.message ?? 'Error al cargar el reporte.');
         this.loading.set(false);
+        if (err?.status === 404) {
+          this.router.navigate(['/rendiciones-caja-chica'], {
+            state: { removedId: this.reportId },
+          });
+        } else {
+          this.error.set(err?.error?.message ?? 'Error al cargar el reporte.');
+        }
       },
     });
   }
@@ -93,6 +100,11 @@ export class RendicionCajaChicaDetalleComponent implements OnInit {
     const s = new Set(this.selectedToAdd());
     if (s.has(id)) s.delete(id); else s.add(id);
     this.selectedToAdd.set(s);
+  }
+
+  toggleExpandAvail(id: string, event: Event): void {
+    event.stopPropagation();
+    this.expandedAvailId.set(this.expandedAvailId() === id ? null : id);
   }
 
   isSelected(id: string): boolean {
@@ -150,10 +162,10 @@ export class RendicionCajaChicaDetalleComponent implements OnInit {
     });
   }
 
-  exportPdf(): void {
+  async exportPdf(): Promise<void> {
     const r = this.report();
     if (!r) return;
-    this.exportService.exportPdf(r, this.buildRows(r));
+    await this.exportService.exportPdf(r, this.buildRows(r));
   }
 
   async exportExcel(): Promise<void> {
@@ -176,10 +188,11 @@ export class RendicionCajaChicaDetalleComponent implements OnInit {
         rows.push({
           colaborador: sr.colaboradorName,
           tipo: this.expenseTypeLabel(inv.expenseType ?? ''),
-          fecha: inv.fecha ? new Date(inv.fecha).toLocaleDateString('es-PE') : '-',
-          proveedor: inv.proveedor ?? inv.provider ?? '-',
-          descripcion: inv.descripcion ?? inv.description ?? '-',
-          monto: inv.amount ?? 0,
+          fecha: this.getInvDate(inv),
+          proveedor: this.getInvProveedor(inv),
+          descripcion: this.getInvConcepto(inv),
+          numDoc: this.getInvNumDoc(inv),
+          monto: this.getInvTotal(inv),
         });
       }
     }
@@ -206,6 +219,7 @@ export class RendicionCajaChicaDetalleComponent implements OnInit {
       planilla_movilidad: 'Plan. Movilidad',
       recibo_caja: 'Recibo de Caja',
       otros_gastos: 'Otros Gastos',
+      comprobante_caja: 'Comp. Caja',
     };
     return map[type] ?? type ?? '-';
   }
@@ -221,12 +235,105 @@ export class RendicionCajaChicaDetalleComponent implements OnInit {
   }
 
   availItemClass(id: string): string {
-    const base = 'flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all ';
+    const base = 'rounded-xl border transition-all ';
     return this.isSelected(id) ? base + 'border-primary bg-blue-50' : base + 'border-gray-200';
   }
 
   expenseSubtotal(expenses: any[]): number {
-    return (expenses ?? []).reduce((s: number, e: any) => s + (e.amount ?? 0), 0);
+    return (expenses ?? []).reduce((s: number, e: any) => s + (Number(e.total) || 0), 0);
+  }
+
+  private parseInvData(inv: any): Record<string, any> {
+    const raw = inv?.data;
+    try {
+      if (!raw) return {};
+      if (typeof raw === 'string') return JSON.parse(raw);
+      if (typeof raw === 'object') return raw;
+    } catch { return {}; }
+    return {};
+  }
+
+  getInvTotal(inv: any): number {
+    return Number(inv?.total) || 0;
+  }
+
+  getInvDate(inv: any): string {
+    const type = inv?.expenseType;
+    if (type === 'planilla_movilidad') {
+      const rows: any[] = inv?.mobilityRows || [];
+      const dates = rows.map((r: any) => r.fecha).filter(Boolean);
+      return dates.length ? dates.sort()[0] : '-';
+    }
+    if (type === 'otros_gastos') {
+      return inv?.createdAt ? new Date(inv.createdAt).toLocaleDateString('es-PE') : '-';
+    }
+    const fe = inv?.fechaEmision;
+    if (!fe) return '-';
+    try {
+      if (/^\d{4}-\d{2}-\d{2}/.test(fe)) {
+        const [y, m, d] = fe.slice(0, 10).split('-').map(Number);
+        return `${String(d).padStart(2,'0')}/${String(m).padStart(2,'0')}/${y}`;
+      }
+      return new Date(fe).toLocaleDateString('es-PE');
+    } catch { return fe; }
+  }
+
+  getInvProveedor(inv: any): string {
+    const type = inv?.expenseType;
+    if (type === 'planilla_movilidad' || type === 'otros_gastos') return '-';
+    if (type === 'comprobante_caja') {
+      try {
+        const parsed = typeof inv?.description === 'string' ? JSON.parse(inv.description) : null;
+        return parsed?.entregadoA || '-';
+      } catch { return '-'; }
+    }
+    const d = this.parseInvData(inv);
+    return (typeof d['razonSocial'] === 'string' && d['razonSocial'].trim())
+      ? d['razonSocial'].trim()
+      : (typeof inv?.provider === 'string' && inv.provider.trim() ? inv.provider.trim() : '-');
+  }
+
+  getInvConcepto(inv: any): string {
+    const type = inv?.expenseType;
+    if (type === 'planilla_movilidad') {
+      const firstRow = inv?.mobilityRows?.[0];
+      return firstRow?.gestion || `${inv?.mobilityRows?.length || 0} filas`;
+    }
+    if (type === 'otros_gastos') return inv?.description || 'DJ firmada';
+    if (type === 'comprobante_caja') {
+      try {
+        const parsed = typeof inv?.description === 'string' ? JSON.parse(inv.description) : null;
+        return parsed?.concepto || 'Comprobante interno';
+      } catch { return 'Comprobante interno'; }
+    }
+    if (type === 'recibo_caja') {
+      try {
+        const d = typeof inv?.data === 'string' ? JSON.parse(inv.data) : inv?.data || {};
+        return d.concepto || d.razonSocial || 'N/A';
+      } catch { return 'N/A'; }
+    }
+    const d = this.parseInvData(inv);
+    return (typeof d['razonSocial'] === 'string' && d['razonSocial'].trim()) ? d['razonSocial'].trim() : 'N/A';
+  }
+
+  getInvNumDoc(inv: any): string {
+    const type = inv?.expenseType;
+    if (type === 'planilla_movilidad' || type === 'comprobante_caja') {
+      return typeof inv?.internalCode === 'string' && inv.internalCode ? inv.internalCode : '-';
+    }
+    if (type === 'recibo_caja') {
+      const d = this.parseInvData(inv);
+      const payload = d['payload'];
+      const p: Record<string, any> = typeof payload === 'string'
+        ? (() => { try { return JSON.parse(payload); } catch { return {}; } })()
+        : (payload && typeof payload === 'object' ? payload : {});
+      return p['numeroDocumento'] ? String(p['numeroDocumento']) : '-';
+    }
+    const d = this.parseInvData(inv);
+    const serie = d['serie'] ? String(d['serie']) : '';
+    const corr = d['correlativo'] ? String(d['correlativo']) : '';
+    if (serie && corr) return `${serie}-${corr}`;
+    return serie || corr || '-';
   }
 
   goBack(): void {

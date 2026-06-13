@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnInit, inject, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
@@ -23,15 +23,30 @@ export class RendicionesCajaChicaComponent implements OnInit {
   creating = signal(false);
   newTitle = '';
 
+  searchFilter = signal('');
+  filterStatus = signal('');
+
+  filteredReports = computed(() => {
+    const s = this.searchFilter().toLowerCase().trim();
+    const status = this.filterStatus();
+    return this.reports().filter(r => {
+      const matchSearch = !s || r.title.toLowerCase().includes(s) || (r.codigo ?? '').toLowerCase().includes(s);
+      const matchStatus = !status || r.status === status;
+      return matchSearch && matchStatus;
+    });
+  });
+
   ngOnInit(): void {
-    this.loadReports();
+    const removedId: string | undefined = (window.history.state as any)?.['removedId'];
+    this.loadReports(removedId);
   }
 
-  loadReports(): void {
+  loadReports(excludeId?: string): void {
     this.loading.set(true);
     this.service.findAll().subscribe({
       next: (data) => {
-        this.reports.set(data);
+        const filtered = excludeId ? data.filter(r => r._id !== excludeId) : data;
+        this.reports.set(filtered);
         this.loading.set(false);
       },
       error: () => { this.loading.set(false); },

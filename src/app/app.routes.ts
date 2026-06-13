@@ -278,14 +278,6 @@ export const routes: Routes = [
         canActivate: [AuthColaboradorGuard],
       },
       {
-        path: 'mis-documentos',
-        loadComponent: () =>
-          import('./modules/mis-documentos/mis-documentos.component').then(
-            (m) => m.MisDocumentosComponent
-          ),
-        canActivate: [AuthColaboradorGuard],
-      },
-      {
         path: 'mi-firma',
         loadComponent: () =>
           import('./modules/firma-digital/firma-digital.component').then(

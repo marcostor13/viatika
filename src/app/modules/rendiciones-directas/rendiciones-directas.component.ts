@@ -78,6 +78,8 @@ export class RendicionesDirectasComponent implements OnInit {
   // Selección para exportar
   selectedIds = signal<Set<string>>(new Set<string>());
 
+  get isContabilidad(): boolean { return this.userState.isContabilidad(); }
+
   toggleSelectAll(): void {
     const all = this.data();
     const sel = this.selectedIds();
@@ -185,6 +187,7 @@ export class RendicionesDirectasComponent implements OnInit {
       open: 'Abierta', solicited: 'Solicitada', submitted: 'Enviada',
       pending_accounting: 'En contabilidad', approved: 'Aprobada',
       rejected: 'Rechazada', closed: 'Cerrada', liquidated: 'Liquidada',
+      reimbursed: 'Reembolsada',
     };
     return map[String(r?.status || '')] ?? (r?.status || '—');
   }

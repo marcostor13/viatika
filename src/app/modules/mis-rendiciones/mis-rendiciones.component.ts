@@ -62,6 +62,20 @@ export class MisRendicionesComponent implements OnInit {
   readonly ADVANCE_STATUS_LABELS = ADVANCE_STATUS_LABELS;
   readonly ADVANCE_STATUS_COLORS = ADVANCE_STATUS_COLORS;
 
+  // ─── Filtros por tab ───────────────────────────────────────────────────────
+  viaticosTypeFilter = signal<'solicitudes' | 'rendiciones' | ''>('');
+  advancesStatusFilter = signal('');
+  viaticosStatusFilter = signal('');
+  viaticosDateFrom = signal('');
+  viaticosDateTo = signal('');
+
+  directasStatusFilter = signal('');
+  directasDateFrom = signal('');
+  directasDateTo = signal('');
+
+  cajaDateFrom = signal('');
+  cajaDateTo = signal('');
+
   toggleGuidelines() {
     this.showGuidelines.update(v => !v);
   }
@@ -557,6 +571,69 @@ export class MisRendicionesComponent implements OnInit {
         this.notificationService.show(msg || 'Error al cancelar', 'error');
       },
     });
+  }
+
+  // ─── Filtered + sorted lists ──────────────────────────────────────────────
+
+  get filteredPendingAdvances(): IAdvance[] {
+    let list = this.myAdvances.filter(adv => !this.hasExpenseReportLink(adv));
+    const status = this.advancesStatusFilter();
+    const from = this.viaticosDateFrom();
+    const to = this.viaticosDateTo();
+    if (status) list = list.filter(a => a.status === status);
+    if (from) list = list.filter(a => new Date(a.createdAt) >= new Date(from));
+    if (to) list = list.filter(a => new Date(a.createdAt) <= new Date(to + 'T23:59:59'));
+    return [...list].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  }
+
+  get filteredViaticosReports(): IExpenseReport[] {
+    let reports = this.expenseReports.filter(r => !r.isDirecta);
+    const status = this.viaticosStatusFilter();
+    const from = this.viaticosDateFrom();
+    const to = this.viaticosDateTo();
+    if (status) reports = reports.filter(r => r.status === status);
+    if (from) reports = reports.filter(r => new Date(r.createdAt) >= new Date(from));
+    if (to) reports = reports.filter(r => new Date(r.createdAt) <= new Date(to + 'T23:59:59'));
+    return reports.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  }
+
+  get filteredDirectaReports(): IExpenseReport[] {
+    let reports = this.expenseReports.filter(r => r.isDirecta);
+    const status = this.directasStatusFilter();
+    const from = this.directasDateFrom();
+    const to = this.directasDateTo();
+    if (status) reports = reports.filter(r => r.status === status);
+    if (from) reports = reports.filter(r => new Date(r.createdAt) >= new Date(from));
+    if (to) reports = reports.filter(r => new Date(r.createdAt) <= new Date(to + 'T23:59:59'));
+    return reports.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  }
+
+  get filteredCajaChicaReports(): IExpenseReport[] {
+    let reports = [...this.cajaChicaReports()];
+    const from = this.cajaDateFrom();
+    const to = this.cajaDateTo();
+    if (from) reports = reports.filter(r => new Date(r.createdAt) >= new Date(from));
+    if (to) reports = reports.filter(r => new Date(r.createdAt) <= new Date(to + 'T23:59:59'));
+    return reports.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  }
+
+  clearViaticosFilters(): void {
+    this.viaticosTypeFilter.set('');
+    this.advancesStatusFilter.set('');
+    this.viaticosStatusFilter.set('');
+    this.viaticosDateFrom.set('');
+    this.viaticosDateTo.set('');
+  }
+
+  clearDirectasFilters(): void {
+    this.directasStatusFilter.set('');
+    this.directasDateFrom.set('');
+    this.directasDateTo.set('');
+  }
+
+  clearCajaFilters(): void {
+    this.cajaDateFrom.set('');
+    this.cajaDateTo.set('');
   }
 
   isReportInProgress(report: IExpenseReport): boolean {

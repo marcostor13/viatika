@@ -7,10 +7,13 @@ import { ICajaChicaReport } from '../interfaces/caja-chica-report.interface';
 
 type JsPdfWithAutoTable = jsPDF & { lastAutoTable?: { finalY: number } };
 
+const RED_HEADER = 'FF912f2c';
+
 export interface CajaChicaExportRow {
   colaborador: string;
   tipo: string;
   fecha: string;
+  numDoc: string;
   proveedor: string;
   descripcion: string;
   monto: number;
@@ -21,48 +24,177 @@ export class CajaChicaReportExportService {
   private companyConfigService = inject(CompanyConfigService);
 
   private get companyName(): string {
-    return (this.companyConfigService as any).companyConfig?.name || 'Empresa';
+    return this.companyConfigService.getCompanyConfig()?.name || 'Empresa';
   }
 
-  exportPdf(report: ICajaChicaReport, rows: CajaChicaExportRow[]): void {
+  private async getLogoBase64(): Promise<string | null> {
+    const logoUrl = this.companyConfigService.getCompanyConfig()?.logo;
+    const url = logoUrl || '/logo_header.png';
+    try {
+      const response = await fetch(url);
+      const blob = await response.blob();
+      return new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result as string);
+        reader.readAsDataURL(blob);
+      });
+    } catch {
+      if (logoUrl) {
+        try {
+          const response = await fetch('/logo_header.png');
+          const blob = await response.blob();
+          return new Promise((resolve) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(reader.result as string);
+            reader.readAsDataURL(blob);
+          });
+        } catch { return null; }
+      }
+      return null;
+    }
+  }
+
+  async exportPdf(report: ICajaChicaReport, rows: CajaChicaExportRow[]): Promise<void> {
     const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' }) as JsPdfWithAutoTable;
     const pageW = doc.internal.pageSize.getWidth();
     const margin = 14;
 
-    // Header
-    doc.setFontSize(10);
-    doc.setTextColor(100);
-    doc.text(this.companyName, margin, 10);
-    doc.setFontSize(14);
-    doc.setTextColor(30);
-    doc.setFont('helvetica', 'bold');
-    doc.text(`Rendicion Caja Chica - ${report.codigo}`, margin, 20);
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(10);
-    doc.setTextColor(80);
-    doc.text(report.title, margin, 27);
-    doc.text(`Estado: ${report.status === 'finalized' ? 'Finalizado' : 'Borrador'}`, margin, 33);
-    const totalStr = `Total: S/ ${report.totalAmount.toFixed(2)}`;
-    doc.text(totalStr, pageW - margin - doc.getTextWidth(totalStr), 33);
+    const logoB64 = await this.getLogoBase64();
 
-    // Table
+    const addPageHeader = (isFirst: boolean) => {
+      if (!isFirst) doc.addPage();
+      if (logoB64) doc.addImage(logoB64, 'PNG', margin, 8, 45, 12);
+
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(12);
+      doc.setTextColor(30);
+      doc.text('REPORTE CAJA CHICA', pageW / 2, 15, { align: 'center' });
+
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(9);
+      doc.setTextColor(80);
+      doc.text(this.companyName, pageW / 2, 21, { align: 'center' });
+      doc.text(report.title, pageW / 2, 27, { align: 'center' });
+
+      const statusLabel = report.status === 'finalized' ? 'Finalizado' : 'Borrador';
+      doc.setFontSize(8);
+      doc.setTextColor(120);
+      doc.text(`Codigo: ${report.codigo}`, pageW - margin, 13, { align: 'right' });
+      doc.text(`Estado: ${statusLabel}`, pageW - margin, 18, { align: 'right' });
+    };
+
+    // Group rows by collaborator — one page per collaborator
+    const groups = new Map<string, CajaChicaExportRow[]>();
+    for (const row of rows) {
+      if (!groups.has(row.colaborador)) groups.set(row.colaborador, []);
+      groups.get(row.colaborador)!.push(row);
+    }
+
+    let isFirst = true;
+    let itemIndexGlobal = 1;
+
+    for (const [colaborador, colRows] of groups) {
+      addPageHeader(isFirst);
+      isFirst = false;
+
+      let y = 34;
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(9);
+      doc.setTextColor(30);
+      doc.text(`Colaborador:  ${colaborador}`, margin, y);
+      y += 5;
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(80);
+
+      y += 3;
+
+      const bodyData: any[][] = [];
+      let sumGastos = 0;
+
+      for (const row of colRows) {
+        bodyData.push([
+          itemIndexGlobal++,
+          row.fecha,
+          row.tipo,
+          row.numDoc,
+          row.proveedor !== '-' ? row.proveedor : '',
+          row.descripcion !== 'N/A' ? row.descripcion : '',
+          '',
+          row.monto.toFixed(2),
+        ]);
+        sumGastos += row.monto;
+      }
+
+      // Fill min rows
+      const minRows = Math.max(5, bodyData.length);
+      while (bodyData.length < minRows) {
+        bodyData.push([itemIndexGlobal++, '', '', '', '', '', '', '']);
+      }
+
+      autoTable(doc, {
+        startY: y,
+        head: [['Item', 'Fecha\nEmisión', 'Tipo\nDoc.', 'Nº Documento', 'Proveedor', 'Concepto', 'Placa', 'Monto (S/)']],
+        body: bodyData,
+        theme: 'grid',
+        headStyles: { fillColor: [145, 47, 44], textColor: 255, halign: 'center', valign: 'middle', fontSize: 8 },
+        styles: { fontSize: 7.5, cellPadding: 2, textColor: 0 },
+        columnStyles: {
+          0: { halign: 'center', cellWidth: 9 },
+          1: { halign: 'center', cellWidth: 18 },
+          2: { halign: 'center', cellWidth: 16 },
+          3: { cellWidth: 24 },
+          4: { cellWidth: 38 },
+          5: { cellWidth: 'auto' },
+          6: { halign: 'center', cellWidth: 14 },
+          7: { halign: 'right', cellWidth: 18 },
+        },
+        margin: { left: margin, right: margin },
+      });
+
+      const finalY = (doc as JsPdfWithAutoTable).lastAutoTable?.finalY ?? y;
+
+      // Totals row (matching rendicion style)
+      const rightEdge = pageW - margin;
+      const colW = 18;
+      doc.setFillColor(145, 47, 44);
+      doc.rect(rightEdge - colW, finalY, colW, 6, 'F');
+      doc.setTextColor(255, 255, 255);
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(8);
+      doc.text(sumGastos.toFixed(2), rightEdge - 2, finalY + 4, { align: 'right' });
+      doc.setTextColor(0, 0, 0);
+      doc.setFont('helvetica', 'normal');
+    }
+
+    // Final page — grand total summary
+    doc.addPage();
+    if (logoB64) doc.addImage(logoB64, 'PNG', margin, 8, 45, 12);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(12);
+    doc.setTextColor(30);
+    doc.text('RESUMEN GENERAL', pageW / 2, 20, { align: 'center' });
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(9);
+    doc.setTextColor(80);
+    doc.text(report.title, pageW / 2, 27, { align: 'center' });
+
+    const summaryBody: any[][] = [];
+    for (const [colaborador, colRows] of groups) {
+      const sub = colRows.reduce((s, r) => s + r.monto, 0);
+      summaryBody.push([colaborador, colRows.length.toString(), `S/ ${sub.toFixed(2)}`]);
+    }
+
     autoTable(doc, {
-      startY: 38,
-      head: [['Colaborador', 'Tipo', 'Fecha', 'Proveedor / Descripcion', 'Monto (S/)']],
-      body: rows.map((r) => [
-        r.colaborador,
-        r.tipo,
-        r.fecha,
-        r.proveedor || r.descripcion,
-        r.monto.toFixed(2),
-      ]),
-      foot: [['', '', '', 'TOTAL', report.totalAmount.toFixed(2)]],
-      headStyles: { fillColor: [211, 18, 18], textColor: 255, fontStyle: 'bold', fontSize: 9 },
-      footStyles: { fillColor: [240, 240, 240], textColor: 30, fontStyle: 'bold' },
+      startY: 35,
+      head: [['Colaborador', 'Comprobantes', 'Total (S/)']],
+      body: summaryBody,
+      foot: [['TOTAL GENERAL', rows.length.toString(), `S/ ${report.totalAmount.toFixed(2)}`]],
+      theme: 'grid',
+      headStyles: { fillColor: [145, 47, 44], textColor: 255, halign: 'center', fontSize: 9 },
+      footStyles: { fillColor: [145, 47, 44], textColor: 255, fontStyle: 'bold', halign: 'right' },
       bodyStyles: { fontSize: 8.5 },
-      columnStyles: { 4: { halign: 'right' } },
+      columnStyles: { 2: { halign: 'right' } },
       margin: { left: margin, right: margin },
-      styles: { overflow: 'linebreak' },
     });
 
     doc.save(`CC-${report.codigo}-${report.title.replace(/\s+/g, '_')}.pdf`);
@@ -71,53 +203,152 @@ export class CajaChicaReportExportService {
   async exportExcel(report: ICajaChicaReport, rows: CajaChicaExportRow[]): Promise<void> {
     const wb = new ExcelJS.Workbook();
     wb.creator = this.companyName;
+    wb.created = new Date();
 
-    // Sheet: Resumen
-    const ws = wb.addWorksheet('Resumen');
+    const ws = wb.addWorksheet('Caja Chica', { views: [{ showGridLines: false }] });
+
     ws.columns = [
-      { header: 'Campo', key: 'campo', width: 28 },
-      { header: 'Valor', key: 'valor', width: 40 },
-    ];
-    ws.addRow({ campo: 'Codigo', valor: report.codigo });
-    ws.addRow({ campo: 'Titulo', valor: report.title });
-    ws.addRow({ campo: 'Estado', valor: report.status === 'finalized' ? 'Finalizado' : 'Borrador' });
-    ws.addRow({ campo: 'Rendiciones incluidas', valor: report.selectedReports?.length ?? 0 });
-    ws.addRow({ campo: 'Total (S/)', valor: report.totalAmount });
-
-    ws.getRow(1).font = { bold: true };
-    ws.getColumn('campo').font = { bold: true };
-
-    // Sheet: Detalle
-    const wd = wb.addWorksheet('Detalle');
-    wd.columns = [
-      { header: 'Colaborador', key: 'colaborador', width: 28 },
-      { header: 'Tipo', key: 'tipo', width: 20 },
-      { header: 'Fecha', key: 'fecha', width: 14 },
-      { header: 'Proveedor / Descripcion', key: 'proveedor', width: 36 },
-      { header: 'Monto (S/)', key: 'monto', width: 14 },
+      { width: 6 },   // Item
+      { width: 12 },  // Fecha
+      { width: 14 },  // Tipo
+      { width: 20 },  // Nº Doc
+      { width: 32 },  // Proveedor
+      { width: 38 },  // Concepto
+      { width: 12 },  // Placa
+      { width: 14 },  // Monto
     ];
 
-    const headerRow = wd.getRow(1);
-    headerRow.font = { bold: true, color: { argb: 'FFFFFFFF' } };
-    headerRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD31212' } };
-    headerRow.alignment = { vertical: 'middle', horizontal: 'center' };
+    const logoB64 = await this.getLogoBase64();
+    if (logoB64) {
+      const imageId = wb.addImage({ base64: logoB64, extension: 'png' });
+      ws.addImage(imageId, { tl: { col: 0, row: 0 }, ext: { width: 140, height: 40 } });
+    }
 
-    rows.forEach((r) => {
-      wd.addRow({
-        colaborador: r.colaborador,
-        tipo: r.tipo,
-        fecha: r.fecha,
-        proveedor: r.proveedor || r.descripcion,
-        monto: r.monto,
-      });
+    ws.mergeCells('A4:F4');
+    const titleCell = ws.getCell('A4');
+    titleCell.value = 'REPORTE CAJA CHICA';
+    titleCell.font = { bold: true, size: 13 };
+    titleCell.alignment = { horizontal: 'center' };
+
+    ws.mergeCells('A5:F5');
+    const companyCell = ws.getCell('A5');
+    companyCell.value = this.companyName;
+    companyCell.font = { size: 10 };
+    companyCell.alignment = { horizontal: 'center' };
+
+    ws.mergeCells('A6:F6');
+    const reportTitleCell = ws.getCell('A6');
+    reportTitleCell.value = report.title;
+    reportTitleCell.font = { size: 10, italic: true };
+    reportTitleCell.alignment = { horizontal: 'center' };
+    ws.getRow(6).height = 18;
+
+    ws.getCell('A8').value = 'Codigo:';
+    ws.getCell('A8').font = { bold: true };
+    ws.getCell('B8').value = report.codigo;
+    ws.getCell('C8').value = 'Estado:';
+    ws.getCell('C8').font = { bold: true };
+    ws.getCell('D8').value = report.status === 'finalized' ? 'Finalizado' : 'Borrador';
+    ws.getCell('E8').value = 'Rendiciones:';
+    ws.getCell('E8').font = { bold: true };
+    ws.getCell('F8').value = report.selectedReports.length;
+
+    ws.getCell('A9').value = 'Total (S/):';
+    ws.getCell('A9').font = { bold: true };
+    const totalMetaCell = ws.getCell('B9');
+    totalMetaCell.value = report.totalAmount;
+    totalMetaCell.numFmt = '"S/"#,##0.00';
+    totalMetaCell.font = { bold: true };
+
+    let r = 11;
+    // Same columns as rendicion: Item, Fecha Emisión, Tipo Doc., Nº Documento, Proveedor, Concepto, Placa, Monto
+    const headers = ['Item', 'Fecha\nEmisión', 'Tipo\nDoc.', 'Nº del Documento', 'Proveedor', 'Concepto', 'Placa', 'Monto (S/)'];
+    headers.forEach((h, i) => {
+      const c = ws.getCell(r, i + 1);
+      c.value = h;
+      c.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+      c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: RED_HEADER } };
+      c.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
+      c.border = {
+        top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' },
+      };
     });
+    ws.getRow(r).height = 30;
+    r++;
 
-    // Total row
-    const totalRow = wd.addRow({ colaborador: '', tipo: '', fecha: '', proveedor: 'TOTAL', monto: report.totalAmount });
-    totalRow.font = { bold: true };
-    totalRow.getCell('proveedor').alignment = { horizontal: 'right' };
+    let itemIndex = 1;
+    let currentColaborador = '';
+    let subtotal = 0;
+    const lastDataCol = 8;
 
-    wd.getColumn('monto').numFmt = '"S/"#,##0.00';
+    const addDataRow = (vals: any[]) => {
+      vals.forEach((val, i) => {
+        const c = ws.getCell(r, i + 1);
+        c.value = val;
+        c.border = {
+          top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' },
+        };
+        if (i === 7) { // Monto
+          c.numFmt = '#,##0.00';
+          c.alignment = { horizontal: 'right' };
+          if (!val) c.value = '';
+        } else if (i === 0 || i === 1 || i === 2) {
+          c.alignment = { horizontal: 'center' };
+        } else {
+          c.alignment = { wrapText: true };
+        }
+      });
+      r++;
+    };
+
+    const addGroupRow = (label: string, amount: number, isTotal = false) => {
+      ws.mergeCells(r, 1, r, lastDataCol - 1);
+      const cLabel = ws.getCell(r, 1);
+      cLabel.value = label;
+      cLabel.font = { bold: true, color: isTotal ? { argb: 'FFFFFFFF' } : undefined };
+      cLabel.alignment = { horizontal: 'right' };
+      cLabel.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: isTotal ? RED_HEADER : 'FFF5F5F5' } };
+      cLabel.border = {
+        top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' },
+      };
+      const cAmt = ws.getCell(r, lastDataCol);
+      cAmt.value = amount;
+      cAmt.numFmt = '#,##0.00';
+      cAmt.font = { bold: true, color: isTotal ? { argb: 'FFFFFFFF' } : undefined };
+      cAmt.alignment = { horizontal: 'right' };
+      cAmt.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: isTotal ? RED_HEADER : 'FFF5F5F5' } };
+      cAmt.border = {
+        top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' },
+      };
+      r++;
+    };
+
+    for (const row of rows) {
+      if (row.colaborador !== currentColaborador) {
+        if (currentColaborador) {
+          addGroupRow(`Subtotal ${currentColaborador}`, subtotal);
+          subtotal = 0;
+        }
+        currentColaborador = row.colaborador;
+        ws.mergeCells(r, 1, r, lastDataCol);
+        const cColHeader = ws.getCell(r, 1);
+        cColHeader.value = row.colaborador;
+        cColHeader.font = { bold: true, color: { argb: 'FF912f2c' } };
+        cColHeader.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFBF3EE' } };
+        cColHeader.alignment = { horizontal: 'left' };
+        cColHeader.border = {
+          top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' },
+        };
+        r++;
+      }
+      addDataRow([itemIndex++, row.fecha, row.tipo, row.numDoc, row.proveedor !== '-' ? row.proveedor : '', row.descripcion !== 'N/A' ? row.descripcion : '', '', row.monto]);
+      subtotal += row.monto;
+    }
+
+    if (currentColaborador) {
+      addGroupRow(`Subtotal ${currentColaborador}`, subtotal);
+    }
+    addGroupRow('TOTAL GENERAL', report.totalAmount, true);
 
     const buf = await wb.xlsx.writeBuffer();
     const blob = new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });

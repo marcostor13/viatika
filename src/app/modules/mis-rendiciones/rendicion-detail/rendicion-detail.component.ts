@@ -323,6 +323,8 @@ export class RendicionDetailComponent implements OnInit {
     const canViewAdminUsers = this.userStateService.isAdmin() || this.userStateService.isSuperAdmin();
     if (this.isAdminView && ownerId && canViewAdminUsers) {
       this.router.navigate(['/admin-users', ownerId, 'details']);
+    } else if (this.isAdminView && this.userStateService.isContabilidad()) {
+      this.router.navigate([this.report?.isDirecta ? '/rendiciones-directas' : '/rendiciones']);
     } else if (this.isAdminView) {
       this.router.navigate(['/tesoreria']);
     } else {
@@ -383,7 +385,7 @@ export class RendicionDetailComponent implements OnInit {
     if (!this.report || this.isAdminView) return false;
     if (this.report.status !== 'open') return false;
     // Rendición directa: no necesita anticipo pagado para agregar gastos
-    if (this.report.isDirecta) return true;
+    if (this.report.isDirecta || this.report.isCajaChica) return true;
     return this.hasPaidAdvanceForReport;
   }
 
@@ -406,6 +408,7 @@ export class RendicionDetailComponent implements OnInit {
 
   get canSubmitReport(): boolean {
     if (!this.report || this.isAdminView) return false;
+    if (this.report.isCajaChica) return false;
     if (!(this.report.status === 'open' || this.report.status === 'rejected')) return false;
     const expenses = this.report.expenseIds || [];
     return expenses.length > 0;
@@ -1087,6 +1090,20 @@ export class RendicionDetailComponent implements OnInit {
 
   getReportStatusLabel(): string {
     if (!this.report) return '';
+    if (this.report.isDirecta) {
+      const directaLabels: Record<IExpenseReport['status'], string> = {
+        solicited: 'Solicitada',
+        open: 'Abierta',
+        submitted: 'Enviada',
+        pending_accounting: 'Pendiente de Contabilidad',
+        approved: 'Aprobada',
+        rejected: 'Rechazada',
+        reimbursed: 'Reembolsada',
+        closed: 'Cerrada',
+        cancelled: 'Cancelada',
+      };
+      return directaLabels[this.report.status] ?? this.report.status;
+    }
     const labels: Record<IExpenseReport['status'], string> = {
       solicited: 'Solicitada',
       open: 'Abierta',

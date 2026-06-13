@@ -40,6 +40,7 @@
       [class.hover:text-gray-700]="activeTab() !== 'rendiciones'">
       Rendiciones directas
     </button>
+    @if (!isContabilidad) {
     <button type="button" (click)="setTab('gastos')"
       class="px-4 py-2.5 text-sm font-semibold border-b-2 -mb-px transition-colors"
       [class.border-primary]="activeTab() === 'gastos'" [class.text-primary]="activeTab() === 'gastos'"
@@ -47,6 +48,7 @@
       [class.hover:text-gray-700]="activeTab() !== 'gastos'">
       Gastos
     </button>
+    }
   </div>
 
   <!-- Filtros -->
