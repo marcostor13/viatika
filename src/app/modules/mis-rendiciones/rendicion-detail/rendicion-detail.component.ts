@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, signal, computed, HostListener } from '@angular/core';
+import { Component, OnInit, inject, signal, computed, HostListener, WritableSignal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
@@ -1533,6 +1533,30 @@ export class RendicionDetailComponent implements OnInit {
       });
   }
 
+  /**
+   * Escanea (OCR/visión) un comprobante de depósito/transferencia ya subido y entrega
+   * monto, fecha, hora, n° de operación y titular. Reutiliza el mismo endpoint que el
+   * pago de anticipo y el depósito de rendición directa.
+   */
+  private scanComprobante(
+    url: string,
+    mimeType: string | undefined,
+    scanning: WritableSignal<boolean>,
+    onResult: (res: { amount: number; fecha?: string; hora?: string; operationNumber?: string; titular?: string }) => void
+  ): void {
+    scanning.set(true);
+    this.expenseReportsService.scanDepositAmount(url, mimeType).subscribe({
+      next: (res) => {
+        scanning.set(false);
+        onResult(res ?? { amount: 0 });
+      },
+      error: () => {
+        scanning.set(false);
+        this.notificationService.show('No se pudo escanear el comprobante. Completa los datos manualmente.', 'warning');
+      },
+    });
+  }
+
   // ─── Cierre: voucher de devolucion (colaborador) ──────────────────────────
 
   showReturnVoucherModal = signal(false);
@@ -1543,6 +1567,12 @@ export class RendicionDetailComponent implements OnInit {
   returnVoucherDepositDate = signal(new Date().toISOString().split('T')[0]);
   returnVoucherBank = signal('');
   returnVoucherOperation = signal('');
+  // Datos detectados por el escaneo del comprobante
+  isScanningReturnVoucher = signal(false);
+  returnVoucherScannedAmount = signal<number | null>(null);
+  returnVoucherTitular = signal<string | null>(null);
+  returnVoucherOperationDate = signal<string | null>(null);
+  returnVoucherOperationTime = signal<string | null>(null);
 
   /** Saldo de esta rendición ya fue utilizado para crear otra solicitud o rendición directa. */
   get isSaldoUsadoEnOtraRendicion(): boolean {
@@ -1607,7 +1637,15 @@ export class RendicionDetailComponent implements OnInit {
     this.returnVoucherDepositDate.set(new Date().toISOString().split('T')[0]);
     this.returnVoucherBank.set(this.getCollaboratorBankName() ?? '');
     this.returnVoucherOperation.set('');
+    this.returnVoucherScannedAmount.set(null);
+    this.returnVoucherTitular.set(null);
+    this.returnVoucherOperationDate.set(null);
+    this.returnVoucherOperationTime.set(null);
     this.showReturnVoucherModal.set(true);
+  }
+
+  get returnVoucherHasDetectedData(): boolean {
+    return !!(this.returnVoucherTitular() || this.returnVoucherOperationDate() || this.returnVoucherOperationTime() || this.returnVoucherScannedAmount());
   }
 
   onReturnVoucherFileSelected(event: Event): void {
@@ -1632,6 +1670,16 @@ export class RendicionDetailComponent implements OnInit {
         this.returnVoucherFileName.set(file.name);
         this.notificationService.show('Comprobante subido', 'success');
         this.isUploadingReturnVoucher.set(false);
+        this.scanComprobante(res.url, file.type, this.isScanningReturnVoucher, (r) => {
+          this.returnVoucherScannedAmount.set(Number(r.amount) > 0 ? Number(r.amount) : null);
+          this.returnVoucherTitular.set(r.titular || null);
+          this.returnVoucherOperationDate.set(r.fecha || null);
+          this.returnVoucherOperationTime.set(r.hora || null);
+          if (r.operationNumber && !this.returnVoucherOperation()) this.returnVoucherOperation.set(r.operationNumber);
+          if (this.returnVoucherHasDetectedData) {
+            this.notificationService.show('Datos detectados del comprobante.', 'success');
+          }
+        });
       },
       error: () => {
         this.notificationService.show('No se pudo subir el comprobante', 'error');
@@ -1653,6 +1701,10 @@ export class RendicionDetailComponent implements OnInit {
       operationNumber: this.returnVoucherOperation() || undefined,
       fileUrl,
       fileName: this.returnVoucherFileName() || undefined,
+      scannedAmount: this.returnVoucherScannedAmount() ?? undefined,
+      operationDate: this.returnVoucherOperationDate() || undefined,
+      operationTime: this.returnVoucherOperationTime() || undefined,
+      titular: this.returnVoucherTitular() || undefined,
     }).subscribe({
       next: (res) => {
         this.report = res;
@@ -1681,6 +1733,12 @@ export class RendicionDetailComponent implements OnInit {
   adminReembolsoBank = signal('');
   adminReembolsoRef = signal('');
   adminReembolsoMethod = signal<'transferencia_bancaria' | 'efectivo' | 'cheque'>('transferencia_bancaria');
+  // Datos detectados por el escaneo del comprobante
+  isScanningAdminReembolso = signal(false);
+  adminReembolsoScannedAmount = signal<number | null>(null);
+  adminReembolsoTitular = signal<string | null>(null);
+  adminReembolsoOperationDate = signal<string | null>(null);
+  adminReembolsoOperationTime = signal<string | null>(null);
 
   openAdminReembolsoModal(): void {
     this.adminReembolsoUrl.set(null);
@@ -1689,7 +1747,15 @@ export class RendicionDetailComponent implements OnInit {
     this.adminReembolsoBank.set('');
     this.adminReembolsoRef.set('');
     this.adminReembolsoMethod.set('transferencia_bancaria');
+    this.adminReembolsoScannedAmount.set(null);
+    this.adminReembolsoTitular.set(null);
+    this.adminReembolsoOperationDate.set(null);
+    this.adminReembolsoOperationTime.set(null);
     this.showAdminReembolsoModal.set(true);
+  }
+
+  get adminReembolsoHasDetectedData(): boolean {
+    return !!(this.adminReembolsoTitular() || this.adminReembolsoOperationDate() || this.adminReembolsoOperationTime() || this.adminReembolsoScannedAmount());
   }
 
   onAdminReembolsoFileSelected(event: Event): void {
@@ -1714,6 +1780,16 @@ export class RendicionDetailComponent implements OnInit {
         this.adminReembolsoFileName.set(file.name);
         this.notificationService.show('Comprobante subido', 'success');
         this.isUploadingAdminReembolso.set(false);
+        this.scanComprobante(res.url, file.type, this.isScanningAdminReembolso, (r) => {
+          this.adminReembolsoScannedAmount.set(Number(r.amount) > 0 ? Number(r.amount) : null);
+          this.adminReembolsoTitular.set(r.titular || null);
+          this.adminReembolsoOperationDate.set(r.fecha || null);
+          this.adminReembolsoOperationTime.set(r.hora || null);
+          if (r.operationNumber && !this.adminReembolsoRef()) this.adminReembolsoRef.set(r.operationNumber);
+          if (this.adminReembolsoHasDetectedData) {
+            this.notificationService.show('Datos detectados del comprobante.', 'success');
+          }
+        });
       },
       error: () => {
         this.notificationService.show('No se pudo subir el comprobante', 'error');
@@ -1741,6 +1817,11 @@ export class RendicionDetailComponent implements OnInit {
       reference: this.adminReembolsoRef() || undefined,
       paymentReceiptUrl: fileUrl || undefined,
       paymentReceiptFileName: this.adminReembolsoFileName() || undefined,
+      scannedAmount: this.adminReembolsoScannedAmount() ?? undefined,
+      operationNumber: this.adminReembolsoRef() || undefined,
+      operationDate: this.adminReembolsoOperationDate() || undefined,
+      operationTime: this.adminReembolsoOperationTime() || undefined,
+      titular: this.adminReembolsoTitular() || undefined,
     }).subscribe({
       next: (res) => {
         this.report = res;
@@ -1771,6 +1852,16 @@ export class RendicionDetailComponent implements OnInit {
   returnProofBank = signal('');
   returnProofOperation = signal('');
   returnProofNote = signal('');
+  // Datos detectados por el escaneo del comprobante
+  isScanningReturnProof = signal(false);
+  returnProofScannedAmount = signal<number | null>(null);
+  returnProofTitular = signal<string | null>(null);
+  returnProofOperationDate = signal<string | null>(null);
+  returnProofOperationTime = signal<string | null>(null);
+
+  get returnProofHasDetectedData(): boolean {
+    return !!(this.returnProofTitular() || this.returnProofOperationDate() || this.returnProofOperationTime() || this.returnProofScannedAmount());
+  }
 
   get advancesWithPendingReturn(): typeof this.advances {
     return this.advances.filter(
@@ -1807,6 +1898,10 @@ export class RendicionDetailComponent implements OnInit {
     this.returnProofBank.set(this.getCollaboratorBankName() ?? '');
     this.returnProofOperation.set('');
     this.returnProofNote.set('');
+    this.returnProofScannedAmount.set(null);
+    this.returnProofTitular.set(null);
+    this.returnProofOperationDate.set(null);
+    this.returnProofOperationTime.set(null);
     this.showReturnProofModal.set(true);
   }
 
@@ -1832,6 +1927,16 @@ export class RendicionDetailComponent implements OnInit {
         this.returnProofFileName.set(file.name);
         this.notificationService.show('Comprobante subido', 'success');
         this.isUploadingReturnProof.set(false);
+        this.scanComprobante(res.url, file.type, this.isScanningReturnProof, (r) => {
+          this.returnProofScannedAmount.set(Number(r.amount) > 0 ? Number(r.amount) : null);
+          this.returnProofTitular.set(r.titular || null);
+          this.returnProofOperationDate.set(r.fecha || null);
+          this.returnProofOperationTime.set(r.hora || null);
+          if (r.operationNumber && !this.returnProofOperation()) this.returnProofOperation.set(r.operationNumber);
+          if (this.returnProofHasDetectedData) {
+            this.notificationService.show('Datos detectados del comprobante.', 'success');
+          }
+        });
       },
       error: () => {
         this.notificationService.show('No se pudo subir el comprobante', 'error');
@@ -1856,6 +1961,10 @@ export class RendicionDetailComponent implements OnInit {
       operationNumber: this.returnProofOperation(),
       fileUrl,
       note: this.returnProofNote() || undefined,
+      scannedAmount: this.returnProofScannedAmount() ?? undefined,
+      operationDate: this.returnProofOperationDate() || undefined,
+      operationTime: this.returnProofOperationTime() || undefined,
+      titular: this.returnProofTitular() || undefined,
     }).subscribe({
       next: () => {
         this.notificationService.show('Comprobante enviado correctamente', 'success');

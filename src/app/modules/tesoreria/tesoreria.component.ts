@@ -49,6 +49,13 @@ export class TesoreriaComponent implements OnInit {
   reimbursementReceiptName: string | null = null;
   reimbursementReceiptMimeType: string | null = null;
   reimbursementReceiptSizeBytes: number | null = null;
+  // Reembolso: escaneo del comprobante (OCR) — solo autocompleta, sin alerta
+  isScanningReimbursement = signal(false);
+  reimbursementScannedAmount: number | null = null;
+  reimbursementTitular: string | null = null;
+  reimbursementOperationNumber: string | null = null;
+  reimbursementOperationDate: string | null = null;
+  reimbursementOperationTime: string | null = null;
   showPaymentModal = false;
   showRejectModal = false;
   showReturnModal = false;
@@ -427,6 +434,7 @@ export class TesoreriaComponent implements OnInit {
     this.reimbursementReceiptName = null;
     this.reimbursementReceiptMimeType = null;
     this.reimbursementReceiptSizeBytes = null;
+    this.resetReimbursementScanState();
     const user = typeof report.userId === 'object' ? report.userId : null;
     const bankAccount = user && typeof user === 'object' && 'bankAccount' in user
       ? (user as { bankAccount?: { bankName?: string; accountNumber?: string; cci?: string } }).bankAccount
@@ -465,10 +473,42 @@ export class TesoreriaComponent implements OnInit {
         this.reimbursementReceiptSizeBytes = file.size;
         this.notificationService.show('Comprobante cargado correctamente', 'success');
         this.isUploadingReceipt.set(false);
+        this.scanReimbursementReceipt(res.url, file.type);
       },
       error: () => {
         this.notificationService.show('No se pudo subir el comprobante', 'error');
         this.isUploadingReceipt.set(false);
+      },
+    });
+  }
+
+  private resetReimbursementScanState(): void {
+    this.reimbursementScannedAmount = null;
+    this.reimbursementTitular = null;
+    this.reimbursementOperationNumber = null;
+    this.reimbursementOperationDate = null;
+    this.reimbursementOperationTime = null;
+  }
+
+  /** Escanea el comprobante del reembolso y autocompleta los datos (sin alerta de discrepancia). */
+  private scanReimbursementReceipt(url: string, mimeType?: string): void {
+    this.isScanningReimbursement.set(true);
+    this.expenseReportsService.scanDepositAmount(url, mimeType).subscribe({
+      next: res => {
+        this.isScanningReimbursement.set(false);
+        const amount = Number(res?.amount) || 0;
+        this.reimbursementScannedAmount = amount > 0 ? amount : null;
+        this.reimbursementTitular = res?.titular || null;
+        this.reimbursementOperationNumber = res?.operationNumber || null;
+        this.reimbursementOperationDate = res?.fecha || null;
+        this.reimbursementOperationTime = res?.hora || null;
+        if (res?.operationNumber && !this.paymentForm.value.reference) {
+          this.paymentForm.patchValue({ reference: res.operationNumber });
+        }
+      },
+      error: () => {
+        this.isScanningReimbursement.set(false);
+        this.notificationService.show('No se pudo escanear el comprobante. Completa los datos manualmente.', 'warning');
       },
     });
   }
@@ -488,6 +528,11 @@ export class TesoreriaComponent implements OnInit {
         paymentReceiptFileName: this.reimbursementReceiptName || undefined,
         paymentReceiptMimeType: this.reimbursementReceiptMimeType || undefined,
         paymentReceiptSizeBytes: this.reimbursementReceiptSizeBytes || undefined,
+        scannedAmount: this.reimbursementScannedAmount ?? undefined,
+        operationNumber: this.reimbursementOperationNumber || this.paymentForm.value.reference || undefined,
+        operationDate: this.reimbursementOperationDate || undefined,
+        operationTime: this.reimbursementOperationTime || undefined,
+        titular: this.reimbursementTitular || undefined,
       })
       .subscribe({
         next: () => {

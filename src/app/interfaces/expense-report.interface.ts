@@ -41,6 +41,12 @@ export interface IReimbursementPaymentInfo {
   paymentReceiptFileName?: string;
   paymentReceiptMimeType?: string;
   paymentReceiptSizeBytes?: number;
+  /** Datos extraídos del comprobante por OCR/visión (informativos). */
+  scannedAmount?: number;
+  operationNumber?: string;
+  operationDate?: string;
+  operationTime?: string;
+  titular?: string;
 }
 
 export interface IExpenseReport {
@@ -78,6 +84,11 @@ export interface IExpenseReport {
     depositDate: string;
     bankOrigin?: string;
     operationNumber?: string;
+    /** Datos extraídos del comprobante por OCR/visión (informativos). */
+    scannedAmount?: number;
+    operationDate?: string;
+    operationTime?: string;
+    titular?: string;
     uploadedAt: string;
   };
   closureRecord?: IClosureRecord;
@@ -153,6 +164,12 @@ export interface IRegisterReimbursementPaymentPayload {
   paymentReceiptFileName?: string;
   paymentReceiptMimeType?: string;
   paymentReceiptSizeBytes?: number;
+  /** Datos extraídos del comprobante por OCR/visión (informativos). */
+  scannedAmount?: number;
+  operationNumber?: string;
+  operationDate?: string;
+  operationTime?: string;
+  titular?: string;
 }
 
 export interface IMisDocumentoItem {

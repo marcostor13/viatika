@@ -150,7 +150,17 @@ export class ExpenseReportsService {
 
   registerReturnVoucher(
     reportId: string,
-    payload: { depositDate: string; bankOrigin?: string; operationNumber?: string; fileUrl: string; fileName?: string }
+    payload: {
+      depositDate: string;
+      bankOrigin?: string;
+      operationNumber?: string;
+      fileUrl: string;
+      fileName?: string;
+      scannedAmount?: number;
+      operationDate?: string;
+      operationTime?: string;
+      titular?: string;
+    }
   ): Observable<IExpenseReport> {
     return this.http.post<IExpenseReport>(
       `${this.apiUrl}/expense-report/${reportId}/return-voucher`,
