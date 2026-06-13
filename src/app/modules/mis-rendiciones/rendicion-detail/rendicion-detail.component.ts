@@ -328,7 +328,8 @@ export class RendicionDetailComponent implements OnInit {
     } else if (this.isAdminView) {
       this.router.navigate(['/tesoreria']);
     } else {
-      this.router.navigate(['/mis-rendiciones']);
+      const tab = this.route.snapshot.queryParamMap.get('tab');
+      this.router.navigate(['/mis-rendiciones'], tab ? { queryParams: { tab } } : {});
     }
   }
 
