@@ -827,6 +827,22 @@
         <p class="text-sm text-gray-700 mb-3">
           El pago al colaborador fue registrado por tesorería.
         </p>
+        @if (report.reimbursementPaymentInfo.titular || report.reimbursementPaymentInfo.operationNumber || report.reimbursementPaymentInfo.operationDate || report.reimbursementPaymentInfo.scannedAmount) {
+        <div class="text-sm text-gray-700 space-y-1 mb-3">
+          @if (report.reimbursementPaymentInfo.titular) {
+            <p><span class="text-gray-500">Titular:</span> {{ report.reimbursementPaymentInfo.titular }}</p>
+          }
+          @if (report.reimbursementPaymentInfo.operationNumber) {
+            <p><span class="text-gray-500">N° Operación:</span> {{ report.reimbursementPaymentInfo.operationNumber }}</p>
+          }
+          @if (report.reimbursementPaymentInfo.operationDate) {
+            <p><span class="text-gray-500">Fecha/hora operación:</span> {{ report.reimbursementPaymentInfo.operationDate }}@if (report.reimbursementPaymentInfo.operationTime) { · {{ report.reimbursementPaymentInfo.operationTime }} }</p>
+          }
+          @if (report.reimbursementPaymentInfo.scannedAmount) {
+            <p><span class="text-gray-500">Monto detectado:</span> S/ {{ report.reimbursementPaymentInfo.scannedAmount | number:'1.2-2' }}</p>
+          }
+        </div>
+        }
         <div class="flex flex-wrap gap-3 text-sm">
           <a [href]="report.reimbursementPaymentInfo.paymentReceiptUrl" target="_blank" rel="noopener noreferrer"
             class="inline-flex items-center px-4 py-2 rounded-lg bg-emerald-700 text-white font-semibold hover:bg-emerald-800">
@@ -857,6 +873,15 @@
           }
           @if (report.returnVoucher.operationNumber) {
             <p><span class="text-gray-500">N° Operación:</span> {{ report.returnVoucher.operationNumber }}</p>
+          }
+          @if (report.returnVoucher.titular) {
+            <p><span class="text-gray-500">Titular:</span> {{ report.returnVoucher.titular }}</p>
+          }
+          @if (report.returnVoucher.operationDate) {
+            <p><span class="text-gray-500">Fecha/hora operación:</span> {{ report.returnVoucher.operationDate }}@if (report.returnVoucher.operationTime) { · {{ report.returnVoucher.operationTime }} }</p>
+          }
+          @if (report.returnVoucher.scannedAmount) {
+            <p><span class="text-gray-500">Monto detectado:</span> S/ {{ report.returnVoucher.scannedAmount | number:'1.2-2' }}</p>
           }
           <p><span class="text-gray-500">Enviado el:</span> {{ report.returnVoucher.uploadedAt | date:'dd/MM/yyyy HH:mm' }}</p>
         </div>
@@ -2829,6 +2854,44 @@
 
     <div class="space-y-3">
       <div>
+        <label class="block text-xs font-medium text-gray-700 mb-1">Comprobante (PDF, JPG, PNG — máx 10MB) *</label>
+        @if (returnVoucherFileName()) {
+          <p class="text-xs text-green-600 font-medium mb-1">Archivo cargado: {{ returnVoucherFileName() }}</p>
+        }
+        <label class="flex items-center gap-2 cursor-pointer px-3 py-2 border border-dashed border-gray-300 rounded-lg text-sm text-gray-600 hover:bg-gray-50 transition-colors">
+          <input type="file" accept=".pdf,.jpg,.jpeg,.png" class="hidden" (change)="onReturnVoucherFileSelected($event)">
+          @if (isUploadingReturnVoucher()) {
+            <span class="inline-block w-4 h-4 border-2 border-gray-400/40 border-t-gray-700 rounded-full animate-spin"></span>
+            Subiendo...
+          } @else {
+            Seleccionar archivo
+          }
+        </label>
+        @if (isScanningReturnVoucher()) {
+          <p class="text-xs text-gray-500 flex items-center gap-1.5 mt-1">
+            <span class="inline-block w-3 h-3 border-2 border-gray-400 border-t-transparent rounded-full animate-spin"></span>
+            Escaneando comprobante...
+          </p>
+        }
+      </div>
+      @if (returnVoucherHasDetectedData) {
+      <div class="rounded-lg border border-gray-200 bg-gray-50 p-3 space-y-1.5">
+        <p class="text-[11px] font-semibold text-gray-500 uppercase tracking-wider">Datos detectados del comprobante</p>
+        @if (returnVoucherTitular()) {
+        <div class="flex justify-between gap-3 text-xs"><span class="text-gray-400">Titular</span><span class="font-medium text-gray-700 text-right">{{ returnVoucherTitular() }}</span></div>
+        }
+        @if (returnVoucherOperationDate()) {
+        <div class="flex justify-between gap-3 text-xs"><span class="text-gray-400">Fecha</span><span class="font-medium text-gray-700 text-right">{{ returnVoucherOperationDate() }}</span></div>
+        }
+        @if (returnVoucherOperationTime()) {
+        <div class="flex justify-between gap-3 text-xs"><span class="text-gray-400">Hora</span><span class="font-medium text-gray-700 text-right">{{ returnVoucherOperationTime() }}</span></div>
+        }
+        @if (returnVoucherScannedAmount()) {
+        <div class="flex justify-between gap-3 text-xs"><span class="text-gray-400">Monto</span><span class="font-medium text-gray-700 text-right">S/ {{ returnVoucherScannedAmount() | number:'1.2-2' }}</span></div>
+        }
+      </div>
+      }
+      <div>
         <label class="block text-xs font-medium text-gray-700 mb-1">Fecha del depósito *</label>
         <input type="date" [value]="returnVoucherDepositDate()"
           (input)="returnVoucherDepositDate.set($any($event.target).value)"
@@ -2848,21 +2911,6 @@
           (input)="returnVoucherOperation.set($any($event.target).value)"
           placeholder="Número de operación o referencia"
           class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500" />
-      </div>
-      <div>
-        <label class="block text-xs font-medium text-gray-700 mb-1">Comprobante (PDF, JPG, PNG — máx 10MB) *</label>
-        @if (returnVoucherFileName()) {
-          <p class="text-xs text-green-600 font-medium mb-1">Archivo cargado: {{ returnVoucherFileName() }}</p>
-        }
-        <label class="flex items-center gap-2 cursor-pointer px-3 py-2 border border-dashed border-gray-300 rounded-lg text-sm text-gray-600 hover:bg-gray-50 transition-colors">
-          <input type="file" accept=".pdf,.jpg,.jpeg,.png" class="hidden" (change)="onReturnVoucherFileSelected($event)">
-          @if (isUploadingReturnVoucher()) {
-            <span class="inline-block w-4 h-4 border-2 border-gray-400/40 border-t-gray-700 rounded-full animate-spin"></span>
-            Subiendo...
-          } @else {
-            Seleccionar archivo
-          }
-        </label>
       </div>
     </div>
 
@@ -2896,6 +2944,51 @@
 
     <div class="space-y-3">
       <div>
+        <label class="block text-xs font-medium text-gray-700 mb-1">
+          Comprobante (PDF, JPG, PNG — máx 10MB)
+          @if (adminReembolsoMethod() !== 'efectivo') {
+            *
+          } @else {
+            <span class="text-gray-400 font-normal">(opcional)</span>
+          }
+        </label>
+        @if (adminReembolsoFileName()) {
+          <p class="text-xs text-green-600 font-medium mb-1">Archivo cargado: {{ adminReembolsoFileName() }}</p>
+        }
+        <label class="flex items-center gap-2 cursor-pointer px-3 py-2 border border-dashed border-gray-300 rounded-lg text-sm text-gray-600 hover:bg-gray-50 transition-colors">
+          <input type="file" accept=".pdf,.jpg,.jpeg,.png" class="hidden" (change)="onAdminReembolsoFileSelected($event)">
+          @if (isUploadingAdminReembolso()) {
+            <span class="inline-block w-4 h-4 border-2 border-gray-400/40 border-t-gray-700 rounded-full animate-spin"></span>
+            Subiendo...
+          } @else {
+            Seleccionar archivo
+          }
+        </label>
+        @if (isScanningAdminReembolso()) {
+          <p class="text-xs text-gray-500 flex items-center gap-1.5 mt-1">
+            <span class="inline-block w-3 h-3 border-2 border-gray-400 border-t-transparent rounded-full animate-spin"></span>
+            Escaneando comprobante...
+          </p>
+        }
+      </div>
+      @if (adminReembolsoHasDetectedData) {
+      <div class="rounded-lg border border-gray-200 bg-gray-50 p-3 space-y-1.5">
+        <p class="text-[11px] font-semibold text-gray-500 uppercase tracking-wider">Datos detectados del comprobante</p>
+        @if (adminReembolsoTitular()) {
+        <div class="flex justify-between gap-3 text-xs"><span class="text-gray-400">Titular</span><span class="font-medium text-gray-700 text-right">{{ adminReembolsoTitular() }}</span></div>
+        }
+        @if (adminReembolsoOperationDate()) {
+        <div class="flex justify-between gap-3 text-xs"><span class="text-gray-400">Fecha</span><span class="font-medium text-gray-700 text-right">{{ adminReembolsoOperationDate() }}</span></div>
+        }
+        @if (adminReembolsoOperationTime()) {
+        <div class="flex justify-between gap-3 text-xs"><span class="text-gray-400">Hora</span><span class="font-medium text-gray-700 text-right">{{ adminReembolsoOperationTime() }}</span></div>
+        }
+        @if (adminReembolsoScannedAmount()) {
+        <div class="flex justify-between gap-3 text-xs"><span class="text-gray-400">Monto</span><span class="font-medium text-gray-700 text-right">S/ {{ adminReembolsoScannedAmount() | number:'1.2-2' }}</span></div>
+        }
+      </div>
+      }
+      <div>
         <label class="block text-xs font-medium text-gray-700 mb-1">Método de pago</label>
         <select [value]="adminReembolsoMethod()"
           (change)="adminReembolsoMethod.set($any($event.target).value)"
@@ -2924,28 +3017,6 @@
           (input)="adminReembolsoRef.set($any($event.target).value)"
           placeholder="Número de referencia"
           class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500" />
-      </div>
-      <div>
-        <label class="block text-xs font-medium text-gray-700 mb-1">
-          Comprobante (PDF, JPG, PNG — máx 10MB)
-          @if (adminReembolsoMethod() !== 'efectivo') {
-            *
-          } @else {
-            <span class="text-gray-400 font-normal">(opcional)</span>
-          }
-        </label>
-        @if (adminReembolsoFileName()) {
-          <p class="text-xs text-green-600 font-medium mb-1">Archivo cargado: {{ adminReembolsoFileName() }}</p>
-        }
-        <label class="flex items-center gap-2 cursor-pointer px-3 py-2 border border-dashed border-gray-300 rounded-lg text-sm text-gray-600 hover:bg-gray-50 transition-colors">
-          <input type="file" accept=".pdf,.jpg,.jpeg,.png" class="hidden" (change)="onAdminReembolsoFileSelected($event)">
-          @if (isUploadingAdminReembolso()) {
-            <span class="inline-block w-4 h-4 border-2 border-gray-400/40 border-t-gray-700 rounded-full animate-spin"></span>
-            Subiendo...
-          } @else {
-            Seleccionar archivo
-          }
-        </label>
       </div>
     </div>
 
@@ -2977,6 +3048,42 @@
     <h3 class="text-lg font-bold text-gray-900 mb-1">Cargar comprobante de deposito</h3>
     <p class="text-sm text-gray-500 mb-4">Adjunta el comprobante del deposito que realizaste para devolver el saldo del viático.</p>
     <div class="space-y-3">
+      <div class="flex flex-col gap-1">
+        <label class="text-xs font-medium text-gray-600">Comprobante adjunto <span class="text-red-500">*</span></label>
+        <input type="file" accept=".pdf,.jpg,.jpeg,.png"
+          (change)="onReturnProofFileSelected($event)"
+          class="w-full px-2 py-1.5 rounded-lg border border-gray-200 text-sm bg-white file:mr-2 file:px-2 file:py-1 file:rounded file:border-0 file:bg-gray-100 file:text-gray-700" />
+        @if (isUploadingReturnProof()) {
+        <p class="text-xs text-blue-600">Subiendo...</p>
+        } @else if (returnProofFileName()) {
+        <p class="text-xs text-green-700">Adjunto: {{ returnProofFileName() }}</p>
+        } @else {
+        <p class="text-xs text-gray-400">PDF/JPG/PNG (max 10MB)</p>
+        }
+        @if (isScanningReturnProof()) {
+          <p class="text-xs text-gray-500 flex items-center gap-1.5 mt-1">
+            <span class="inline-block w-3 h-3 border-2 border-gray-400 border-t-transparent rounded-full animate-spin"></span>
+            Escaneando comprobante...
+          </p>
+        }
+      </div>
+      @if (returnProofHasDetectedData) {
+      <div class="rounded-lg border border-gray-200 bg-gray-50 p-3 space-y-1.5">
+        <p class="text-[11px] font-semibold text-gray-500 uppercase tracking-wider">Datos detectados del comprobante</p>
+        @if (returnProofTitular()) {
+        <div class="flex justify-between gap-3 text-xs"><span class="text-gray-400">Titular</span><span class="font-medium text-gray-700 text-right">{{ returnProofTitular() }}</span></div>
+        }
+        @if (returnProofOperationDate()) {
+        <div class="flex justify-between gap-3 text-xs"><span class="text-gray-400">Fecha</span><span class="font-medium text-gray-700 text-right">{{ returnProofOperationDate() }}</span></div>
+        }
+        @if (returnProofOperationTime()) {
+        <div class="flex justify-between gap-3 text-xs"><span class="text-gray-400">Hora</span><span class="font-medium text-gray-700 text-right">{{ returnProofOperationTime() }}</span></div>
+        }
+        @if (returnProofScannedAmount()) {
+        <div class="flex justify-between gap-3 text-xs"><span class="text-gray-400">Monto</span><span class="font-medium text-gray-700 text-right">S/ {{ returnProofScannedAmount() | number:'1.2-2' }}</span></div>
+        }
+      </div>
+      }
       <div class="grid grid-cols-2 gap-3">
         <div class="flex flex-col gap-1">
           <label class="text-xs font-medium text-gray-600">Fecha de deposito <span class="text-red-500">*</span></label>
@@ -3003,19 +3110,6 @@
         <label class="text-xs font-medium text-gray-600">Nota (opcional)</label>
         <textarea [value]="returnProofNote()" (input)="returnProofNote.set($any($event.target).value)"
           rows="2" class="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm resize-none"></textarea>
-      </div>
-      <div class="flex flex-col gap-1">
-        <label class="text-xs font-medium text-gray-600">Comprobante adjunto <span class="text-red-500">*</span></label>
-        <input type="file" accept=".pdf,.jpg,.jpeg,.png"
-          (change)="onReturnProofFileSelected($event)"
-          class="w-full px-2 py-1.5 rounded-lg border border-gray-200 text-sm bg-white file:mr-2 file:px-2 file:py-1 file:rounded file:border-0 file:bg-gray-100 file:text-gray-700" />
-        @if (isUploadingReturnProof()) {
-        <p class="text-xs text-blue-600">Subiendo...</p>
-        } @else if (returnProofFileName()) {
-        <p class="text-xs text-green-700">Adjunto: {{ returnProofFileName() }}</p>
-        } @else {
-        <p class="text-xs text-gray-400">PDF/JPG/PNG (max 10MB)</p>
-        }
       </div>
     </div>
     <div class="flex gap-3 mt-5">
