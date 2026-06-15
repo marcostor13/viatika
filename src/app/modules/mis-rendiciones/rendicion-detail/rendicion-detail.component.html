@@ -16,7 +16,7 @@
       </button>
       <div class="min-w-0 flex-1">
         <h1 class="text-xl sm:text-2xl font-bold text-gray-900 leading-tight">
-          {{ report?.description || (report?.isDirecta ? 'Rendición Directa' : 'Rendición de viáticos') }}
+          {{ report?.description || (report?.isDirecta ? 'Rendición Directa' : (report?.isCajaChica ? 'Rendición Caja Chica' : 'Rendición de viáticos')) }}
         </h1>
         @if (report) {
           <div class="flex flex-wrap items-center gap-x-3 gap-y-1 mt-2">
