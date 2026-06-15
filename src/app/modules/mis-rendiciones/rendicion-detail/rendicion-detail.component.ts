@@ -385,6 +385,9 @@ export class RendicionDetailComponent implements OnInit {
   get canAddExpenses(): boolean {
     if (!this.report || this.isAdminView) return false;
     if (this.report.status !== 'open') return false;
+    // Caja chica finalizada por Contabilidad: el total quedó congelado, no se
+    // pueden subir más gastos a esta rendición.
+    if (this.report.lockedByCajaChica) return false;
     // Rendición directa: no necesita anticipo pagado para agregar gastos
     if (this.report.isDirecta || this.report.isCajaChica) return true;
     return this.hasPaidAdvanceForReport;

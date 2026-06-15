@@ -281,6 +281,13 @@
         </div>
         }
 
+        <!-- Colaborador: caja chica finalizada por Contabilidad -->
+        @if (!isAdminView && report.isCajaChica && report.lockedByCajaChica) {
+        <p class="max-w-xs text-xs text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2">
+          La caja chica fue finalizada por Contabilidad. Ya no puedes agregar más gastos a esta rendición.
+        </p>
+        }
+
         <!-- Colaborador: abierta sin pago registrado (solo aplica a rendiciones con anticipo) -->
         @if (!isAdminView && report.status === 'open' && !hasPaidAdvanceForReport && !report.isDirecta && !report.isCajaChica) {
         <p class="max-w-xs text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
