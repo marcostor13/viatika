@@ -104,6 +104,11 @@ export interface IExpenseReport {
   gestion?: string;
   isDirecta?: boolean;
   isCajaChica?: boolean;
+  /**
+   * Derivado en backend: la caja chica que incluye esta rendición ya fue
+   * finalizada por Contabilidad, por lo que el colaborador no puede subir más gastos.
+   */
+  lockedByCajaChica?: boolean;
   /** Depósito inicial cuando la rendición directa fue iniciada por Contabilidad. */
   directaDeposit?: IDirectaDepositInfo;
   /** ID de la rendición directa de la que proviene el saldo heredado. */
