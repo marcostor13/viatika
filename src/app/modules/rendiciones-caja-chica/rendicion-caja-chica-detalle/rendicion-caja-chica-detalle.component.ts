@@ -8,6 +8,7 @@ import { NotificationService } from '../../../services/notification.service';
 import { CajaChicaReportExportService, CajaChicaExportRow } from '../../../services/caja-chica-report-export.service';
 import { ICajaChicaReport, ISelectedReport } from '../../../interfaces/caja-chica-report.interface';
 import { IExpenseReport } from '../../../interfaces/expense-report.interface';
+import { formatFechaEmisionDdMmYyyy, resolveExpenseFechaEmision } from '../../../utils/fecha-emision.util';
 
 @Component({
   selector: 'app-rendicion-caja-chica-detalle',
@@ -116,11 +117,13 @@ export class RendicionCajaChicaDetalleComponent implements OnInit {
     if (!ids.length) return;
     this.adding.set(true);
     this.service.addReports(this.reportId, ids).subscribe({
-      next: (updated) => {
-        this.report.set(updated);
+      next: () => {
         this.selectedToAdd.set(new Set());
         this.adding.set(false);
-        this.loadAvailable();
+        // El backend devuelve el reporte sin poblar (expenseReportId queda como
+        // ObjectId), por lo que las tablas y exportaciones quedarían vacías hasta
+        // recargar. Recargamos la versión enriquecida desde findOne.
+        this.loadReport();
         this.notifications.show(`${ids.length} rendicion(es) agregada(s).`, 'success');
       },
       error: (err) => {
@@ -133,9 +136,9 @@ export class RendicionCajaChicaDetalleComponent implements OnInit {
 
   removeReport(expenseReportId: string): void {
     this.service.removeReport(this.reportId, expenseReportId).subscribe({
-      next: (updated) => {
-        this.report.set(updated);
-        this.loadAvailable();
+      next: () => {
+        // Recargamos la versión enriquecida (el backend responde sin poblar).
+        this.loadReport();
         this.notifications.show('Rendicion eliminada del reporte.', 'success');
       },
       error: (err) => {
@@ -149,9 +152,11 @@ export class RendicionCajaChicaDetalleComponent implements OnInit {
     if (!confirm('Al finalizar, no podras agregar ni quitar rendiciones. Continuar?')) return;
     this.finalizing.set(true);
     this.service.finalize(this.reportId).subscribe({
-      next: (updated) => {
-        this.report.set(updated);
+      next: () => {
         this.finalizing.set(false);
+        // Recargamos enriquecido para que las tablas y el PDF/Excel tengan los
+        // comprobantes poblados sin necesidad de recargar la página a mano.
+        this.loadReport();
         this.notifications.show('Reporte finalizado.', 'success');
       },
       error: (err) => {
@@ -189,6 +194,8 @@ export class RendicionCajaChicaDetalleComponent implements OnInit {
           colaborador: sr.colaboradorName,
           tipo: this.expenseTypeLabel(inv.expenseType ?? ''),
           fecha: this.getInvDate(inv),
+          centroCosto: this.getInvCentroCosto(inv),
+          categoria: this.getInvCategoria(inv),
           proveedor: this.getInvProveedor(inv),
           descripcion: this.getInvConcepto(inv),
           numDoc: this.getInvNumDoc(inv),
@@ -257,25 +264,31 @@ export class RendicionCajaChicaDetalleComponent implements OnInit {
     return Number(inv?.total) || 0;
   }
 
+  /** Centro de costo (proyecto). Mostramos solo el código (p. ej. 61364). */
+  getInvCentroCosto(inv: any): string {
+    const p = inv?.proyectId;
+    if (p && typeof p === 'object' && p.code) return String(p.code);
+    return '-';
+  }
+
+  /** Categoría (cuenta). Poblada por el backend como { _id, name }. */
+  getInvCategoria(inv: any): string {
+    const c = inv?.categoryId;
+    if (c && typeof c === 'object' && c.name) return String(c.name);
+    return '-';
+  }
+
   getInvDate(inv: any): string {
     const type = inv?.expenseType;
     if (type === 'planilla_movilidad') {
       const rows: any[] = inv?.mobilityRows || [];
       const dates = rows.map((r: any) => r.fecha).filter(Boolean);
-      return dates.length ? dates.sort()[0] : '-';
+      return dates.length ? formatFechaEmisionDdMmYyyy([...dates].sort()[0]) : '-';
     }
     if (type === 'otros_gastos') {
-      return inv?.createdAt ? new Date(inv.createdAt).toLocaleDateString('es-PE') : '-';
+      return formatFechaEmisionDdMmYyyy(inv?.createdAt);
     }
-    const fe = inv?.fechaEmision;
-    if (!fe) return '-';
-    try {
-      if (/^\d{4}-\d{2}-\d{2}/.test(fe)) {
-        const [y, m, d] = fe.slice(0, 10).split('-').map(Number);
-        return `${String(d).padStart(2,'0')}/${String(m).padStart(2,'0')}/${y}`;
-      }
-      return new Date(fe).toLocaleDateString('es-PE');
-    } catch { return fe; }
+    return formatFechaEmisionDdMmYyyy(resolveExpenseFechaEmision(inv));
   }
 
   getInvProveedor(inv: any): string {
