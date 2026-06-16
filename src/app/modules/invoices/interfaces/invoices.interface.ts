@@ -71,6 +71,17 @@ export interface ICreateCashVoucherPayload {
   total: number;
   data: string;
   fechaEmision?: string;
+  /** URL del archivo escaneado (imagen/PDF) que se guarda como documento. */
+  imageUrl?: string;
+}
+
+/** Datos extraídos por OCR al escanear un comprobante de caja. */
+export interface ICashVoucherScanResult {
+  entregadoA?: string;
+  fecha?: string;
+  direccion?: string;
+  concepto?: string;
+  monto: number;
 }
 
 export interface IInvoice {

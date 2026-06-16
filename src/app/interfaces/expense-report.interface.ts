@@ -96,6 +96,12 @@ export interface IExpenseReport {
   coordinatorApprovedBy?: any;
   contabilidadApprovedAt?: string;
   contabilidadApprovedBy?: any;
+  /**
+   * Derivado en backend: algún comprobante de la solicitud ya fue aprobado
+   * (coordinador o contabilidad). Si es true, el colaborador ya no puede
+   * eliminar la solicitud.
+   */
+  hasApprovedExpense?: boolean;
   reopenHistory?: Array<{ reason: string; reopenedBy: string; reopenedAt: string; fromStatus: string }>;
   motivo?: string;
   /** Código autoincremental único de la rendición directa (ej. RD-0001). */
@@ -104,6 +110,11 @@ export interface IExpenseReport {
   gestion?: string;
   isDirecta?: boolean;
   isCajaChica?: boolean;
+  /**
+   * Derivado en backend: la caja chica que incluye esta rendición ya fue
+   * finalizada por Contabilidad, por lo que el colaborador no puede subir más gastos.
+   */
+  lockedByCajaChica?: boolean;
   /** Depósito inicial cuando la rendición directa fue iniciada por Contabilidad. */
   directaDeposit?: IDirectaDepositInfo;
   /** ID de la rendición directa de la que proviene el saldo heredado. */

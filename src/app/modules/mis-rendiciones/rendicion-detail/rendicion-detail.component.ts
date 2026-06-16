@@ -440,6 +440,9 @@ export class RendicionDetailComponent implements OnInit {
   get canAddExpenses(): boolean {
     if (!this.report || this.isAdminView) return false;
     if (this.report.status !== 'open') return false;
+    // Caja chica finalizada por Contabilidad: el total quedó congelado, no se
+    // pueden subir más gastos a esta rendición.
+    if (this.report.lockedByCajaChica) return false;
     // Rendición directa: no necesita anticipo pagado para agregar gastos
     if (this.report.isDirecta || this.report.isCajaChica) return true;
     return this.hasPaidAdvanceForReport;
@@ -1354,13 +1357,7 @@ export class RendicionDetailComponent implements OnInit {
       };
     });
     const anticipos = this.advances.flatMap((a) => {
-      const fechaSolicitud = a.createdAt
-        ? new Date(a.createdAt).toLocaleDateString('es-PE', {
-            day: '2-digit',
-            month: '2-digit',
-            year: 'numeric',
-          })
-        : '—';
+      const fechaSolicitud = a.createdAt ? this.formatEmissionDate(a.createdAt) : '—';
       const estado = this.ADVANCE_STATUS_LABELS[a.status] ?? a.status;
       if (a.pendingBalanceAmount !== undefined && a.additionalAmount !== undefined) {
         return [
@@ -1376,17 +1373,25 @@ export class RendicionDetailComponent implements OnInit {
     if (this.hasDirectaDeposit && this.report.directaDeposit) {
       const dep = this.report.directaDeposit;
       const rawDate = dep.depositDate || dep.operationDate || dep.createdAt;
-      const fechaSolicitud = rawDate
-        ? new Date(rawDate).toLocaleDateString('es-PE', {
-            day: '2-digit',
-            month: '2-digit',
-            year: 'numeric',
-          })
-        : '—';
+      const fechaSolicitud = rawDate ? this.formatEmissionDate(rawDate) : '—';
       anticipos.unshift({
         descripcion: 'Depósito de Contabilidad',
         monto: this.directaDeposited,
         estado: 'Depositado',
+        fechaSolicitud,
+      });
+    }
+    // Rendición directa creada desde el saldo de otra rendición: el saldo heredado
+    // funciona como ingreso (igual que un anticipo/depósito), por lo que debe
+    // figurar en la columna Ingresos del reporte. Sin esto, el reporte no muestra
+    // el saldo heredado y el cuadre de reembolso/rendir queda incompleto.
+    if (this.hasPendingBalanceCredit) {
+      const rawDate = this.report.createdAt;
+      const fechaSolicitud = rawDate ? this.formatEmissionDate(rawDate) : '—';
+      anticipos.unshift({
+        descripcion: 'Saldo heredado (rendición anterior)',
+        monto: this.pendingBalanceCreditAmount,
+        estado: 'Traspasado',
         fechaSolicitud,
       });
     }

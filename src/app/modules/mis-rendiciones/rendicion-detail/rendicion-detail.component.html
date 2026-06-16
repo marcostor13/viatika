@@ -16,7 +16,7 @@
       </button>
       <div class="min-w-0 flex-1">
         <h1 class="text-xl sm:text-2xl font-bold text-gray-900 leading-tight">
-          {{ report?.description || 'Rendición de viáticos' }}
+          {{ report?.description || (report?.isDirecta ? 'Rendición Directa' : (report?.isCajaChica ? 'Rendición Caja Chica' : 'Rendición de viáticos')) }}
         </h1>
         @if (report) {
           <div class="flex flex-wrap items-center gap-x-3 gap-y-1 mt-2">
@@ -295,6 +295,13 @@
           </div>
           }
         </div>
+        }
+
+        <!-- Colaborador: caja chica finalizada por Contabilidad -->
+        @if (!isAdminView && report.isCajaChica && report.lockedByCajaChica) {
+        <p class="max-w-xs text-xs text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2">
+          La caja chica fue finalizada por Contabilidad. Ya no puedes agregar más gastos a esta rendición.
+        </p>
         }
 
         <!-- Colaborador: abierta sin pago registrado (solo aplica a rendiciones con anticipo) -->
