@@ -82,6 +82,11 @@ export class AdvanceService {
     return this.http.patch<IAdvance>(`${this.url}/${id}/cancel`, {});
   }
 
+  /** Elimina (borrado físico) una solicitud de viáticos. */
+  delete(id: string): Observable<IAdvance> {
+    return this.http.delete<IAdvance>(`${this.url}/${id}`);
+  }
+
   // ─── Fase 7 — devolución de saldo ──────────────────────────────────────────
 
   initiateReturn(id: string): Observable<IAdvance> {
