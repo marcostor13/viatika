@@ -102,6 +102,24 @@ export interface IExpenseReport {
    * eliminar la solicitud.
    */
   hasApprovedExpense?: boolean;
+  /**
+   * Derivado en backend: la solicitud la creó alguien distinto del dueño (ej.
+   * Contabilidad creó la rendición directa para el colaborador). Si es true, el
+   * dueño no puede eliminarla; solo Contabilidad.
+   */
+  createdByOther?: boolean;
+  /**
+   * Derivado en backend: la rendición directa se creó con saldo heredado de otra
+   * rendición. Si es true, el dueño no puede eliminarla (rompería la cadena del
+   * saldo); solo Contabilidad.
+   */
+  inheritedBalance?: boolean;
+  /**
+   * Derivado en backend: la caja chica ya fue incluida (jalada) por Contabilidad
+   * en un reporte (borrador o finalizado). Si es true, el colaborador ya no puede
+   * eliminarla; solo Contabilidad.
+   */
+  referencedByCajaChica?: boolean;
   reopenHistory?: Array<{ reason: string; reopenedBy: string; reopenedAt: string; fromStatus: string }>;
   motivo?: string;
   /** Código autoincremental único de la rendición directa (ej. RD-0001). */
