@@ -422,7 +422,13 @@ export class TesoreriaComponent implements OnInit {
 
   openReimbursementModal(report: IExpenseReport): void {
     this.selectedReportReimbursement = report;
+    // El monto del reembolso es fijo (= |settlement.difference|). El modal no
+    // tiene input de monto, así que lo seteamos aquí; de lo contrario el control
+    // `amount` (requerido) quedaría en null y el formulario nunca sería válido,
+    // bloqueando "Confirmar reembolso" incluso en efectivo.
+    const reembolsoAmount = Math.abs(Number(report.settlement?.difference ?? 0)) || null;
     this.paymentForm.reset({
+      amount: reembolsoAmount,
       method: 'transferencia_bancaria',
       bankName: '',
       accountNumber: '',
