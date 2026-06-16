@@ -14,6 +14,19 @@ export interface IProject {
   categoryGroupId?: string;
   /** Perfil de categoría poblado (nombre) cuando el API lo devuelve */
   categoryGroup?: { _id?: string; name?: string };
+  // --- Mapeo contable (asientos Contanet) ---
+  /** Cuenta analítica clase 9 del centro de costo (ej. 91.3.1.410). */
+  cuentaAnalitica9x?: string;
+  /** Cuenta destino clase 6 que recibe la analítica (ej. 63.1.4.100). */
+  cuentaDestino6x?: string;
+  /** Centro de costo Contanet (col T). */
+  centroCosto?: string;
+  /** Sub-centro de costo Contanet (col U/V). */
+  subCentroCosto?: string;
+  /** Área Contanet (col Y). */
+  area?: string;
+  /** Marca si el centro de costo es administrativo. */
+  esAdministrativo?: boolean;
   createdAt?: Date;
   updatedAt?: Date;
 }

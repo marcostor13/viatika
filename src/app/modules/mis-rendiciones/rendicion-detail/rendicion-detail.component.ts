@@ -10,6 +10,10 @@ import { CompanyConfigService } from '../../../services/company-config.service';
 import { ConfirmationService } from '../../../services/confirmation.service';
 import { InvoicesService } from '../../invoices/services/invoices.service';
 import { UploadService } from '../../../services/upload.service';
+import {
+  AccountingEntriesService,
+  IGeneratedFile,
+} from '../../../services/accounting-entries.service';
 import { IExpenseReport } from '../../../interfaces/expense-report.interface';
 import { IProject } from '../../invoices/interfaces/project.interface';
 import { IAdvance, IAdvancePayment, ADVANCE_STATUS_LABELS, ADVANCE_STATUS_COLORS } from '../../../interfaces/advance.interface';
@@ -54,6 +58,7 @@ export class RendicionDetailComponent implements OnInit {
   private rendicionExportService = inject(RendicionExportService);
   private companyConfigService = inject(CompanyConfigService);
   private uploadService = inject(UploadService);
+  private accountingEntriesService = inject(AccountingEntriesService);
   id: string = this.route.snapshot.params['id'];
   report: IExpenseReport | null = null;
   isLoading = true;
@@ -364,6 +369,56 @@ export class RendicionDetailComponent implements OnInit {
     if (this.isOwnReport) return false;
     return this.userStateService.isAdmin() || this.userStateService.isSuperAdmin() || this.userStateService.isContabilidad() || this.userStateService.canApproveL2()
       || (this.userStateService.isCoordinador() && this.userStateService.hasModulePermission('rendiciones'));
+  }
+
+  // --- Descarga de asientos contables (solo Contabilidad) ---
+  downloadingAsientos = false;
+
+  /** Solo el rol Contabilidad puede descargar los asientos contables. */
+  get canDownloadAsientos(): boolean {
+    return this.userStateService.isContabilidad();
+  }
+
+  downloadAsientos(): void {
+    if (!this.report?._id || this.downloadingAsientos) return;
+    this.downloadingAsientos = true;
+    this.accountingEntriesService.generate(this.report._id).subscribe({
+      next: (res: { files: IGeneratedFile[] }) => {
+        this.downloadingAsientos = false;
+        const files = res?.files ?? [];
+        if (!files.length) {
+          this.notificationService.show(
+            'No hay asientos que generar para esta rendición.',
+            'warning'
+          );
+          return;
+        }
+        const conErrores = files.filter((f) => f.cuadreErrors?.length);
+        for (const file of files) {
+          this.accountingEntriesService.downloadBase64(file);
+        }
+        if (conErrores.length) {
+          this.notificationService.show(
+            `Asientos descargados. Atención: ${conErrores
+              .map((f) => f.tipo)
+              .join(', ')} con descuadre. Revisa el desglose contable.`,
+            'error'
+          );
+        } else {
+          this.notificationService.show(
+            `Asientos descargados (${files.length} archivo(s)).`,
+            'success'
+          );
+        }
+      },
+      error: (err) => {
+        this.downloadingAsientos = false;
+        this.notificationService.show(
+          'Error al generar asientos: ' + (err?.error?.message || err?.message || 'desconocido'),
+          'error'
+        );
+      },
+    });
   }
 
   get canApproveExpenses(): boolean {

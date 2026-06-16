@@ -31,7 +31,20 @@ export class CentrosDeCostoFormComponent implements OnInit {
   isEditing = false;
   projectId: string | null = null;
   saving = false;
-  form = { name: '', code: '', isActive: true, lineaNegocioId: '', categoryGroupId: '' };
+  form = {
+    name: '',
+    code: '',
+    isActive: true,
+    lineaNegocioId: '',
+    categoryGroupId: '',
+    // Mapeo contable (asientos Contanet)
+    cuentaAnalitica9x: '',
+    cuentaDestino6x: '',
+    centroCosto: '',
+    subCentroCosto: '',
+    area: '',
+    esAdministrativo: false,
+  };
   lineas: ILineaNegocio[] = [];
   perfiles: ICategoryGroup[] = [];
 
@@ -76,6 +89,12 @@ export class CentrosDeCostoFormComponent implements OnInit {
           isActive: p.isActive ?? true,
           lineaNegocioId: p.lineaNegocioId ?? '',
           categoryGroupId: p.categoryGroupId ?? '',
+          cuentaAnalitica9x: p.cuentaAnalitica9x ?? '',
+          cuentaDestino6x: p.cuentaDestino6x ?? '',
+          centroCosto: p.centroCosto ?? '',
+          subCentroCosto: p.subCentroCosto ?? '',
+          area: p.area ?? '',
+          esAdministrativo: p.esAdministrativo ?? false,
         };
       },
       error: (error: HttpErrorResponse) => {
@@ -102,6 +121,12 @@ export class CentrosDeCostoFormComponent implements OnInit {
       isActive: this.form.isActive,
       lineaNegocioId: this.form.lineaNegocioId || '',
       categoryGroupId: this.form.categoryGroupId || '',
+      cuentaAnalitica9x: this.form.cuentaAnalitica9x.trim() || undefined,
+      cuentaDestino6x: this.form.cuentaDestino6x.trim() || undefined,
+      centroCosto: this.form.centroCosto.trim() || undefined,
+      subCentroCosto: this.form.subCentroCosto.trim() || undefined,
+      area: this.form.area.trim() || undefined,
+      esAdministrativo: this.form.esAdministrativo,
     };
 
     if (this.isEditing) {
