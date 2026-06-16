@@ -585,6 +585,96 @@ export class MisRendicionesComponent implements OnInit {
     });
   }
 
+  // ─── Eliminar (borrado físico) rendición ─────────────────────────────────────
+
+  showDeleteReportModal = signal(false);
+  deletingReport = signal<IExpenseReport | null>(null);
+  isDeletingReport = signal(false);
+
+  /**
+   * El colaborador puede eliminar su solicitud mientras no tenga ninguna
+   * aprobación (a nivel reporte). Una vez aprobada, el backend solo permite a
+   * Contabilidad eliminarla.
+   */
+  canDeleteReport(report: IExpenseReport): boolean {
+    const noReportApproval =
+      !report.coordinatorApprovedBy && !report.contabilidadApprovedBy;
+    const deletableStatuses = ['solicited', 'open', 'rejected', 'submitted'];
+    return noReportApproval && deletableStatuses.includes(report.status);
+  }
+
+  openDeleteReportModal(report: IExpenseReport, event: Event): void {
+    event.preventDefault();
+    event.stopPropagation();
+    this.deletingReport.set(report);
+    this.showDeleteReportModal.set(true);
+  }
+
+  confirmDeleteReport(): void {
+    const report = this.deletingReport();
+    if (!report) return;
+    this.isDeletingReport.set(true);
+    this.expenseReportsService.delete(report._id).subscribe({
+      next: () => {
+        this.isDeletingReport.set(false);
+        this.showDeleteReportModal.set(false);
+        this.deletingReport.set(null);
+        this.notificationService.show('Solicitud eliminada correctamente', 'success');
+        this.loadMyReports();
+      },
+      error: (err) => {
+        this.isDeletingReport.set(false);
+        const raw = err?.error?.message;
+        const msg = Array.isArray(raw) ? raw.join(', ') : raw;
+        this.notificationService.show(msg || 'Error al eliminar', 'error');
+      },
+    });
+  }
+
+  // ─── Eliminar (borrado físico) solicitud de viáticos ─────────────────────────
+
+  showDeleteAdvanceModal = signal(false);
+  deletingAdvance = signal<IAdvance | null>(null);
+  isDeletingAdvance = signal(false);
+
+  /**
+   * El colaborador puede eliminar su solicitud de viáticos mientras no tenga
+   * ninguna aprobación. Una vez aprobada, el backend solo permite a Contabilidad.
+   */
+  canDeleteAdvance(adv: IAdvance): boolean {
+    const hasApproval = (adv.approvalHistory ?? []).some(
+      (e) => e.action === 'approved'
+    );
+    const deletableStatuses = ['pending_l1', 'rejected'];
+    return !hasApproval && deletableStatuses.includes(adv.status);
+  }
+
+  openDeleteAdvanceModal(adv: IAdvance): void {
+    this.deletingAdvance.set(adv);
+    this.showDeleteAdvanceModal.set(true);
+  }
+
+  confirmDeleteAdvance(): void {
+    const adv = this.deletingAdvance();
+    if (!adv) return;
+    this.isDeletingAdvance.set(true);
+    this.advanceService.delete(adv._id).subscribe({
+      next: () => {
+        this.isDeletingAdvance.set(false);
+        this.showDeleteAdvanceModal.set(false);
+        this.deletingAdvance.set(null);
+        this.notificationService.show('Solicitud eliminada correctamente', 'success');
+        this.loadMyAdvances();
+      },
+      error: (err) => {
+        this.isDeletingAdvance.set(false);
+        const raw = err?.error?.message;
+        const msg = Array.isArray(raw) ? raw.join(', ') : raw;
+        this.notificationService.show(msg || 'Error al eliminar', 'error');
+      },
+    });
+  }
+
   // ─── Filtered + sorted lists ──────────────────────────────────────────────
 
   get filteredPendingAdvances(): IAdvance[] {
