@@ -573,7 +573,8 @@ export class TesoreriaComponent implements OnInit {
 
   confirmPayment() {
     if (!this.selectedAdvance || this.paymentForm.invalid) return;
-    if (!this.paymentReceiptUrl) {
+    const method = this.paymentForm.get('method')?.value;
+    if (method !== 'efectivo' && !this.paymentReceiptUrl) {
       this.notificationService.show('Debes adjuntar el comprobante de pago.', 'error');
       return;
     }
@@ -581,7 +582,7 @@ export class TesoreriaComponent implements OnInit {
     this.advanceService.registerPayment(this.selectedAdvance._id, {
       ...this.paymentForm.value,
       amount: Number(this.paymentForm.value.amount),
-      paymentReceiptUrl: this.paymentReceiptUrl,
+      paymentReceiptUrl: this.paymentReceiptUrl || undefined,
       paymentReceiptFileName: this.paymentReceiptName || undefined,
       paymentReceiptMimeType: this.paymentReceiptMimeType || undefined,
       paymentReceiptSizeBytes: this.paymentReceiptSizeBytes || undefined,
