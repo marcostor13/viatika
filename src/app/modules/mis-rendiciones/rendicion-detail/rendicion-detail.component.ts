@@ -1338,6 +1338,26 @@ export class RendicionDetailComponent implements OnInit {
         fechaSolicitud,
       });
     }
+    // Rendición directa creada desde el saldo de otra rendición: el saldo heredado
+    // funciona como ingreso (igual que un anticipo/depósito), por lo que debe
+    // figurar en la columna Ingresos del reporte. Sin esto, el reporte no muestra
+    // el saldo heredado y el cuadre de reembolso/rendir queda incompleto.
+    if (this.hasPendingBalanceCredit) {
+      const rawDate = this.report.createdAt;
+      const fechaSolicitud = rawDate
+        ? new Date(rawDate).toLocaleDateString('es-PE', {
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric',
+          })
+        : '—';
+      anticipos.unshift({
+        descripcion: 'Saldo heredado (rendición anterior)',
+        monto: this.pendingBalanceCreditAmount,
+        estado: 'Traspasado',
+        fechaSolicitud,
+      });
+    }
     return {
       fileBaseName: `rendicion_${this.report.codigo || this.id}_${safeName}`.replace(/_+/g, '_'),
       // En directas el proyecto es por gasto: el título no debe llevar proyecto.
