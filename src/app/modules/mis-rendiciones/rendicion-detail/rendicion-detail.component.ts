@@ -436,15 +436,18 @@ export class RendicionDetailComponent implements OnInit {
     return false;
   }
 
-  /** Colaborador puede agregar gastos (rendición ya aprobada/abierta). */
+  /** Colaborador puede agregar gastos (rendición ya aprobada/abierta, o rechazada en fase de gastos). */
   get canAddExpenses(): boolean {
     if (!this.report || this.isAdminView) return false;
-    if (this.report.status !== 'open') return false;
+    const isRejectedGasPhase = this.report.status === 'rejected' && !this.isSolicitudPhase;
+    if (this.report.status !== 'open' && !isRejectedGasPhase) return false;
     // Caja chica finalizada por Contabilidad: el total quedó congelado, no se
     // pueden subir más gastos a esta rendición.
     if (this.report.lockedByCajaChica) return false;
     // Rendición directa: no necesita anticipo pagado para agregar gastos
     if (this.report.isDirecta || this.report.isCajaChica) return true;
+    // Rendición rechazada en fase de gastos: el anticipo ya fue pagado antes del envío
+    if (isRejectedGasPhase) return true;
     return this.hasPaidAdvanceForReport;
   }
 
