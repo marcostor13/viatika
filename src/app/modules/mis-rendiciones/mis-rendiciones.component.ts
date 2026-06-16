@@ -615,6 +615,11 @@ export class MisRendicionesComponent implements OnInit {
     if (report.isCajaChica && (report.referencedByCajaChica || report.lockedByCajaChica))
       return false;
 
+    // Rendición de viáticos cuyo anticipo ya fue aprobado/pagado: no la puede
+    // eliminar (solo Contabilidad). Estas rendiciones nacen del pago del anticipo.
+    if (!report.isDirecta && !report.isCajaChica && report.hasApprovedLinkedAdvance)
+      return false;
+
     const deletableStatuses = ['solicited', 'open', 'rejected', 'submitted'];
     return deletableStatuses.includes(report.status);
   }

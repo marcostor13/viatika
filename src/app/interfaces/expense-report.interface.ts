@@ -120,6 +120,12 @@ export interface IExpenseReport {
    * eliminarla; solo Contabilidad.
    */
   referencedByCajaChica?: boolean;
+  /**
+   * Derivado en backend: la rendición de viáticos tiene un anticipo vinculado ya
+   * aprobado/pagado. Si es true, el colaborador ya no puede eliminarla; solo
+   * Contabilidad.
+   */
+  hasApprovedLinkedAdvance?: boolean;
   reopenHistory?: Array<{ reason: string; reopenedBy: string; reopenedAt: string; fromStatus: string }>;
   motivo?: string;
   /** Código autoincremental único de la rendición directa (ej. RD-0001). */
