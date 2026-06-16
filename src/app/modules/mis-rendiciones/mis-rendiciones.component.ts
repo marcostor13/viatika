@@ -603,12 +603,20 @@ export class MisRendicionesComponent implements OnInit {
     const noReportApproval =
       !report.coordinatorApprovedBy && !report.contabilidadApprovedBy;
     const noExpenseApproval = !report.hasApprovedExpense;
+    if (!noReportApproval || !noExpenseApproval) return false;
+
+    // Rendición directa creada por Contabilidad para el colaborador, o creada con
+    // saldo heredado de otra: no la puede eliminar (solo Contabilidad).
+    if (report.isDirecta && (report.createdByOther || report.inheritedBalance))
+      return false;
+
+    // Caja chica ya jalada por Contabilidad (borrador o finalizado): no la puede
+    // eliminar (solo Contabilidad).
+    if (report.isCajaChica && (report.referencedByCajaChica || report.lockedByCajaChica))
+      return false;
+
     const deletableStatuses = ['solicited', 'open', 'rejected', 'submitted'];
-    return (
-      noReportApproval &&
-      noExpenseApproval &&
-      deletableStatuses.includes(report.status)
-    );
+    return deletableStatuses.includes(report.status);
   }
 
   openDeleteReportModal(report: IExpenseReport, event: Event): void {
