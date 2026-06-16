@@ -9,6 +9,7 @@ import {
   ICreateOtherExpensePayload,
   ICreateCashReceiptPayload,
   ICreateCashVoucherPayload,
+  ICashVoucherScanResult,
 } from '../interfaces/invoices.interface';
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
@@ -213,6 +214,11 @@ export class InvoicesService {
 
   createCashVoucher(payload: ICreateCashVoucherPayload): Observable<IInvoiceResponse> {
     return this.http.post<IInvoiceResponse>(`${this.url}/cash-voucher`, payload);
+  }
+
+  /** Escanea un comprobante de caja (imagen/PDF ya subido a S3) y extrae sus datos. */
+  scanCashVoucher(payload: { url: string; mimeType?: string }): Observable<ICashVoucherScanResult> {
+    return this.http.post<ICashVoucherScanResult>(`${this.url}/scan-cash-voucher`, payload);
   }
 
   // Métodos para validación SUNAT
