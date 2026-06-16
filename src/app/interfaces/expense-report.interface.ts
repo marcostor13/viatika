@@ -96,6 +96,12 @@ export interface IExpenseReport {
   coordinatorApprovedBy?: any;
   contabilidadApprovedAt?: string;
   contabilidadApprovedBy?: any;
+  /**
+   * Derivado en backend: algún comprobante de la solicitud ya fue aprobado
+   * (coordinador o contabilidad). Si es true, el colaborador ya no puede
+   * eliminar la solicitud.
+   */
+  hasApprovedExpense?: boolean;
   reopenHistory?: Array<{ reason: string; reopenedBy: string; reopenedAt: string; fromStatus: string }>;
   motivo?: string;
   /** Código autoincremental único de la rendición directa (ej. RD-0001). */

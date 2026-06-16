@@ -597,10 +597,18 @@ export class MisRendicionesComponent implements OnInit {
    * Contabilidad eliminarla.
    */
   canDeleteReport(report: IExpenseReport): boolean {
+    // Espeja la validación del backend (remove): no debe haber aprobación ni a
+    // nivel reporte ni en ningún comprobante. De lo contrario solo Contabilidad
+    // puede eliminar, así que el botón no debe aparecer para el colaborador.
     const noReportApproval =
       !report.coordinatorApprovedBy && !report.contabilidadApprovedBy;
+    const noExpenseApproval = !report.hasApprovedExpense;
     const deletableStatuses = ['solicited', 'open', 'rejected', 'submitted'];
-    return noReportApproval && deletableStatuses.includes(report.status);
+    return (
+      noReportApproval &&
+      noExpenseApproval &&
+      deletableStatuses.includes(report.status)
+    );
   }
 
   openDeleteReportModal(report: IExpenseReport, event: Event): void {
@@ -620,7 +628,13 @@ export class MisRendicionesComponent implements OnInit {
         this.showDeleteReportModal.set(false);
         this.deletingReport.set(null);
         this.notificationService.show('Solicitud eliminada correctamente', 'success');
-        this.loadMyReports();
+        // La pestaña de caja chica se alimenta de una señal distinta
+        // (cajaChicaReports), así que refrescamos la lista de la pestaña activa.
+        if (this.activeTab() === 'caja-chica') {
+          this.loadCajaChicaReports();
+        } else {
+          this.loadMyReports();
+        }
       },
       error: (err) => {
         this.isDeletingReport.set(false);
