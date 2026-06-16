@@ -1302,13 +1302,7 @@ export class RendicionDetailComponent implements OnInit {
       };
     });
     const anticipos = this.advances.flatMap((a) => {
-      const fechaSolicitud = a.createdAt
-        ? new Date(a.createdAt).toLocaleDateString('es-PE', {
-            day: '2-digit',
-            month: '2-digit',
-            year: 'numeric',
-          })
-        : '—';
+      const fechaSolicitud = a.createdAt ? this.formatEmissionDate(a.createdAt) : '—';
       const estado = this.ADVANCE_STATUS_LABELS[a.status] ?? a.status;
       if (a.pendingBalanceAmount !== undefined && a.additionalAmount !== undefined) {
         return [
@@ -1324,17 +1318,25 @@ export class RendicionDetailComponent implements OnInit {
     if (this.hasDirectaDeposit && this.report.directaDeposit) {
       const dep = this.report.directaDeposit;
       const rawDate = dep.depositDate || dep.operationDate || dep.createdAt;
-      const fechaSolicitud = rawDate
-        ? new Date(rawDate).toLocaleDateString('es-PE', {
-            day: '2-digit',
-            month: '2-digit',
-            year: 'numeric',
-          })
-        : '—';
+      const fechaSolicitud = rawDate ? this.formatEmissionDate(rawDate) : '—';
       anticipos.unshift({
         descripcion: 'Depósito de Contabilidad',
         monto: this.directaDeposited,
         estado: 'Depositado',
+        fechaSolicitud,
+      });
+    }
+    // Rendición directa creada desde el saldo de otra rendición: el saldo heredado
+    // funciona como ingreso (igual que un anticipo/depósito), por lo que debe
+    // figurar en la columna Ingresos del reporte. Sin esto, el reporte no muestra
+    // el saldo heredado y el cuadre de reembolso/rendir queda incompleto.
+    if (this.hasPendingBalanceCredit) {
+      const rawDate = this.report.createdAt;
+      const fechaSolicitud = rawDate ? this.formatEmissionDate(rawDate) : '—';
+      anticipos.unshift({
+        descripcion: 'Saldo heredado (rendición anterior)',
+        monto: this.pendingBalanceCreditAmount,
+        estado: 'Traspasado',
         fechaSolicitud,
       });
     }
