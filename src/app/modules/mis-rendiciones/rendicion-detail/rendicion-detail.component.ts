@@ -1666,6 +1666,7 @@ export class RendicionDetailComponent implements OnInit {
   get canUploadReturnVoucher(): boolean {
     if (this.isAdminView) return false;
     if (this.isSaldoUsadoEnOtraRendicion) return false;
+    if (this.hasRemainingSavedToBolsa) return false;
     const status = this.report?.status;
     if (status !== 'approved' && status !== 'closed') return false;
     if (!this.isDevolucionExpected) return false;
@@ -2059,6 +2060,9 @@ export class RendicionDetailComponent implements OnInit {
   showReopenApproveModal = signal(false);
   isApprovingReopen = signal(false);
 
+  isSavingBalance = signal(false);
+  showGuardarSaldoModal = signal(false);
+
   get closureRecord(): any {
     return (this.report as any)?.closureRecord;
   }
@@ -2074,6 +2078,30 @@ export class RendicionDetailComponent implements OnInit {
     if (this.isDevolucionExpected && !(this.report as any)?.returnVoucher) return false;
     if (this.isReembolsoExpected && !this.report?.reimbursementPaymentInfo) return false;
     return true;
+  }
+
+  /** Sobrante ya enviado a la Bolsa (BOLSA-4). */
+  get hasRemainingSavedToBolsa(): boolean {
+    return !!(this.report as any)?.remainingToBolsa;
+  }
+
+  /**
+   * El colaborador dueño (o contabilidad/superadmin) puede enviar el sobrante a la
+   * Bolsa y cerrar la rendición, en vez de devolver el dinero (BOLSA-4). Solo aplica
+   * cuando hay sobrante a favor de la empresa (devolución) y aún no se guardó/devolvió.
+   */
+  get canGuardarSaldoEnBolsa(): boolean {
+    if (this.isSaldoUsadoEnOtraRendicion) return false;
+    if (this.hasRemainingSavedToBolsa) return false;
+    if ((this.report as any)?.returnVoucher) return false;
+    const status = this.report?.status;
+    if (status !== 'approved' && status !== 'reimbursed') return false;
+    if (!this.isDevolucionExpected) return false;
+    return (
+      !this.isAdminView ||
+      this.userStateService.isContabilidad() ||
+      this.userStateService.isSuperAdmin()
+    );
   }
 
   get canRequestReopen(): boolean {
@@ -2122,6 +2150,39 @@ export class RendicionDetailComponent implements OnInit {
         const raw = err?.error?.message;
         const msg = Array.isArray(raw) ? raw.join(', ') : raw;
         this.notificationService.show(msg || 'Error al cerrar la rendicion', 'error');
+      },
+    });
+  }
+
+  openGuardarSaldoModal(): void {
+    this.showGuardarSaldoModal.set(true);
+  }
+
+  closeGuardarSaldoModal(): void {
+    if (this.isSavingBalance()) return;
+    this.showGuardarSaldoModal.set(false);
+  }
+
+  confirmGuardarSaldo(): void {
+    this.isSavingBalance.set(true);
+    this.expenseReportsService.saveBalanceAndClose(this.id).subscribe({
+      next: () => {
+        this.isSavingBalance.set(false);
+        this.showGuardarSaldoModal.set(false);
+        this.notificationService.show(
+          'Saldo enviado a tu bolsa y rendicion cerrada',
+          'success'
+        );
+        this.loadReport();
+      },
+      error: (err) => {
+        this.isSavingBalance.set(false);
+        const raw = err?.error?.message;
+        const msg = Array.isArray(raw) ? raw.join(', ') : raw;
+        this.notificationService.show(
+          msg || 'Error al guardar el saldo en la bolsa',
+          'error'
+        );
       },
     });
   }

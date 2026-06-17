@@ -134,6 +134,14 @@ export class ExpenseReportsService {
     return this.http.patch<IExpenseReport>(`${this.apiUrl}/expense-report/${reportId}/close`, {});
   }
 
+  /** BOLSA-4: envía el saldo sobrante a la Bolsa del colaborador y cierra la rendición. */
+  saveBalanceAndClose(reportId: string): Observable<IExpenseReport> {
+    return this.http.post<IExpenseReport>(
+      `${this.apiUrl}/expense-report/${reportId}/save-balance-and-close`,
+      {}
+    );
+  }
+
   requestReopening(reportId: string, reason: string): Observable<IExpenseReport> {
     return this.http.post<IExpenseReport>(
       `${this.apiUrl}/expense-report/${reportId}/reopen-request`,
