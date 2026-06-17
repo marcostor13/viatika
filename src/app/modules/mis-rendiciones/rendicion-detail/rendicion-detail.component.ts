@@ -2085,6 +2085,18 @@ export class RendicionDetailComponent implements OnInit {
     return !!(this.report as any)?.remainingToBolsa;
   }
 
+  /** Saldos de la Bolsa (poblados) que financiaron esta rendición (BOLSA-7). */
+  get consumedBolsaEntries(): any[] {
+    const raw = (this.report as any)?.consumedWalletEntryIds;
+    if (!Array.isArray(raw)) return [];
+    return raw.filter((x: any) => x && typeof x === 'object' && '_id' in x);
+  }
+
+  /** Monto del sobrante enviado a la Bolsa al cerrar (BOLSA-7). */
+  get remainingToBolsaAmount(): number {
+    return Number((this.report as any)?.remainingToBolsa?.amount ?? 0);
+  }
+
   /**
    * El colaborador dueño (o contabilidad/superadmin) puede enviar el sobrante a la
    * Bolsa y cerrar la rendición, en vez de devolver el dinero (BOLSA-4). Solo aplica

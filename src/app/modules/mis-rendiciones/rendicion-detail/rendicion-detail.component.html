@@ -941,6 +941,35 @@
       </div>
       }
 
+      <!-- BOLSA-7: saldos de la Bolsa que financiaron esta rendición -->
+      @if (consumedBolsaEntries.length > 0) {
+      <div class="rounded-xl border border-blue-200 bg-blue-50/60 p-5 mb-6">
+        <h3 class="font-bold text-blue-800 mb-2 text-sm">Saldos de la Bolsa utilizados</h3>
+        <ul class="space-y-1.5">
+          @for (s of consumedBolsaEntries; track s._id) {
+          <li class="flex items-center justify-between text-sm">
+            <span class="text-gray-700">
+              @if (s.sourceCodigo) { Saldo de {{ s.sourceCodigo }} } @else { Saldo reutilizado }
+              <span class="text-xs text-gray-500">· {{ s.type }}</span>
+            </span>
+            <span class="font-semibold text-blue-700">S/ {{ s.amount | number:'1.2-2' }}</span>
+          </li>
+          }
+        </ul>
+      </div>
+      }
+
+      <!-- BOLSA-7: sobrante enviado a la Bolsa al cerrar -->
+      @if (hasRemainingSavedToBolsa) {
+      <div class="rounded-xl border border-green-200 bg-green-50/70 p-5 mb-6">
+        <h3 class="font-bold text-green-800 mb-1 text-sm">Saldo enviado a la Bolsa</h3>
+        <p class="text-sm text-gray-700">
+          El sobrante de <strong class="text-green-700">S/ {{ remainingToBolsaAmount | number:'1.2-2' }}</strong>
+          se envio a la Bolsa del colaborador y queda disponible para una nueva rendicion.
+        </p>
+      </div>
+      }
+
       <!-- Colaborador: cargar comprobante de devolución (disponible desde estado aprobado) -->
       @if (canUploadReturnVoucher) {
       <div class="rounded-xl border border-red-200 bg-red-50/80 p-5 mb-6">
