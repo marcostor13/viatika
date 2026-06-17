@@ -74,6 +74,49 @@
       </div>
     </form>
 
+    <!-- Saldos de la Bolsa (BOLSA-3) -->
+    @if (saldos().length > 0) {
+    <div class="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+      <div class="p-5 border-b border-gray-100">
+        <h2 class="text-sm font-semibold text-gray-800">Usar saldos de tu Bolsa</h2>
+        <p class="text-xs text-gray-500 mt-0.5">
+          Selecciona uno o varios saldos disponibles para financiar esta rendicion. Se sumaran como presupuesto inicial.
+        </p>
+      </div>
+      <div class="divide-y divide-gray-100">
+        @for (s of saldos(); track s._id) {
+        <label class="flex items-center gap-3 p-4 cursor-pointer hover:bg-gray-50 transition-colors">
+          <input
+            type="checkbox"
+            [checked]="isSelected(s._id)"
+            (change)="toggleSaldo(s._id)"
+            class="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary/30"
+          />
+          <div class="flex-1 min-w-0">
+            <p class="text-sm font-medium text-gray-900">
+              S/ {{ s.remainingAmount | number:'1.2-2' }}
+              <span class="text-xs font-normal text-gray-500">· {{ s.type }}</span>
+            </p>
+            <p class="text-xs text-gray-500 truncate">
+              @if (s.sourceCodigo) {
+                Origen: {{ s.sourceCodigo }}
+              } @else {
+                {{ s.note || 'Saldo disponible' }}
+              }
+            </p>
+          </div>
+        </label>
+        }
+      </div>
+      @if (selectedIds().length > 0) {
+      <div class="p-4 bg-green-50 border-t border-green-100 flex items-center justify-between">
+        <span class="text-sm text-gray-700">{{ selectedIds().length }} saldo(s) seleccionado(s)</span>
+        <span class="text-sm font-bold text-green-700">Total: S/ {{ selectedTotal() | number:'1.2-2' }}</span>
+      </div>
+      }
+    </div>
+    }
+
     <!-- Boton mobile -->
     <div class="sm:hidden">
       <button

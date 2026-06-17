@@ -147,6 +147,15 @@ export interface IExpenseReport {
   pendingBalanceAmount?: number;
   /** ID de la rendición directa que consumió el saldo de esta. */
   pendingBalanceUsedInRendicionId?: string;
+  /** Saldos de la Bolsa que financiaron esta rendición (BOLSA-3). */
+  consumedWalletEntryIds?: string[];
+  /** Sobrante enviado a la Bolsa al cerrar (BOLSA-4). */
+  remainingToBolsa?: {
+    walletEntryId: string;
+    amount: number;
+    savedAt: string;
+    savedBy: string;
+  };
 }
 
 export interface IDirectaDepositInfo {
@@ -178,6 +187,8 @@ export interface ICreateExpenseReport {
   isCajaChica?: boolean;
   pendingBalanceFromReportId?: string;
   pendingBalanceAmount?: number;
+  /** Saldos de la Bolsa seleccionados para financiar la rendición (BOLSA-3). */
+  consumedWalletEntryIds?: string[];
   // New fields
   accountNumber?: string;
   idDocument?: string;
