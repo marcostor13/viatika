@@ -422,7 +422,13 @@ export class TesoreriaComponent implements OnInit {
 
   openReimbursementModal(report: IExpenseReport): void {
     this.selectedReportReimbursement = report;
+    // El monto del reembolso es fijo (= |settlement.difference|). El modal no
+    // tiene input de monto, así que lo seteamos aquí; de lo contrario el control
+    // `amount` (requerido) quedaría en null y el formulario nunca sería válido,
+    // bloqueando "Confirmar reembolso" incluso en efectivo.
+    const reembolsoAmount = Math.abs(Number(report.settlement?.difference ?? 0)) || null;
     this.paymentForm.reset({
+      amount: reembolsoAmount,
       method: 'transferencia_bancaria',
       bankName: '',
       accountNumber: '',
@@ -567,7 +573,8 @@ export class TesoreriaComponent implements OnInit {
 
   confirmPayment() {
     if (!this.selectedAdvance || this.paymentForm.invalid) return;
-    if (!this.paymentReceiptUrl) {
+    const method = this.paymentForm.get('method')?.value;
+    if (method !== 'efectivo' && !this.paymentReceiptUrl) {
       this.notificationService.show('Debes adjuntar el comprobante de pago.', 'error');
       return;
     }
@@ -575,7 +582,7 @@ export class TesoreriaComponent implements OnInit {
     this.advanceService.registerPayment(this.selectedAdvance._id, {
       ...this.paymentForm.value,
       amount: Number(this.paymentForm.value.amount),
-      paymentReceiptUrl: this.paymentReceiptUrl,
+      paymentReceiptUrl: this.paymentReceiptUrl || undefined,
       paymentReceiptFileName: this.paymentReceiptName || undefined,
       paymentReceiptMimeType: this.paymentReceiptMimeType || undefined,
       paymentReceiptSizeBytes: this.paymentReceiptSizeBytes || undefined,
