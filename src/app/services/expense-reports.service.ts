@@ -69,6 +69,28 @@ export class ExpenseReportsService {
     );
   }
 
+  /** Contabilidad: abona un depósito a la Bolsa del colaborador, sin crear rendición (BOLSA-2). */
+  depositToBolsa(payload: {
+    userId: string;
+    gestion?: string;
+    amount: number;
+    scannedAmount?: number;
+    receiptUrl: string;
+    receiptFileName?: string;
+    receiptMimeType?: string;
+    receiptSizeBytes?: number;
+    depositDate?: string;
+    operationNumber?: string;
+    operationDate?: string;
+    operationTime?: string;
+    titular?: string;
+  }): Observable<any> {
+    return this.http.post<any>(
+      `${this.apiUrl}/expense-report/deposit-to-bolsa`,
+      payload
+    );
+  }
+
   /** Colaborador: sus propias rendiciones de caja chica. */
   getMyCajaChica(): Observable<any[]> {
     return this.http.get<any[]>(`${this.apiUrl}/expense-report/my/caja-chica`);

@@ -31,7 +31,7 @@
             Creando...
           </span>
         } @else {
-          Crear y asignar
+          {{ abonarABolsa ? 'Abonar a la bolsa' : 'Crear y asignar' }}
         }
       </button>
     </div>
@@ -123,6 +123,20 @@
         }
       </div>
 
+      <!-- BOLSA-2: abonar a la bolsa en vez de crear la rendicion -->
+      <div class="p-5 border-t border-gray-100">
+        <label class="flex items-start gap-3 cursor-pointer">
+          <input type="checkbox" formControlName="abonarABolsa"
+            class="mt-0.5 w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary/30" />
+          <span class="text-sm text-gray-700">
+            <span class="font-semibold text-gray-800">Abonar a la bolsa del colaborador</span>
+            <span class="block text-xs text-gray-500 mt-0.5">
+              En vez de crear la rendicion, el deposito queda como saldo disponible en la bolsa del colaborador. El crea su rendicion cuando quiera, usando ese saldo.
+            </span>
+          </span>
+        </label>
+      </div>
+
       <!-- Datos detectados -->
       @if (hasDetectedData) {
       <div class="p-5 bg-gray-50/60">
@@ -156,7 +170,7 @@
             Creando...
           </span>
         } @else {
-          Crear y asignar
+          {{ abonarABolsa ? 'Abonar a la bolsa' : 'Crear y asignar' }}
         }
       </button>
     </div>

@@ -44,6 +44,8 @@ export class NuevaRendicionDirectaDepositoComponent implements OnInit {
     userId: ['', Validators.required],
     gestion: [''],
     amount: [null, [Validators.required, Validators.min(0.01)]],
+    // BOLSA-2: abonar el depósito a la Bolsa del colaborador en vez de crear la rendición.
+    abonarABolsa: [false],
   });
 
   ngOnInit(): void {
@@ -151,6 +153,11 @@ export class NuevaRendicionDirectaDepositoComponent implements OnInit {
     return !!(this.depositOperationNumber || this.depositOperationDate || this.depositOperationTime || this.depositTitular);
   }
 
+  /** BOLSA-2: el depósito se abona a la Bolsa en vez de crear la rendición. */
+  get abonarABolsa(): boolean {
+    return !!this.form.get('abonarABolsa')?.value;
+  }
+
   submit(): void {
     if (this.form.invalid) {
       this.form.markAllAsTouched();
@@ -162,7 +169,7 @@ export class NuevaRendicionDirectaDepositoComponent implements OnInit {
     }
     this.isCreating.set(true);
     const v = this.form.value;
-    this.expenseReportsService.createDirectaDeposit({
+    const payload = {
       userId: v.userId,
       gestion: v.gestion?.trim() || undefined,
       amount: Number(v.amount),
@@ -175,17 +182,27 @@ export class NuevaRendicionDirectaDepositoComponent implements OnInit {
       operationDate: this.depositOperationDate || undefined,
       operationTime: this.depositOperationTime || undefined,
       titular: this.depositTitular || undefined,
-    }).subscribe({
+    };
+    const abonarABolsa = !!v.abonarABolsa;
+    const request$ = abonarABolsa
+      ? this.expenseReportsService.depositToBolsa(payload)
+      : this.expenseReportsService.createDirectaDeposit(payload);
+    request$.subscribe({
       next: () => {
         this.isCreating.set(false);
-        this.notificationService.show('Rendición directa creada y asignada correctamente.', 'success');
+        this.notificationService.show(
+          abonarABolsa
+            ? 'Depósito abonado a la bolsa del colaborador.'
+            : 'Rendición directa creada y asignada correctamente.',
+          'success'
+        );
         this.router.navigate(['/tesoreria'], { queryParams: { tab: 'rendiciones-directas' } });
       },
       error: e => {
         this.isCreating.set(false);
         const raw = e?.error?.message;
         const msg = Array.isArray(raw) ? raw.join(', ') : raw;
-        this.notificationService.show(msg || 'Error al crear la rendición directa.', 'error');
+        this.notificationService.show(msg || 'Error al procesar el depósito.', 'error');
       },
     });
   }
