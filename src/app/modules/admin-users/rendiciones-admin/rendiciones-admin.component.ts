@@ -189,6 +189,9 @@ export class RendicionesAdminComponent implements OnInit {
   }
 
   canDelete(report: IExpenseReport): boolean {
+    // Contabilidad no puede eliminar rendiciones: evita borrar viáticos con
+    // saldo ya pagado y generar incongruencias.
+    if (this.userStateService.isContabilidad()) return false;
     return report.expenseIds.length === 0;
   }
 
