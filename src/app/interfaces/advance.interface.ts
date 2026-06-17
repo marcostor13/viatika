@@ -196,6 +196,8 @@ export interface ICreateAdvancePayload {
   pendingBalanceFromReportId?: string;
   pendingBalanceAmount?: number;
   additionalAmount?: number;
+  /** Saldos de la Bolsa seleccionados para financiar el viático (BOLSA-3). */
+  consumedWalletEntryIds?: string[];
 }
 
 export interface IApproveAdvancePayload {

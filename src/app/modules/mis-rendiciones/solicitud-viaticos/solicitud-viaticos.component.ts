@@ -39,6 +39,8 @@ import {
   optionalViaticoLineNumber,
   validateViaticoLineFields,
 } from '../viatico-line.util';
+import { BolsaService } from '../../../services/bolsa.service';
+import { IBalanceItem } from '../../../interfaces/bolsa.interface';
 
 @Component({
   selector: 'app-solicitud-viaticos',
@@ -61,6 +63,7 @@ export class SolicitudViaticosComponent implements OnInit {
   private invoicesService = inject(InvoicesService);
   private categoriaService = inject(CategoriaService);
   private categoryGroupService = inject(CategoryGroupService);
+  private bolsa = inject(BolsaService);
 
   submitting = signal(false);
   loading = signal(false);
@@ -104,6 +107,15 @@ export class SolicitudViaticosComponent implements OnInit {
   /** Monto del saldo pendiente trasladado desde la rendición de origen. */
   pendingBalanceAmount = signal<number>(0);
 
+  /** Saldos de la Bolsa disponibles para el proyecto elegido (RN-1) y su selección (BOLSA-3). */
+  bolsaSaldos = signal<IBalanceItem[]>([]);
+  selectedBolsaIds = signal<string[]>([]);
+  consumedFromBolsa = computed(() =>
+    this.bolsaSaldos()
+      .filter((s) => this.selectedBolsaIds().includes(s._id))
+      .reduce((sum, s) => sum + (Number(s.remainingAmount) || 0), 0)
+  );
+
   form = this.fb.group({
     place: ['', Validators.required],
     startDate: ['', Validators.required],
@@ -138,9 +150,39 @@ export class SolicitudViaticosComponent implements OnInit {
     return Math.round(sum * 100) / 100;
   }
 
-  /** Total del anticipo = saldo pendiente + líneas adicionales. */
+  /** Total del anticipo = saldo pendiente + saldos de la Bolsa + líneas adicionales. */
   totalAnticipo(): number {
-    return Math.round((this.pendingBalanceAmount() + this.totalGeneral()) * 100) / 100;
+    return Math.round(
+      (this.pendingBalanceAmount() + this.consumedFromBolsa() + this.totalGeneral()) * 100
+    ) / 100;
+  }
+
+  get hasConsumedBolsa(): boolean {
+    return this.selectedBolsaIds().length > 0;
+  }
+
+  isBolsaSelected(id: string): boolean {
+    return this.selectedBolsaIds().includes(id);
+  }
+
+  toggleBolsaSaldo(id: string): void {
+    const cur = this.selectedBolsaIds();
+    this.selectedBolsaIds.set(
+      cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id]
+    );
+  }
+
+  /** Carga los saldos consumibles del proyecto elegido (RN-1) y limpia la selección. */
+  private loadBolsaSaldos(projectId: string): void {
+    this.selectedBolsaIds.set([]);
+    if (!projectId) {
+      this.bolsaSaldos.set([]);
+      return;
+    }
+    this.bolsa.getAvailable('viaticos', projectId).subscribe({
+      next: (items) => this.bolsaSaldos.set(items ?? []),
+      error: () => this.bolsaSaldos.set([]),
+    });
   }
 
   ngOnInit(): void {
@@ -150,6 +192,7 @@ export class SolicitudViaticosComponent implements OnInit {
     this.form.get('projectId')?.valueChanges.subscribe((pid) => {
       this.selectedProjectId.set(pid ?? '');
       this.clearInvalidLineCategories();
+      this.loadBolsaSaldos(pid ?? '');
     });
 
     const id = this.route.snapshot.paramMap.get('id');
@@ -417,9 +460,11 @@ export class SolicitudViaticosComponent implements OnInit {
     const fromReportId = this.pendingBalanceFromReportId();
     const pendingAmt = this.pendingBalanceAmount();
     const hasPending = !!(fromReportId && pendingAmt > 0);
+    const consumedIds = this.selectedBolsaIds();
+    const hasConsumed = consumedIds.length > 0;
 
     const payload: ICreateAdvancePayload = {
-      amount: hasPending ? this.totalAnticipo() : linesTotal,
+      amount: hasPending || hasConsumed ? this.totalAnticipo() : linesTotal,
       description: metaDesc,
       place,
       ...(this.selectedLat != null && { lat: this.selectedLat }),
@@ -432,6 +477,10 @@ export class SolicitudViaticosComponent implements OnInit {
       ...(hasPending && {
         pendingBalanceFromReportId: fromReportId!,
         pendingBalanceAmount: pendingAmt,
+        additionalAmount: linesTotal,
+      }),
+      ...(hasConsumed && {
+        consumedWalletEntryIds: consumedIds,
         additionalAmount: linesTotal,
       }),
     };
