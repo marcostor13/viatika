@@ -123,14 +123,21 @@ export class MisRendicionesComponent implements OnInit {
     this.loadMyReports();
     this.loadMyAdvances();
     this.loadMyViaticoReports();
-    const tab = this.route.snapshot.queryParamMap.get('tab');
-    if (tab === 'viaticos') {
-      this.setTab('viaticos');
-    } else if (tab === 'directas') {
-      this.setTab('directas');
-    } else if (tab === 'caja-chica') {
-      this.setTab('caja-chica');
-    }
+    // Tabs disponibles según permisos, en orden de preferencia.
+    const available: Array<'viaticos' | 'directas' | 'caja-chica'> = [];
+    if (this.canViewViaticos) available.push('viaticos');
+    if (this.canCreateRendicion) available.push('directas');
+    if (this.canAccessCajaChica) available.push('caja-chica');
+
+    // Respeta el ?tab= solo si el usuario tiene acceso a ese tab; si no, usa el primero disponible.
+    const requested = this.route.snapshot.queryParamMap.get('tab') as
+      | 'viaticos'
+      | 'directas'
+      | 'caja-chica'
+      | null;
+    const initial =
+      requested && available.includes(requested) ? requested : available[0] ?? 'viaticos';
+    this.setTab(initial);
   }
 
   setTab(tab: 'viaticos' | 'directas' | 'caja-chica'): void {
@@ -560,7 +567,8 @@ export class MisRendicionesComponent implements OnInit {
 
   hasReportSaldo(report: IExpenseReport): boolean {
     return !!(report.directaDeposit)
-      || !!(report.pendingBalanceFromReportId && (report.pendingBalanceAmount ?? 0) > 0);
+      || !!(report.pendingBalanceFromReportId && (report.pendingBalanceAmount ?? 0) > 0)
+      || !!(report.saldoIds && report.saldoIds.length > 0);
   }
 
   getReportSaldo(report: IExpenseReport): number {
