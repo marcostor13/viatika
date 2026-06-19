@@ -31,6 +31,8 @@ export interface ICreateViaticoPayload {
   pendingBalanceFromReportId?: string;
   pendingBalanceAmount?: number;
   additionalAmount?: number;
+  /** Saldos de la bolsa seleccionados (mismo centro de costo) que financian esta solicitud. */
+  saldoIds?: string[];
 }
 
 export interface IResubmitViaticoPayload {
@@ -268,6 +270,8 @@ export interface ICreateExpenseReport {
   isCajaChica?: boolean;
   pendingBalanceFromReportId?: string;
   pendingBalanceAmount?: number;
+  /** Saldos de la bolsa seleccionados para financiar esta rendición directa. */
+  saldoIds?: string[];
   // New fields
   accountNumber?: string;
   idDocument?: string;

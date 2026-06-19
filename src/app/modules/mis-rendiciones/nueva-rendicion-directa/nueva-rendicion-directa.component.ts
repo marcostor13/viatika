@@ -1,4 +1,4 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, OnInit, inject, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import {
   FormBuilder,
@@ -10,6 +10,8 @@ import { Router } from '@angular/router';
 import { ExpenseReportsService } from '../../../services/expense-reports.service';
 import { NotificationService } from '../../../services/notification.service';
 import { UserStateService } from '../../../services/user-state.service';
+import { SaldoService } from '../../../services/saldo.service';
+import { ISaldo, SaldoType } from '../../../interfaces/saldo.interface';
 
 @Component({
   selector: 'app-nueva-rendicion-directa',
@@ -17,18 +19,65 @@ import { UserStateService } from '../../../services/user-state.service';
   imports: [CommonModule, ReactiveFormsModule],
   templateUrl: './nueva-rendicion-directa.component.html',
 })
-export class NuevaRendicionDirectaComponent {
+export class NuevaRendicionDirectaComponent implements OnInit {
   private fb = inject(FormBuilder);
   private router = inject(Router);
   private expenseReportsService = inject(ExpenseReportsService);
   private notifications = inject(NotificationService);
   private userState = inject(UserStateService);
+  private saldoService = inject(SaldoService);
 
   submitting = signal(false);
+
+  // Saldos elegibles (rendición directa + pago) y selección.
+  saldos = signal<ISaldo[]>([]);
+  loadingSaldos = signal<boolean>(true);
+  selectedIds = signal<Set<string>>(new Set());
+
+  selectedTotal = computed(() =>
+    this.saldos()
+      .filter(s => this.selectedIds().has(s._id))
+      .reduce((sum, s) => sum + (Number(s.amount) || 0), 0)
+  );
 
   form: FormGroup = this.fb.group({
     gestion: ['', [Validators.required, Validators.minLength(3)]],
   });
+
+  ngOnInit(): void {
+    this.saldoService.getEligible('rendicion_directa').subscribe({
+      next: rows => {
+        this.saldos.set(rows ?? []);
+        this.loadingSaldos.set(false);
+      },
+      error: () => this.loadingSaldos.set(false),
+    });
+  }
+
+  isSelected(id: string): boolean {
+    return this.selectedIds().has(id);
+  }
+
+  toggleSaldo(id: string): void {
+    const next = new Set(this.selectedIds());
+    if (next.has(id)) {
+      next.delete(id);
+    } else {
+      next.add(id);
+    }
+    this.selectedIds.set(next);
+  }
+
+  typeLabel(type: SaldoType): string {
+    return type === 'pago' ? 'Pago' : 'Rendición directa';
+  }
+
+  centroCosto(s: ISaldo): string {
+    const p = s.projectId;
+    if (!p || typeof p === 'string') return '';
+    const code = p.code ? `${p.code} - ` : '';
+    return `${code}${p.name ?? ''}`.trim();
+  }
 
   goBack(): void {
     this.router.navigate(['/mis-rendiciones']);
@@ -53,6 +102,8 @@ export class NuevaRendicionDirectaComponent {
       return;
     }
 
+    const saldoIds = Array.from(this.selectedIds());
+
     this.submitting.set(true);
     this.expenseReportsService
       .create({
@@ -60,10 +111,12 @@ export class NuevaRendicionDirectaComponent {
         isDirecta: true,
         userId,
         clientId,
+        ...(saldoIds.length > 0 && { saldoIds }),
       })
       .subscribe({
         next: (report) => {
           this.submitting.set(false);
+          this.saldoService.refreshTotal();
           this.notifications.show('Rendición creada correctamente.', 'success');
           this.router.navigate(['/mis-rendiciones', report._id, 'detalle']);
         },

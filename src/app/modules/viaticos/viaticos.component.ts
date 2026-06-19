@@ -335,7 +335,7 @@ export class ViaticosComponent implements OnInit {
     if (item.source === 'advance') {
       this.router.navigate(['/viaticos', item._id]);
     } else {
-      this.router.navigate(['/mis-rendiciones', item._id, 'detalle'], { queryParams: { from: 'viaticos' } });
+      this.router.navigate(['/mis-rendiciones', item._id, 'detalle'], { queryParams: { from: 'rendiciones' } });
     }
   }
 }

@@ -32,7 +32,6 @@ type UnifiedViaticoItem = {
   amount: number;
   expensesCount: number;
   canEdit: boolean;
-  canCancel: boolean;
   canResubmit: boolean;
   isInExpensePhase: boolean;
   rawStatus: string;
@@ -427,10 +426,6 @@ export class MisRendicionesComponent implements OnInit {
     return report.status === 'open';
   }
 
-  canCancelViatico(report: IExpenseReport): boolean {
-    return report.status === 'pending_l1';
-  }
-
   canEditViatico(report: IExpenseReport): boolean {
     return report.status === 'pending_l1';
   }
@@ -460,38 +455,6 @@ export class MisRendicionesComponent implements OnInit {
     if (from) list = list.filter(r => new Date(r.createdAt) >= new Date(from));
     if (to) list = list.filter(r => new Date(r.createdAt) <= new Date(to + 'T23:59:59'));
     return list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-  }
-
-  // ─── Cancel / delete new viatico ──────────────────────────────────────────
-
-  showCancelViaticoModal = signal(false);
-  cancellingViatico = signal<IExpenseReport | null>(null);
-  isCancellingViatico = signal(false);
-
-  openCancelViaticoModal(report: IExpenseReport): void {
-    this.cancellingViatico.set(report);
-    this.showCancelViaticoModal.set(true);
-  }
-
-  confirmCancelViatico(): void {
-    const report = this.cancellingViatico();
-    if (!report) return;
-    this.isCancellingViatico.set(true);
-    this.expenseReportsService.cancelViatico(report._id).subscribe({
-      next: () => {
-        this.isCancellingViatico.set(false);
-        this.showCancelViaticoModal.set(false);
-        this.cancellingViatico.set(null);
-        this.notificationService.show('Solicitud cancelada correctamente', 'success');
-        this.loadMyViaticoReports();
-      },
-      error: (err) => {
-        this.isCancellingViatico.set(false);
-        const raw = err?.error?.message;
-        const msg = Array.isArray(raw) ? raw.join(', ') : raw;
-        this.notificationService.show(msg || 'Error al cancelar', 'error');
-      },
-    });
   }
 
   loadMyReports() {
@@ -696,38 +659,6 @@ export class MisRendicionesComponent implements OnInit {
     });
   }
 
-  // ─── Cancelar / Eliminar solicitud de viáticos pendiente ─────────────────────
-
-  showCancelAdvanceModal = signal(false);
-  cancellingAdvance = signal<IAdvance | null>(null);
-  isCancellingAdvance = signal(false);
-
-  openCancelAdvanceModal(adv: IAdvance): void {
-    this.cancellingAdvance.set(adv);
-    this.showCancelAdvanceModal.set(true);
-  }
-
-  confirmCancelAdvance(): void {
-    const adv = this.cancellingAdvance();
-    if (!adv) return;
-    this.isCancellingAdvance.set(true);
-    this.advanceService.cancelAdvance(adv._id).subscribe({
-      next: () => {
-        this.isCancellingAdvance.set(false);
-        this.showCancelAdvanceModal.set(false);
-        this.cancellingAdvance.set(null);
-        this.notificationService.show('Solicitud cancelada correctamente', 'success');
-        this.loadMyAdvances();
-      },
-      error: (err) => {
-        this.isCancellingAdvance.set(false);
-        const raw = err?.error?.message;
-        const msg = Array.isArray(raw) ? raw.join(', ') : raw;
-        this.notificationService.show(msg || 'Error al cancelar', 'error');
-      },
-    });
-  }
-
   // ─── Eliminar (borrado físico) rendición ─────────────────────────────────────
 
   showDeleteReportModal = signal(false);
@@ -763,8 +694,18 @@ export class MisRendicionesComponent implements OnInit {
     if (!report.isDirecta && !report.isCajaChica && report.hasApprovedLinkedAdvance)
       return false;
 
+    // Viático unificado con pago ya registrado (estado "Registrando gastos"):
+    // el pago consta en viaticoPaidAmount, no en un Advance, pero igualmente bloquea.
+    if ((report as any).type === 'viatico' && Number((report as any).viaticoPaidAmount ?? 0) > 0)
+      return false;
+
     const deletableStatuses = ['solicited', 'open', 'rejected', 'submitted'];
-    return deletableStatuses.includes(report.status);
+    if (deletableStatuses.includes(report.status)) return true;
+
+    // Viático en solicitud sin comprobantes: el colaborador puede eliminarlo.
+    if (report.status === 'pending_l1' && !(report.expenseIds?.length)) return true;
+
+    return false;
   }
 
   openDeleteReportModal(report: IExpenseReport, event: Event): void {
@@ -920,7 +861,6 @@ export class MisRendicionesComponent implements OnInit {
         amount: r.viaticoAmount ?? 0,
         expensesCount: (r.expenseIds || []).length,
         canEdit: this.canEditViatico(r),
-        canCancel: this.canCancelViatico(r),
         canResubmit: this.canResubmitViatico(r),
         isInExpensePhase: this.isViaticoInExpensePhase(r),
         rawStatus: r.status,
@@ -942,7 +882,6 @@ export class MisRendicionesComponent implements OnInit {
         amount: adv.amount,
         expensesCount: 0,
         canEdit: adv.status === 'pending_l1',
-        canCancel: adv.status === 'pending_l1',
         canResubmit: adv.status === 'rejected',
         isInExpensePhase: false,
         rawStatus: adv.status,
@@ -964,7 +903,6 @@ export class MisRendicionesComponent implements OnInit {
         amount: r.budget,
         expensesCount: (r.expenseIds || []).length,
         canEdit: false,
-        canCancel: r.status === 'solicited',
         canResubmit: false,
         isInExpensePhase: this.isReportInProgress(r),
         rawStatus: r.status,
@@ -1004,17 +942,6 @@ export class MisRendicionesComponent implements OnInit {
       this.openResubmitAdvance(item.raw as IAdvance);
     } else {
       this.openEditViatico(item.raw as IExpenseReport);
-    }
-  }
-
-  cancelUnifiedItem(item: UnifiedViaticoItem, event: Event): void {
-    event.stopPropagation();
-    if (item.source === 'advance') {
-      this.openCancelAdvanceModal(item.raw as IAdvance);
-    } else if (item.source === 'rendicion') {
-      this.openCancelReportModal(item.raw as IExpenseReport, event);
-    } else {
-      this.openCancelViaticoModal(item.raw as IExpenseReport);
     }
   }
 

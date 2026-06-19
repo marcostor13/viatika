@@ -41,9 +41,23 @@ export class TesoreriaComponent implements OnInit {
   pendingAdvances: IAdvance[] = [];
   /** Rendiciones aprobadas con reembolso al colaborador pendiente de comprobante (Fase 6) */
   pendingReimbursements: IExpenseReport[] = [];
+  /** Viáticos con status viatico_approved o partially_paid pendientes de pago. */
+  pendingViaticoPayments: IExpenseReport[] = [];
 
   selectedAdvance: IAdvance | null = null;
   selectedReportReimbursement: IExpenseReport | null = null;
+  selectedViaticoReport: IExpenseReport | null = null;
+  showViaticoPaymentModal = false;
+  viaticoPaymentReceiptUrl: string | null = null;
+  viaticoPaymentReceiptName: string | null = null;
+  viaticoPaymentReceiptMimeType: string | null = null;
+  viaticoPaymentReceiptSizeBytes: number | null = null;
+  isUploadingViaticoReceipt = signal(false);
+  isScanningViaticoPayment = signal(false);
+  viaticoScannedAmount: number | null = null;
+  viaticoOperationNumber: string | null = null;
+  viaticoOperationDate: string | null = null;
+  viaticoOperationTime: string | null = null;
   showReimbursementModal = false;
   reimbursementReceiptUrl: string | null = null;
   reimbursementReceiptName: string | null = null;
@@ -164,12 +178,14 @@ export class TesoreriaComponent implements OnInit {
         this.loadPendingReimbursements();
         this.loadPendingReturns();
         this.loadDirectaDepositReports();
+        this.loadPendingViaticoPayments();
       },
       error: () => {
         this.isLoading.set(false);
         this.loadPendingReimbursements();
         this.loadPendingReturns();
         this.loadDirectaDepositReports();
+        this.loadPendingViaticoPayments();
       },
     });
   }
@@ -199,6 +215,162 @@ export class TesoreriaComponent implements OnInit {
     this.advanceService.findPendingReturns(String(cid)).subscribe({
       next: rows => { this.pendingReturns = rows ?? []; },
       error: () => { this.pendingReturns = []; },
+    });
+  }
+
+  private loadPendingViaticoPayments(): void {
+    const cid = this.clientId;
+    if (!cid || !this.canPayAndSettle) {
+      this.pendingViaticoPayments = [];
+      return;
+    }
+    this.expenseReportsService.findAllByClient(cid).subscribe({
+      next: reports => {
+        this.pendingViaticoPayments = (reports ?? []).filter(
+          r => r.type === 'viatico' && ['viatico_approved', 'partially_paid'].includes(r.status)
+        );
+      },
+      error: () => { this.pendingViaticoPayments = []; },
+    });
+  }
+
+  viaticoUserName(report: IExpenseReport): string {
+    const u = report.userId;
+    if (u && typeof u === 'object' && 'name' in u) return (u as { name: string }).name || '—';
+    return '—';
+  }
+
+  viaticoRemaining(report: IExpenseReport): number {
+    return Math.max(Number(report.viaticoAmount ?? 0) - Number(report.viaticoPaidAmount ?? 0), 0);
+  }
+
+  openViaticoPaymentModal(report: IExpenseReport): void {
+    this.selectedViaticoReport = report;
+    const remaining = this.viaticoRemaining(report);
+    this.paymentForm.reset({
+      amount: remaining > 0 ? remaining : null,
+      method: 'transferencia_bancaria',
+      bankName: '',
+      accountNumber: '',
+      cci: '',
+      transferDate: new Date().toISOString().split('T')[0],
+      reference: '',
+    });
+    const u = typeof report.userId === 'object' ? report.userId : null;
+    const bankAccount = u && typeof u === 'object' && 'bankAccount' in u
+      ? (u as { bankAccount?: { bankName?: string; accountNumber?: string; cci?: string } }).bankAccount
+      : undefined;
+    if (bankAccount) {
+      this.paymentForm.patchValue({
+        bankName: bankAccount.bankName,
+        accountNumber: bankAccount.accountNumber,
+        cci: bankAccount.cci,
+      });
+    }
+    this.viaticoPaymentReceiptUrl = null;
+    this.viaticoPaymentReceiptName = null;
+    this.viaticoPaymentReceiptMimeType = null;
+    this.viaticoPaymentReceiptSizeBytes = null;
+    this.viaticoScannedAmount = null;
+    this.viaticoOperationNumber = null;
+    this.viaticoOperationDate = null;
+    this.viaticoOperationTime = null;
+    this.showViaticoPaymentModal = true;
+  }
+
+  removeViaticoPaymentReceipt(): void {
+    this.viaticoPaymentReceiptUrl = null;
+    this.viaticoPaymentReceiptName = null;
+    this.viaticoPaymentReceiptMimeType = null;
+    this.viaticoPaymentReceiptSizeBytes = null;
+    this.viaticoScannedAmount = null;
+    this.viaticoOperationNumber = null;
+    this.viaticoOperationDate = null;
+    this.viaticoOperationTime = null;
+    const remaining = this.selectedViaticoReport ? this.viaticoRemaining(this.selectedViaticoReport) : null;
+    this.paymentForm.patchValue({ amount: remaining && remaining > 0 ? remaining : null });
+  }
+
+  onViaticoPaymentReceiptSelected(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    if (!file) return;
+    const allowedTypes = ['application/pdf', 'image/jpeg', 'image/png'];
+    if (!allowedTypes.includes(file.type)) {
+      this.notificationService.show('Formato inválido. Usa PDF, JPG o PNG.', 'error');
+      input.value = '';
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      this.notificationService.show('El comprobante no puede superar 10MB.', 'error');
+      input.value = '';
+      return;
+    }
+    this.isUploadingViaticoReceipt.set(true);
+    this.uploadService.upload(file).subscribe({
+      next: res => {
+        this.viaticoPaymentReceiptUrl = res.url;
+        this.viaticoPaymentReceiptName = file.name;
+        this.viaticoPaymentReceiptMimeType = file.type;
+        this.viaticoPaymentReceiptSizeBytes = file.size;
+        this.isUploadingViaticoReceipt.set(false);
+        this.isScanningViaticoPayment.set(true);
+        this.expenseReportsService.scanDepositAmount(res.url, file.type).subscribe({
+          next: scan => {
+            this.isScanningViaticoPayment.set(false);
+            const amount = Number(scan?.amount) || 0;
+            this.viaticoScannedAmount = amount > 0 ? amount : null;
+            this.viaticoOperationNumber = scan?.operationNumber || null;
+            this.viaticoOperationDate = scan?.fecha || null;
+            this.viaticoOperationTime = scan?.hora || null;
+            const patch: Record<string, unknown> = {};
+            if (amount > 0) patch['amount'] = amount;
+            if (scan?.operationNumber && !this.paymentForm.value.reference) patch['reference'] = scan.operationNumber;
+            if (Object.keys(patch).length) this.paymentForm.patchValue(patch);
+          },
+          error: () => {
+            this.isScanningViaticoPayment.set(false);
+            this.notificationService.show('No se pudo escanear el comprobante. Ingresa el monto manualmente.', 'warning');
+          },
+        });
+      },
+      error: () => {
+        this.notificationService.show('No se pudo subir el comprobante', 'error');
+        this.isUploadingViaticoReceipt.set(false);
+      },
+    });
+  }
+
+  confirmViaticoPayment(): void {
+    if (!this.selectedViaticoReport || this.paymentForm.invalid) return;
+    const method = this.paymentForm.get('method')?.value;
+    if (method !== 'efectivo' && !this.viaticoPaymentReceiptUrl) {
+      this.notificationService.show('Debes adjuntar el comprobante de pago.', 'error');
+      return;
+    }
+    this.isActing.set(true);
+    this.expenseReportsService.registerViaticoPayment(this.selectedViaticoReport._id, {
+      ...this.paymentForm.value,
+      amount: Number(this.paymentForm.value.amount),
+      paymentReceiptUrl: this.viaticoPaymentReceiptUrl || undefined,
+      paymentReceiptFileName: this.viaticoPaymentReceiptName || undefined,
+      paymentReceiptMimeType: this.viaticoPaymentReceiptMimeType || undefined,
+      paymentReceiptSizeBytes: this.viaticoPaymentReceiptSizeBytes || undefined,
+      scannedAmount: this.viaticoScannedAmount ?? undefined,
+      operationNumber: this.viaticoOperationNumber || undefined,
+      operationDate: this.viaticoOperationDate || undefined,
+      operationTime: this.viaticoOperationTime || undefined,
+    }).subscribe({
+      next: () => {
+        this.notificationService.show('Pago de viático registrado correctamente', 'success');
+        this.showViaticoPaymentModal = false;
+        this.loadData();
+        this.isActing.set(false);
+      },
+      error: e => {
+        this.notificationService.show(e.error?.message || 'Error al registrar el pago', 'error');
+        this.isActing.set(false);
+      },
     });
   }
 

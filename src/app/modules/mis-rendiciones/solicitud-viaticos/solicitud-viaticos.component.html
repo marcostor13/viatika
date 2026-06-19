@@ -173,6 +173,49 @@
             }
           </div>
 
+          <!-- Saldo de la bolsa (mismo centro de costo) -->
+          @if (canUseSaldoBag && selectedProjectId()) {
+          <div class="md:col-span-2 flex flex-col gap-2">
+            <label class="text-sm font-medium text-gray-700">
+              Financiar con saldo (opcional)
+            </label>
+            <p class="text-xs text-gray-500 -mt-1">
+              Solo aparecen saldos de viáticos del mismo centro de costo. El total de las líneas debe cuadrar con el saldo seleccionado.
+            </p>
+            @if (loadingSaldos()) {
+              <p class="text-sm text-gray-400">Cargando saldos...</p>
+            } @else if (saldos().length === 0) {
+              <p class="text-sm text-gray-400">No hay saldos disponibles para este centro de costo.</p>
+            } @else {
+              <div class="space-y-2">
+                @for (s of saldos(); track s._id) {
+                <label
+                  class="flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-colors"
+                  [class.border-primary]="isSaldoSelected(s._id)"
+                  [class.bg-blue-50]="isSaldoSelected(s._id)"
+                  [class.border-gray-200]="!isSaldoSelected(s._id)"
+                >
+                  <input
+                    type="checkbox"
+                    [checked]="isSaldoSelected(s._id)"
+                    (change)="toggleSaldo(s._id)"
+                    class="w-4 h-4 accent-primary"
+                  />
+                  <span class="flex-1 text-sm text-gray-700">Saldo de rendición</span>
+                  <span class="text-sm font-semibold text-gray-900">S/ {{ s.amount | number:'1.2-2' }}</span>
+                </label>
+                }
+              </div>
+              @if (selectedSaldoTotal() > 0) {
+              <div class="flex items-center justify-between bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-2.5">
+                <span class="text-sm font-medium text-emerald-700">Saldo seleccionado (monto a cuadrar)</span>
+                <span class="text-base font-bold text-emerald-700">S/ {{ selectedSaldoTotal() | number:'1.2-2' }}</span>
+              </div>
+              }
+            }
+          </div>
+          }
+
           <!-- Observaciones -->
           <div class="md:col-span-2 flex flex-col gap-1.5">
             <label class="text-sm font-medium text-gray-700">

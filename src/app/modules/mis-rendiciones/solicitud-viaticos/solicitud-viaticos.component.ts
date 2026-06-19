@@ -21,6 +21,8 @@ import { UserStateService } from '../../../services/user-state.service';
 import { InvoicesService } from '../../invoices/services/invoices.service';
 import { CategoriaService } from '../../../services/categoria.service';
 import { CategoryGroupService } from '../../../services/category-group.service';
+import { SaldoService } from '../../../services/saldo.service';
+import { ISaldo } from '../../../interfaces/saldo.interface';
 import {
   PlacesAutocompleteDirective,
   PlaceResult,
@@ -64,8 +66,25 @@ export class SolicitudViaticosComponent implements OnInit {
   private invoicesService = inject(InvoicesService);
   private categoriaService = inject(CategoriaService);
   private categoryGroupService = inject(CategoryGroupService);
+  private saldoService = inject(SaldoService);
 
   submitting = signal(false);
+
+  // Saldos de viáticos del mismo centro de costo (bolsa).
+  saldos = signal<ISaldo[]>([]);
+  loadingSaldos = signal<boolean>(false);
+  selectedSaldoIds = signal<Set<string>>(new Set());
+
+  selectedSaldoTotal = computed(() =>
+    this.saldos()
+      .filter(s => this.selectedSaldoIds().has(s._id))
+      .reduce((sum, s) => sum + (Number(s.amount) || 0), 0)
+  );
+
+  /** Solo se ofrece la bolsa de saldos en solicitudes nuevas (no reenvío ni saldo heredado por query). */
+  get canUseSaldoBag(): boolean {
+    return !this.isResubmit && !this.hasPendingBalance;
+  }
   loading = signal(false);
   projects = signal<IProject[]>([]);
   categories = signal<ICategory[]>([]);
@@ -153,6 +172,7 @@ export class SolicitudViaticosComponent implements OnInit {
     this.form.get('projectId')?.valueChanges.subscribe((pid) => {
       this.selectedProjectId.set(pid ?? '');
       this.clearInvalidLineCategories();
+      this.loadEligibleSaldos(pid ?? '');
     });
 
     const id = this.route.snapshot.paramMap.get('id');
@@ -168,6 +188,40 @@ export class SolicitudViaticosComponent implements OnInit {
       }
       this.loadCatalogues();
     }
+  }
+
+  /** Carga los saldos de viáticos elegibles (mismo centro de costo) y limpia la selección. */
+  private loadEligibleSaldos(projectId: string): void {
+    this.selectedSaldoIds.set(new Set());
+    if (!this.canUseSaldoBag || !projectId) {
+      this.saldos.set([]);
+      return;
+    }
+    this.loadingSaldos.set(true);
+    this.saldoService.getEligible('viatico', projectId).subscribe({
+      next: rows => {
+        this.saldos.set(rows ?? []);
+        this.loadingSaldos.set(false);
+      },
+      error: () => {
+        this.saldos.set([]);
+        this.loadingSaldos.set(false);
+      },
+    });
+  }
+
+  isSaldoSelected(id: string): boolean {
+    return this.selectedSaldoIds().has(id);
+  }
+
+  toggleSaldo(id: string): void {
+    const next = new Set(this.selectedSaldoIds());
+    if (next.has(id)) {
+      next.delete(id);
+    } else {
+      next.add(id);
+    }
+    this.selectedSaldoIds.set(next);
   }
 
   private loadAdvanceForResubmit(id: string): void {
@@ -449,6 +503,20 @@ export class SolicitudViaticosComponent implements OnInit {
       return;
     }
 
+    // Saldos de la bolsa: el total de las líneas debe cuadrar con la suma de saldos.
+    const saldoIds = Array.from(this.selectedSaldoIds());
+    if (this.canUseSaldoBag && saldoIds.length > 0) {
+      const saldoTotal = this.selectedSaldoTotal();
+      if (Math.abs(linesTotal - saldoTotal) > 0.01) {
+        this.submitting.set(false);
+        this.notifications.show(
+          `El total de las líneas (S/ ${linesTotal.toFixed(2)}) debe ser igual al saldo seleccionado (S/ ${saldoTotal.toFixed(2)}).`,
+          'error'
+        );
+        return;
+      }
+    }
+
     // New unified viatico (ExpenseReport type='viatico')
     const viaticoPayload: ICreateViaticoPayload = {
       amount: hasPending ? this.totalAnticipo() : linesTotal,
@@ -465,6 +533,7 @@ export class SolicitudViaticosComponent implements OnInit {
         pendingBalanceAmount: pendingAmt,
         additionalAmount: linesTotal,
       }),
+      ...(this.canUseSaldoBag && saldoIds.length > 0 && { saldoIds }),
     };
     this.expenseReportsService.createViatico(viaticoPayload).subscribe({
       next: () => this.onSubmitSuccess(false),
@@ -479,6 +548,7 @@ export class SolicitudViaticosComponent implements OnInit {
       : 'Solicitud de viáticos enviada correctamente';
     this.notifications.show(msg, 'success');
     this.submitting.set(false);
+    this.saldoService.refreshTotal();
     const fromReport = this.pendingBalanceFromReportId();
     if (fromReport) {
       this.router.navigate(['/mis-rendiciones', fromReport, 'detalle']);

@@ -1,8 +1,8 @@
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, OnInit, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormsModule } from '@angular/forms';
+import { FormsModule, ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { Router, ActivatedRoute, RouterModule } from '@angular/router';
-import { forkJoin } from 'rxjs';
+import { Observable, forkJoin } from 'rxjs';
 import { ExpenseReportsService } from '../../../services/expense-reports.service';
 import { AdminUsersService } from '../services/admin-users.service';
 import { InvoicesService } from '../../invoices/services/invoices.service';
@@ -66,13 +66,16 @@ export type UnifiedRendicionItem = {
   statusColor: string;
   createdAt: string;
   canDeleteItem: boolean;
+  canApproveL1: boolean;
+  canApproveL2: boolean;
+  canReject: boolean;
   raw: IExpenseReport | IAdvance;
 };
 
 @Component({
   selector: 'app-rendiciones-admin',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterModule],
+  imports: [CommonModule, FormsModule, ReactiveFormsModule, RouterModule],
   templateUrl: './rendiciones-admin.component.html',
 })
 export class RendicionesAdminComponent implements OnInit {
@@ -84,6 +87,7 @@ export class RendicionesAdminComponent implements OnInit {
   private userStateService = inject(UserStateService);
   private notifications = inject(NotificationService);
   private advanceService = inject(AdvanceService);
+  private fb = inject(FormBuilder);
 
   private allReports: IExpenseReport[] = [];
   private allOrphanedAdvances: IAdvance[] = [];
@@ -93,6 +97,7 @@ export class RendicionesAdminComponent implements OnInit {
   projects: IProject[] = [];
 
   isLoading = true;
+  isActing = signal(false);
   reportToDelete: IExpenseReport | null = null;
   isDeleting = false;
 
@@ -101,7 +106,23 @@ export class RendicionesAdminComponent implements OnInit {
   filterDateFrom = '';
   filterDateTo = '';
 
+  // Approve modal
+  showApproveModal = signal(false);
+  pendingApproveItem = signal<UnifiedRendicionItem | null>(null);
+  pendingApproveLevel = signal<1 | 2>(1);
+
+  // Reject modal
+  showRejectModal = signal(false);
+  selectedRejectItem = signal<UnifiedRendicionItem | null>(null);
+  rejectForm!: FormGroup;
+
+  get userCanApproveL1() { return this.userStateService.canApproveL1(); }
+  get userCanApproveL2() { return this.userStateService.canApproveL2(); }
+
   ngOnInit(): void {
+    this.rejectForm = this.fb.group({
+      rejectionReason: ['', [Validators.required, Validators.minLength(10)]],
+    });
     const preselectedUser = this.route.snapshot.queryParamMap.get('userId');
     if (preselectedUser) this.filterUserId = preselectedUser;
     this.loadData();
@@ -141,6 +162,7 @@ export class RendicionesAdminComponent implements OnInit {
       const uid = typeof r.userId === 'object' ? r.userId?._id : r.userId;
       const pid = typeof r.projectId === 'object' ? r.projectId?._id : r.projectId;
       const name = this.getReportUserName(r);
+      const isViatico = r.type === 'viatico';
       return {
         _id: r._id,
         source: 'report' as const,
@@ -150,12 +172,15 @@ export class RendicionesAdminComponent implements OnInit {
         title: r.title || r.viaticoPlace || '—',
         projectName: this.getProjectName(r),
         projectId: pid ?? '',
-        amount: r.budget ?? 0,
+        amount: r.viaticoAmount ?? r.budget ?? 0,
         status: r.status,
         statusLabel: REPORT_STATUS_LABELS[r.status] ?? r.status,
         statusColor: REPORT_STATUS_COLORS[r.status] ?? 'bg-gray-100 text-gray-700',
         createdAt: r.createdAt,
         canDeleteItem: this.canDeleteReport(r),
+        canApproveL1: isViatico && r.status === 'pending_l1' && this.userCanApproveL1,
+        canApproveL2: isViatico && r.status === 'pending_l2' && this.userCanApproveL2,
+        canReject: isViatico && ['pending_l1', 'pending_l2'].includes(r.status) && (this.userCanApproveL1 || this.userCanApproveL2),
         raw: r,
       };
     });
@@ -182,6 +207,9 @@ export class RendicionesAdminComponent implements OnInit {
         statusColor: ADVANCE_STATUS_COLORS[a.status] ?? 'bg-gray-100 text-gray-700',
         createdAt: a.createdAt,
         canDeleteItem: false,
+        canApproveL1: a.status === 'pending_l1' && this.userCanApproveL1,
+        canApproveL2: a.status === 'pending_l2' && this.userCanApproveL2,
+        canReject: ['pending_l1', 'pending_l2'].includes(a.status) && (this.userCanApproveL1 || this.userCanApproveL2),
         raw: a,
       };
     });
@@ -230,6 +258,69 @@ export class RendicionesAdminComponent implements OnInit {
       this.router.navigate(['/mis-rendiciones', item._id, 'detalle']);
     }
   }
+
+  // ─── Approve ──────────────────────────────────────────────────────────────────
+
+  openApproveModal(item: UnifiedRendicionItem, level: 1 | 2): void {
+    this.pendingApproveItem.set(item);
+    this.pendingApproveLevel.set(level);
+    this.showApproveModal.set(true);
+  }
+
+  confirmApprove(): void {
+    const item = this.pendingApproveItem();
+    if (!item) return;
+    const level = this.pendingApproveLevel();
+    this.isActing.set(true);
+    const action$: Observable<unknown> = item.source === 'advance'
+      ? (level === 1 ? this.advanceService.approveL1(item._id, {}) : this.advanceService.approveL2(item._id, {}))
+      : (level === 1 ? this.expenseReportsService.approveViaticoL1(item._id) : this.expenseReportsService.approveViaticoL2(item._id));
+    action$.subscribe({
+      next: () => {
+        this.showApproveModal.set(false);
+        this.isActing.set(false);
+        this.notifications.show(`Solicitud aprobada (Nivel ${level})`, 'success');
+        this.loadData();
+      },
+      error: (e: any) => {
+        this.showApproveModal.set(false);
+        this.isActing.set(false);
+        this.notifications.show(e?.error?.message || 'Error al aprobar', 'error');
+      },
+    });
+  }
+
+  // ─── Reject ───────────────────────────────────────────────────────────────────
+
+  openRejectModal(item: UnifiedRendicionItem): void {
+    this.selectedRejectItem.set(item);
+    this.rejectForm.reset();
+    this.showRejectModal.set(true);
+  }
+
+  confirmReject(): void {
+    const item = this.selectedRejectItem();
+    if (!item || this.rejectForm.invalid) return;
+    this.isActing.set(true);
+    const reason: string = this.rejectForm.value.rejectionReason;
+    const action$: Observable<unknown> = item.source === 'advance'
+      ? this.advanceService.reject(item._id, { rejectionReason: reason })
+      : this.expenseReportsService.rejectViatico(item._id, reason);
+    action$.subscribe({
+      next: () => {
+        this.notifications.show('Solicitud rechazada', 'success');
+        this.showRejectModal.set(false);
+        this.isActing.set(false);
+        this.loadData();
+      },
+      error: (e: any) => {
+        this.notifications.show(e?.error?.message || 'Error al rechazar', 'error');
+        this.isActing.set(false);
+      },
+    });
+  }
+
+  // ─── Delete ───────────────────────────────────────────────────────────────────
 
   openDeleteModal(item: UnifiedRendicionItem): void {
     if (item.source === 'report' && item.canDeleteItem) {
@@ -284,7 +375,6 @@ export class RendicionesAdminComponent implements OnInit {
     return name.split(/\s+/).filter(Boolean).slice(0, 2).map(p => p.charAt(0).toUpperCase()).join('');
   }
 
-  // Needed for delete modal display
   getDeleteItemName(): string {
     return this.reportToDelete
       ? this.getReportUserName(this.reportToDelete)

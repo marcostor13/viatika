@@ -216,6 +216,13 @@ export class ExpenseReportsService {
     return this.http.patch<IExpenseReport>(`${this.apiUrl}/expense-report/${id}/viatico/reject`, { rejectionReason });
   }
 
+  registerViaticoPayment(id: string, payload: IRegisterReimbursementPaymentPayload): Observable<IExpenseReport> {
+    return this.http.patch<IExpenseReport>(
+      `${this.apiUrl}/expense-report/${id}/viatico/register-payment`,
+      payload
+    );
+  }
+
   getViaticosList(filters: { status?: string; dateFrom?: string; dateTo?: string } = {}): Observable<IExpenseReport[]> {
     const parts: string[] = [];
     if (filters.status) parts.push(`status=${encodeURIComponent(filters.status)}`);
