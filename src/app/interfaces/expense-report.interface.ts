@@ -233,6 +233,8 @@ export interface IExpenseReport {
   lockedByCajaChica?: boolean;
   /** Depósito inicial cuando la rendición directa fue iniciada por Contabilidad. */
   directaDeposit?: IDirectaDepositInfo;
+  /** Saldos de la bolsa (poblados) que financiaron esta rendición directa. */
+  saldoIds?: IReportFinancingSaldo[];
   /** ID de la rendición directa de la que proviene el saldo heredado. */
   pendingBalanceFromReportId?: string;
   /** Monto heredado desde la rendición directa de origen. */
@@ -254,6 +256,17 @@ export interface IDirectaDepositInfo {
   operationTime?: string;
   titular?: string;
   createdBy?: any;
+  createdAt?: string;
+}
+
+/** Saldo de la bolsa (poblado) que financió una rendición directa. */
+export interface IReportFinancingSaldo {
+  _id: string;
+  type: 'pago' | 'rendicion_directa' | 'rendicion';
+  amount: number;
+  concepto?: string;
+  deposit?: { operationNumber?: string; titular?: string; operationDate?: string };
+  sourceReportId?: { _id: string; codigo?: string; title?: string; gestion?: string } | string | null;
   createdAt?: string;
 }
 
