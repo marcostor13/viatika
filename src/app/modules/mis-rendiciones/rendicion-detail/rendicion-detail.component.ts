@@ -148,6 +148,10 @@ export class RendicionDetailComponent implements OnInit, OnDestroy {
     if (this.hasPendingBalanceCredit) {
       return this.pendingBalanceCreditAmount - this.totalGastado;
     }
+    // Rendición directa financiada con la bolsa: el saldo libre es presupuesto (saldos) − gastado.
+    if (this.hasFinancingSaldos) {
+      return this.financingSaldoDisponible;
+    }
     // Para viáticos unificados: calcular siempre desde viaticoPaidAmount para
     // evitar usar un settlement stale que fue calculado con advanceTotal=0.
     if (this.report?.type === 'viatico') {
