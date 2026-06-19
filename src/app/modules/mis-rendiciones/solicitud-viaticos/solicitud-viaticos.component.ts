@@ -214,6 +214,15 @@ export class SolicitudViaticosComponent implements OnInit {
     return this.selectedSaldoIds().has(id);
   }
 
+  /** Gestión / motivo del saldo, o su origen (rendición / N° operación). */
+  saldoDescripcion(s: ISaldo): string {
+    if (s.concepto?.trim()) return s.concepto.trim();
+    const r = s.sourceReportId;
+    if (r && typeof r !== 'string') return r.codigo || r.title || '';
+    if (s.type === 'pago' && s.deposit?.operationNumber) return `Op. ${s.deposit.operationNumber}`;
+    return '';
+  }
+
   toggleSaldo(id: string): void {
     const next = new Set(this.selectedSaldoIds());
     if (next.has(id)) {

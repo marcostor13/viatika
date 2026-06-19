@@ -201,8 +201,13 @@
                     (change)="toggleSaldo(s._id)"
                     class="w-4 h-4 accent-primary"
                   />
-                  <span class="flex-1 text-sm text-gray-700">Saldo de rendición</span>
-                  <span class="text-sm font-semibold text-gray-900">S/ {{ s.amount | number:'1.2-2' }}</span>
+                  <span class="flex-1 min-w-0 text-sm text-gray-700">
+                    {{ s.type === 'pago' ? 'Pago' : 'Saldo de rendición' }}
+                    @if (saldoDescripcion(s)) {
+                      <span class="block text-xs text-gray-500 truncate">{{ saldoDescripcion(s) }}</span>
+                    }
+                  </span>
+                  <span class="text-sm font-semibold text-gray-900 shrink-0">S/ {{ s.amount | number:'1.2-2' }}</span>
                 </label>
                 }
               </div>

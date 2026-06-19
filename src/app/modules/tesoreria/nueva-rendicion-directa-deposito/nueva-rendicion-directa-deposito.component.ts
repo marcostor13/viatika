@@ -167,6 +167,7 @@ export class NuevaRendicionDirectaDepositoComponent implements OnInit {
     this.saldoService.createPago({
       userId: v.userId,
       amount: Number(v.amount),
+      concepto: v.gestion?.trim() || undefined,
       scannedAmount: this.depositScannedAmount ?? undefined,
       receiptUrl: this.depositReceiptUrl,
       receiptFileName: this.depositReceiptName || undefined,

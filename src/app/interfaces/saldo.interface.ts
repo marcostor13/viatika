@@ -30,6 +30,8 @@ export interface ISaldo {
   type: SaldoType;
   amount: number;
   status: SaldoStatus;
+  /** Gestión / motivo libre que escribió quien originó el saldo. */
+  concepto?: string;
   projectId?: ISaldoProjectRef | string | null;
   sourceReportId?: ISaldoSourceReportRef | string | null;
   deposit?: ISaldoDeposit;
@@ -40,6 +42,7 @@ export interface ISaldo {
 export interface ICreatePagoSaldoPayload {
   userId: string;
   amount: number;
+  concepto?: string;
   scannedAmount?: number;
   receiptUrl: string;
   receiptFileName?: string;

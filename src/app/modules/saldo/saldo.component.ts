@@ -75,15 +75,20 @@ export class SaldoComponent implements OnInit {
   }
 
   origen(s: ISaldo): string {
+    const partes: string[] = [];
+    // Gestión / motivo libre tiene prioridad como descripción.
+    if (s.concepto?.trim()) partes.push(s.concepto.trim());
     const r = s.sourceReportId;
     if (r && typeof r !== 'string') {
-      return r.codigo || r.title || '';
+      const ref = r.codigo || r.title || '';
+      if (ref) partes.push(ref);
+    } else if (s.type === 'pago') {
+      partes.push(
+        s.deposit?.operationNumber
+          ? `Op. ${s.deposit.operationNumber}`
+          : 'Pago de contabilidad'
+      );
     }
-    if (s.type === 'pago') {
-      return s.deposit?.operationNumber
-        ? `Op. ${s.deposit.operationNumber}`
-        : 'Pago de contabilidad';
-    }
-    return '';
+    return partes.join(' · ');
   }
 }

@@ -110,6 +110,9 @@
                     <span class="text-gray-400 font-normal">· {{ centroCosto(s) }}</span>
                   }
                 </div>
+                @if (saldoDescripcion(s)) {
+                  <div class="text-xs text-gray-500 truncate">{{ saldoDescripcion(s) }}</div>
+                }
               </div>
               <div class="text-sm font-semibold text-gray-900 shrink-0">
                 S/ {{ s.amount | number: '1.2-2' }}
