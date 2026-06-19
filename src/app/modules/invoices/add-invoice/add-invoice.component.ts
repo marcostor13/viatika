@@ -166,7 +166,7 @@ export default class AddInvoiceComponent implements OnInit {
   /** Tras crear/actualizar gasto: vuelve según el contexto y rol. */
   private navigateAfterExpenseSave(): void {
     if (this.fromContabilidad) {
-      this.router.navigate(['/rendiciones-directas']);
+      this.router.navigate(['/rendiciones'], { queryParams: { tab: 'directas' } });
       return;
     }
     if (this.isDirectaMode) {

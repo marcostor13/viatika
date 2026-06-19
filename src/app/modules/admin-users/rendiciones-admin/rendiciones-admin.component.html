@@ -86,13 +86,13 @@
 
   <!-- Summary -->
   <p class="text-sm text-tertiary mb-3">
-    {{ filteredReports.length }} rendicion{{ filteredReports.length !== 1 ? 'es' : '' }}
-    @if (hasActiveFilters) { <span class="text-primary font-medium">(filtradas)</span> }
+    {{ filteredItems.length }} registro{{ filteredItems.length !== 1 ? 's' : '' }}
+    @if (hasActiveFilters) { <span class="text-primary font-medium">(filtrados)</span> }
   </p>
 
   <!-- Table -->
   <div class="bg-quaternary rounded-2xl border border-tertiary/20 shadow-soft overflow-hidden">
-    @if (filteredReports.length === 0) {
+    @if (filteredItems.length === 0) {
     <div class="flex flex-col items-center justify-center py-20 text-center gap-4">
       <div class="w-16 h-16 rounded-2xl bg-tertiary/10 flex items-center justify-center">
         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-8 h-8 text-tertiary/40">
@@ -120,50 +120,49 @@
         </tr>
       </thead>
       <tbody class="divide-y divide-tertiary/8">
-        @for (report of filteredReports; track report._id) {
+        @for (item of filteredItems; track item._id) {
         <tr class="hover:bg-background/60 transition-colors group">
 
           <!-- Colaborador -->
           <td class="px-5 py-3.5">
             <div class="flex items-center gap-3 min-w-0">
               <button
-                (click)="goToDetail(report)"
+                (click)="goToDetail(item)"
                 class="w-9 h-9 rounded-full bg-primary/15 text-primary flex items-center justify-center text-xs font-bold shrink-0 select-none"
               >
-                {{ getUserInitials(report) }}
+                {{ item.userInitials }}
               </button>
               <button
-                (click)="goToDetail(report)"
+                (click)="goToDetail(item)"
                 class="font-semibold text-primary hover:underline truncate text-left"
               >
-                {{ getUserName(report) }}
+                {{ item.userName }}
               </button>
             </div>
           </td>
 
           <!-- Título -->
           <td class="px-4 py-3.5 max-w-[220px]">
-            <span class="block truncate font-medium text-secondary" [title]="report.title">{{ report.title || '—' }}</span>
+            <span class="block truncate font-medium text-secondary" [title]="item.title">{{ item.title }}</span>
           </td>
 
           <!-- Centro de Costo -->
-          <td class="px-4 py-3.5 text-tertiary">{{ getProjectName(report) }}</td>
+          <td class="px-4 py-3.5 text-tertiary">{{ item.projectName }}</td>
 
           <!-- Presupuesto -->
           <td class="px-4 py-3.5 text-right">
-            <span class="text-base font-bold text-secondary tabular-nums">S/ {{ report.budget | number:'1.2-2' }}</span>
+            <span class="text-base font-bold text-secondary tabular-nums">S/ {{ item.amount | number:'1.2-2' }}</span>
           </td>
 
           <!-- Fecha -->
           <td class="px-4 py-3.5 whitespace-nowrap">
-            <span class="text-xs text-tertiary">{{ report.createdAt | date:'dd/MM/yyyy' }}</span>
+            <span class="text-xs text-tertiary">{{ item.createdAt | date:'dd/MM/yyyy' }}</span>
           </td>
 
           <!-- Estado -->
           <td class="px-4 py-3.5 text-center">
-            <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold"
-              [ngClass]="STATUS_COLORS[report.status] || 'bg-gray-100 text-gray-700'">
-              {{ STATUS_LABELS[report.status] || report.status }}
+            <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold" [class]="item.statusColor">
+              {{ item.statusLabel }}
             </span>
           </td>
 
@@ -171,7 +170,7 @@
           <td class="px-5 py-3.5">
             <div class="flex items-center justify-end gap-1">
               <button
-                (click)="goToDetail(report)" title="Ver detalle"
+                (click)="goToDetail(item)" title="Ver detalle"
                 class="p-2 rounded-lg text-tertiary hover:text-primary hover:bg-primary/10 transition-colors"
               >
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -179,9 +178,9 @@
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
                 </svg>
               </button>
-              @if (canDelete(report)) {
+              @if (item.canDeleteItem) {
                 <button
-                  (click)="openDeleteModal(report); $event.stopPropagation()" title="Eliminar"
+                  (click)="openDeleteModal(item); $event.stopPropagation()" title="Eliminar"
                   class="p-2 rounded-lg text-tertiary hover:text-error hover:bg-error/10 transition-colors"
                 >
                   <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -199,62 +198,52 @@
 
     <!-- Mobile cards -->
     <div class="md:hidden divide-y divide-tertiary/10">
-      @for (report of filteredReports; track report._id) {
+      @for (item of filteredItems; track item._id) {
       <div class="p-4">
 
         <div class="flex items-start gap-3 mb-3">
           <button
-            (click)="goToDetail(report)"
+            (click)="goToDetail(item)"
             class="w-10 h-10 rounded-full bg-primary/15 text-primary flex items-center justify-center text-sm font-bold shrink-0 select-none"
           >
-            {{ getUserInitials(report) }}
+            {{ item.userInitials }}
           </button>
           <div class="flex-1 min-w-0">
             <div class="flex items-start justify-between gap-2">
               <div class="min-w-0">
                 <button
-                  (click)="goToDetail(report)"
+                  (click)="goToDetail(item)"
                   class="font-semibold text-primary hover:underline text-left truncate block max-w-full"
                 >
-                  {{ getUserName(report) }}
+                  {{ item.userName }}
                 </button>
-                <p class="text-xs text-secondary mt-0.5 truncate font-medium" [title]="report.title">{{ report.title || '—' }}</p>
-                <p class="text-xs text-tertiary mt-0.5 truncate">{{ getProjectName(report) }}</p>
+                <p class="text-xs text-secondary mt-0.5 truncate font-medium" [title]="item.title">{{ item.title }}</p>
+                <p class="text-xs text-tertiary mt-0.5 truncate">{{ item.projectName }}</p>
               </div>
-              <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold shrink-0"
-                [ngClass]="STATUS_COLORS[report.status] || 'bg-gray-100 text-gray-700'">
-                {{ STATUS_LABELS[report.status] || report.status }}
+              <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold shrink-0" [class]="item.statusColor">
+                {{ item.statusLabel }}
               </span>
             </div>
           </div>
         </div>
 
         <div class="flex items-start justify-between gap-2 pl-[52px]">
-          <span class="text-xs text-tertiary">{{ report.createdAt | date:'dd/MM/yyyy' }}</span>
-          <div class="text-right">
-            <span class="text-base font-bold text-secondary tabular-nums">S/ {{ report.budget | number:'1.2-2' }}</span>
-          </div>
+          <span class="text-xs text-tertiary">{{ item.createdAt | date:'dd/MM/yyyy' }}</span>
+          <span class="text-base font-bold text-secondary tabular-nums">S/ {{ item.amount | number:'1.2-2' }}</span>
         </div>
 
         <div class="flex items-center gap-2 pl-[52px] mt-3">
           <button
-            (click)="goToDetail(report)"
+            (click)="goToDetail(item)"
             class="flex items-center gap-1.5 px-3 py-2 text-xs font-medium rounded-lg bg-primary/10 text-primary hover:bg-primary hover:text-white transition-colors"
           >
-            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
-            </svg>
             Ver detalle
           </button>
-          @if (canDelete(report)) {
+          @if (item.canDeleteItem) {
             <button
-              (click)="openDeleteModal(report)"
+              (click)="openDeleteModal(item)"
               class="flex items-center gap-1.5 px-3 py-2 text-xs font-medium rounded-lg bg-error/10 text-error hover:bg-error hover:text-white transition-colors"
             >
-              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
-              </svg>
               Eliminar
             </button>
           }
@@ -287,9 +276,9 @@
       </div>
     </div>
     <p class="text-sm text-secondary mb-1">
-      ¿Eliminar la rendicion de <span class="font-semibold">{{ getUserName(reportToDelete) }}</span>?
+      ¿Eliminar la rendicion de <span class="font-semibold">{{ getDeleteItemName() }}</span>?
     </p>
-    <p class="text-xs text-tertiary mb-5 truncate" [title]="reportToDelete.title">{{ reportToDelete.title || '—' }}</p>
+    <p class="text-xs text-tertiary mb-5 truncate" [title]="getDeleteItemTitle()">{{ getDeleteItemTitle() }}</p>
     <div class="flex gap-3">
       <button (click)="cancelDelete()"
         class="flex-1 h-[42px] border border-tertiary/30 rounded-xl text-sm text-secondary hover:bg-background transition-colors">

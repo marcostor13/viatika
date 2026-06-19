@@ -7,6 +7,8 @@ import {
   IUpdateExpenseReport,
   IRegisterReimbursementPaymentPayload,
   IMisDocumentoItem,
+  ICreateViaticoPayload,
+  IResubmitViaticoPayload,
 } from '../interfaces/expense-report.interface';
 import { Observable } from 'rxjs';
 
@@ -182,6 +184,45 @@ export class ExpenseReportsService {
     return this.http.get<{ data: any[]; total: number; page: number; limit: number; pages: number }>(
       `${this.apiUrl}/expense-report/${reportId}/expenses${qs ? '?' + qs : ''}`
     );
+  }
+
+  // ─── Viáticos unificados ──────────────────────────────────────────────────
+
+  createViatico(payload: ICreateViaticoPayload): Observable<IExpenseReport> {
+    return this.http.post<IExpenseReport>(`${this.apiUrl}/expense-report/viatico`, payload);
+  }
+
+  getMyViaticos(): Observable<IExpenseReport[]> {
+    return this.http.get<IExpenseReport[]>(`${this.apiUrl}/expense-report/viaticos/my`);
+  }
+
+  resubmitViatico(id: string, payload: IResubmitViaticoPayload): Observable<IExpenseReport> {
+    return this.http.patch<IExpenseReport>(`${this.apiUrl}/expense-report/${id}/viatico/resubmit`, payload);
+  }
+
+  cancelViatico(id: string): Observable<IExpenseReport> {
+    return this.http.patch<IExpenseReport>(`${this.apiUrl}/expense-report/${id}/viatico/cancel`, {});
+  }
+
+  approveViaticoL1(id: string): Observable<IExpenseReport> {
+    return this.http.patch<IExpenseReport>(`${this.apiUrl}/expense-report/${id}/viatico/approve-l1`, {});
+  }
+
+  approveViaticoL2(id: string): Observable<IExpenseReport> {
+    return this.http.patch<IExpenseReport>(`${this.apiUrl}/expense-report/${id}/viatico/approve-l2`, {});
+  }
+
+  rejectViatico(id: string, rejectionReason: string): Observable<IExpenseReport> {
+    return this.http.patch<IExpenseReport>(`${this.apiUrl}/expense-report/${id}/viatico/reject`, { rejectionReason });
+  }
+
+  getViaticosList(filters: { status?: string; dateFrom?: string; dateTo?: string } = {}): Observable<IExpenseReport[]> {
+    const parts: string[] = [];
+    if (filters.status) parts.push(`status=${encodeURIComponent(filters.status)}`);
+    if (filters.dateFrom) parts.push(`dateFrom=${encodeURIComponent(filters.dateFrom)}`);
+    if (filters.dateTo) parts.push(`dateTo=${encodeURIComponent(filters.dateTo)}`);
+    const qs = parts.length ? '?' + parts.join('&') : '';
+    return this.http.get<IExpenseReport[]>(`${this.apiUrl}/expense-report/viaticos/list${qs}`);
   }
 
   reopen(reportId: string, reason: string): Observable<IExpenseReport> {

@@ -125,13 +125,13 @@
       <!-- Coordinador: nav fijo -->
       @if (isCoordinador()) {
       <a
-        [routerLink]="['/viaticos']"
+        [routerLink]="['/rendiciones']"
         routerLinkActive="bg-primary text-white"
-        [class.bg-primary]="isSelected('/viaticos')"
-        [class.text-quaternary]="isSelected('/viaticos')"
+        [class.bg-primary]="isSelected('/rendiciones')"
+        [class.text-quaternary]="isSelected('/rendiciones')"
         class="flex items-center px-4 py-3 text-secondary rounded-xl hover:bg-background hover:text-primary transition-all duration-200 group"
       >
-        <span class="font-medium">Viáticos</span>
+        <span class="font-medium">Rendiciones</span>
       </a>
       }
 
@@ -149,24 +149,13 @@
       }
       @if (isContabilidadInCompany()) {
       <a
-        [routerLink]="['/rendiciones-directas']"
+        [routerLink]="['/rendiciones']"
         routerLinkActive="bg-primary text-white"
-        [class.bg-primary]="isSelected('/rendiciones-directas')"
-        [class.text-quaternary]="isSelected('/rendiciones-directas')"
+        [class.bg-primary]="isSelected('/rendiciones')"
+        [class.text-quaternary]="isSelected('/rendiciones')"
         class="flex items-center px-4 py-3 text-secondary rounded-xl hover:bg-background hover:text-primary transition-all duration-200 group"
       >
-        <span class="font-medium">Rendiciones Directas</span>
-      </a>
-      }
-      @if (isContabilidadInCompany()) {
-      <a
-        [routerLink]="['/rendiciones-caja-chica']"
-        routerLinkActive="bg-primary text-white"
-        [class.bg-primary]="isSelected('/rendiciones-caja-chica')"
-        [class.text-quaternary]="isSelected('/rendiciones-caja-chica')"
-        class="flex items-center px-4 py-3 text-secondary rounded-xl hover:bg-background hover:text-primary transition-all duration-200 group"
-      >
-        <span class="font-medium">Rendiciones Caja Chica</span>
+        <span class="font-medium">Rendiciones</span>
       </a>
       }
 
@@ -193,7 +182,7 @@
         <span class="font-medium">Colaboradores</span>
       </a>
       }
-      @if ((isColaborador() || isCoordinador()) && hasModulePermission('rendiciones')) {
+      @if (isColaborador() && hasModulePermission('rendiciones')) {
       <a
         [routerLink]="['/rendiciones']"
         routerLinkActive="bg-primary text-white"
@@ -235,17 +224,6 @@
         class="flex items-center px-4 py-3 text-secondary rounded-xl hover:bg-background hover:text-primary transition-all duration-200 group"
       >
         <span class="font-medium">Actividad</span>
-      </a>
-      }
-      @if (canAccessViaticos() && !isCoordinador()) {
-      <a
-        [routerLink]="['/viaticos']"
-        routerLinkActive="bg-primary text-white"
-        [class.bg-primary]="isSelected('/viaticos')"
-        [class.text-quaternary]="isSelected('/viaticos')"
-        class="flex items-center px-4 py-3 text-secondary rounded-xl hover:bg-background hover:text-primary transition-all duration-200 group"
-      >
-        <span class="font-medium">Viáticos</span>
       </a>
       }
       @if (!isContabilidad() && canAccessTesoreria()) {
@@ -549,13 +527,13 @@
         <!-- Coordinador: nav fijo -->
         @if (isCoordinador()) {
         <a
-          [routerLink]="['/viaticos']"
+          [routerLink]="['/rendiciones']"
           (click)="toggleSidebar()"
-          [class.bg-primary]="isSelected('/viaticos')"
-          [class.text-quaternary]="isSelected('/viaticos')"
+          [class.bg-primary]="isSelected('/rendiciones')"
+          [class.text-quaternary]="isSelected('/rendiciones')"
           class="flex items-center px-4 py-4 text-secondary rounded-xl hover:bg-background hover:text-primary transition-all duration-200 group"
         >
-          <span class="font-medium text-lg">Viáticos</span>
+          <span class="font-medium text-lg">Rendiciones</span>
         </a>
         }
 
@@ -573,24 +551,13 @@
         }
         @if (isContabilidadInCompany()) {
         <a
-          [routerLink]="['/rendiciones-directas']"
+          [routerLink]="['/rendiciones']"
           (click)="toggleSidebar()"
-          [class.bg-primary]="isSelected('/rendiciones-directas')"
-          [class.text-quaternary]="isSelected('/rendiciones-directas')"
+          [class.bg-primary]="isSelected('/rendiciones')"
+          [class.text-quaternary]="isSelected('/rendiciones')"
           class="flex items-center px-4 py-4 text-secondary rounded-xl hover:bg-background hover:text-primary transition-all duration-200 group"
         >
-          <span class="font-medium text-lg">Rendiciones Directas</span>
-        </a>
-        }
-        @if (isContabilidadInCompany()) {
-        <a
-          [routerLink]="['/rendiciones-caja-chica']"
-          (click)="toggleSidebar()"
-          [class.bg-primary]="isSelected('/rendiciones-caja-chica')"
-          [class.text-quaternary]="isSelected('/rendiciones-caja-chica')"
-          class="flex items-center px-4 py-4 text-secondary rounded-xl hover:bg-background hover:text-primary transition-all duration-200 group"
-        >
-          <span class="font-medium text-lg">Rendiciones Caja Chica</span>
+          <span class="font-medium text-lg">Rendiciones</span>
         </a>
         }
 
@@ -617,7 +584,7 @@
           <span class="font-medium text-lg">Colaboradores</span>
         </a>
         }
-        @if ((isColaborador() || isCoordinador()) && hasModulePermission('rendiciones')) {
+        @if (isColaborador() && hasModulePermission('rendiciones')) {
         <a
           [routerLink]="['/rendiciones']"
           (click)="toggleSidebar()"
@@ -659,17 +626,6 @@
           class="flex items-center px-4 py-4 text-secondary rounded-xl hover:bg-background hover:text-primary transition-all duration-200 group"
         >
           <span class="font-medium text-lg">Actividad</span>
-        </a>
-        }
-        @if (canAccessViaticos() && !isCoordinador()) {
-        <a
-          [routerLink]="['/viaticos']"
-          (click)="toggleSidebar()"
-          [class.bg-primary]="isSelected('/viaticos')"
-          [class.text-quaternary]="isSelected('/viaticos')"
-          class="flex items-center px-4 py-4 text-secondary rounded-xl hover:bg-background hover:text-primary transition-all duration-200 group"
-        >
-          <span class="font-medium text-lg">Viáticos</span>
         </a>
         }
         @if (!isContabilidad() && canAccessTesoreria()) {

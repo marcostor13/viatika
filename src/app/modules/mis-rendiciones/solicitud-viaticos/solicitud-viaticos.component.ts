@@ -15,6 +15,7 @@ import {
 } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { AdvanceService } from '../../../services/advance.service';
+import { ExpenseReportsService } from '../../../services/expense-reports.service';
 import { NotificationService } from '../../../services/notification.service';
 import { UserStateService } from '../../../services/user-state.service';
 import { InvoicesService } from '../../invoices/services/invoices.service';
@@ -33,6 +34,7 @@ import {
   IAdvanceLinePayload,
   IAdvance,
 } from '../../../interfaces/advance.interface';
+import { ICreateViaticoPayload } from '../../../interfaces/expense-report.interface';
 import {
   coerceViaticoLineNumber,
   computeViaticoLineTotal,
@@ -56,6 +58,7 @@ export class SolicitudViaticosComponent implements OnInit {
   private route = inject(ActivatedRoute);
   private router = inject(Router);
   private advanceService = inject(AdvanceService);
+  private expenseReportsService = inject(ExpenseReportsService);
   private notifications = inject(NotificationService);
   private userState = inject(UserStateService);
   private invoicesService = inject(InvoicesService);
@@ -413,14 +416,42 @@ export class SolicitudViaticosComponent implements OnInit {
     }
 
     const linesTotal = this.totalGeneral();
-    const metaDesc = `Viático: ${place} (${startStr} → ${endStr})`;
     const fromReportId = this.pendingBalanceFromReportId();
     const pendingAmt = this.pendingBalanceAmount();
     const hasPending = !!(fromReportId && pendingAmt > 0);
 
-    const payload: ICreateAdvancePayload = {
+    this.submitting.set(true);
+    const adv = this.advanceToResubmit();
+
+    if (adv) {
+      // Resubmit of a legacy Advance (old system)
+      const legacyPayload: ICreateAdvancePayload = {
+        amount: hasPending ? this.totalAnticipo() : linesTotal,
+        description: `Viático: ${place} (${startStr} → ${endStr})`,
+        place,
+        ...(this.selectedLat != null && { lat: this.selectedLat }),
+        ...(this.selectedLng != null && { lng: this.selectedLng }),
+        startDate: `${startStr}T12:00:00.000Z`,
+        endDate: `${endStr}T12:00:00.000Z`,
+        projectId: this.form.value.projectId as string,
+        lines: linesPayload,
+        observations: (this.form.value.observations || '').trim() || undefined,
+        ...(hasPending && {
+          pendingBalanceFromReportId: fromReportId!,
+          pendingBalanceAmount: pendingAmt,
+          additionalAmount: linesTotal,
+        }),
+      };
+      this.advanceService.resubmit(adv._id, legacyPayload).subscribe({
+        next: () => this.onSubmitSuccess(true),
+        error: (e) => this.onSubmitError(e),
+      });
+      return;
+    }
+
+    // New unified viatico (ExpenseReport type='viatico')
+    const viaticoPayload: ICreateViaticoPayload = {
       amount: hasPending ? this.totalAnticipo() : linesTotal,
-      description: metaDesc,
       place,
       ...(this.selectedLat != null && { lat: this.selectedLat }),
       ...(this.selectedLng != null && { lng: this.selectedLng }),
@@ -435,34 +466,32 @@ export class SolicitudViaticosComponent implements OnInit {
         additionalAmount: linesTotal,
       }),
     };
-
-    this.submitting.set(true);
-    const adv = this.advanceToResubmit();
-    const req = adv
-      ? this.advanceService.resubmit(adv._id, payload)
-      : this.advanceService.create(payload);
-
-    req.subscribe({
-      next: () => {
-        const msg = adv
-          ? 'Solicitud corregida y reenviada correctamente'
-          : 'Solicitud de viáticos enviada correctamente';
-        this.notifications.show(msg, 'success');
-        this.submitting.set(false);
-        const fromReport = this.pendingBalanceFromReportId();
-        if (fromReport) {
-          this.router.navigate(['/mis-rendiciones', fromReport, 'detalle']);
-        } else {
-          this.router.navigate(['/mis-rendiciones'], { queryParams: { tab: 'viaticos' } });
-        }
-      },
-      error: (e) => {
-        const raw = e?.error?.message;
-        const msg = Array.isArray(raw) ? raw.join(', ') : raw || 'Error al enviar la solicitud';
-        this.notifications.show(msg, 'error');
-        this.submitting.set(false);
-      },
+    this.expenseReportsService.createViatico(viaticoPayload).subscribe({
+      next: () => this.onSubmitSuccess(false),
+      error: (e) => this.onSubmitError(e),
     });
+
+  }
+
+  private onSubmitSuccess(isResubmit: boolean): void {
+    const msg = isResubmit
+      ? 'Solicitud corregida y reenviada correctamente'
+      : 'Solicitud de viáticos enviada correctamente';
+    this.notifications.show(msg, 'success');
+    this.submitting.set(false);
+    const fromReport = this.pendingBalanceFromReportId();
+    if (fromReport) {
+      this.router.navigate(['/mis-rendiciones', fromReport, 'detalle']);
+    } else {
+      this.router.navigate(['/mis-rendiciones'], { queryParams: { tab: 'viaticos' } });
+    }
+  }
+
+  private onSubmitError(e: any): void {
+    const raw = e?.error?.message;
+    const msg = Array.isArray(raw) ? raw.join(', ') : raw || 'Error al enviar la solicitud';
+    this.notifications.show(msg, 'error');
+    this.submitting.set(false);
   }
 
   private parseLocalDate(ymd: string): Date {

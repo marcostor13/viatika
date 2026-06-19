@@ -1,5 +1,80 @@
 export type IReopeningStatus = 'none' | 'requested' | 'approved';
 
+export type ExpenseReportType = 'rendicion' | 'viatico' | 'directa' | 'caja_chica';
+
+export type IExpenseReportStatus =
+  | 'solicited' | 'open' | 'submitted' | 'pending_accounting'
+  | 'approved' | 'rejected' | 'reimbursed' | 'closed' | 'cancelled'
+  | 'pending_l1' | 'pending_l2' | 'viatico_approved'
+  | 'partially_paid' | 'paid' | 'settled' | 'returned';
+
+export interface IViaticoLinePayload {
+  categoryId: string;
+  detalle?: string;
+  importe: number;
+  peopleCount: number;
+  glpPerDay: number;
+  days: number;
+  lineTotal: number;
+}
+
+export interface ICreateViaticoPayload {
+  amount: number;
+  place: string;
+  lat?: number;
+  lng?: number;
+  startDate: string;
+  endDate: string;
+  projectId: string;
+  lines: IViaticoLinePayload[];
+  observations?: string;
+  pendingBalanceFromReportId?: string;
+  pendingBalanceAmount?: number;
+  additionalAmount?: number;
+}
+
+export interface IResubmitViaticoPayload {
+  amount: number;
+  place: string;
+  lat?: number;
+  lng?: number;
+  startDate: string;
+  endDate: string;
+  projectId: string;
+  lines: IViaticoLinePayload[];
+  observations?: string;
+}
+
+export const VIATICO_REPORT_STATUS_LABELS: Partial<Record<IExpenseReportStatus, string>> = {
+  pending_l1: 'En solicitud',
+  pending_l2: 'Aprobada por coordinador',
+  viatico_approved: 'Aprobada',
+  partially_paid: 'Pago parcial',
+  open: 'Registrando gastos',
+  submitted: 'Enviada',
+  pending_accounting: 'En contabilidad',
+  approved: 'Aprobada',
+  settled: 'Liquidada',
+  returned: 'Saldo devuelto',
+  rejected: 'Rechazada',
+  cancelled: 'Cancelada',
+};
+
+export const VIATICO_REPORT_STATUS_COLORS: Partial<Record<IExpenseReportStatus, string>> = {
+  pending_l1: 'bg-yellow-100 text-yellow-700',
+  pending_l2: 'bg-orange-100 text-orange-700',
+  viatico_approved: 'bg-blue-100 text-blue-700',
+  partially_paid: 'bg-cyan-100 text-cyan-700',
+  open: 'bg-emerald-100 text-emerald-700',
+  submitted: 'bg-purple-100 text-purple-700',
+  pending_accounting: 'bg-violet-100 text-violet-700',
+  approved: 'bg-green-100 text-green-700',
+  settled: 'bg-teal-100 text-teal-700',
+  returned: 'bg-gray-100 text-gray-500',
+  rejected: 'bg-red-100 text-red-700',
+  cancelled: 'bg-gray-100 text-gray-500',
+};
+
 export interface IClosureRecord {
   closedAt: string;
   closedBy: string;
@@ -56,7 +131,22 @@ export interface IExpenseReport {
   budget: number;
   userId: any; // Ideally IUserResponse or string ID
   clientId: string;
-  status: 'solicited' | 'open' | 'submitted' | 'pending_accounting' | 'approved' | 'rejected' | 'reimbursed' | 'closed' | 'cancelled';
+  type?: ExpenseReportType;
+  status: IExpenseReportStatus;
+  // ─── Viático fields (type='viatico') ──────────────────────────────────────
+  viaticoAmount?: number;
+  viaticoPlace?: string;
+  viaticoStartDate?: string;
+  viaticoEndDate?: string;
+  viaticoLines?: any[];
+  viaticoPayments?: any[];
+  viaticoPaidAmount?: number;
+  viaticoApprovalLevel?: number;
+  viaticoRequiredLevels?: number;
+  viaticoApprovalHistory?: Array<{ level: number; approvedBy: string; action: string; notes?: string; date: string }>;
+  viaticoRejectionReason?: string;
+  viaticoObservations?: string;
+  viaticoSolicitudVersion?: number;
   /** Motivo indicado por el administrador al rechazar */
   rejectionReason?: string;
   /** Quién rechazó: coordinador (revisión inicial) o contabilidad (aprobación final). */
@@ -223,16 +313,7 @@ export interface IUpdateExpenseReport {
   title?: string;
   description?: string;
   budget?: number;
-  status?:
-    | 'solicited'
-    | 'open'
-    | 'submitted'
-    | 'pending_accounting'
-    | 'approved'
-    | 'rejected'
-    | 'reimbursed'
-    | 'closed'
-    | 'cancelled';
+  status?: IExpenseReportStatus;
   rejectionReason?: string;
   expenseIds?: string[];
   // New fields

@@ -144,8 +144,8 @@ export const routes: Routes = [
       {
         path: 'rendiciones',
         loadComponent: () =>
-          import('./modules/admin-users/rendiciones-admin/rendiciones-admin.component').then(
-            (m) => m.RendicionesAdminComponent
+          import('./modules/admin-users/rendiciones-admin/rendiciones-tabs.component').then(
+            (m) => m.RendicionesTabsComponent
           ),
         canActivate: [authModuleGuard('rendiciones')],
       },
@@ -285,14 +285,6 @@ export const routes: Routes = [
           ),
       },
       {
-        path: 'viaticos',
-        loadComponent: () =>
-          import('./modules/viaticos/viaticos.component').then(
-            (m) => m.ViaticosComponent
-          ),
-        canActivate: [AuthViaticosGuard],
-      },
-      {
         path: 'viaticos/:id',
         loadComponent: () =>
           import('./modules/viaticos/viaticos-detail/viaticos-detail.component').then(
@@ -302,11 +294,8 @@ export const routes: Routes = [
       },
       {
         path: 'rendiciones-directas',
-        loadComponent: () =>
-          import('./modules/rendiciones-directas/rendiciones-directas.component').then(
-            (m) => m.RendicionesDirectasComponent
-          ),
-        canActivate: [AuthAdmin2Guard],
+        redirectTo: '/rendiciones?tab=directas',
+        pathMatch: 'full',
       },
       {
         path: 'tesoreria',
@@ -414,11 +403,8 @@ export const routes: Routes = [
       },
       {
         path: 'rendiciones-caja-chica',
-        loadComponent: () =>
-          import('./modules/rendiciones-caja-chica/rendiciones-caja-chica.component').then(
-            (m) => m.RendicionesCajaChicaComponent
-          ),
-        canActivate: [AuthAdmin2Guard],
+        redirectTo: '/rendiciones?tab=caja-chica',
+        pathMatch: 'full',
       },
       {
         path: 'rendiciones-caja-chica/:id',

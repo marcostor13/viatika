@@ -2,28 +2,39 @@ import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router, ActivatedRoute, RouterModule } from '@angular/router';
+import { forkJoin } from 'rxjs';
 import { ExpenseReportsService } from '../../../services/expense-reports.service';
 import { AdminUsersService } from '../services/admin-users.service';
 import { InvoicesService } from '../../invoices/services/invoices.service';
 import { UserStateService } from '../../../services/user-state.service';
 import { NotificationService } from '../../../services/notification.service';
+import { AdvanceService } from '../../../services/advance.service';
 import { IExpenseReport } from '../../../interfaces/expense-report.interface';
+import { IAdvance, ADVANCE_STATUS_LABELS, ADVANCE_STATUS_COLORS } from '../../../interfaces/advance.interface';
 import { IUserResponse } from '../../../interfaces/user.interface';
 import { IProject } from '../../invoices/interfaces/project.interface';
 
-const STATUS_LABELS: Record<string, string> = {
+const REPORT_STATUS_LABELS: Record<string, string> = {
+  // Rendición normal
   solicited: 'Solicitada',
-  open: 'Abierta',
+  open: 'Registrando gastos',
   submitted: 'Enviada',
-  pending_accounting: 'Pendiente contabilidad',
+  pending_accounting: 'En contabilidad',
   approved: 'Aprobada',
   rejected: 'Rechazada',
-  reimbursed: 'Reembolsado',
+  reimbursed: 'Reembolsada',
   closed: 'Cerrada',
   cancelled: 'Cancelada',
+  // Fases de viático (estados iniciales = solicitud)
+  pending_l1: 'En solicitud',
+  pending_l2: 'Aprobada por coordinador',
+  viatico_approved: 'Aprobada',
+  partially_paid: 'Pago parcial',
+  settled: 'Liquidada',
+  returned: 'Saldo devuelto',
 };
 
-const STATUS_COLORS: Record<string, string> = {
+const REPORT_STATUS_COLORS: Record<string, string> = {
   solicited: 'bg-purple-100 text-purple-800',
   open: 'bg-blue-100 text-blue-800',
   submitted: 'bg-yellow-100 text-yellow-800',
@@ -33,6 +44,29 @@ const STATUS_COLORS: Record<string, string> = {
   reimbursed: 'bg-emerald-100 text-emerald-800',
   closed: 'bg-gray-100 text-gray-800',
   cancelled: 'bg-gray-100 text-gray-500',
+  pending_l1: 'bg-yellow-100 text-yellow-800',
+  pending_l2: 'bg-orange-100 text-orange-700',
+  viatico_approved: 'bg-blue-100 text-blue-800',
+  partially_paid: 'bg-amber-100 text-amber-700',
+  settled: 'bg-emerald-100 text-emerald-800',
+};
+
+export type UnifiedRendicionItem = {
+  _id: string;
+  source: 'report' | 'advance';
+  userName: string;
+  userInitials: string;
+  userId: string;
+  title: string;
+  projectName: string;
+  projectId: string;
+  amount: number;
+  status: string;
+  statusLabel: string;
+  statusColor: string;
+  createdAt: string;
+  canDeleteItem: boolean;
+  raw: IExpenseReport | IAdvance;
 };
 
 @Component({
@@ -49,9 +83,12 @@ export class RendicionesAdminComponent implements OnInit {
   private invoicesService = inject(InvoicesService);
   private userStateService = inject(UserStateService);
   private notifications = inject(NotificationService);
+  private advanceService = inject(AdvanceService);
 
-  allReports: IExpenseReport[] = [];
-  filteredReports: IExpenseReport[] = [];
+  private allReports: IExpenseReport[] = [];
+  private allOrphanedAdvances: IAdvance[] = [];
+
+  filteredItems: UnifiedRendicionItem[] = [];
   users: IUserResponse[] = [];
   projects: IProject[] = [];
 
@@ -64,9 +101,6 @@ export class RendicionesAdminComponent implements OnInit {
   filterDateFrom = '';
   filterDateTo = '';
 
-  readonly STATUS_LABELS = STATUS_LABELS;
-  readonly STATUS_COLORS = STATUS_COLORS;
-
   ngOnInit(): void {
     const preselectedUser = this.route.snapshot.queryParamMap.get('userId');
     if (preselectedUser) this.filterUserId = preselectedUser;
@@ -78,15 +112,13 @@ export class RendicionesAdminComponent implements OnInit {
     const clientId = currentUser?.companyId || currentUser?.clientId;
     if (!clientId) { this.isLoading = false; return; }
 
-    this.expenseReportsService.findAllByClient(clientId).subscribe({
-      next: (reports) => {
-        // Las rendiciones directas se gestionan en su propia sección
-        // (/rendiciones-directas). Aquí solo van las rendiciones con solicitud.
-        this.allReports = reports
-          .filter((r) => !r.isDirecta)
-          .sort(
-            (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-          );
+    forkJoin({
+      reports: this.expenseReportsService.findAllByClient(clientId),
+      advances: this.advanceService.findOrphaned(clientId),
+    }).subscribe({
+      next: ({ reports, advances }) => {
+        this.allReports = reports.filter((r) => !r.isDirecta);
+        this.allOrphanedAdvances = advances;
         this.applyFilters();
         this.isLoading = false;
       },
@@ -105,34 +137,78 @@ export class RendicionesAdminComponent implements OnInit {
   }
 
   applyFilters(): void {
-    let result = this.allReports;
+    const reportItems: UnifiedRendicionItem[] = this.allReports.map(r => {
+      const uid = typeof r.userId === 'object' ? r.userId?._id : r.userId;
+      const pid = typeof r.projectId === 'object' ? r.projectId?._id : r.projectId;
+      const name = this.getReportUserName(r);
+      return {
+        _id: r._id,
+        source: 'report' as const,
+        userName: name,
+        userInitials: this.initials(name),
+        userId: uid ?? '',
+        title: r.title || r.viaticoPlace || '—',
+        projectName: this.getProjectName(r),
+        projectId: pid ?? '',
+        amount: r.budget ?? 0,
+        status: r.status,
+        statusLabel: REPORT_STATUS_LABELS[r.status] ?? r.status,
+        statusColor: REPORT_STATUS_COLORS[r.status] ?? 'bg-gray-100 text-gray-700',
+        createdAt: r.createdAt,
+        canDeleteItem: this.canDeleteReport(r),
+        raw: r,
+      };
+    });
+
+    const advanceItems: UnifiedRendicionItem[] = this.allOrphanedAdvances.map(a => {
+      const u = typeof a.userId === 'object' ? a.userId : null;
+      const p = typeof a.projectId === 'object' ? a.projectId : null;
+      const uid = u ? (u as any)._id : (a.userId as string);
+      const pid = p ? (p as any)._id : (a.projectId as string ?? '');
+      const name = u ? (u as any).name ?? '—' : (this.users.find(x => x._id === uid)?.name ?? '—');
+      const projectName = p ? ((p as any).code ? `${(p as any).code} — ${(p as any).name}` : (p as any).name ?? '—') : '—';
+      return {
+        _id: a._id,
+        source: 'advance' as const,
+        userName: name,
+        userInitials: this.initials(name),
+        userId: uid ?? '',
+        title: a.place || a.description || '—',
+        projectName,
+        projectId: pid,
+        amount: a.amount ?? 0,
+        status: a.status,
+        statusLabel: ADVANCE_STATUS_LABELS[a.status] ?? a.status,
+        statusColor: ADVANCE_STATUS_COLORS[a.status] ?? 'bg-gray-100 text-gray-700',
+        createdAt: a.createdAt,
+        canDeleteItem: false,
+        raw: a,
+      };
+    });
+
+    const items = [...reportItems, ...advanceItems];
+
+    let result = items;
 
     if (this.filterUserId) {
-      result = result.filter(r => {
-        const uid = typeof r.userId === 'object' ? r.userId?._id : r.userId;
-        return uid === this.filterUserId;
-      });
+      result = result.filter(i => i.userId === this.filterUserId);
     }
-
     if (this.filterProjectId) {
-      result = result.filter(r => {
-        const pid = typeof r.projectId === 'object' ? r.projectId?._id : r.projectId;
-        return pid === this.filterProjectId;
-      });
+      result = result.filter(i => i.projectId === this.filterProjectId);
     }
-
     if (this.filterDateFrom) {
       const from = new Date(this.filterDateFrom).getTime();
-      result = result.filter(r => new Date(r.createdAt).getTime() >= from);
+      result = result.filter(i => new Date(i.createdAt).getTime() >= from);
     }
-
     if (this.filterDateTo) {
       const to = new Date(this.filterDateTo);
       to.setHours(23, 59, 59, 999);
-      result = result.filter(r => new Date(r.createdAt).getTime() <= to.getTime());
+      result = result.filter(i => new Date(i.createdAt).getTime() <= to.getTime());
     }
 
-    this.filteredReports = result;
+    this.filteredItems = result.sort(
+      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    );
   }
 
   clearFilters(): void {
@@ -147,56 +223,18 @@ export class RendicionesAdminComponent implements OnInit {
     return !!(this.filterUserId || this.filterProjectId || this.filterDateFrom || this.filterDateTo);
   }
 
-  getUserName(report: IExpenseReport): string {
-    if (typeof report.userId === 'object' && report.userId?.name) {
-      return report.userId.name;
+  goToDetail(item: UnifiedRendicionItem): void {
+    if (item.source === 'advance') {
+      this.router.navigate(['/viaticos', item._id]);
+    } else {
+      this.router.navigate(['/mis-rendiciones', item._id, 'detalle']);
     }
-    const user = this.users.find(u => u._id === report.userId);
-    return user?.name ?? '—';
   }
 
-  getProjectName(report: IExpenseReport): string {
-    if (!report.projectId) return '—';
-    if (typeof report.projectId === 'object' && report.projectId?.name) {
-      return report.projectId.name;
+  openDeleteModal(item: UnifiedRendicionItem): void {
+    if (item.source === 'report' && item.canDeleteItem) {
+      this.reportToDelete = item.raw as IExpenseReport;
     }
-    const project = this.projects.find(p => p._id === report.projectId);
-    return project?.name ?? '—';
-  }
-
-  getUserId(report: IExpenseReport): string {
-    return typeof report.userId === 'object' ? report.userId?._id : report.userId;
-  }
-
-  getUserInitials(report: IExpenseReport): string {
-    const name = this.getUserName(report);
-    if (!name || name === '—') return '?';
-    return name
-      .split(/\s+/)
-      .filter(Boolean)
-      .slice(0, 2)
-      .map(part => part.charAt(0).toUpperCase())
-      .join('');
-  }
-
-  goToDetail(report: IExpenseReport): void {
-    this.router.navigate(['/mis-rendiciones', report._id, 'detalle']);
-  }
-
-  goToUserDetail(report: IExpenseReport): void {
-    const uid = this.getUserId(report);
-    if (uid) this.router.navigate(['/admin-users', uid, 'details']);
-  }
-
-  canDelete(report: IExpenseReport): boolean {
-    // Contabilidad no puede eliminar rendiciones: evita borrar viáticos con
-    // saldo ya pagado y generar incongruencias.
-    if (this.userStateService.isContabilidad()) return false;
-    return report.expenseIds.length === 0;
-  }
-
-  openDeleteModal(report: IExpenseReport): void {
-    this.reportToDelete = report;
   }
 
   cancelDelete(): void {
@@ -221,5 +259,38 @@ export class RendicionesAdminComponent implements OnInit {
         this.notifications.show(msg, 'error');
       },
     });
+  }
+
+  private canDeleteReport(report: IExpenseReport): boolean {
+    if (this.userStateService.isContabilidad()) return false;
+    return report.expenseIds.length === 0;
+  }
+
+  private getReportUserName(report: IExpenseReport): string {
+    if (typeof report.userId === 'object' && report.userId?.name) return report.userId.name;
+    const user = this.users.find(u => u._id === report.userId);
+    return user?.name ?? '—';
+  }
+
+  private getProjectName(report: IExpenseReport): string {
+    if (!report.projectId) return '—';
+    if (typeof report.projectId === 'object' && report.projectId?.name) return report.projectId.name;
+    const project = this.projects.find(p => p._id === report.projectId);
+    return project?.name ?? '—';
+  }
+
+  private initials(name: string): string {
+    if (!name || name === '—') return '?';
+    return name.split(/\s+/).filter(Boolean).slice(0, 2).map(p => p.charAt(0).toUpperCase()).join('');
+  }
+
+  // Needed for delete modal display
+  getDeleteItemName(): string {
+    return this.reportToDelete
+      ? this.getReportUserName(this.reportToDelete)
+      : '—';
+  }
+  getDeleteItemTitle(): string {
+    return this.reportToDelete?.title ?? '—';
   }
 }

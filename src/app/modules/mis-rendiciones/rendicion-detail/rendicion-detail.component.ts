@@ -141,10 +141,29 @@ export class RendicionDetailComponent implements OnInit {
     if (this.hasPendingBalanceCredit) {
       return this.pendingBalanceCreditAmount - this.totalGastado;
     }
+    // Para viáticos unificados: calcular siempre desde viaticoPaidAmount para
+    // evitar usar un settlement stale que fue calculado con advanceTotal=0.
+    if (this.report?.type === 'viatico') {
+      const viaticoPaid = Number((this.report as any)?.viaticoPaidAmount ?? 0);
+      return viaticoPaid - this.totalGastado;
+    }
     if (this.settlement?.difference !== undefined && this.settlement.difference !== null) {
       return this.settlement.difference;
     }
     return this.totalAnticipado - this.totalGastado;
+  }
+
+  /** Tipo de settlement efectivo para viáticos: calculado en vivo desde viaticoPaidAmount. */
+  private get effectiveSettlementType(): string | undefined {
+    if (this.report?.type === 'viatico') {
+      const viaticoPaid = Number((this.report as any)?.viaticoPaidAmount ?? 0);
+      if (viaticoPaid <= 0 && this.totalGastado <= 0) {
+        return (this.report as any)?.settlement?.type;
+      }
+      const diff = viaticoPaid - this.totalGastado;
+      return Math.abs(diff) < 0.01 ? 'equilibrado' : diff > 0 ? 'devolucion' : 'reembolso';
+    }
+    return (this.report as any)?.settlement?.type;
   }
 
   /** Rendición directa iniciada por Contabilidad (tiene depósito con saldo). */
@@ -213,9 +232,14 @@ export class RendicionDetailComponent implements OnInit {
     const advances = this.advances
       .filter(a => ['approved', 'partially_paid', 'paid', 'settled'].includes(a.status))
       .reduce((sum, a) => sum + Number(a.paidAmount ?? a.amount), 0);
+    // Para viáticos unificados (type='viatico'), el monto pagado está en viaticoPaidAmount
+    // del propio ExpenseReport, no en Advances vinculados.
+    const viaticoPaid = this.report?.type === 'viatico'
+      ? Number((this.report as any).viaticoPaidAmount ?? 0)
+      : 0;
     // El depósito de una rendición directa iniciada por Contabilidad funciona como
     // anticipo: el saldo no gastado debe devolverlo el colaborador/coordinador.
-    return advances + (this.hasDirectaDeposit ? this.directaDeposited : 0);
+    return advances + viaticoPaid + (this.hasDirectaDeposit ? this.directaDeposited : 0);
   }
 
   get paidAdvances(): IAdvance[] {
@@ -264,6 +288,22 @@ export class RendicionDetailComponent implements OnInit {
         this.updateDocCounts(data);
         this.isLoading = false;
         this.loadExpensesPage(1);
+        // Auto-cierre: viáticos equilibrados que quedaron en 'approved' por datos stale.
+        if (
+          (data as any)?.type === 'viatico' &&
+          data?.status === 'approved' &&
+          this.effectiveSettlementType === 'equilibrado' &&
+          this.userStateService.isContabilidad()
+        ) {
+          this.expenseReportsService.close(this.id).subscribe({
+            next: (closed) => {
+              this.report = closed;
+              this.calculateTotals();
+              this.updateDocCounts(closed);
+            },
+            error: () => {},
+          });
+        }
       },
       error: (err) => {
         console.error('Error fetching report detail', err);
@@ -329,7 +369,7 @@ export class RendicionDetailComponent implements OnInit {
     if (this.isAdminView && ownerId && canViewAdminUsers) {
       this.router.navigate(['/admin-users', ownerId, 'details']);
     } else if (this.isAdminView && this.userStateService.isContabilidad()) {
-      this.router.navigate([this.report?.isDirecta ? '/rendiciones-directas' : '/rendiciones']);
+      this.router.navigate(['/rendiciones'], this.report?.isDirecta ? { queryParams: { tab: 'directas' } } : {});
     } else if (this.isAdminView) {
       this.router.navigate(['/tesoreria']);
     } else {
@@ -1153,7 +1193,7 @@ export class RendicionDetailComponent implements OnInit {
   getReportStatusLabel(): string {
     if (!this.report) return '';
     if (this.report.isDirecta) {
-      const directaLabels: Record<IExpenseReport['status'], string> = {
+      const directaLabels: Partial<Record<IExpenseReport['status'], string>> = {
         solicited: 'Solicitada',
         open: 'Abierta',
         submitted: 'Enviada',
@@ -1166,7 +1206,7 @@ export class RendicionDetailComponent implements OnInit {
       };
       return directaLabels[this.report.status] ?? this.report.status;
     }
-    const labels: Record<IExpenseReport['status'], string> = {
+    const labels: Partial<Record<IExpenseReport['status'], string>> = {
       solicited: 'Solicitada',
       open: 'Abierta',
       submitted: 'Enviada',
@@ -1658,7 +1698,7 @@ export class RendicionDetailComponent implements OnInit {
 
   /** Devuelve true cuando el saldo esperado corresponde a una devolución del colaborador. */
   private get isDevolucionExpected(): boolean {
-    const settlementType = (this.report as any)?.settlement?.type;
+    const settlementType = this.effectiveSettlementType;
     return settlementType === 'devolucion' || (!settlementType && this.saldoLibre > 0.01);
   }
 
@@ -1682,7 +1722,7 @@ export class RendicionDetailComponent implements OnInit {
 
   /** Devuelve true cuando el saldo esperado corresponde a un reembolso al colaborador. */
   private get isReembolsoExpected(): boolean {
-    const settlementType = (this.report as any)?.settlement?.type;
+    const settlementType = this.effectiveSettlementType;
     return settlementType === 'reembolso' || (!settlementType && this.saldoLibre < -0.01);
   }
 
