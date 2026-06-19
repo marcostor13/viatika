@@ -827,8 +827,21 @@ export class MisRendicionesComponent implements OnInit {
 
   // ─── Helpers for legacy rendiciones in unified list ───────────────────────
 
+  /**
+   * Una rendición se considera cerrada (a efectos del label) cuando su saldo
+   * pendiente ya fue resuelto: trasladado a otra solicitud o devuelto con
+   * comprobante. Mismo criterio que el detalle (`isEffectivelyClosed`).
+   */
+  isReportEffectivelyClosed(report: IExpenseReport): boolean {
+    return report.status === 'closed'
+      || !!(report as any).pendingBalanceUsedInRendicionId
+      || !!(report as any).pendingBalanceUsedInAdvanceId
+      || !!(report as any).returnVoucher;
+  }
+
   getLegacyReportLabel(report: IExpenseReport): string {
     if (this.isReportInProgress(report)) return 'Registrando gastos';
+    if (this.isReportEffectivelyClosed(report)) return 'Cerrada';
     const map: Partial<Record<string, string>> = {
       solicited: 'Solicitada', open: 'Abierta', submitted: 'Enviada',
       pending_accounting: 'En contabilidad', approved: 'Aprobada',
@@ -840,6 +853,7 @@ export class MisRendicionesComponent implements OnInit {
 
   getLegacyReportColor(report: IExpenseReport): string {
     if (this.isReportInProgress(report)) return 'bg-emerald-100 text-emerald-700';
+    if (this.isReportEffectivelyClosed(report)) return 'bg-gray-100 text-gray-500';
     const map: Partial<Record<string, string>> = {
       solicited: 'bg-purple-100 text-purple-700', open: 'bg-green-100 text-green-700',
       submitted: 'bg-yellow-100 text-yellow-700', pending_accounting: 'bg-violet-100 text-violet-700',
@@ -1031,6 +1045,7 @@ export class MisRendicionesComponent implements OnInit {
 
   panelStatusText(report: IExpenseReport): string {
     if (this.isReportInProgress(report)) return 'EN PROGRESO - REGISTRANDO GASTOS';
+    if (this.isReportEffectivelyClosed(report)) return 'CERRADA';
     const map: Partial<Record<IExpenseReport['status'], string>> = {
       solicited: 'SOLICITADA',
       open: 'ABIERTA',
