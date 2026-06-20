@@ -1593,8 +1593,11 @@ export class RendicionDetailComponent implements OnInit, OnDestroy {
     if (this.hasPendingBalanceCredit) {
       const rawDate = this.report.createdAt;
       const fechaSolicitud = rawDate ? this.formatEmissionDate(rawDate) : '—';
+      const origenCodigo = this.report.pendingBalanceFromCodigo;
       anticipos.unshift({
-        descripcion: 'Saldo heredado (rendición anterior)',
+        descripcion: origenCodigo
+          ? `Saldo heredado (${origenCodigo})`
+          : 'Saldo heredado (rendición anterior)',
         monto: this.pendingBalanceCreditAmount,
         estado: 'Traspasado',
         fechaSolicitud,
@@ -1878,6 +1881,14 @@ export class RendicionDetailComponent implements OnInit, OnDestroy {
 
   get pendingBalanceCreditAmount(): number {
     return Number(this.report?.pendingBalanceAmount ?? 0);
+  }
+
+  /** Texto del origen del saldo heredado: el código de la rendición fuente si se conoce. */
+  get pendingBalanceFromLabel(): string {
+    const codigo = this.report?.pendingBalanceFromCodigo;
+    return codigo
+      ? `Traspasado desde ${codigo}`
+      : 'Traspasado desde rendición anterior';
   }
 
   /** Devuelve true cuando el saldo esperado corresponde a una devolución del colaborador. */

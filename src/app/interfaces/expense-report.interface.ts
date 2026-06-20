@@ -237,6 +237,8 @@ export interface IExpenseReport {
   saldoIds?: IReportFinancingSaldo[];
   /** ID de la rendición directa de la que proviene el saldo heredado. */
   pendingBalanceFromReportId?: string;
+  /** Código (RD-XXXX) de la rendición de origen del saldo heredado (derivado en backend). */
+  pendingBalanceFromCodigo?: string;
   /** Monto heredado desde la rendición directa de origen. */
   pendingBalanceAmount?: number;
   /** ID de la rendición directa que consumió el saldo de esta. */
