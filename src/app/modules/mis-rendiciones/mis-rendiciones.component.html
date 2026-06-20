@@ -31,8 +31,8 @@
       [class.text-gray-500]="activeTab() !== 'viaticos'"
     >
       Mis viáticos
-      @if (pendingAdvances.length > 0) {
-        <span class="ml-1.5 px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-primary/10 text-primary">{{ pendingAdvances.length }}</span>
+      @if (viaticoTabBadgeCount > 0) {
+        <span class="ml-1.5 px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-primary/10 text-primary">{{ viaticoTabBadgeCount }}</span>
       }
     </button>
     }
@@ -71,7 +71,7 @@
   </div>
 
   <!-- ════════════════════════════════════════════════════════════ -->
-  <!-- TAB 1: MIS VIÁTICOS                                         -->
+  <!-- TAB 1: MIS VIÁTICOS (UNIFIED)                               -->
   <!-- ════════════════════════════════════════════════════════════ -->
   @if (activeTab() === 'viaticos') {
 
@@ -80,12 +80,12 @@
     <button
       type="button"
       (click)="openViaticosModal()"
-      class="inline-flex items-center gap-2 px-4 py-2.5 border border-primary text-primary bg-white text-sm font-semibold rounded-lg hover:bg-primary/5 active:scale-[0.98] transition-all"
+      class="inline-flex items-center gap-2 px-4 py-2.5 bg-primary text-white text-sm font-semibold rounded-lg hover:bg-primary/90 active:scale-[0.98] transition-all shadow-sm"
     >
       <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4">
         <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
       </svg>
-      Solicitud de viáticos
+      Solicitar viáticos
     </button>
   </div>
 
@@ -94,55 +94,25 @@
     <div class="flex flex-wrap gap-3 items-end">
 
       <div class="flex flex-col gap-1">
-        <label class="text-xs font-semibold text-gray-500 uppercase tracking-wider">Tipo de rendición</label>
-        <select
-          [value]="viaticosTypeFilter()"
-          (change)="viaticosTypeFilter.set($any($event.target).value)"
-          class="h-9 pl-3 pr-8 rounded-lg border border-gray-200 bg-white text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-primary/30"
-        >
-          <option value="">Todos</option>
-          <option value="solicitudes">Solicitudes de viáticos</option>
-          <option value="rendiciones">Rendiciones de viáticos</option>
-        </select>
-      </div>
-
-      @if (viaticosTypeFilter() !== 'rendiciones') {
-      <div class="flex flex-col gap-1">
-        <label class="text-xs font-semibold text-gray-500 uppercase tracking-wider">Estado solicitud</label>
-        <select
-          [value]="advancesStatusFilter()"
-          (change)="advancesStatusFilter.set($any($event.target).value)"
-          class="h-9 pl-3 pr-8 rounded-lg border border-gray-200 bg-white text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-primary/30"
-        >
-          <option value="">Todos</option>
-          <option value="pending_l1">Pendiente L1</option>
-          <option value="pending_l2">Pendiente L2</option>
-          <option value="approved">Aprobado</option>
-          <option value="paid">Pagado</option>
-          <option value="rejected">Rechazado</option>
-          <option value="cancelled">Cancelado</option>
-        </select>
-      </div>
-      }
-
-      @if (viaticosTypeFilter() !== 'solicitudes') {
-      <div class="flex flex-col gap-1">
-        <label class="text-xs font-semibold text-gray-500 uppercase tracking-wider">Estado rendición</label>
+        <label class="text-xs font-semibold text-gray-500 uppercase tracking-wider">Estado</label>
         <select
           [value]="viaticosStatusFilter()"
           (change)="viaticosStatusFilter.set($any($event.target).value)"
           class="h-9 pl-3 pr-8 rounded-lg border border-gray-200 bg-white text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-primary/30"
         >
           <option value="">Todos</option>
-          <option value="solicited">Solicitada</option>
-          <option value="open">Abierta</option>
+          <option value="pending_l1">Pendiente aprobación</option>
+          <option value="pending_l2">Aprobado por coord.</option>
+          <option value="viatico_approved">Aprobado</option>
+          <option value="partially_paid">Pago parcial</option>
+          <option value="open">Registrando gastos</option>
           <option value="submitted">Enviada</option>
           <option value="approved">Aprobada</option>
+          <option value="settled">Liquidada</option>
           <option value="rejected">Rechazada</option>
           <option value="cancelled">Cancelada</option>
         </select>
       </div>
-      }
 
       <div class="flex flex-col gap-1">
         <label class="text-xs font-semibold text-gray-500 uppercase tracking-wider">Desde</label>
@@ -178,292 +148,164 @@
     </div>
   </div>
 
-  @if (isLoading) {
+  @if (viaticoReportsLoading() || isLoading) {
     <div class="flex justify-center py-16">
       <span class="w-8 h-8 border-4 border-primary/20 border-t-primary rounded-full animate-spin"></span>
     </div>
   } @else {
 
-    <!-- ── Solicitudes de viáticos ────────────────────────────── -->
-    @if (viaticosTypeFilter() !== 'rendiciones') {
-    <div class="mb-8">
-      <div class="flex items-center gap-2 mb-3">
-        <h2 class="text-sm font-bold text-gray-700 uppercase tracking-wider">Solicitudes de viáticos</h2>
-        <span class="px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-gray-100 text-gray-500">{{ filteredPendingAdvances.length }}</span>
-      </div>
-
-      @if (filteredPendingAdvances.length === 0) {
-        <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-8 text-center">
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-10 h-10 mx-auto text-gray-300 mb-3">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5a1.125 1.125 0 0 1-1.125-1.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H9.75" />
+    @if (unifiedViaticoList.length === 0) {
+      <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-10 text-center">
+        <div class="w-14 h-14 mx-auto mb-4 rounded-full bg-primary/5 flex items-center justify-center">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-7 h-7 text-primary/40">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 18.75a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 0 1-1.125-1.125V14.25m17.25 4.5a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m3 0h1.125c.621 0 1.129-.504 1.09-1.124a17.902 17.902 0 0 0-3.213-9.193 2.056 2.056 0 0 0-1.58-.86H14.25M16.5 18.75h-2.25m0-11.177v-.958c0-.568-.422-1.048-.987-1.106a48.554 48.554 0 0 0-10.026 0 1.106 1.106 0 0 0-.987 1.106v7.635m12-6.677v6.677m0 4.5v-4.5m0 0h-12" />
           </svg>
-          <p class="text-sm text-gray-500">No hay solicitudes de viáticos activas.</p>
         </div>
-      } @else {
-        <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-          <div class="overflow-x-auto">
-            <table class="w-full min-w-[640px] text-sm">
-              <thead>
-                <tr class="bg-gray-50 border-b border-gray-200">
-                  <th class="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Estado</th>
-                  <th class="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Centro de costo</th>
-                  <th class="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider hidden md:table-cell">Destino</th>
-                  <th class="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider hidden lg:table-cell">Fechas</th>
-                  <th class="text-right px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Monto</th>
-                  <th class="text-right px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Acciones</th>
-                </tr>
-              </thead>
-              <tbody class="divide-y divide-gray-100">
-                @for (adv of filteredPendingAdvances; track adv._id) {
-                <tr class="hover:bg-gray-50 transition-colors">
+        @if (viaticosStatusFilter() || viaticosDateFrom() || viaticosDateTo()) {
+          <p class="text-sm font-semibold text-gray-900 mb-1">Sin resultados</p>
+          <p class="text-xs text-gray-500 mb-4">No hay registros que coincidan con los filtros aplicados.</p>
+          <button type="button" (click)="clearViaticosFilters()"
+            class="inline-flex items-center gap-2 px-4 py-2 border border-gray-300 text-gray-600 text-sm font-semibold rounded-lg hover:bg-gray-50 transition-all">
+            Limpiar filtros
+          </button>
+        } @else {
+          <p class="text-sm font-semibold text-gray-900 mb-1">Sin viáticos aún</p>
+          <p class="text-xs text-gray-500 mb-4">Crea tu primera solicitud de viáticos para comenzar el proceso.</p>
+          <button type="button" (click)="openViaticosModal()"
+            class="inline-flex items-center gap-2 px-4 py-2 bg-primary text-white text-sm font-semibold rounded-lg hover:bg-primary/90 transition-all">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+            </svg>
+            Solicitar viáticos
+          </button>
+        }
+      </div>
+    } @else {
+      <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+        <div class="overflow-x-auto">
+          <table class="w-full min-w-[700px] text-sm">
+            <thead>
+              <tr class="bg-gray-50 border-b border-gray-200">
+                <th class="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Fecha</th>
+                <th class="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Estado</th>
+                <th class="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Centro de costo</th>
+                <th class="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider hidden md:table-cell">Destino</th>
+                <th class="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider hidden lg:table-cell">Período</th>
+                <th class="text-right px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Monto</th>
+                <th class="text-center px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider hidden md:table-cell">Comprobantes</th>
+                <th class="text-right px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Acciones</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-100">
+              @for (item of unifiedViaticoList; track item._id) {
+              <tr class="hover:bg-gray-50 transition-colors"
+                [class.cursor-pointer]="item.source !== 'advance' || item.canEdit || item.canResubmit"
+                (click)="navigateToUnifiedItem(item, $event)">
 
-                  <td class="px-4 py-3.5">
-                    <span class="inline-flex px-2 py-0.5 rounded-full text-xs font-semibold" [class]="ADVANCE_STATUS_COLORS[adv.status]">
-                      {{ ADVANCE_STATUS_LABELS[adv.status] }}
-                    </span>
-                    @if (adv.status === 'rejected' && adv.rejectionReason) {
-                      <p class="text-[11px] text-red-600 mt-1 line-clamp-1 max-w-[180px]">{{ adv.rejectionReason }}</p>
+                <!-- Fecha -->
+                <td class="px-4 py-3.5 whitespace-nowrap">
+                  <p class="text-xs text-gray-500">{{ item.createdAt | date:'dd/MM/yyyy' }}</p>
+                </td>
+
+                <!-- Estado -->
+                <td class="px-4 py-3.5">
+                  <span class="inline-flex px-2 py-0.5 rounded-full text-xs font-semibold" [class]="item.statusColor">
+                    {{ item.statusLabel }}
+                  </span>
+                </td>
+
+                <!-- Centro de costo -->
+                <td class="px-4 py-3.5 max-w-[180px]">
+                  <p class="font-medium text-gray-900 truncate">{{ item.projectLabel }}</p>
+                </td>
+
+                <!-- Destino -->
+                <td class="px-4 py-3.5 hidden md:table-cell text-gray-600 max-w-[140px]">
+                  <span class="line-clamp-1">{{ item.place }}</span>
+                </td>
+
+                <!-- Período -->
+                <td class="px-4 py-3.5 hidden lg:table-cell text-xs text-gray-500">
+                  {{ item.dateRange || '—' }}
+                </td>
+
+                <!-- Monto -->
+                <td class="px-4 py-3.5 text-right font-bold text-gray-900 whitespace-nowrap tabular-nums">
+                  S/ {{ item.amount | number:'1.2-2' }}
+                </td>
+
+                <!-- Comprobantes -->
+                <td class="px-4 py-3.5 hidden md:table-cell text-center text-gray-600">
+                  <span class="text-xs">{{ item.expensesCount }}</span>
+                </td>
+
+                <!-- Acciones -->
+                <td class="px-4 py-3.5 text-right">
+                  <div class="flex items-center justify-end gap-1" (click)="$event.stopPropagation()">
+
+                    @if (item.isInExpensePhase) {
+                      <button type="button"
+                        (click)="navigateToUnifiedItem(item, $event)"
+                        class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 transition-colors">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-3.5 h-3.5">
+                          <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                        </svg>
+                        Registrar gastos
+                      </button>
+                    } @else if (item.canResubmit) {
+                      <button type="button"
+                        (click)="editUnifiedItem(item, $event)"
+                        class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-primary text-white hover:bg-primary/90 transition-colors">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-3.5 h-3.5">
+                          <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" />
+                        </svg>
+                        Corregir
+                      </button>
+                    } @else if (item.canEdit) {
+                      <button type="button"
+                        (click)="editUnifiedItem(item, $event)"
+                        title="Editar solicitud"
+                        class="p-1.5 rounded-lg text-gray-400 hover:text-primary hover:bg-primary/10 transition-colors">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
+                          <path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10" />
+                        </svg>
+                      </button>
+                    } @else if (item.source !== 'advance') {
+                      <button type="button"
+                        (click)="navigateToUnifiedItem(item, $event)"
+                        title="Ver detalle"
+                        class="p-1.5 rounded-lg text-gray-400 hover:text-primary hover:bg-primary/10 transition-colors">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
+                          <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" />
+                        </svg>
+                      </button>
+                    } @else {
+                      <span class="text-xs text-gray-400 italic px-1">—</span>
                     }
-                    @if (adv.solicitudVersion && adv.solicitudVersion > 1) {
-                      <span class="ml-1 text-[10px] text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded-full">v{{ adv.solicitudVersion }}</span>
+
+                    @if (canDeleteUnifiedItem(item)) {
+                      <button type="button"
+                        (click)="deleteUnifiedItem(item, $event)"
+                        title="Eliminar"
+                        class="p-1.5 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
+                          <path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
+                        </svg>
+                      </button>
                     }
-                  </td>
 
-                  <td class="px-4 py-3.5 max-w-[200px]">
-                    <p class="font-medium text-gray-900 truncate">{{ advanceProjectLabel(adv) }}</p>
-                    @if (adv.description) {
-                      <p class="text-xs text-gray-500 truncate">{{ adv.description }}</p>
-                    }
-                  </td>
+                  </div>
+                </td>
 
-                  <td class="px-4 py-3.5 hidden md:table-cell text-gray-600 max-w-[160px]">
-                    <span class="line-clamp-1">{{ adv.place || '—' }}</span>
-                  </td>
-
-                  <td class="px-4 py-3.5 hidden lg:table-cell text-xs text-gray-500 whitespace-nowrap">
-                    {{ advanceDateRange(adv) || '—' }}
-                  </td>
-
-                  <td class="px-4 py-3.5 text-right font-bold text-gray-900 whitespace-nowrap tabular-nums">
-                    S/ {{ adv.amount | number:'1.2-2' }}
-                  </td>
-
-                  <td class="px-4 py-3.5 text-right">
-                    <div class="flex items-center justify-end gap-1">
-                      @if (adv.status === 'pending_l1') {
-                        <button
-                          type="button"
-                          (click)="openResubmitAdvance(adv)"
-                          title="Editar solicitud"
-                          class="p-1.5 rounded-lg text-gray-400 hover:text-primary hover:bg-primary/10 transition-colors"
-                        >
-                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10" />
-                          </svg>
-                        </button>
-                        <button
-                          type="button"
-                          (click)="openCancelAdvanceModal(adv)"
-                          title="Cancelar solicitud"
-                          class="p-1.5 rounded-lg text-gray-400 hover:text-amber-600 hover:bg-amber-50 transition-colors"
-                        >
-                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M18.364 18.364A9 9 0 0 0 5.636 5.636m12.728 12.728A9 9 0 0 1 5.636 5.636m12.728 12.728L5.636 5.636" />
-                          </svg>
-                        </button>
-                      }
-                      @if (adv.status === 'rejected') {
-                        <button
-                          type="button"
-                          (click)="openResubmitAdvance(adv)"
-                          title="Corregir y reenviar"
-                          class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-primary text-white hover:bg-primary/90 transition-colors"
-                        >
-                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-3.5 h-3.5">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" />
-                          </svg>
-                          Corregir
-                        </button>
-                      }
-                      @if (canDeleteAdvance(adv)) {
-                        <button
-                          type="button"
-                          (click)="openDeleteAdvanceModal(adv)"
-                          title="Eliminar solicitud"
-                          class="p-1.5 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors"
-                        >
-                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
-                          </svg>
-                        </button>
-                      }
-                      @if (adv.status !== 'pending_l1' && adv.status !== 'rejected') {
-                        <span class="text-xs text-gray-400 italic">—</span>
-                      }
-                    </div>
-                  </td>
-
-                </tr>
-                }
-              </tbody>
-            </table>
-          </div>
+              </tr>
+              }
+            </tbody>
+          </table>
         </div>
-      }
-    </div>
+      </div>
     }
 
-    <!-- ── Rendiciones de viáticos ────────────────────────────── -->
-    @if (viaticosTypeFilter() !== 'solicitudes') {
-    <div>
-      <div class="flex items-center gap-2 mb-3">
-        <h2 class="text-sm font-bold text-gray-700 uppercase tracking-wider">Rendiciones de viáticos</h2>
-        <span class="px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-gray-100 text-gray-500">{{ filteredViaticosReports.length }}</span>
-      </div>
-
-      @if (filteredViaticosReports.length === 0) {
-        <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-10 text-center">
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-10 h-10 mx-auto text-gray-300 mb-3">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
-          </svg>
-          <p class="text-sm font-medium text-gray-900 mb-1">No hay rendiciones</p>
-          <p class="text-xs text-gray-500">Crea una solicitud de viáticos o ajusta los filtros.</p>
-        </div>
-      } @else {
-        <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-          <div class="overflow-x-auto">
-            <table class="w-full min-w-[700px] text-sm">
-              <thead>
-                <tr class="bg-gray-50 border-b border-gray-200">
-                  <th class="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Fecha</th>
-                  <th class="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Estado</th>
-                  <th class="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Descripción</th>
-                  <th class="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider hidden md:table-cell">Destino</th>
-                  <th class="text-right px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider hidden lg:table-cell">Presupuesto</th>
-                  <th class="text-right px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider hidden lg:table-cell">Saldo</th>
-                  <th class="text-center px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider hidden md:table-cell">Comprobantes</th>
-                  <th class="text-right px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Acciones</th>
-                </tr>
-              </thead>
-              <tbody class="divide-y divide-gray-100">
-                @for (report of filteredViaticosReports; track report._id) {
-                <tr class="hover:bg-gray-50 transition-colors">
-
-                  <td class="px-4 py-3.5 whitespace-nowrap">
-                    <p class="text-xs text-gray-500">{{ report.createdAt | date:'dd/MM/yyyy' }}</p>
-                    @if (reportDateRange(report)) {
-                      <p class="text-[11px] text-gray-400 mt-0.5">{{ reportDateRange(report) }}</p>
-                    }
-                  </td>
-
-                  <td class="px-4 py-3.5">
-                    <span class="inline-flex px-2 py-0.5 rounded-full text-xs font-semibold"
-                      [ngClass]="{
-                        'bg-purple-100 text-purple-700': report.status === 'solicited',
-                        'bg-green-100 text-green-700': report.status === 'open',
-                        'bg-yellow-100 text-yellow-700': report.status === 'submitted',
-                        'bg-blue-100 text-blue-700': report.status === 'approved',
-                        'bg-red-100 text-red-700': report.status === 'rejected',
-                        'bg-gray-100 text-gray-600': report.status === 'closed' || report.status === 'cancelled',
-                        'bg-emerald-100 text-emerald-700': isReportInProgress(report)
-                      }"
-                    >
-                      {{ panelStatusText(report) }}
-                    </span>
-                    @if (report.status === 'rejected' && report.rejectionReason) {
-                      <p class="text-[11px] text-red-600 mt-1 line-clamp-1 max-w-[160px]">{{ report.rejectionReason }}</p>
-                    }
-                  </td>
-
-                  <td class="px-4 py-3.5 max-w-[200px]">
-                    <p class="font-medium text-gray-900 truncate">{{ reportDisplayTitle(report) }}</p>
-                  </td>
-
-                  <td class="px-4 py-3.5 hidden md:table-cell text-gray-600 max-w-[160px]">
-                    <span class="line-clamp-1">{{ report.location || '—' }}</span>
-                  </td>
-
-                  <td class="px-4 py-3.5 hidden lg:table-cell text-right font-semibold text-gray-900 whitespace-nowrap tabular-nums">
-                    S/ {{ report.budget | number:'1.2-2' }}
-                  </td>
-
-                  <td class="px-4 py-3.5 hidden lg:table-cell text-right whitespace-nowrap tabular-nums"
-                    [ngClass]="getSaldoLibre(report) >= 0 ? 'text-green-600 font-semibold' : 'text-red-600 font-semibold'">
-                    S/ {{ getSaldoLibre(report) | number:'1.2-2' }}
-                  </td>
-
-                  <td class="px-4 py-3.5 hidden md:table-cell text-center text-gray-600">
-                    <span class="inline-flex items-center gap-1 text-xs">
-                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-3.5 h-3.5 text-gray-400">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
-                      </svg>
-                      {{ report.expenseIds.length }}
-                    </span>
-                  </td>
-
-                  <td class="px-4 py-3.5 text-right">
-                    <div class="flex items-center justify-end gap-1">
-                      @if (isReportInProgress(report)) {
-                        <button
-                          type="button"
-                          (click)="goToReportDetail(report, $event)"
-                          class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 transition-colors"
-                        >
-                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-3.5 h-3.5">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-                          </svg>
-                          Registrar gastos
-                        </button>
-                      } @else {
-                        <button
-                          type="button"
-                          (click)="goToReportDetail(report, $event)"
-                          title="Ver detalle"
-                          class="p-1.5 rounded-lg text-gray-400 hover:text-primary hover:bg-primary/10 transition-colors"
-                        >
-                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" />
-                          </svg>
-                        </button>
-                      }
-                      @if (report.status === 'solicited') {
-                        <button
-                          type="button"
-                          (click)="openCancelReportModal(report, $event)"
-                          title="Cancelar rendición"
-                          class="p-1.5 rounded-lg text-gray-400 hover:text-amber-600 hover:bg-amber-50 transition-colors"
-                        >
-                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M18.364 18.364A9 9 0 0 0 5.636 5.636m12.728 12.728A9 9 0 0 1 5.636 5.636m12.728 12.728L5.636 5.636" />
-                          </svg>
-                        </button>
-                      }
-                      @if (canDeleteReport(report)) {
-                        <button
-                          type="button"
-                          (click)="openDeleteReportModal(report, $event)"
-                          title="Eliminar rendición"
-                          class="p-1.5 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors"
-                        >
-                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
-                          </svg>
-                        </button>
-                      }
-                    </div>
-                  </td>
-
-                </tr>
-                }
-              </tbody>
-            </table>
-          </div>
-        </div>
-      }
-    </div>
-    }
-
-  } <!-- end @else isLoading -->
+  } <!-- end @else loading -->
 
   } <!-- fin @if activeTab === 'viaticos' -->
 
@@ -595,11 +437,11 @@
               <td class="px-4 py-3.5">
                 <span class="inline-flex px-2 py-0.5 rounded-full text-xs font-semibold"
                   [ngClass]="{
-                    'bg-green-100 text-green-700': r.status === 'open',
-                    'bg-yellow-100 text-yellow-700': r.status === 'submitted',
-                    'bg-blue-100 text-blue-700': r.status === 'approved',
-                    'bg-red-100 text-red-700': r.status === 'rejected',
-                    'bg-gray-100 text-gray-600': r.status === 'cancelled' || r.status === 'closed'
+                    'bg-gray-100 text-gray-600': isReportEffectivelyClosed(r) || r.status === 'cancelled' || r.status === 'closed',
+                    'bg-green-100 text-green-700': !isReportEffectivelyClosed(r) && r.status === 'open',
+                    'bg-yellow-100 text-yellow-700': !isReportEffectivelyClosed(r) && r.status === 'submitted',
+                    'bg-blue-100 text-blue-700': !isReportEffectivelyClosed(r) && r.status === 'approved',
+                    'bg-red-100 text-red-700': !isReportEffectivelyClosed(r) && r.status === 'rejected'
                   }"
                 >
                   {{ panelStatusText(r) }}
@@ -925,43 +767,6 @@
       <button type="button" class="flex-1 py-2.5 bg-amber-500 text-white rounded-xl text-sm font-medium hover:bg-amber-600 disabled:opacity-50 transition-colors"
         [disabled]="isCancellingReport()" (click)="confirmCancelReport()">
         @if (isCancellingReport()) {
-          <span class="inline-block w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin mr-1"></span>
-          Cancelando...
-        } @else {
-          Confirmar
-        }
-      </button>
-    </div>
-  </div>
-</div>
-}
-
-<!-- Modal: Cancelar solicitud de viáticos -->
-@if (showCancelAdvanceModal()) {
-<div class="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-black/40" (click)="showCancelAdvanceModal.set(false)">
-  <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm" (click)="$event.stopPropagation()">
-    <div class="px-6 pt-6 pb-2 flex items-center gap-3">
-      <div class="flex-shrink-0 w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center">
-        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 text-amber-600">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M18.364 18.364A9 9 0 0 0 5.636 5.636m12.728 12.728A9 9 0 0 1 5.636 5.636m12.728 12.728L5.636 5.636" />
-        </svg>
-      </div>
-      <div>
-        <h3 class="text-base font-semibold text-gray-900">Cancelar solicitud de viáticos</h3>
-        <p class="text-xs text-gray-500">La solicitud quedará como cancelada</p>
-      </div>
-    </div>
-    <div class="px-6 py-4">
-      <p class="text-sm text-gray-600">¿Estás seguro de que deseas cancelar esta solicitud? Esta acción no se puede deshacer.</p>
-    </div>
-    <div class="px-6 pb-6 flex gap-3">
-      <button type="button" class="flex-1 py-2.5 border border-gray-200 text-gray-700 rounded-xl text-sm font-medium hover:bg-gray-50 transition-colors"
-        [disabled]="isCancellingAdvance()" (click)="showCancelAdvanceModal.set(false)">
-        Volver
-      </button>
-      <button type="button" class="flex-1 py-2.5 bg-amber-500 text-white rounded-xl text-sm font-medium hover:bg-amber-600 disabled:opacity-50 transition-colors"
-        [disabled]="isCancellingAdvance()" (click)="confirmCancelAdvance()">
-        @if (isCancellingAdvance()) {
           <span class="inline-block w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin mr-1"></span>
           Cancelando...
         } @else {

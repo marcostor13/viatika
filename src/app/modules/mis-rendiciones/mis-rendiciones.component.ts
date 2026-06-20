@@ -5,7 +5,11 @@ import { ExpenseReportsService } from '../../services/expense-reports.service';
 import { ExpenseService } from '../../services/expense.service';
 import { UserStateService } from '../../services/user-state.service';
 import { NotificationService } from '../../services/notification.service';
-import { IExpenseReport } from '../../interfaces/expense-report.interface';
+import {
+  IExpenseReport,
+  VIATICO_REPORT_STATUS_LABELS,
+  VIATICO_REPORT_STATUS_COLORS,
+} from '../../interfaces/expense-report.interface';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { CajaChicaReportService } from '../../services/caja-chica-report.service';
 import { CreateRendicionModalComponent } from '../admin-users/user-details/create-rendicion-modal/create-rendicion-modal.component';
@@ -15,6 +19,24 @@ import {
   ADVANCE_STATUS_LABELS,
   ADVANCE_STATUS_COLORS,
 } from '../../interfaces/advance.interface';
+
+type UnifiedViaticoItem = {
+  _id: string;
+  source: 'new' | 'advance' | 'rendicion';
+  createdAt: string;
+  statusLabel: string;
+  statusColor: string;
+  projectLabel: string;
+  place: string;
+  dateRange: string;
+  amount: number;
+  expensesCount: number;
+  canEdit: boolean;
+  canResubmit: boolean;
+  isInExpensePhase: boolean;
+  rawStatus: string;
+  raw: IExpenseReport | IAdvance;
+};
 
 @Component({
   selector: 'app-mis-rendiciones',
@@ -35,11 +57,16 @@ export class MisRendicionesComponent implements OnInit {
 
   expenseReports: IExpenseReport[] = [];
   myAdvances: IAdvance[] = [];
+  myViaticoReports = signal<IExpenseReport[]>([]);
+  viaticoReportsLoading = signal(false);
   isLoading = true;
   showCreateModal = false;
   showGuidelines = signal(false);
   showTypeModal = false;
   isCreatingGasto = signal(false);
+
+  readonly VIATICO_REPORT_STATUS_LABELS = VIATICO_REPORT_STATUS_LABELS;
+  readonly VIATICO_REPORT_STATUS_COLORS = VIATICO_REPORT_STATUS_COLORS;
 
   // Tabs
   activeTab = signal<'viaticos' | 'directas' | 'caja-chica'>('viaticos');
@@ -95,14 +122,22 @@ export class MisRendicionesComponent implements OnInit {
   ngOnInit(): void {
     this.loadMyReports();
     this.loadMyAdvances();
-    const tab = this.route.snapshot.queryParamMap.get('tab');
-    if (tab === 'viaticos') {
-      this.setTab('viaticos');
-    } else if (tab === 'directas') {
-      this.setTab('directas');
-    } else if (tab === 'caja-chica') {
-      this.setTab('caja-chica');
-    }
+    this.loadMyViaticoReports();
+    // Tabs disponibles según permisos, en orden de preferencia.
+    const available: Array<'viaticos' | 'directas' | 'caja-chica'> = [];
+    if (this.canViewViaticos) available.push('viaticos');
+    if (this.canCreateRendicion) available.push('directas');
+    if (this.canAccessCajaChica) available.push('caja-chica');
+
+    // Respeta el ?tab= solo si el usuario tiene acceso a ese tab; si no, usa el primero disponible.
+    const requested = this.route.snapshot.queryParamMap.get('tab') as
+      | 'viaticos'
+      | 'directas'
+      | 'caja-chica'
+      | null;
+    const initial =
+      requested && available.includes(requested) ? requested : available[0] ?? 'viaticos';
+    this.setTab(initial);
   }
 
   setTab(tab: 'viaticos' | 'directas' | 'caja-chica'): void {
@@ -351,6 +386,84 @@ export class MisRendicionesComponent implements OnInit {
     });
   }
 
+  loadMyViaticoReports(): void {
+    this.viaticoReportsLoading.set(true);
+    this.expenseReportsService.getMyViaticos().subscribe({
+      next: (list) => {
+        this.myViaticoReports.set(list ?? []);
+        this.viaticoReportsLoading.set(false);
+      },
+      error: () => {
+        this.viaticoReportsLoading.set(false);
+      },
+    });
+  }
+
+  // ─── Viático unificado helpers ─────────────────────────────────────────────
+
+  viaticoPhaseLabel(report: IExpenseReport): string {
+    return this.VIATICO_REPORT_STATUS_LABELS[report.status as keyof typeof VIATICO_REPORT_STATUS_LABELS]
+      ?? report.status.toUpperCase();
+  }
+
+  viaticoPhaseColor(report: IExpenseReport): string {
+    return this.VIATICO_REPORT_STATUS_COLORS[report.status as keyof typeof VIATICO_REPORT_STATUS_COLORS]
+      ?? 'bg-gray-100 text-gray-600';
+  }
+
+  viaticoProjectLabel(report: IExpenseReport): string {
+    const p = (report as any).projectId;
+    if (p && typeof p === 'object' && 'name' in p) {
+      return p.code ? `${p.code} — ${p.name}` : p.name;
+    }
+    return '—';
+  }
+
+  viaticoDates(report: IExpenseReport): string {
+    const fmt = (d: string) =>
+      new Date(d).toLocaleDateString('es-PE', { day: 'numeric', month: 'short', year: 'numeric' });
+    const start = report.viaticoStartDate;
+    const end = report.viaticoEndDate;
+    if (start && end) return `${fmt(start)} al ${fmt(end)}`;
+    if (start) return fmt(start);
+    return '—';
+  }
+
+  isViaticoInExpensePhase(report: IExpenseReport): boolean {
+    return report.status === 'open';
+  }
+
+  canEditViatico(report: IExpenseReport): boolean {
+    return report.status === 'pending_l1';
+  }
+
+  canResubmitViatico(report: IExpenseReport): boolean {
+    return report.status === 'rejected';
+  }
+
+  navigateToViaticoDetail(report: IExpenseReport, event: Event): void {
+    event.preventDefault();
+    event.stopPropagation();
+    this.router.navigate(['/mis-rendiciones', report._id, 'detalle'], {
+      queryParams: { tab: 'viaticos' },
+    });
+  }
+
+  openEditViatico(report: IExpenseReport): void {
+    this.router.navigate(['/mis-rendiciones/solicitud-viaticos', report._id, 'editar']);
+  }
+
+  get filteredMyViaticoReports(): IExpenseReport[] {
+    let list = [...this.myViaticoReports()];
+    const status = this.viaticosStatusFilter();
+    const from = this.viaticosDateFrom();
+    const to = this.viaticosDateTo();
+    if (status) list = list.filter(r => r.status === status);
+    if (from) list = list.filter(r => new Date(r.createdAt) >= new Date(from));
+    if (to) list = list.filter(r => new Date(r.createdAt) <= new Date(to + 'T23:59:59'));
+    return list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  }
+
   loadMyReports() {
     this.isLoading = true;
     const user = this.userStateService.getUser() as any;
@@ -454,7 +567,8 @@ export class MisRendicionesComponent implements OnInit {
 
   hasReportSaldo(report: IExpenseReport): boolean {
     return !!(report.directaDeposit)
-      || !!(report.pendingBalanceFromReportId && (report.pendingBalanceAmount ?? 0) > 0);
+      || !!(report.pendingBalanceFromReportId && (report.pendingBalanceAmount ?? 0) > 0)
+      || !!(report.saldoIds && report.saldoIds.length > 0);
   }
 
   getReportSaldo(report: IExpenseReport): number {
@@ -553,38 +667,6 @@ export class MisRendicionesComponent implements OnInit {
     });
   }
 
-  // ─── Cancelar / Eliminar solicitud de viáticos pendiente ─────────────────────
-
-  showCancelAdvanceModal = signal(false);
-  cancellingAdvance = signal<IAdvance | null>(null);
-  isCancellingAdvance = signal(false);
-
-  openCancelAdvanceModal(adv: IAdvance): void {
-    this.cancellingAdvance.set(adv);
-    this.showCancelAdvanceModal.set(true);
-  }
-
-  confirmCancelAdvance(): void {
-    const adv = this.cancellingAdvance();
-    if (!adv) return;
-    this.isCancellingAdvance.set(true);
-    this.advanceService.cancelAdvance(adv._id).subscribe({
-      next: () => {
-        this.isCancellingAdvance.set(false);
-        this.showCancelAdvanceModal.set(false);
-        this.cancellingAdvance.set(null);
-        this.notificationService.show('Solicitud cancelada correctamente', 'success');
-        this.loadMyAdvances();
-      },
-      error: (err) => {
-        this.isCancellingAdvance.set(false);
-        const raw = err?.error?.message;
-        const msg = Array.isArray(raw) ? raw.join(', ') : raw;
-        this.notificationService.show(msg || 'Error al cancelar', 'error');
-      },
-    });
-  }
-
   // ─── Eliminar (borrado físico) rendición ─────────────────────────────────────
 
   showDeleteReportModal = signal(false);
@@ -620,8 +702,18 @@ export class MisRendicionesComponent implements OnInit {
     if (!report.isDirecta && !report.isCajaChica && report.hasApprovedLinkedAdvance)
       return false;
 
+    // Viático unificado con pago ya registrado (estado "Registrando gastos"):
+    // el pago consta en viaticoPaidAmount, no en un Advance, pero igualmente bloquea.
+    if ((report as any).type === 'viatico' && Number((report as any).viaticoPaidAmount ?? 0) > 0)
+      return false;
+
     const deletableStatuses = ['solicited', 'open', 'rejected', 'submitted'];
-    return deletableStatuses.includes(report.status);
+    if (deletableStatuses.includes(report.status)) return true;
+
+    // Viático en solicitud sin comprobantes: el colaborador puede eliminarlo.
+    if (report.status === 'pending_l1' && !(report.expenseIds?.length)) return true;
+
+    return false;
   }
 
   openDeleteReportModal(report: IExpenseReport, event: Event): void {
@@ -716,7 +808,8 @@ export class MisRendicionesComponent implements OnInit {
   }
 
   get filteredViaticosReports(): IExpenseReport[] {
-    let reports = this.expenseReports.filter(r => !r.isDirecta);
+    // Legacy rendiciones de viáticos (linked to old Advance records, not new unified type='viatico')
+    let reports = this.expenseReports.filter(r => !r.isDirecta && r.type !== 'viatico');
     const status = this.viaticosStatusFilter();
     const from = this.viaticosDateFrom();
     const to = this.viaticosDateTo();
@@ -724,6 +817,169 @@ export class MisRendicionesComponent implements OnInit {
     if (from) reports = reports.filter(r => new Date(r.createdAt) >= new Date(from));
     if (to) reports = reports.filter(r => new Date(r.createdAt) <= new Date(to + 'T23:59:59'));
     return reports.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  }
+
+  get viaticoTabBadgeCount(): number {
+    return this.myViaticoReports().length
+      + this.myAdvances.filter(a => !this.hasExpenseReportLink(a)).length
+      + this.expenseReports.filter(r => !r.isDirecta && r.type !== 'viatico').length;
+  }
+
+  // ─── Helpers for legacy rendiciones in unified list ───────────────────────
+
+  /**
+   * Una rendición se considera cerrada (a efectos del label) cuando su saldo
+   * pendiente ya fue resuelto: trasladado a otra solicitud o devuelto con
+   * comprobante. Mismo criterio que el detalle (`isEffectivelyClosed`).
+   */
+  isReportEffectivelyClosed(report: IExpenseReport): boolean {
+    return report.status === 'closed'
+      || !!(report as any).pendingBalanceUsedInRendicionId
+      || !!(report as any).pendingBalanceUsedInAdvanceId
+      || !!(report as any).returnVoucher;
+  }
+
+  getLegacyReportLabel(report: IExpenseReport): string {
+    if (this.isReportInProgress(report)) return 'Registrando gastos';
+    if (this.isReportEffectivelyClosed(report)) return 'Cerrada';
+    const map: Partial<Record<string, string>> = {
+      solicited: 'Solicitada', open: 'Abierta', submitted: 'Enviada',
+      pending_accounting: 'En contabilidad', approved: 'Aprobada',
+      rejected: 'Rechazada', reimbursed: 'Reembolsada',
+      closed: 'Cerrada', cancelled: 'Cancelada',
+    };
+    return map[report.status] ?? report.status;
+  }
+
+  getLegacyReportColor(report: IExpenseReport): string {
+    if (this.isReportInProgress(report)) return 'bg-emerald-100 text-emerald-700';
+    if (this.isReportEffectivelyClosed(report)) return 'bg-gray-100 text-gray-500';
+    const map: Partial<Record<string, string>> = {
+      solicited: 'bg-purple-100 text-purple-700', open: 'bg-green-100 text-green-700',
+      submitted: 'bg-yellow-100 text-yellow-700', pending_accounting: 'bg-violet-100 text-violet-700',
+      approved: 'bg-green-100 text-green-700', rejected: 'bg-red-100 text-red-700',
+      reimbursed: 'bg-teal-100 text-teal-700', closed: 'bg-gray-100 text-gray-500',
+      cancelled: 'bg-gray-100 text-gray-500',
+    };
+    return map[report.status] ?? 'bg-gray-100 text-gray-600';
+  }
+
+  // ─── Unified viático list (merges new viaticos + old advances + old rendiciones) ───
+
+  get unifiedViaticoList(): UnifiedViaticoItem[] {
+    const items: UnifiedViaticoItem[] = [];
+
+    // 1. New type='viatico' ExpenseReports
+    for (const r of this.myViaticoReports()) {
+      items.push({
+        _id: r._id,
+        source: 'new',
+        createdAt: r.createdAt,
+        statusLabel: this.viaticoPhaseLabel(r),
+        statusColor: this.viaticoPhaseColor(r),
+        projectLabel: this.viaticoProjectLabel(r),
+        place: r.viaticoPlace ?? '—',
+        dateRange: this.viaticoDates(r),
+        amount: r.viaticoAmount ?? 0,
+        expensesCount: (r.expenseIds || []).length,
+        canEdit: this.canEditViatico(r),
+        canResubmit: this.canResubmitViatico(r),
+        isInExpensePhase: this.isViaticoInExpensePhase(r),
+        rawStatus: r.status,
+        raw: r,
+      });
+    }
+
+    // 2. Old Advances without a linked ExpenseReport
+    for (const adv of this.myAdvances.filter(a => !this.hasExpenseReportLink(a))) {
+      items.push({
+        _id: adv._id,
+        source: 'advance',
+        createdAt: adv.createdAt,
+        statusLabel: this.ADVANCE_STATUS_LABELS[adv.status] ?? adv.status,
+        statusColor: this.ADVANCE_STATUS_COLORS[adv.status] ?? 'bg-gray-100 text-gray-600',
+        projectLabel: this.advanceProjectLabel(adv),
+        place: adv.place ?? '—',
+        dateRange: this.advanceDateRange(adv),
+        amount: adv.amount,
+        expensesCount: 0,
+        canEdit: adv.status === 'pending_l1',
+        canResubmit: adv.status === 'rejected',
+        isInExpensePhase: false,
+        rawStatus: adv.status,
+        raw: adv,
+      });
+    }
+
+    // 3. Old linked ExpenseReports (not directa, not type='viatico')
+    for (const r of this.expenseReports.filter(r => !r.isDirecta && r.type !== 'viatico')) {
+      items.push({
+        _id: r._id,
+        source: 'rendicion',
+        createdAt: r.createdAt,
+        statusLabel: this.getLegacyReportLabel(r),
+        statusColor: this.getLegacyReportColor(r),
+        projectLabel: '—',
+        place: r.location ?? '—',
+        dateRange: this.reportDateRange(r),
+        amount: r.budget,
+        expensesCount: (r.expenseIds || []).length,
+        canEdit: false,
+        canResubmit: false,
+        isInExpensePhase: this.isReportInProgress(r),
+        rawStatus: r.status,
+        raw: r,
+      });
+    }
+
+    // Apply filters
+    const status = this.viaticosStatusFilter();
+    const from = this.viaticosDateFrom();
+    const to = this.viaticosDateTo();
+    let filtered = items;
+    if (status) filtered = filtered.filter(i => i.rawStatus === status);
+    if (from) filtered = filtered.filter(i => new Date(i.createdAt) >= new Date(from));
+    if (to) filtered = filtered.filter(i => new Date(i.createdAt) <= new Date(to + 'T23:59:59'));
+
+    return filtered.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  }
+
+  navigateToUnifiedItem(item: UnifiedViaticoItem, event: Event): void {
+    event.preventDefault();
+    event.stopPropagation();
+    if (item.source === 'new' || item.source === 'rendicion') {
+      this.router.navigate(['/mis-rendiciones', item._id, 'detalle'], {
+        queryParams: { tab: 'viaticos' },
+      });
+    } else if (item.source === 'advance') {
+      if (item.canEdit || item.canResubmit) {
+        this.openResubmitAdvance(item.raw as IAdvance);
+      }
+    }
+  }
+
+  editUnifiedItem(item: UnifiedViaticoItem, event: Event): void {
+    event.stopPropagation();
+    if (item.source === 'advance') {
+      this.openResubmitAdvance(item.raw as IAdvance);
+    } else {
+      this.openEditViatico(item.raw as IExpenseReport);
+    }
+  }
+
+  deleteUnifiedItem(item: UnifiedViaticoItem, event: Event): void {
+    event.stopPropagation();
+    if (item.source === 'advance') {
+      this.openDeleteAdvanceModal(item.raw as IAdvance);
+    } else {
+      this.openDeleteReportModal(item.raw as IExpenseReport, event);
+    }
+  }
+
+  canDeleteUnifiedItem(item: UnifiedViaticoItem): boolean {
+    if (item.source === 'advance') return this.canDeleteAdvance(item.raw as IAdvance);
+    if (item.source === 'new') return this.canDeleteReport(item.raw as IExpenseReport);
+    return false;
   }
 
   get filteredDirectaReports(): IExpenseReport[] {
@@ -747,8 +1003,6 @@ export class MisRendicionesComponent implements OnInit {
   }
 
   clearViaticosFilters(): void {
-    this.viaticosTypeFilter.set('');
-    this.advancesStatusFilter.set('');
     this.viaticosStatusFilter.set('');
     this.viaticosDateFrom.set('');
     this.viaticosDateTo.set('');
@@ -791,6 +1045,7 @@ export class MisRendicionesComponent implements OnInit {
 
   panelStatusText(report: IExpenseReport): string {
     if (this.isReportInProgress(report)) return 'EN PROGRESO - REGISTRANDO GASTOS';
+    if (this.isReportEffectivelyClosed(report)) return 'CERRADA';
     const map: Partial<Record<IExpenseReport['status'], string>> = {
       solicited: 'SOLICITADA',
       open: 'ABIERTA',

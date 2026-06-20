@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, signal, computed, HostListener, WritableSignal } from '@angular/core';
+import { Component, OnInit, OnDestroy, inject, signal, computed, HostListener, WritableSignal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
@@ -13,8 +13,9 @@ import { UploadService } from '../../../services/upload.service';
 import {
   AccountingEntriesService,
   IGeneratedFile,
+  AsientoTipo,
 } from '../../../services/accounting-entries.service';
-import { IExpenseReport } from '../../../interfaces/expense-report.interface';
+import { IExpenseReport, IReportFinancingSaldo } from '../../../interfaces/expense-report.interface';
 import { IProject } from '../../invoices/interfaces/project.interface';
 import { IAdvance, IAdvancePayment, ADVANCE_STATUS_LABELS, ADVANCE_STATUS_COLORS } from '../../../interfaces/advance.interface';
 import { ButtonComponent } from '../../../design-system/button/button.component';
@@ -33,6 +34,12 @@ import {
   resolveExpenseFechaEmision,
 } from '../../../utils/fecha-emision.util';
 
+/** Paso del proceso de generación de asientos, para el modal de progreso. */
+interface AsientoStep {
+  label: string;
+  status: 'pending' | 'active' | 'done';
+}
+
 @Component({
   selector: 'app-rendicion-detail',
   standalone: true,
@@ -46,7 +53,7 @@ import {
   templateUrl: './rendicion-detail.component.html',
   styleUrls: ['./rendicion-detail.component.scss']
 })
-export class RendicionDetailComponent implements OnInit {
+export class RendicionDetailComponent implements OnInit, OnDestroy {
   private route = inject(ActivatedRoute);
   private router = inject(Router);
   private expenseReportsService = inject(ExpenseReportsService);
@@ -141,10 +148,33 @@ export class RendicionDetailComponent implements OnInit {
     if (this.hasPendingBalanceCredit) {
       return this.pendingBalanceCreditAmount - this.totalGastado;
     }
+    // Rendición directa financiada con la bolsa: el saldo libre es presupuesto (saldos) − gastado.
+    if (this.hasFinancingSaldos) {
+      return this.financingSaldoDisponible;
+    }
+    // Para viáticos unificados: calcular siempre desde viaticoPaidAmount para
+    // evitar usar un settlement stale que fue calculado con advanceTotal=0.
+    if (this.report?.type === 'viatico') {
+      const viaticoPaid = Number((this.report as any)?.viaticoPaidAmount ?? 0);
+      return viaticoPaid - this.totalGastado;
+    }
     if (this.settlement?.difference !== undefined && this.settlement.difference !== null) {
       return this.settlement.difference;
     }
     return this.totalAnticipado - this.totalGastado;
+  }
+
+  /** Tipo de settlement efectivo para viáticos: calculado en vivo desde viaticoPaidAmount. */
+  private get effectiveSettlementType(): string | undefined {
+    if (this.report?.type === 'viatico') {
+      const viaticoPaid = Number((this.report as any)?.viaticoPaidAmount ?? 0);
+      if (viaticoPaid <= 0 && this.totalGastado <= 0) {
+        return (this.report as any)?.settlement?.type;
+      }
+      const diff = viaticoPaid - this.totalGastado;
+      return Math.abs(diff) < 0.01 ? 'equilibrado' : diff > 0 ? 'devolucion' : 'reembolso';
+    }
+    return (this.report as any)?.settlement?.type;
   }
 
   /** Rendición directa iniciada por Contabilidad (tiene depósito con saldo). */
@@ -158,6 +188,41 @@ export class RendicionDetailComponent implements OnInit {
 
   get directaSaldo(): number {
     return this.directaDeposited - this.totalGastado;
+  }
+
+  /** Saldos de la bolsa (poblados) que financiaron esta rendición directa. */
+  get financingSaldos(): IReportFinancingSaldo[] {
+    const s = this.report?.saldoIds as unknown[];
+    return Array.isArray(s)
+      ? (s.filter(x => x && typeof x === 'object') as IReportFinancingSaldo[])
+      : [];
+  }
+
+  get hasFinancingSaldos(): boolean {
+    return this.financingSaldos.length > 0;
+  }
+
+  get financingSaldosTotal(): number {
+    return this.financingSaldos.reduce((a, s) => a + (Number(s.amount) || 0), 0);
+  }
+
+  /** Saldo disponible de una directa financiada con la bolsa: presupuesto (saldos) − gastado. */
+  get financingSaldoDisponible(): number {
+    return this.financingSaldosTotal - this.totalGastado;
+  }
+
+  /** Tipo legible del saldo financiador. */
+  financingSaldoTipo(s: IReportFinancingSaldo): string {
+    return s.type === 'pago' ? 'Pago de contabilidad' : 'Saldo de rendición';
+  }
+
+  /** Detalle del saldo financiador: gestión/motivo, código de origen o N° de operación. */
+  financingSaldoLabel(s: IReportFinancingSaldo): string {
+    if (s.concepto?.trim()) return s.concepto.trim();
+    const r = s.sourceReportId;
+    if (r && typeof r !== 'string') return r.codigo || r.title || r.gestion || '';
+    if (s.type === 'pago' && s.deposit?.operationNumber) return `Op. ${s.deposit.operationNumber}`;
+    return '';
   }
 
   ngOnInit(): void {
@@ -213,9 +278,14 @@ export class RendicionDetailComponent implements OnInit {
     const advances = this.advances
       .filter(a => ['approved', 'partially_paid', 'paid', 'settled'].includes(a.status))
       .reduce((sum, a) => sum + Number(a.paidAmount ?? a.amount), 0);
+    // Para viáticos unificados (type='viatico'), el monto pagado está en viaticoPaidAmount
+    // del propio ExpenseReport, no en Advances vinculados.
+    const viaticoPaid = this.report?.type === 'viatico'
+      ? Number((this.report as any).viaticoPaidAmount ?? 0)
+      : 0;
     // El depósito de una rendición directa iniciada por Contabilidad funciona como
     // anticipo: el saldo no gastado debe devolverlo el colaborador/coordinador.
-    return advances + (this.hasDirectaDeposit ? this.directaDeposited : 0);
+    return advances + viaticoPaid + (this.hasDirectaDeposit ? this.directaDeposited : 0);
   }
 
   get paidAdvances(): IAdvance[] {
@@ -224,7 +294,10 @@ export class RendicionDetailComponent implements OnInit {
 
   get hasPaidAdvanceForReport(): boolean {
     // Con el primer pago (parcial o total) el colaborador ya puede rendir.
-    return this.advances.some(a => ['partially_paid', 'paid', 'settled'].includes(a.status));
+    if (this.advances.some(a => ['partially_paid', 'paid', 'settled'].includes(a.status))) return true;
+    // Para viáticos unificados el pago está en viaticoPaidAmount, no en un Advance.
+    if (this.report?.type === 'viatico' && Number((this.report as any).viaticoPaidAmount ?? 0) > 0) return true;
+    return false;
   }
 
   /** Pagos parciales de un anticipo (para el desglose del presupuesto). */
@@ -264,6 +337,22 @@ export class RendicionDetailComponent implements OnInit {
         this.updateDocCounts(data);
         this.isLoading = false;
         this.loadExpensesPage(1);
+        // Auto-cierre: viáticos equilibrados que quedaron en 'approved' por datos stale.
+        if (
+          (data as any)?.type === 'viatico' &&
+          data?.status === 'approved' &&
+          this.effectiveSettlementType === 'equilibrado' &&
+          this.userStateService.isContabilidad()
+        ) {
+          this.expenseReportsService.close(this.id).subscribe({
+            next: (closed) => {
+              this.report = closed;
+              this.calculateTotals();
+              this.updateDocCounts(closed);
+            },
+            error: () => {},
+          });
+        }
       },
       error: (err) => {
         console.error('Error fetching report detail', err);
@@ -329,7 +418,7 @@ export class RendicionDetailComponent implements OnInit {
     if (this.isAdminView && ownerId && canViewAdminUsers) {
       this.router.navigate(['/admin-users', ownerId, 'details']);
     } else if (this.isAdminView && this.userStateService.isContabilidad()) {
-      this.router.navigate([this.report?.isDirecta ? '/rendiciones-directas' : '/rendiciones']);
+      this.router.navigate(['/rendiciones'], this.report?.isDirecta ? { queryParams: { tab: 'directas' } } : {});
     } else if (this.isAdminView) {
       this.router.navigate(['/tesoreria']);
     } else {
@@ -374,51 +463,150 @@ export class RendicionDetailComponent implements OnInit {
   // --- Descarga de asientos contables (solo Contabilidad) ---
   downloadingAsientos = false;
 
+  // Modal de progreso paso a paso de la generación de asientos.
+  asientosModalOpen = signal(false);
+  asientosSteps = signal<AsientoStep[]>([]);
+  asientosError = signal<string | null>(null);
+  asientosDone = signal(false);
+  private asientosStepTimer: ReturnType<typeof setInterval> | null = null;
+
+  /** Pasos mostrados al usuario (reflejan el proceso real del backend). */
+  private asientosStepLabels(): string[] {
+    return [
+      'Leyendo datos de la rendición',
+      'Verificando caché de asientos',
+      'Clasificando cuentas contables con IA',
+      'Calculando tipo de cambio',
+      'Generando archivos Excel (Contanet)',
+    ];
+  }
+
   /** Solo el rol Contabilidad puede descargar los asientos contables. */
   get canDownloadAsientos(): boolean {
     return this.userStateService.isContabilidad();
   }
 
+  private clearAsientosTimer(): void {
+    if (this.asientosStepTimer) {
+      clearInterval(this.asientosStepTimer);
+      this.asientosStepTimer = null;
+    }
+  }
+
+  /**
+   * Avanza el paso activo. No pasa del último automáticamente: ese se marca
+   * como completado solo cuando el backend responde.
+   */
+  private advanceAsientoStep(): void {
+    const steps = this.asientosSteps();
+    const activeIdx = steps.findIndex((s) => s.status === 'active');
+    if (activeIdx === -1 || activeIdx >= steps.length - 1) return;
+    this.asientosSteps.set(
+      steps.map((s, i) => {
+        if (i === activeIdx) return { ...s, status: 'done' };
+        if (i === activeIdx + 1) return { ...s, status: 'active' };
+        return s;
+      })
+    );
+  }
+
+  private markAllAsientoStepsDone(): void {
+    this.asientosSteps.set(
+      this.asientosSteps().map((s) => ({ ...s, status: 'done' }))
+    );
+  }
+
+  /** Cierra el modal de asientos (solo si ya no está cargando). */
+  closeAsientosModal(): void {
+    if (this.downloadingAsientos) return;
+    this.clearAsientosTimer();
+    this.asientosModalOpen.set(false);
+  }
+
+  ngOnDestroy(): void {
+    this.clearAsientosTimer();
+  }
+
+  /**
+   * Tipos de asiento que pueden producir salida para esta rendición.
+   * Evita pedir al backend trabajo innecesario (devolución/reembolso solo
+   * aplican si el tipo de liquidación coincide). `solicitud` se mantiene
+   * siempre porque depende de anticipos no visibles en este modelo; el
+   * backend la descarta si no hay anticipos.
+   */
+  private applicableAsientoTipos(): AsientoTipo[] {
+    const tipos: AsientoTipo[] = ['solicitud'];
+    if (this.report?.expenseIds?.length) {
+      tipos.push('compra', 'aplicacion');
+    }
+    const settlementType = this.report?.settlement?.type;
+    if (settlementType === 'devolucion') tipos.push('devolucion');
+    if (settlementType === 'reembolso') tipos.push('reembolso');
+    return tipos;
+  }
+
   downloadAsientos(): void {
     if (!this.report?._id || this.downloadingAsientos) return;
     this.downloadingAsientos = true;
-    this.accountingEntriesService.generate(this.report._id).subscribe({
-      next: (res: { files: IGeneratedFile[] }) => {
-        this.downloadingAsientos = false;
-        const files = res?.files ?? [];
-        if (!files.length) {
-          this.notificationService.show(
-            'No hay asientos que generar para esta rendición.',
-            'warning'
+    this.asientosError.set(null);
+    this.asientosDone.set(false);
+    this.asientosSteps.set(
+      this.asientosStepLabels().map((label, i) => ({
+        label,
+        status: i === 0 ? 'active' : 'pending',
+      }))
+    );
+    this.asientosModalOpen.set(true);
+    this.clearAsientosTimer();
+    this.asientosStepTimer = setInterval(() => this.advanceAsientoStep(), 850);
+
+    this.accountingEntriesService
+      .generate(this.report._id, this.applicableAsientoTipos())
+      .subscribe({
+        next: (res: { files: IGeneratedFile[] }) => {
+          this.clearAsientosTimer();
+          this.downloadingAsientos = false;
+          this.markAllAsientoStepsDone();
+          const files = res?.files ?? [];
+          if (!files.length) {
+            this.asientosError.set(
+              'No hay asientos que generar para esta rendición.'
+            );
+            return;
+          }
+          this.asientosDone.set(true);
+          for (const file of files) {
+            this.accountingEntriesService.downloadBase64(file);
+          }
+          const conErrores = files.filter((f) => f.cuadreErrors?.length);
+          // Breve confirmación visual antes de cerrar el modal.
+          setTimeout(() => {
+            this.asientosModalOpen.set(false);
+            if (conErrores.length) {
+              this.notificationService.show(
+                `Asientos descargados. Atención: ${conErrores
+                  .map((f) => f.tipo)
+                  .join(', ')} con descuadre. Revisa el desglose contable.`,
+                'error'
+              );
+            } else {
+              this.notificationService.show(
+                `Asientos descargados (${files.length} archivo(s)).`,
+                'success'
+              );
+            }
+          }, 1000);
+        },
+        error: (err) => {
+          this.clearAsientosTimer();
+          this.downloadingAsientos = false;
+          this.asientosError.set(
+            err?.error?.message ||
+              err?.message ||
+              'Error desconocido al generar los asientos.'
           );
-          return;
-        }
-        const conErrores = files.filter((f) => f.cuadreErrors?.length);
-        for (const file of files) {
-          this.accountingEntriesService.downloadBase64(file);
-        }
-        if (conErrores.length) {
-          this.notificationService.show(
-            `Asientos descargados. Atención: ${conErrores
-              .map((f) => f.tipo)
-              .join(', ')} con descuadre. Revisa el desglose contable.`,
-            'error'
-          );
-        } else {
-          this.notificationService.show(
-            `Asientos descargados (${files.length} archivo(s)).`,
-            'success'
-          );
-        }
-      },
-      error: (err) => {
-        this.downloadingAsientos = false;
-        this.notificationService.show(
-          'Error al generar asientos: ' + (err?.error?.message || err?.message || 'desconocido'),
-          'error'
-        );
-      },
-    });
+        },
+      });
   }
 
   get canApproveExpenses(): boolean {
@@ -1152,8 +1340,10 @@ export class RendicionDetailComponent implements OnInit {
 
   getReportStatusLabel(): string {
     if (!this.report) return '';
+    // Saldo ya resuelto (trasladado o devuelto) => se muestra como Cerrada.
+    if (this.isEffectivelyClosed) return 'Cerrada';
     if (this.report.isDirecta) {
-      const directaLabels: Record<IExpenseReport['status'], string> = {
+      const directaLabels: Partial<Record<IExpenseReport['status'], string>> = {
         solicited: 'Solicitada',
         open: 'Abierta',
         submitted: 'Enviada',
@@ -1166,7 +1356,11 @@ export class RendicionDetailComponent implements OnInit {
       };
       return directaLabels[this.report.status] ?? this.report.status;
     }
-    const labels: Record<IExpenseReport['status'], string> = {
+    // Viático con pago registrado y en fase de carga de gastos.
+    if (this.report.type === 'viatico' && this.report.status === 'open' && Number((this.report as any).viaticoPaidAmount ?? 0) > 0) {
+      return 'Registrando gastos';
+    }
+    const labels: Partial<Record<IExpenseReport['status'], string>> = {
       solicited: 'Solicitada',
       open: 'Abierta',
       submitted: 'Enviada',
@@ -1176,6 +1370,14 @@ export class RendicionDetailComponent implements OnInit {
       reimbursed: 'Reembolsada',
       closed: 'Cerrada',
       cancelled: 'Cancelada',
+      // Estados de viáticos
+      pending_l1: 'En solicitud',
+      pending_l2: 'Aprobada por coordinador',
+      viatico_approved: 'Aprobada',
+      partially_paid: 'Pago parcial',
+      paid: 'Pagada',
+      settled: 'Liquidada',
+      returned: 'Saldo devuelto',
     };
     return labels[this.report.status] ?? this.report.status;
   }
@@ -1409,11 +1611,20 @@ export class RendicionDetailComponent implements OnInit {
       codigo: this.report.codigo || undefined,
       gestion: this.report.gestion || undefined,
       descripcionRendicion: this.report.description || undefined,
+      financiamientoSaldos: this.hasFinancingSaldos
+        ? this.financingSaldos.map(s => ({
+            tipo: this.financingSaldoTipo(s),
+            detalle: this.financingSaldoLabel(s),
+            monto: Number(s.amount) || 0,
+            fecha: s.deposit?.operationDate
+              || (s.createdAt ? new Date(s.createdAt).toLocaleDateString('es-PE') : ''),
+          }))
+        : undefined,
       colaborador: this.getCollaboratorDisplayName(),
       presupuesto: this.report.budget ?? 0,
       totalGastado: this.totalGastado,
       totalAnticipado: this.totalAnticipado,
-      saldoLibre: this.saldoLibre,
+      saldoLibre: this.hasFinancingSaldos ? this.financingSaldoDisponible : this.saldoLibre,
       fechaGeneracion: new Date().toLocaleString('es-PE', {
         dateStyle: 'short',
         timeStyle: 'short',
@@ -1644,6 +1855,19 @@ export class RendicionDetailComponent implements OnInit {
       || !!(this.report as any)?.pendingBalanceUsedInRendicionId;
   }
 
+  /**
+   * La rendición se considera cerrada (a efectos de visualización) cuando su
+   * saldo pendiente ya fue resuelto: trasladado a otra solicitud, o devuelto
+   * por el colaborador mediante comprobante de depósito. En esos casos el
+   * label y el badge deben mostrarse como "Cerrada".
+   */
+  get isEffectivelyClosed(): boolean {
+    if (this.report?.status === 'closed') return true;
+    if (this.isSaldoUsadoEnOtraRendicion) return true;
+    if ((this.report as any)?.returnVoucher) return true;
+    return false;
+  }
+
   /** Esta rendición directa fue creada usando el saldo de otra (saldo heredado). */
   get hasPendingBalanceCredit(): boolean {
     return !!(this.report?.isDirecta
@@ -1658,7 +1882,7 @@ export class RendicionDetailComponent implements OnInit {
 
   /** Devuelve true cuando el saldo esperado corresponde a una devolución del colaborador. */
   private get isDevolucionExpected(): boolean {
-    const settlementType = (this.report as any)?.settlement?.type;
+    const settlementType = this.effectiveSettlementType;
     return settlementType === 'devolucion' || (!settlementType && this.saldoLibre > 0.01);
   }
 
@@ -1682,7 +1906,7 @@ export class RendicionDetailComponent implements OnInit {
 
   /** Devuelve true cuando el saldo esperado corresponde a un reembolso al colaborador. */
   private get isReembolsoExpected(): boolean {
-    const settlementType = (this.report as any)?.settlement?.type;
+    const settlementType = this.effectiveSettlementType;
     return settlementType === 'reembolso' || (!settlementType && this.saldoLibre < -0.01);
   }
 

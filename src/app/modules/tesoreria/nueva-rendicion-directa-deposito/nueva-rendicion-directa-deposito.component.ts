@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
 import { ExpenseReportsService } from '../../../services/expense-reports.service';
+import { SaldoService } from '../../../services/saldo.service';
 import { NotificationService } from '../../../services/notification.service';
 import { UploadService } from '../../../services/upload.service';
 import { UserStateService } from '../../../services/user-state.service';
@@ -20,6 +21,7 @@ export class NuevaRendicionDirectaDepositoComponent implements OnInit {
   private fb = inject(FormBuilder);
   private router = inject(Router);
   private expenseReportsService = inject(ExpenseReportsService);
+  private saldoService = inject(SaldoService);
   private notificationService = inject(NotificationService);
   private uploadService = inject(UploadService);
   private userStateService = inject(UserStateService);
@@ -162,10 +164,10 @@ export class NuevaRendicionDirectaDepositoComponent implements OnInit {
     }
     this.isCreating.set(true);
     const v = this.form.value;
-    this.expenseReportsService.createDirectaDeposit({
+    this.saldoService.createPago({
       userId: v.userId,
-      gestion: v.gestion?.trim() || undefined,
       amount: Number(v.amount),
+      concepto: v.gestion?.trim() || undefined,
       scannedAmount: this.depositScannedAmount ?? undefined,
       receiptUrl: this.depositReceiptUrl,
       receiptFileName: this.depositReceiptName || undefined,
@@ -178,14 +180,14 @@ export class NuevaRendicionDirectaDepositoComponent implements OnInit {
     }).subscribe({
       next: () => {
         this.isCreating.set(false);
-        this.notificationService.show('Rendición directa creada y asignada correctamente.', 'success');
+        this.notificationService.show('Pago registrado y saldo asignado al colaborador.', 'success');
         this.router.navigate(['/tesoreria'], { queryParams: { tab: 'rendiciones-directas' } });
       },
       error: e => {
         this.isCreating.set(false);
         const raw = e?.error?.message;
         const msg = Array.isArray(raw) ? raw.join(', ') : raw;
-        this.notificationService.show(msg || 'Error al crear la rendición directa.', 'error');
+        this.notificationService.show(msg || 'Error al registrar el pago.', 'error');
       },
     });
   }

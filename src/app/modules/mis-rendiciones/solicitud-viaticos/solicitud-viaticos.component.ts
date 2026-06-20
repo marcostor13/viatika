@@ -15,11 +15,14 @@ import {
 } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { AdvanceService } from '../../../services/advance.service';
+import { ExpenseReportsService } from '../../../services/expense-reports.service';
 import { NotificationService } from '../../../services/notification.service';
 import { UserStateService } from '../../../services/user-state.service';
 import { InvoicesService } from '../../invoices/services/invoices.service';
 import { CategoriaService } from '../../../services/categoria.service';
 import { CategoryGroupService } from '../../../services/category-group.service';
+import { SaldoService } from '../../../services/saldo.service';
+import { ISaldo } from '../../../interfaces/saldo.interface';
 import {
   PlacesAutocompleteDirective,
   PlaceResult,
@@ -33,6 +36,7 @@ import {
   IAdvanceLinePayload,
   IAdvance,
 } from '../../../interfaces/advance.interface';
+import { ICreateViaticoPayload } from '../../../interfaces/expense-report.interface';
 import {
   coerceViaticoLineNumber,
   computeViaticoLineTotal,
@@ -56,13 +60,31 @@ export class SolicitudViaticosComponent implements OnInit {
   private route = inject(ActivatedRoute);
   private router = inject(Router);
   private advanceService = inject(AdvanceService);
+  private expenseReportsService = inject(ExpenseReportsService);
   private notifications = inject(NotificationService);
   private userState = inject(UserStateService);
   private invoicesService = inject(InvoicesService);
   private categoriaService = inject(CategoriaService);
   private categoryGroupService = inject(CategoryGroupService);
+  private saldoService = inject(SaldoService);
 
   submitting = signal(false);
+
+  // Saldos de viáticos del mismo centro de costo (bolsa).
+  saldos = signal<ISaldo[]>([]);
+  loadingSaldos = signal<boolean>(false);
+  selectedSaldoIds = signal<Set<string>>(new Set());
+
+  selectedSaldoTotal = computed(() =>
+    this.saldos()
+      .filter(s => this.selectedSaldoIds().has(s._id))
+      .reduce((sum, s) => sum + (Number(s.amount) || 0), 0)
+  );
+
+  /** Solo se ofrece la bolsa de saldos en solicitudes nuevas (no reenvío ni saldo heredado por query). */
+  get canUseSaldoBag(): boolean {
+    return !this.isResubmit && !this.hasPendingBalance;
+  }
   loading = signal(false);
   projects = signal<IProject[]>([]);
   categories = signal<ICategory[]>([]);
@@ -150,6 +172,7 @@ export class SolicitudViaticosComponent implements OnInit {
     this.form.get('projectId')?.valueChanges.subscribe((pid) => {
       this.selectedProjectId.set(pid ?? '');
       this.clearInvalidLineCategories();
+      this.loadEligibleSaldos(pid ?? '');
     });
 
     const id = this.route.snapshot.paramMap.get('id');
@@ -165,6 +188,49 @@ export class SolicitudViaticosComponent implements OnInit {
       }
       this.loadCatalogues();
     }
+  }
+
+  /** Carga los saldos de viáticos elegibles (mismo centro de costo) y limpia la selección. */
+  private loadEligibleSaldos(projectId: string): void {
+    this.selectedSaldoIds.set(new Set());
+    if (!this.canUseSaldoBag || !projectId) {
+      this.saldos.set([]);
+      return;
+    }
+    this.loadingSaldos.set(true);
+    this.saldoService.getEligible('viatico', projectId).subscribe({
+      next: rows => {
+        this.saldos.set(rows ?? []);
+        this.loadingSaldos.set(false);
+      },
+      error: () => {
+        this.saldos.set([]);
+        this.loadingSaldos.set(false);
+      },
+    });
+  }
+
+  isSaldoSelected(id: string): boolean {
+    return this.selectedSaldoIds().has(id);
+  }
+
+  /** Gestión / motivo del saldo, o su origen (rendición / N° operación). */
+  saldoDescripcion(s: ISaldo): string {
+    if (s.concepto?.trim()) return s.concepto.trim();
+    const r = s.sourceReportId;
+    if (r && typeof r !== 'string') return r.codigo || r.title || '';
+    if (s.type === 'pago' && s.deposit?.operationNumber) return `Op. ${s.deposit.operationNumber}`;
+    return '';
+  }
+
+  toggleSaldo(id: string): void {
+    const next = new Set(this.selectedSaldoIds());
+    if (next.has(id)) {
+      next.delete(id);
+    } else {
+      next.add(id);
+    }
+    this.selectedSaldoIds.set(next);
   }
 
   private loadAdvanceForResubmit(id: string): void {
@@ -413,14 +479,56 @@ export class SolicitudViaticosComponent implements OnInit {
     }
 
     const linesTotal = this.totalGeneral();
-    const metaDesc = `Viático: ${place} (${startStr} → ${endStr})`;
     const fromReportId = this.pendingBalanceFromReportId();
     const pendingAmt = this.pendingBalanceAmount();
     const hasPending = !!(fromReportId && pendingAmt > 0);
 
-    const payload: ICreateAdvancePayload = {
+    this.submitting.set(true);
+    const adv = this.advanceToResubmit();
+
+    if (adv) {
+      // Resubmit of a legacy Advance (old system)
+      const legacyPayload: ICreateAdvancePayload = {
+        amount: hasPending ? this.totalAnticipo() : linesTotal,
+        description: `Viático: ${place} (${startStr} → ${endStr})`,
+        place,
+        ...(this.selectedLat != null && { lat: this.selectedLat }),
+        ...(this.selectedLng != null && { lng: this.selectedLng }),
+        startDate: `${startStr}T12:00:00.000Z`,
+        endDate: `${endStr}T12:00:00.000Z`,
+        projectId: this.form.value.projectId as string,
+        lines: linesPayload,
+        observations: (this.form.value.observations || '').trim() || undefined,
+        ...(hasPending && {
+          pendingBalanceFromReportId: fromReportId!,
+          pendingBalanceAmount: pendingAmt,
+          additionalAmount: linesTotal,
+        }),
+      };
+      this.advanceService.resubmit(adv._id, legacyPayload).subscribe({
+        next: () => this.onSubmitSuccess(true),
+        error: (e) => this.onSubmitError(e),
+      });
+      return;
+    }
+
+    // Saldos de la bolsa: el total de las líneas debe cuadrar con la suma de saldos.
+    const saldoIds = Array.from(this.selectedSaldoIds());
+    if (this.canUseSaldoBag && saldoIds.length > 0) {
+      const saldoTotal = this.selectedSaldoTotal();
+      if (Math.abs(linesTotal - saldoTotal) > 0.01) {
+        this.submitting.set(false);
+        this.notifications.show(
+          `El total de las líneas (S/ ${linesTotal.toFixed(2)}) debe ser igual al saldo seleccionado (S/ ${saldoTotal.toFixed(2)}).`,
+          'error'
+        );
+        return;
+      }
+    }
+
+    // New unified viatico (ExpenseReport type='viatico')
+    const viaticoPayload: ICreateViaticoPayload = {
       amount: hasPending ? this.totalAnticipo() : linesTotal,
-      description: metaDesc,
       place,
       ...(this.selectedLat != null && { lat: this.selectedLat }),
       ...(this.selectedLng != null && { lng: this.selectedLng }),
@@ -434,35 +542,35 @@ export class SolicitudViaticosComponent implements OnInit {
         pendingBalanceAmount: pendingAmt,
         additionalAmount: linesTotal,
       }),
+      ...(this.canUseSaldoBag && saldoIds.length > 0 && { saldoIds }),
     };
-
-    this.submitting.set(true);
-    const adv = this.advanceToResubmit();
-    const req = adv
-      ? this.advanceService.resubmit(adv._id, payload)
-      : this.advanceService.create(payload);
-
-    req.subscribe({
-      next: () => {
-        const msg = adv
-          ? 'Solicitud corregida y reenviada correctamente'
-          : 'Solicitud de viáticos enviada correctamente';
-        this.notifications.show(msg, 'success');
-        this.submitting.set(false);
-        const fromReport = this.pendingBalanceFromReportId();
-        if (fromReport) {
-          this.router.navigate(['/mis-rendiciones', fromReport, 'detalle']);
-        } else {
-          this.router.navigate(['/mis-rendiciones'], { queryParams: { tab: 'viaticos' } });
-        }
-      },
-      error: (e) => {
-        const raw = e?.error?.message;
-        const msg = Array.isArray(raw) ? raw.join(', ') : raw || 'Error al enviar la solicitud';
-        this.notifications.show(msg, 'error');
-        this.submitting.set(false);
-      },
+    this.expenseReportsService.createViatico(viaticoPayload).subscribe({
+      next: () => this.onSubmitSuccess(false),
+      error: (e) => this.onSubmitError(e),
     });
+
+  }
+
+  private onSubmitSuccess(isResubmit: boolean): void {
+    const msg = isResubmit
+      ? 'Solicitud corregida y reenviada correctamente'
+      : 'Solicitud de viáticos enviada correctamente';
+    this.notifications.show(msg, 'success');
+    this.submitting.set(false);
+    this.saldoService.refreshTotal();
+    const fromReport = this.pendingBalanceFromReportId();
+    if (fromReport) {
+      this.router.navigate(['/mis-rendiciones', fromReport, 'detalle']);
+    } else {
+      this.router.navigate(['/mis-rendiciones'], { queryParams: { tab: 'viaticos' } });
+    }
+  }
+
+  private onSubmitError(e: any): void {
+    const raw = e?.error?.message;
+    const msg = Array.isArray(raw) ? raw.join(', ') : raw || 'Error al enviar la solicitud';
+    this.notifications.show(msg, 'error');
+    this.submitting.set(false);
   }
 
   private parseLocalDate(ymd: string): Date {

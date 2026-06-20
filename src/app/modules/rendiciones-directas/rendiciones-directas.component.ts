@@ -183,6 +183,7 @@ export class RendicionesDirectasComponent implements OnInit {
   }
 
   reportStatusLabel(r: any): string {
+    if (r?.effectivelyClosed) return 'Cerrada';
     const map: Record<string, string> = {
       open: 'Abierta', solicited: 'Solicitada', submitted: 'Enviada',
       pending_accounting: 'En contabilidad', approved: 'Aprobada',

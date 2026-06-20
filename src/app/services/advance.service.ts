@@ -41,6 +41,10 @@ export class AdvanceService {
     return this.http.get<IAdvance[]>(`${this.url}/client/${this.clientId}`);
   }
 
+  findOrphaned(clientId: string): Observable<IAdvance[]> {
+    return this.http.get<IAdvance[]>(`${this.url}/orphaned/client/${clientId}`);
+  }
+
   findPending(): Observable<IAdvance[]> {
     return this.http.get<IAdvance[]>(`${this.url}/pending/client/${this.clientId}`);
   }

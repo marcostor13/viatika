@@ -60,6 +60,8 @@ export const httpInterceptor: HttpInterceptorFn = (req, next) => {
     '/notifications/',
     '/bulk-import',
     '/caja-chica-report',
+    '/saldo',
+    '/saldo/',
   ];
 
   const isExcludedEndpoint = excludedEndpoints.some(
