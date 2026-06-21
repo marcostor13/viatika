@@ -36,7 +36,7 @@ import {
   IAdvanceLinePayload,
   IAdvance,
 } from '../../../interfaces/advance.interface';
-import { ICreateViaticoPayload } from '../../../interfaces/expense-report.interface';
+import { ICreateViaticoPayload, IResubmitViaticoPayload, IExpenseReport } from '../../../interfaces/expense-report.interface';
 import {
   coerceViaticoLineNumber,
   computeViaticoLineTotal,
@@ -93,6 +93,8 @@ export class SolicitudViaticosComponent implements OnInit {
   /** ID del centro de costo elegido; espeja el control `projectId` para alimentar los computeds. */
   selectedProjectId = signal<string>('');
   advanceToResubmit = signal<IAdvance | null>(null);
+  /** Viático unificado (ExpenseReport) en edición/reenvío. */
+  viaticoToResubmit = signal<IExpenseReport | null>(null);
 
   /**
    * IDs de categoría permitidas por el perfil del centro de costo elegido, o
@@ -177,7 +179,7 @@ export class SolicitudViaticosComponent implements OnInit {
 
     const id = this.route.snapshot.paramMap.get('id');
     if (id) {
-      this.loadAdvanceForResubmit(id);
+      this.loadForResubmit(id);
     } else {
       const qp = this.route.snapshot.queryParamMap;
       const fromReport = qp.get('pendingBalanceFromReportId');
@@ -233,8 +235,26 @@ export class SolicitudViaticosComponent implements OnInit {
     this.selectedSaldoIds.set(next);
   }
 
-  private loadAdvanceForResubmit(id: string): void {
+  private loadForResubmit(id: string): void {
     this.loading.set(true);
+    // Los viáticos unificados son ExpenseReport (type='viatico'). Se intenta cargar
+    // por ese endpoint; si no existe (solicitud legada en la colección Advance), se
+    // cae al endpoint viejo de Advance.
+    this.expenseReportsService.findOne(id).subscribe({
+      next: (report) => {
+        if (report?.type === 'viatico') {
+          this.viaticoToResubmit.set(report);
+          this.bootstrapFromViatico(report);
+          this.loading.set(false);
+        } else {
+          this.loadLegacyAdvanceForResubmit(id);
+        }
+      },
+      error: () => this.loadLegacyAdvanceForResubmit(id),
+    });
+  }
+
+  private loadLegacyAdvanceForResubmit(id: string): void {
     this.advanceService.findOne(id).subscribe({
       next: (adv) => {
         this.advanceToResubmit.set(adv);
@@ -298,6 +318,48 @@ export class SolicitudViaticosComponent implements OnInit {
     // de las líneas que acabamos de restaurar.
     this.form.get('projectId')?.setValue(pid, { emitEvent: false });
     this.selectedProjectId.set(pid);
+
+    this.loadCatalogues();
+  }
+
+  /** Precarga el formulario desde un viático unificado (ExpenseReport) en edición. */
+  private bootstrapFromViatico(report: IExpenseReport): void {
+    while (this.lines.length) this.lines.removeAt(0);
+
+    const reportLines = (report.viaticoLines as any[]) ?? [];
+    for (const ln of reportLines) {
+      const g = this.createLineGroup();
+      g.patchValue({
+        categoryId: this.categoryIdFromLine(ln),
+        detalle: ln.detalle ?? '',
+        importe: ln.importe,
+        peopleCount: ln.peopleCount,
+        glpPerDay: ln.glpPerDay,
+        days: ln.days,
+      });
+      this.lines.push(g);
+    }
+    if (!this.lines.length) this.lines.push(this.createLineGroup());
+
+    const pid =
+      typeof report.projectId === 'object' && report.projectId
+        ? (report.projectId as { _id: string })._id
+        : String(report.projectId ?? '');
+
+    this.form.patchValue({
+      place: report.viaticoPlace ?? '',
+      startDate: this.ymdFromDate(report.viaticoStartDate),
+      endDate: this.ymdFromDate(report.viaticoEndDate),
+      observations: report.viaticoObservations ?? '',
+    });
+    this.form.get('projectId')?.setValue(pid, { emitEvent: false });
+    this.selectedProjectId.set(pid);
+
+    // Restaura el saldo heredado (si lo tuviera) para que el total cuadre.
+    if (report.pendingBalanceFromReportId && (report.pendingBalanceAmount ?? 0) > 0) {
+      this.pendingBalanceFromReportId.set(report.pendingBalanceFromReportId);
+      this.pendingBalanceAmount.set(Number(report.pendingBalanceAmount));
+    }
 
     this.loadCatalogues();
   }
@@ -484,6 +546,28 @@ export class SolicitudViaticosComponent implements OnInit {
     const hasPending = !!(fromReportId && pendingAmt > 0);
 
     this.submitting.set(true);
+
+    // Reenvío/edición de un viático unificado (ExpenseReport).
+    const viatico = this.viaticoToResubmit();
+    if (viatico) {
+      const resubmitPayload: IResubmitViaticoPayload = {
+        amount: hasPending ? this.totalAnticipo() : linesTotal,
+        place,
+        ...(this.selectedLat != null && { lat: this.selectedLat }),
+        ...(this.selectedLng != null && { lng: this.selectedLng }),
+        startDate: `${startStr}T12:00:00.000Z`,
+        endDate: `${endStr}T12:00:00.000Z`,
+        projectId: this.form.value.projectId as string,
+        lines: linesPayload,
+        observations: (this.form.value.observations || '').trim() || undefined,
+      };
+      this.expenseReportsService.resubmitViatico(viatico._id, resubmitPayload).subscribe({
+        next: () => this.onSubmitSuccess(true),
+        error: (e) => this.onSubmitError(e),
+      });
+      return;
+    }
+
     const adv = this.advanceToResubmit();
 
     if (adv) {
