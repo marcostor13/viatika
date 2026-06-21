@@ -1605,6 +1605,31 @@ export class RendicionDetailComponent implements OnInit, OnDestroy {
         fechaSolicitud,
       });
     }
+    // Viático: lo pagado por contabilidad (viaticoPaidAmount menos lo cubierto por el
+    // saldo de la bolsa, que ya figura aparte en financiamientoSaldos) es un ingreso.
+    if (this.report.type === 'viatico') {
+      const viaticoPaid = Number(
+        (this.report as { viaticoPaidAmount?: number }).viaticoPaidAmount ?? 0
+      );
+      const bolsaTotal = this.hasFinancingSaldos ? this.financingSaldosTotal : 0;
+      const deposito = Math.round((viaticoPaid - bolsaTotal) * 100) / 100;
+      if (deposito > 0.01) {
+        const pagos = (
+          this.report as {
+            viaticoPayments?: { transferDate?: string; createdAt?: string }[];
+          }
+        ).viaticoPayments;
+        const rawDate =
+          pagos?.[0]?.transferDate || pagos?.[0]?.createdAt || this.report.createdAt;
+        const fechaSolicitud = rawDate ? this.formatEmissionDate(rawDate) : '—';
+        anticipos.unshift({
+          descripcion: 'Depósito de Contabilidad',
+          monto: deposito,
+          estado: 'Depositado',
+          fechaSolicitud,
+        });
+      }
+    }
     return {
       fileBaseName: `rendicion_${this.report.codigo || this.id}_${safeName}`.replace(/_+/g, '_'),
       // En directas el proyecto es por gasto: el título no debe llevar proyecto.
