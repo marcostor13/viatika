@@ -120,6 +120,13 @@
               class="w-full px-3.5 py-2.5 text-sm rounded-xl border border-gray-300 bg-white text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-shadow"
               [class.border-red-400]="form.get('place')?.invalid && form.get('place')?.touched"
             />
+            @if (isResubmit && form.get('place')?.value) {
+            <p class="text-xs text-gray-500">
+              Dirección actual:
+              <span class="font-medium text-gray-700">{{ form.get('place')?.value }}</span>.
+              Escribe arriba solo si deseas cambiarla.
+            </p>
+            }
             @if (form.get('place')?.invalid && form.get('place')?.touched) {
             <p class="text-xs text-red-500">El lugar es obligatorio</p>
             }
