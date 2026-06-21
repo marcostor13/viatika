@@ -180,7 +180,7 @@
               Financiar con saldo (opcional)
             </label>
             <p class="text-xs text-gray-500 -mt-1">
-              Solo aparecen saldos de viáticos del mismo centro de costo. El total de las líneas debe cuadrar con el saldo seleccionado.
+              Solo aparecen saldos de viáticos del mismo centro de costo. El saldo cubre su parte y contabilidad deposita la diferencia; el total de las líneas debe ser mayor al saldo.
             </p>
             @if (loadingSaldos()) {
               <p class="text-sm text-gray-400">Cargando saldos...</p>
@@ -213,7 +213,7 @@
               </div>
               @if (selectedSaldoTotal() > 0) {
               <div class="flex items-center justify-between bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-2.5">
-                <span class="text-sm font-medium text-emerald-700">Saldo seleccionado (monto a cuadrar)</span>
+                <span class="text-sm font-medium text-emerald-700">Saldo aplicado (contabilidad deposita la diferencia)</span>
                 <span class="text-base font-bold text-emerald-700">S/ {{ selectedSaldoTotal() | number:'1.2-2' }}</span>
               </div>
               }

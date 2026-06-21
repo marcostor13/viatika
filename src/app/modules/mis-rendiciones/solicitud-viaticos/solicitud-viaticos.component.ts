@@ -512,14 +512,15 @@ export class SolicitudViaticosComponent implements OnInit {
       return;
     }
 
-    // Saldos de la bolsa: el total de las líneas debe cuadrar con la suma de saldos.
+    // Saldos de la bolsa: prefinancian el viático. El total de las líneas debe ser
+    // MAYOR al saldo (el saldo cubre su parte y contabilidad deposita la diferencia).
     const saldoIds = Array.from(this.selectedSaldoIds());
     if (this.canUseSaldoBag && saldoIds.length > 0) {
       const saldoTotal = this.selectedSaldoTotal();
-      if (Math.abs(linesTotal - saldoTotal) > 0.01) {
+      if (linesTotal - saldoTotal <= 0.01) {
         this.submitting.set(false);
         this.notifications.show(
-          `El total de las líneas (S/ ${linesTotal.toFixed(2)}) debe ser igual al saldo seleccionado (S/ ${saldoTotal.toFixed(2)}).`,
+          `El total de las líneas (S/ ${linesTotal.toFixed(2)}) debe ser mayor al saldo seleccionado (S/ ${saldoTotal.toFixed(2)}). El saldo cubre su parte y contabilidad deposita la diferencia.`,
           'error'
         );
         return;
