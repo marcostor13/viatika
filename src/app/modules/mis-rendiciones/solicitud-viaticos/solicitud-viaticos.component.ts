@@ -360,6 +360,11 @@ export class SolicitudViaticosComponent implements OnInit {
     this.form.get('projectId')?.setValue(pid, { emitEvent: false });
     this.selectedProjectId.set(pid);
 
+    const rLat = (report as { viaticoLat?: number }).viaticoLat;
+    const rLng = (report as { viaticoLng?: number }).viaticoLng;
+    if (rLat != null) this.selectedLat = rLat;
+    if (rLng != null) this.selectedLng = rLng;
+
     // Restaura el saldo heredado (si lo tuviera) para que el total cuadre.
     if (report.pendingBalanceFromReportId && (report.pendingBalanceAmount ?? 0) > 0) {
       this.pendingBalanceFromReportId.set(report.pendingBalanceFromReportId);
