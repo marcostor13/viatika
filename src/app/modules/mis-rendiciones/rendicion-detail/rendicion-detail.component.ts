@@ -139,6 +139,14 @@ export class RendicionDetailComponent implements OnInit, OnDestroy {
   }
 
   get saldoLibre(): number {
+    // Viáticos unificados: el fondo disponible es siempre viaticoPaidAmount − gastado
+    // (incluye el saldo de la bolsa prefinanciado + el depósito de contabilidad). Va
+    // primero para no confundirse con la rama de "directa financiada con bolsa" cuando
+    // el viático también tiene saldoIds (si no, mostraría solo el saldo, no el total).
+    if (this.report?.type === 'viatico') {
+      const viaticoPaid = Number((this.report as any)?.viaticoPaidAmount ?? 0);
+      return viaticoPaid - this.totalGastado;
+    }
     // Rendición directa con depósito de Contabilidad: el saldo a devolver es el
     // depósito menos lo gastado (en vivo), no el monto del settlement almacenado.
     if (this.hasDirectaDeposit) {
@@ -151,12 +159,6 @@ export class RendicionDetailComponent implements OnInit, OnDestroy {
     // Rendición directa financiada con la bolsa: el saldo libre es presupuesto (saldos) − gastado.
     if (this.hasFinancingSaldos) {
       return this.financingSaldoDisponible;
-    }
-    // Para viáticos unificados: calcular siempre desde viaticoPaidAmount para
-    // evitar usar un settlement stale que fue calculado con advanceTotal=0.
-    if (this.report?.type === 'viatico') {
-      const viaticoPaid = Number((this.report as any)?.viaticoPaidAmount ?? 0);
-      return viaticoPaid - this.totalGastado;
     }
     if (this.settlement?.difference !== undefined && this.settlement.difference !== null) {
       return this.settlement.difference;
