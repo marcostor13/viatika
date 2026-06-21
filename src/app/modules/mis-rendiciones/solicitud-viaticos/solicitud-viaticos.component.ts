@@ -83,7 +83,12 @@ export class SolicitudViaticosComponent implements OnInit {
 
   /** Solo se ofrece la bolsa de saldos en solicitudes nuevas (no reenvío ni saldo heredado por query). */
   get canUseSaldoBag(): boolean {
-    return !this.isResubmit && !this.hasPendingBalance;
+    if (this.hasPendingBalance) return false;
+    if (!this.isResubmit) return true;
+    // En corrección solo se permite re-seleccionar saldo si el viático no tiene ya
+    // uno aplicado (caso típico: fue rechazado y su saldo se devolvió a la bolsa).
+    const v = this.viaticoToResubmit();
+    return !!v && !(Array.isArray(v.saldoIds) && v.saldoIds.length > 0);
   }
   loading = signal(false);
   projects = signal<IProject[]>([]);
@@ -361,6 +366,10 @@ export class SolicitudViaticosComponent implements OnInit {
       this.pendingBalanceAmount.set(Number(report.pendingBalanceAmount));
     }
 
+    // Como el projectId se fija sin emitir evento, cargamos los saldos elegibles a
+    // mano: en una corrección sin saldo aplicado permite re-seleccionar de la bolsa.
+    this.loadEligibleSaldos(pid);
+
     this.loadCatalogues();
   }
 
@@ -547,6 +556,21 @@ export class SolicitudViaticosComponent implements OnInit {
 
     this.submitting.set(true);
 
+    // Saldos de la bolsa: prefinancian el viático. El total de las líneas debe ser
+    // MAYOR al saldo (el saldo cubre su parte y contabilidad deposita la diferencia).
+    const saldoIds = Array.from(this.selectedSaldoIds());
+    if (this.canUseSaldoBag && saldoIds.length > 0) {
+      const saldoTotal = this.selectedSaldoTotal();
+      if (linesTotal - saldoTotal <= 0.01) {
+        this.submitting.set(false);
+        this.notifications.show(
+          `El total de las líneas (S/ ${linesTotal.toFixed(2)}) debe ser mayor al saldo seleccionado (S/ ${saldoTotal.toFixed(2)}). El saldo cubre su parte y contabilidad deposita la diferencia.`,
+          'error'
+        );
+        return;
+      }
+    }
+
     // Reenvío/edición de un viático unificado (ExpenseReport).
     const viatico = this.viaticoToResubmit();
     if (viatico) {
@@ -560,6 +584,7 @@ export class SolicitudViaticosComponent implements OnInit {
         projectId: this.form.value.projectId as string,
         lines: linesPayload,
         observations: (this.form.value.observations || '').trim() || undefined,
+        ...(this.canUseSaldoBag && saldoIds.length > 0 && { saldoIds }),
       };
       this.expenseReportsService.resubmitViatico(viatico._id, resubmitPayload).subscribe({
         next: () => this.onSubmitSuccess(true),
@@ -594,21 +619,6 @@ export class SolicitudViaticosComponent implements OnInit {
         error: (e) => this.onSubmitError(e),
       });
       return;
-    }
-
-    // Saldos de la bolsa: prefinancian el viático. El total de las líneas debe ser
-    // MAYOR al saldo (el saldo cubre su parte y contabilidad deposita la diferencia).
-    const saldoIds = Array.from(this.selectedSaldoIds());
-    if (this.canUseSaldoBag && saldoIds.length > 0) {
-      const saldoTotal = this.selectedSaldoTotal();
-      if (linesTotal - saldoTotal <= 0.01) {
-        this.submitting.set(false);
-        this.notifications.show(
-          `El total de las líneas (S/ ${linesTotal.toFixed(2)}) debe ser mayor al saldo seleccionado (S/ ${saldoTotal.toFixed(2)}). El saldo cubre su parte y contabilidad deposita la diferencia.`,
-          'error'
-        );
-        return;
-      }
     }
 
     // New unified viatico (ExpenseReport type='viatico')

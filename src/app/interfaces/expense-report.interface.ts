@@ -45,6 +45,8 @@ export interface IResubmitViaticoPayload {
   projectId: string;
   lines: IViaticoLinePayload[];
   observations?: string;
+  /** Saldos de la bolsa re-seleccionados al corregir (si el viático no tiene ya uno). */
+  saldoIds?: string[];
 }
 
 export const VIATICO_REPORT_STATUS_LABELS: Partial<Record<IExpenseReportStatus, string>> = {
