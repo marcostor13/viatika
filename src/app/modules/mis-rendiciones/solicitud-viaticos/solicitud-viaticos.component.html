@@ -178,6 +178,9 @@
             @if (form.get('projectId')?.invalid && form.get('projectId')?.touched) {
             <p class="text-xs text-red-500">Seleccione un centro de costo</p>
             }
+            @if (hasPendingBalance) {
+            <p class="text-xs text-gray-500">El centro de costo queda fijo por el saldo heredado; ese saldo solo puede usarse aquí.</p>
+            }
           </div>
 
           <!-- Saldo de la bolsa (mismo centro de costo) -->

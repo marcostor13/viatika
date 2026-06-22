@@ -43,6 +43,8 @@ export class TesoreriaComponent implements OnInit {
   pendingReimbursements: IExpenseReport[] = [];
   /** Viáticos con status viatico_approved o partially_paid pendientes de pago. */
   pendingViaticoPayments: IExpenseReport[] = [];
+  /** Viáticos con al menos un pago de contabilidad registrado (pestaña "En pago"). */
+  paidViaticoPayments: IExpenseReport[] = [];
 
   selectedAdvance: IAdvance | null = null;
   selectedReportReimbursement: IExpenseReport | null = null;
@@ -222,15 +224,27 @@ export class TesoreriaComponent implements OnInit {
     const cid = this.clientId;
     if (!cid || !this.canPayAndSettle) {
       this.pendingViaticoPayments = [];
+      this.paidViaticoPayments = [];
       return;
     }
     this.expenseReportsService.findAllByClient(cid).subscribe({
       next: reports => {
-        this.pendingViaticoPayments = (reports ?? []).filter(
-          r => r.type === 'viatico' && ['viatico_approved', 'partially_paid'].includes(r.status)
+        const viaticos = (reports ?? []).filter(r => r.type === 'viatico');
+        // "Por pagar": aprobados o con pago parcial pendiente de completar.
+        this.pendingViaticoPayments = viaticos.filter(
+          r => ['viatico_approved', 'partially_paid'].includes(r.status)
+        );
+        // "En pago": tienen al menos un pago de contabilidad registrado. Se filtra
+        // por viaticoPayments (no por estado/viaticoPaidAmount) para excluir los
+        // cubiertos 100% con saldo, que se abren sin pago de contabilidad.
+        this.paidViaticoPayments = viaticos.filter(
+          r => Array.isArray(r.viaticoPayments) && r.viaticoPayments.length > 0
         );
       },
-      error: () => { this.pendingViaticoPayments = []; },
+      error: () => {
+        this.pendingViaticoPayments = [];
+        this.paidViaticoPayments = [];
+      },
     });
   }
 
