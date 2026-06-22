@@ -187,7 +187,7 @@
               Financiar con saldo (opcional)
             </label>
             <p class="text-xs text-gray-500 -mt-1">
-              Solo aparecen saldos de viáticos del mismo centro de costo. El saldo cubre su parte y contabilidad deposita la diferencia; el total de las líneas debe ser mayor al saldo.
+              Solo aparecen saldos de viáticos del mismo centro de costo. Se usa solo lo necesario: si el saldo supera el total, el sobrante vuelve a tu bolsa y contabilidad no deposita nada; si el total es mayor, contabilidad deposita la diferencia.
             </p>
             @if (loadingSaldos()) {
               <p class="text-sm text-gray-400">Cargando saldos...</p>
@@ -220,9 +220,18 @@
               </div>
               @if (selectedSaldoTotal() > 0) {
               <div class="flex items-center justify-between bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-2.5">
-                <span class="text-sm font-medium text-emerald-700">Saldo aplicado (contabilidad deposita la diferencia)</span>
-                <span class="text-base font-bold text-emerald-700">S/ {{ selectedSaldoTotal() | number:'1.2-2' }}</span>
+                <span class="text-sm font-medium text-emerald-700">Saldo aplicado</span>
+                <span class="text-base font-bold text-emerald-700">S/ {{ saldoUsed() | number:'1.2-2' }}</span>
               </div>
+                @if (saldoExcess() > 0.009) {
+                <p class="text-xs font-medium text-emerald-700 -mt-1">
+                  El sobrante de S/ {{ saldoExcess() | number:'1.2-2' }} volverá a tu bolsa. Contabilidad no deposita nada.
+                </p>
+                } @else if (contabilidadDeposita() > 0.009) {
+                <p class="text-xs text-gray-500 -mt-1">
+                  Contabilidad depositará la diferencia: S/ {{ contabilidadDeposita() | number:'1.2-2' }}.
+                </p>
+                }
               }
             }
           </div>

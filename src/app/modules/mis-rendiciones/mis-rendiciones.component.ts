@@ -702,9 +702,17 @@ export class MisRendicionesComponent implements OnInit {
     if (!report.isDirecta && !report.isCajaChica && report.hasApprovedLinkedAdvance)
       return false;
 
-    // Viático unificado con pago ya registrado (estado "Registrando gastos"):
-    // el pago consta en viaticoPaidAmount, no en un Advance, pero igualmente bloquea.
-    if ((report as any).type === 'viatico' && Number((report as any).viaticoPaidAmount ?? 0) > 0)
+    // Viático unificado con pago ya desembolsado (estado "Registrando gastos"): el
+    // pago consta en viaticoPaidAmount, no en un Advance, pero igualmente bloquea.
+    // OJO: un viático aún pendiente de aprobación puede tener viaticoPaidAmount > 0
+    // solo porque la bolsa de saldos lo prefinanció; ese caso SÍ es eliminable (al
+    // borrarlo se devuelve el saldo), así que no lo bloqueamos.
+    const viaticoPendienteAprobacion = ['pending_l1', 'pending_l2'].includes(report.status);
+    if (
+      (report as any).type === 'viatico' &&
+      Number((report as any).viaticoPaidAmount ?? 0) > 0 &&
+      !viaticoPendienteAprobacion
+    )
       return false;
 
     const deletableStatuses = ['solicited', 'open', 'rejected', 'submitted'];
@@ -733,10 +741,16 @@ export class MisRendicionesComponent implements OnInit {
         this.showDeleteReportModal.set(false);
         this.deletingReport.set(null);
         this.notificationService.show('Solicitud eliminada correctamente', 'success');
-        // La pestaña de caja chica se alimenta de una señal distinta
-        // (cajaChicaReports), así que refrescamos la lista de la pestaña activa.
+        // Cada pestaña se alimenta de señales/listas distintas; refrescamos las
+        // fuentes de la pestaña activa. La de viáticos combina los viáticos nuevos
+        // (myViaticoReports), los anticipos legados (myAdvances) y las rendiciones
+        // legadas (expenseReports), así que hay que recargar las tres.
         if (this.activeTab() === 'caja-chica') {
           this.loadCajaChicaReports();
+        } else if (this.activeTab() === 'viaticos') {
+          this.loadMyViaticoReports();
+          this.loadMyAdvances();
+          this.loadMyReports();
         } else {
           this.loadMyReports();
         }

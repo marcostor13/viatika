@@ -81,6 +81,21 @@ export class SolicitudViaticosComponent implements OnInit {
       .reduce((sum, s) => sum + (Number(s.amount) || 0), 0)
   );
 
+  /** Monto del saldo realmente aplicado al viático (nunca más que el total). */
+  saldoUsed(): number {
+    return Math.min(this.selectedSaldoTotal(), this.totalGeneral());
+  }
+
+  /** Sobrante del saldo que volverá a la bolsa (cuando el saldo cubre todo el viático). */
+  saldoExcess(): number {
+    return Math.round(Math.max(0, this.selectedSaldoTotal() - this.totalGeneral()) * 100) / 100;
+  }
+
+  /** Diferencia que deposita contabilidad (cuando el total del viático supera el saldo). */
+  contabilidadDeposita(): number {
+    return Math.round(Math.max(0, this.totalGeneral() - this.selectedSaldoTotal()) * 100) / 100;
+  }
+
   /** Solo se ofrece la bolsa de saldos en solicitudes nuevas (no reenvío ni saldo heredado por query). */
   get canUseSaldoBag(): boolean {
     if (this.hasPendingBalance) return false;
@@ -561,20 +576,11 @@ export class SolicitudViaticosComponent implements OnInit {
 
     this.submitting.set(true);
 
-    // Saldos de la bolsa: prefinancian el viático. El total de las líneas debe ser
-    // MAYOR al saldo (el saldo cubre su parte y contabilidad deposita la diferencia).
+    // Saldos de la bolsa: prefinancian el viático. El saldo nunca cubre más que el
+    // total: si lo supera, solo se usa lo necesario y el sobrante vuelve a la bolsa
+    // (contabilidad no deposita nada); si el total lo supera, contabilidad deposita
+    // la diferencia. Ambos casos son válidos, así que no hay restricción de monto.
     const saldoIds = Array.from(this.selectedSaldoIds());
-    if (this.canUseSaldoBag && saldoIds.length > 0) {
-      const saldoTotal = this.selectedSaldoTotal();
-      if (linesTotal - saldoTotal <= 0.01) {
-        this.submitting.set(false);
-        this.notifications.show(
-          `El total de las líneas (S/ ${linesTotal.toFixed(2)}) debe ser mayor al saldo seleccionado (S/ ${saldoTotal.toFixed(2)}). El saldo cubre su parte y contabilidad deposita la diferencia.`,
-          'error'
-        );
-        return;
-      }
-    }
 
     // Reenvío/edición de un viático unificado (ExpenseReport).
     const viatico = this.viaticoToResubmit();
