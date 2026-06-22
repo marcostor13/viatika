@@ -96,6 +96,25 @@ export class SolicitudViaticosComponent implements OnInit {
     return Math.round(Math.max(0, this.totalGeneral() - this.selectedSaldoTotal()) * 100) / 100;
   }
 
+  // El saldo heredado de otra rendición (pendingBalance) prefinancia el viático igual
+  // que un saldo de la bolsa: cubre el costo de las líneas, contabilidad deposita solo
+  // la diferencia y, si el saldo supera el costo, el sobrante vuelve a la bolsa.
+
+  /** Monto del saldo heredado realmente aplicado (nunca más que el costo de las líneas). */
+  pendingUsed(): number {
+    return Math.round(Math.min(this.pendingBalanceAmount(), this.totalGeneral()) * 100) / 100;
+  }
+
+  /** Sobrante del saldo heredado que volverá a la bolsa (cuando cubre todo el costo). */
+  pendingExcess(): number {
+    return Math.round(Math.max(0, this.pendingBalanceAmount() - this.totalGeneral()) * 100) / 100;
+  }
+
+  /** Diferencia que deposita contabilidad (cuando el costo supera el saldo heredado). */
+  pendingDeposita(): number {
+    return Math.round(Math.max(0, this.totalGeneral() - this.pendingBalanceAmount()) * 100) / 100;
+  }
+
   /** Solo se ofrece la bolsa de saldos en solicitudes nuevas (no reenvío ni saldo heredado por query). */
   get canUseSaldoBag(): boolean {
     if (this.hasPendingBalance) return false;
@@ -614,7 +633,9 @@ export class SolicitudViaticosComponent implements OnInit {
     const viatico = this.viaticoToResubmit();
     if (viatico) {
       const resubmitPayload: IResubmitViaticoPayload = {
-        amount: hasPending ? this.totalAnticipo() : linesTotal,
+        // El costo del viático son sus líneas. El saldo heredado lo prefinancia en el
+        // backend (no se suma al anticipo), igual que un saldo de la bolsa.
+        amount: linesTotal,
         place,
         ...(this.selectedLat != null && { lat: this.selectedLat }),
         ...(this.selectedLng != null && { lng: this.selectedLng }),
@@ -662,7 +683,9 @@ export class SolicitudViaticosComponent implements OnInit {
 
     // New unified viatico (ExpenseReport type='viatico')
     const viaticoPayload: ICreateViaticoPayload = {
-      amount: hasPending ? this.totalAnticipo() : linesTotal,
+      // El costo del viático son sus líneas; el saldo heredado lo prefinancia en el
+      // backend (no se suma al anticipo), igual que un saldo de la bolsa.
+      amount: linesTotal,
       place,
       ...(this.selectedLat != null && { lat: this.selectedLat }),
       ...(this.selectedLng != null && { lng: this.selectedLng }),
