@@ -181,128 +181,107 @@
         }
       </div>
     } @else {
-      <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-        <div class="overflow-x-auto">
-          <table class="w-full min-w-[700px] text-sm">
-            <thead>
-              <tr class="bg-gray-50 border-b border-gray-200">
-                <th class="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Fecha</th>
-                <th class="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Estado</th>
-                <th class="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Centro de costo</th>
-                <th class="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider hidden md:table-cell">Destino</th>
-                <th class="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider hidden lg:table-cell">Período</th>
-                <th class="text-right px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Monto</th>
-                <th class="text-center px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider hidden md:table-cell">Comprobantes</th>
-                <th class="text-right px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Acciones</th>
-              </tr>
-            </thead>
-            <tbody class="divide-y divide-gray-100">
-              @for (item of unifiedViaticoList; track item._id) {
-              <tr class="hover:bg-gray-50 transition-colors"
-                [class.cursor-pointer]="item.source !== 'advance' || item.canEdit || item.canResubmit"
-                (click)="navigateToUnifiedItem(item, $event)">
+      <app-data-table
+        [items]="unifiedViaticoList"
+        [rowClickable]="true"
+        minWidth="700px"
+        (rowClick)="navigateToUnifiedItem($event.row, $event.event)"
+      >
+        <!-- Fecha -->
+        <ng-container *appColumn="'fecha'; header: 'Fecha'; let item">
+          <p class="text-xs text-gray-500">{{ item.createdAt | date:'dd/MM/yyyy' }}</p>
+        </ng-container>
 
-                <!-- Fecha -->
-                <td class="px-4 py-3.5 whitespace-nowrap">
-                  <p class="text-xs text-gray-500">{{ item.createdAt | date:'dd/MM/yyyy' }}</p>
-                </td>
+        <!-- Estado -->
+        <ng-container *appColumn="'estado'; header: 'Estado'; let item">
+          <span class="inline-flex px-2 py-0.5 rounded-full text-xs font-semibold" [class]="item.statusColor">
+            {{ item.statusLabel }}
+          </span>
+        </ng-container>
 
-                <!-- Estado -->
-                <td class="px-4 py-3.5">
-                  <span class="inline-flex px-2 py-0.5 rounded-full text-xs font-semibold" [class]="item.statusColor">
-                    {{ item.statusLabel }}
-                  </span>
-                </td>
+        <!-- Centro de costo -->
+        <ng-container *appColumn="'cc'; header: 'Centro de costo'; cellClass: 'max-w-[220px]'; let item">
+          <p class="font-medium text-gray-900 break-words">{{ item.projectLabel }}</p>
+        </ng-container>
 
-                <!-- Centro de costo -->
-                <td class="px-4 py-3.5 max-w-[180px]">
-                  <p class="font-medium text-gray-900 truncate">{{ item.projectLabel }}</p>
-                </td>
+        <!-- Destino -->
+        <ng-container *appColumn="'destino'; header: 'Destino'; hideOn: 'hidden md:table-cell'; cellClass: 'text-gray-600 max-w-[200px]'; let item">
+          <span class="break-words">{{ item.place }}</span>
+        </ng-container>
 
-                <!-- Destino -->
-                <td class="px-4 py-3.5 hidden md:table-cell text-gray-600 max-w-[140px]">
-                  <span class="line-clamp-1">{{ item.place }}</span>
-                </td>
+        <!-- Período -->
+        <ng-container *appColumn="'periodo'; header: 'Período'; hideOn: 'hidden lg:table-cell'; cellClass: 'text-xs text-gray-500'; let item">
+          {{ item.dateRange || '—' }}
+        </ng-container>
 
-                <!-- Período -->
-                <td class="px-4 py-3.5 hidden lg:table-cell text-xs text-gray-500">
-                  {{ item.dateRange || '—' }}
-                </td>
+        <!-- Monto -->
+        <ng-container *appColumn="'monto'; header: 'Monto'; align: 'right'; cellClass: 'font-bold text-gray-900 whitespace-nowrap tabular-nums'; let item">
+          S/ {{ item.amount | number:'1.2-2' }}
+        </ng-container>
 
-                <!-- Monto -->
-                <td class="px-4 py-3.5 text-right font-bold text-gray-900 whitespace-nowrap tabular-nums">
-                  S/ {{ item.amount | number:'1.2-2' }}
-                </td>
+        <!-- Comprobantes -->
+        <ng-container *appColumn="'comprobantes'; header: 'Comprobantes'; align: 'center'; hideOn: 'hidden md:table-cell'; cellClass: 'text-gray-600'; let item">
+          <span class="text-xs">{{ item.expensesCount }}</span>
+        </ng-container>
 
-                <!-- Comprobantes -->
-                <td class="px-4 py-3.5 hidden md:table-cell text-center text-gray-600">
-                  <span class="text-xs">{{ item.expensesCount }}</span>
-                </td>
+        <!-- Acciones -->
+        <ng-container *appColumn="'acciones'; header: 'Acciones'; align: 'right'; cardFull: true; let item">
+          <div class="flex items-center justify-end gap-1" (click)="$event.stopPropagation()">
 
-                <!-- Acciones -->
-                <td class="px-4 py-3.5 text-right">
-                  <div class="flex items-center justify-end gap-1" (click)="$event.stopPropagation()">
+            @if (item.isInExpensePhase) {
+              <button type="button"
+                (click)="navigateToUnifiedItem(item, $event)"
+                class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 transition-colors">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-3.5 h-3.5">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                </svg>
+                Registrar gastos
+              </button>
+            } @else if (item.canResubmit) {
+              <button type="button"
+                (click)="editUnifiedItem(item, $event)"
+                class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-primary text-white hover:bg-primary/90 transition-colors">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-3.5 h-3.5">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" />
+                </svg>
+                Corregir
+              </button>
+            } @else if (item.canEdit) {
+              <button type="button"
+                (click)="editUnifiedItem(item, $event)"
+                title="Editar solicitud"
+                class="p-1.5 rounded-lg text-gray-400 hover:text-primary hover:bg-primary/10 transition-colors">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10" />
+                </svg>
+              </button>
+            } @else if (item.source !== 'advance') {
+              <button type="button"
+                (click)="navigateToUnifiedItem(item, $event)"
+                title="Ver detalle"
+                class="p-1.5 rounded-lg text-gray-400 hover:text-primary hover:bg-primary/10 transition-colors">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" />
+                </svg>
+              </button>
+            } @else {
+              <span class="text-xs text-gray-400 italic px-1">—</span>
+            }
 
-                    @if (item.isInExpensePhase) {
-                      <button type="button"
-                        (click)="navigateToUnifiedItem(item, $event)"
-                        class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 transition-colors">
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-3.5 h-3.5">
-                          <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-                        </svg>
-                        Registrar gastos
-                      </button>
-                    } @else if (item.canResubmit) {
-                      <button type="button"
-                        (click)="editUnifiedItem(item, $event)"
-                        class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-primary text-white hover:bg-primary/90 transition-colors">
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-3.5 h-3.5">
-                          <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" />
-                        </svg>
-                        Corregir
-                      </button>
-                    } @else if (item.canEdit) {
-                      <button type="button"
-                        (click)="editUnifiedItem(item, $event)"
-                        title="Editar solicitud"
-                        class="p-1.5 rounded-lg text-gray-400 hover:text-primary hover:bg-primary/10 transition-colors">
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
-                          <path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10" />
-                        </svg>
-                      </button>
-                    } @else if (item.source !== 'advance') {
-                      <button type="button"
-                        (click)="navigateToUnifiedItem(item, $event)"
-                        title="Ver detalle"
-                        class="p-1.5 rounded-lg text-gray-400 hover:text-primary hover:bg-primary/10 transition-colors">
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
-                          <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" />
-                        </svg>
-                      </button>
-                    } @else {
-                      <span class="text-xs text-gray-400 italic px-1">—</span>
-                    }
+            @if (canDeleteUnifiedItem(item)) {
+              <button type="button"
+                (click)="deleteUnifiedItem(item, $event)"
+                title="Eliminar"
+                class="p-1.5 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
+                </svg>
+              </button>
+            }
 
-                    @if (canDeleteUnifiedItem(item)) {
-                      <button type="button"
-                        (click)="deleteUnifiedItem(item, $event)"
-                        title="Eliminar"
-                        class="p-1.5 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors">
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
-                          <path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
-                        </svg>
-                      </button>
-                    }
-
-                  </div>
-                </td>
-
-              </tr>
-              }
-            </tbody>
-          </table>
-        </div>
-      </div>
+          </div>
+        </ng-container>
+      </app-data-table>
     }
 
   } <!-- end @else loading -->
@@ -403,108 +382,98 @@
       </button>
     </div>
   } @else {
-    <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-      <div class="overflow-x-auto">
-        <table class="w-full min-w-[600px] text-sm">
-          <thead>
-            <tr class="bg-gray-50 border-b border-gray-200">
-              <th class="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Fecha</th>
-              <th class="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider hidden sm:table-cell">Código</th>
-              <th class="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Estado</th>
-              <th class="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Descripción</th>
-              <th class="text-center px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider hidden md:table-cell">Gastos</th>
-              <th class="text-right px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Total</th>
-              <th class="text-right px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider hidden md:table-cell">Saldo</th>
-              <th class="text-right px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Acciones</th>
-            </tr>
-          </thead>
-          <tbody class="divide-y divide-gray-100">
-            @for (r of filteredDirectaReports; track r._id) {
-            <tr class="hover:bg-gray-50 transition-colors cursor-pointer" (click)="goToReportDetail(r, $event)">
+    <app-data-table
+      [items]="filteredDirectaReports"
+      [rowClickable]="true"
+      minWidth="600px"
+      (rowClick)="goToReportDetail($event.row, $event.event)"
+    >
+      <!-- Fecha -->
+      <ng-container *appColumn="'fecha'; header: 'Fecha'; cellClass: 'text-xs text-gray-500'; let r">
+        {{ r.createdAt | date:'dd/MM/yyyy' }}
+      </ng-container>
 
-              <td class="px-4 py-3.5 whitespace-nowrap text-xs text-gray-500">
-                {{ r.createdAt | date:'dd/MM/yyyy' }}
-              </td>
+      <!-- Código -->
+      <ng-container *appColumn="'codigo'; header: 'Código'; hideOn: 'hidden sm:table-cell'; let r">
+        @if (r.codigo) {
+          <span class="font-mono text-xs font-bold text-primary bg-primary/10 px-2 py-0.5 rounded">{{ r.codigo }}</span>
+        } @else {
+          <span class="text-gray-400">—</span>
+        }
+      </ng-container>
 
-              <td class="px-4 py-3.5 hidden sm:table-cell">
-                @if (r.codigo) {
-                  <span class="font-mono text-xs font-bold text-primary bg-primary/10 px-2 py-0.5 rounded">{{ r.codigo }}</span>
-                } @else {
-                  <span class="text-gray-400">—</span>
-                }
-              </td>
+      <!-- Estado -->
+      <ng-container *appColumn="'estado'; header: 'Estado'; let r">
+        <span class="inline-flex px-2 py-0.5 rounded-full text-xs font-semibold"
+          [ngClass]="{
+            'bg-gray-100 text-gray-600': isReportEffectivelyClosed(r) || r.status === 'cancelled' || r.status === 'closed',
+            'bg-green-100 text-green-700': !isReportEffectivelyClosed(r) && r.status === 'open',
+            'bg-yellow-100 text-yellow-700': !isReportEffectivelyClosed(r) && r.status === 'submitted',
+            'bg-blue-100 text-blue-700': !isReportEffectivelyClosed(r) && r.status === 'approved',
+            'bg-red-100 text-red-700': !isReportEffectivelyClosed(r) && r.status === 'rejected'
+          }"
+        >
+          {{ panelStatusText(r) }}
+        </span>
+      </ng-container>
 
-              <td class="px-4 py-3.5">
-                <span class="inline-flex px-2 py-0.5 rounded-full text-xs font-semibold"
-                  [ngClass]="{
-                    'bg-gray-100 text-gray-600': isReportEffectivelyClosed(r) || r.status === 'cancelled' || r.status === 'closed',
-                    'bg-green-100 text-green-700': !isReportEffectivelyClosed(r) && r.status === 'open',
-                    'bg-yellow-100 text-yellow-700': !isReportEffectivelyClosed(r) && r.status === 'submitted',
-                    'bg-blue-100 text-blue-700': !isReportEffectivelyClosed(r) && r.status === 'approved',
-                    'bg-red-100 text-red-700': !isReportEffectivelyClosed(r) && r.status === 'rejected'
-                  }"
-                >
-                  {{ panelStatusText(r) }}
-                </span>
-              </td>
+      <!-- Descripción -->
+      <ng-container *appColumn="'descripcion'; header: 'Descripción'; cellClass: 'max-w-[260px]'; let r">
+        <p class="font-medium text-gray-900 break-words">{{ reportDisplayTitle(r) }}</p>
+        @if (reportDateRange(r)) {
+          <p class="text-xs text-gray-400 mt-0.5">{{ reportDateRange(r) }}</p>
+        }
+      </ng-container>
 
-              <td class="px-4 py-3.5 max-w-[200px]">
-                <p class="font-medium text-gray-900 truncate">{{ reportDisplayTitle(r) }}</p>
-                @if (reportDateRange(r)) {
-                  <p class="text-xs text-gray-400 mt-0.5">{{ reportDateRange(r) }}</p>
-                }
-              </td>
+      <!-- Gastos -->
+      <ng-container *appColumn="'gastos'; header: 'Gastos'; align: 'center'; hideOn: 'hidden md:table-cell'; cellClass: 'text-gray-600 text-xs'; let r">
+        {{ r.expenseIds.length || 0 }}
+      </ng-container>
 
-              <td class="px-4 py-3.5 hidden md:table-cell text-center text-gray-600 text-xs">
-                {{ r.expenseIds.length || 0 }}
-              </td>
+      <!-- Total -->
+      <ng-container *appColumn="'total'; header: 'Total'; align: 'right'; cellClass: 'font-bold text-gray-900 whitespace-nowrap tabular-nums'; let r">
+        S/ {{ getTotalGastado(r) | number:'1.2-2' }}
+      </ng-container>
 
-              <td class="px-4 py-3.5 text-right font-bold text-gray-900 whitespace-nowrap tabular-nums">
-                S/ {{ getTotalGastado(r) | number:'1.2-2' }}
-              </td>
+      <!-- Saldo -->
+      <ng-container *appColumn="'saldo'; header: 'Saldo'; align: 'right'; hideOn: 'hidden md:table-cell'; cellClass: 'whitespace-nowrap tabular-nums'; let r">
+        <span [ngClass]="hasReportSaldo(r) ? (getReportSaldo(r) >= 0 ? 'text-green-600 font-semibold' : 'text-red-600 font-semibold') : 'text-gray-400'">
+          @if (hasReportSaldo(r)) {
+            S/ {{ getReportSaldo(r) | number:'1.2-2' }}
+          } @else {
+            —
+          }
+        </span>
+      </ng-container>
 
-              <td class="px-4 py-3.5 hidden md:table-cell text-right whitespace-nowrap tabular-nums"
-                [ngClass]="hasReportSaldo(r) ? (getReportSaldo(r) >= 0 ? 'text-green-600 font-semibold' : 'text-red-600 font-semibold') : 'text-gray-400'">
-                @if (hasReportSaldo(r)) {
-                  S/ {{ getReportSaldo(r) | number:'1.2-2' }}
-                } @else {
-                  —
-                }
-              </td>
-
-              <td class="px-4 py-3.5 text-right">
-                <div class="flex items-center justify-end gap-1">
-                  <button
-                    type="button"
-                    (click)="goToReportDetail(r, $event)"
-                    title="Ver detalle"
-                    class="p-1.5 rounded-lg text-gray-400 hover:text-primary hover:bg-primary/10 transition-colors"
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
-                      <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" />
-                    </svg>
-                  </button>
-                  @if (canDeleteReport(r)) {
-                    <button
-                      type="button"
-                      (click)="openDeleteReportModal(r, $event)"
-                      title="Eliminar rendición"
-                      class="p-1.5 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors"
-                    >
-                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
-                      </svg>
-                    </button>
-                  }
-                </div>
-              </td>
-
-            </tr>
-            }
-          </tbody>
-        </table>
-      </div>
-    </div>
+      <!-- Acciones -->
+      <ng-container *appColumn="'acciones'; header: 'Acciones'; align: 'right'; cardFull: true; let r">
+        <div class="flex items-center justify-end gap-1" (click)="$event.stopPropagation()">
+          <button
+            type="button"
+            (click)="goToReportDetail(r, $event)"
+            title="Ver detalle"
+            class="p-1.5 rounded-lg text-gray-400 hover:text-primary hover:bg-primary/10 transition-colors"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" />
+            </svg>
+          </button>
+          @if (canDeleteReport(r)) {
+            <button
+              type="button"
+              (click)="openDeleteReportModal(r, $event)"
+              title="Eliminar rendición"
+              class="p-1.5 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
+                <path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
+              </svg>
+            </button>
+          }
+        </div>
+      </ng-container>
+    </app-data-table>
   }
 
   } <!-- fin @if activeTab === 'directas' -->
@@ -587,74 +556,58 @@
       </button>
     </div>
   } @else {
-    <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-      <div class="overflow-x-auto">
-        <table class="w-full min-w-[480px] text-sm">
-          <thead>
-            <tr class="bg-gray-50 border-b border-gray-200">
-              <th class="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Fecha</th>
-              <th class="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Título</th>
-              <th class="text-center px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider hidden sm:table-cell">Comprobantes</th>
-              <th class="text-right px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Total</th>
-              <th class="text-right px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Acciones</th>
-            </tr>
-          </thead>
-          <tbody class="divide-y divide-gray-100">
-            @for (report of filteredCajaChicaReports; track report._id) {
-            <tr class="hover:bg-gray-50 transition-colors">
+    <app-data-table [items]="filteredCajaChicaReports" minWidth="480px">
+      <!-- Fecha -->
+      <ng-container *appColumn="'fecha'; header: 'Fecha'; cellClass: 'text-xs text-gray-500'; let report">
+        {{ report.createdAt | date:'dd/MM/yyyy' }}
+      </ng-container>
 
-              <td class="px-4 py-3.5 whitespace-nowrap text-xs text-gray-500">
-                {{ report.createdAt | date:'dd/MM/yyyy' }}
-              </td>
+      <!-- Título -->
+      <ng-container *appColumn="'titulo'; header: 'Título'; cellClass: 'max-w-[320px]'; let report">
+        <div class="flex items-center gap-2">
+          <span class="shrink-0 inline-flex px-1.5 py-0.5 rounded text-[10px] font-bold bg-orange-100 text-orange-700 uppercase tracking-wide">CC</span>
+          <p class="font-medium text-gray-900 break-words">{{ report.title }}</p>
+        </div>
+      </ng-container>
 
-              <td class="px-4 py-3.5 max-w-[260px]">
-                <div class="flex items-center gap-2">
-                  <span class="shrink-0 inline-flex px-1.5 py-0.5 rounded text-[10px] font-bold bg-orange-100 text-orange-700 uppercase tracking-wide">CC</span>
-                  <p class="font-medium text-gray-900 truncate">{{ report.title }}</p>
-                </div>
-              </td>
+      <!-- Comprobantes -->
+      <ng-container *appColumn="'comprobantes'; header: 'Comprobantes'; align: 'center'; hideOn: 'hidden sm:table-cell'; cellClass: 'text-gray-600 text-xs'; let report">
+        {{ report.expenseIds.length }}
+      </ng-container>
 
-              <td class="px-4 py-3.5 hidden sm:table-cell text-center text-gray-600 text-xs">
-                {{ report.expenseIds.length }}
-              </td>
+      <!-- Total -->
+      <ng-container *appColumn="'total'; header: 'Total'; align: 'right'; cellClass: 'font-bold text-gray-900 whitespace-nowrap tabular-nums'; let report">
+        S/ {{ cajaChicaTotalExpenses(report) | number:'1.2-2' }}
+      </ng-container>
 
-              <td class="px-4 py-3.5 text-right font-bold text-gray-900 whitespace-nowrap tabular-nums">
-                S/ {{ cajaChicaTotalExpenses(report) | number:'1.2-2' }}
-              </td>
-
-              <td class="px-4 py-3.5 text-right">
-                <div class="flex items-center justify-end gap-1">
-                  <a
-                    [routerLink]="['/mis-rendiciones', report._id, 'detalle']"
-                    [queryParams]="{tab: activeTab()}"
-                    title="Ver detalle"
-                    class="p-1.5 rounded-lg text-gray-400 hover:text-primary hover:bg-primary/10 transition-colors inline-flex"
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
-                      <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" />
-                    </svg>
-                  </a>
-                  @if (canDeleteReport(report)) {
-                    <button
-                      type="button"
-                      (click)="openDeleteReportModal(report, $event)"
-                      title="Eliminar caja chica"
-                      class="p-1.5 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors"
-                    >
-                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
-                      </svg>
-                    </button>
-                  }
-                </div>
-              </td>
-
-            </tr>
-            }
-          </tbody>
-        </table>
-      </div>
-    </div>
+      <!-- Acciones -->
+      <ng-container *appColumn="'acciones'; header: 'Acciones'; align: 'right'; cardFull: true; let report">
+        <div class="flex items-center justify-end gap-1">
+          <a
+            [routerLink]="['/mis-rendiciones', report._id, 'detalle']"
+            [queryParams]="{tab: activeTab()}"
+            title="Ver detalle"
+            class="p-1.5 rounded-lg text-gray-400 hover:text-primary hover:bg-primary/10 transition-colors inline-flex"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" />
+            </svg>
+          </a>
+          @if (canDeleteReport(report)) {
+            <button
+              type="button"
+              (click)="openDeleteReportModal(report, $event)"
+              title="Eliminar caja chica"
+              class="p-1.5 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
+                <path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
+              </svg>
+            </button>
+          }
+        </div>
+      </ng-container>
+    </app-data-table>
   }
 
   } <!-- fin @if activeTab === 'caja-chica' -->

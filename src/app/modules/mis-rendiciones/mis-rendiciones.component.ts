@@ -13,6 +13,8 @@ import {
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { CajaChicaReportService } from '../../services/caja-chica-report.service';
 import { CreateRendicionModalComponent } from '../admin-users/user-details/create-rendicion-modal/create-rendicion-modal.component';
+import { DataTableComponent } from '../../design-system/data-table/data-table.component';
+import { ColumnDirective } from '../../design-system/data-table/column.directive';
 import { AdvanceService } from '../../services/advance.service';
 import {
   IAdvance,
@@ -41,7 +43,7 @@ type UnifiedViaticoItem = {
 @Component({
   selector: 'app-mis-rendiciones',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterModule, CreateRendicionModalComponent],
+  imports: [CommonModule, FormsModule, RouterModule, CreateRendicionModalComponent, DataTableComponent, ColumnDirective],
   templateUrl: './mis-rendiciones.component.html',
   styleUrls: ['./mis-rendiciones.component.scss']
 })
