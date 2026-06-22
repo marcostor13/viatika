@@ -107,8 +107,8 @@ export const httpInterceptor: HttpInterceptorFn = (req, next) => {
       req.url.includes(`/expense-report/user/`) ||
       req.url.includes(`/user/client/${companyId}`);
 
-    if (shouldAddClientId && !req.url.endsWith(companyId) && !alreadyContainsClientIdInPath) {
-       // Only append if it's not already there
+    const urlPath = req.url.split('?')[0];
+    if (shouldAddClientId && !urlPath.endsWith(companyId) && !alreadyContainsClientIdInPath) {
        req = req.clone({ url: `${req.url}/${companyId}` });
     }
   }
