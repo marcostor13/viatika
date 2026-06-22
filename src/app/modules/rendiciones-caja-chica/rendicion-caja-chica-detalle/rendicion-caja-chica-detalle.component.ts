@@ -58,7 +58,8 @@ export class RendicionCajaChicaDetalleComponent implements OnInit {
       error: (err) => {
         this.loading.set(false);
         if (err?.status === 404) {
-          this.router.navigate(['/rendiciones-caja-chica'], {
+          this.router.navigate(['/rendiciones'], {
+            queryParams: { tab: 'caja-chica' },
             state: { removedId: this.reportId },
           });
         } else {
@@ -350,6 +351,6 @@ export class RendicionCajaChicaDetalleComponent implements OnInit {
   }
 
   goBack(): void {
-    this.router.navigate(['/rendiciones-caja-chica']);
+    this.router.navigate(['/rendiciones'], { queryParams: { tab: 'caja-chica' } });
   }
 }

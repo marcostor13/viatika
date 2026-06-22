@@ -187,12 +187,18 @@ export class PlacesAutocompleteDirective implements AfterViewInit, OnDestroy {
     });
   }
 
-  private setPacValue(pac: HTMLElement, value: string) {
+  private setPacValue(pac: HTMLElement, value: string, attempts = 0) {
     // PlaceAutocompleteElement may use shadow DOM or open DOM depending on browser/version
     const shadow = (pac as any).shadowRoot;
     const inner: HTMLInputElement | null =
       shadow?.querySelector('input') ?? pac.querySelector('input');
-    if (inner) inner.value = value;
+    if (inner) {
+      inner.value = value;
+    } else if (attempts < 20) {
+      // El input interno del web component puede no haberse renderizado todavía
+      // (p. ej. al precargar el formulario en modo edición). Reintentar brevemente.
+      setTimeout(() => this.setPacValue(pac, value, attempts + 1), 50);
+    }
   }
 
   // ─── Legacy API (Autocomplete) ──────────────────────────────────────────

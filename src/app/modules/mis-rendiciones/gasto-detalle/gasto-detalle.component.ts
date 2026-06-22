@@ -65,11 +65,11 @@ export class GastoDetalleComponent implements OnInit {
   }
 
   private get backRoute(): string[] {
-    return this.userState.isContabilidad() ? ['/rendiciones-directas'] : ['/mis-rendiciones'];
+    return [this.userState.isContabilidad() ? '/rendiciones' : '/mis-rendiciones'];
   }
 
   private get backQueryParams(): object {
-    return this.userState.isContabilidad() ? {} : { tab: 'directas' };
+    return { tab: 'directas' };
   }
 
   goBack(): void {

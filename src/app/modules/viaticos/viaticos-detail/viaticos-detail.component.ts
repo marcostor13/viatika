@@ -68,11 +68,11 @@ export class ViaticosDetailComponent implements OnInit {
     const id = this.route.snapshot.paramMap.get('id')!;
     this.advanceService.findOne(id).subscribe({
       next: (a) => { this.advance.set(a); this.isLoading.set(false); },
-      error: () => { this.notifications.show('No se pudo cargar la solicitud', 'error'); this.router.navigate(['/viaticos']); },
+      error: () => { this.notifications.show('No se pudo cargar la solicitud', 'error'); this.router.navigate(['/rendiciones']); },
     });
   }
 
-  back() { this.router.navigate(['/viaticos']); }
+  back() { this.router.navigate(['/rendiciones']); }
 
   get canApproveL1Action(): boolean {
     const a = this.advance();
