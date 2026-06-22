@@ -62,6 +62,7 @@ export const httpInterceptor: HttpInterceptorFn = (req, next) => {
     '/caja-chica-report',
     '/saldo',
     '/saldo/',
+    '/accounting-entries',
   ];
 
   const isExcludedEndpoint = excludedEndpoints.some(
@@ -108,8 +109,9 @@ export const httpInterceptor: HttpInterceptorFn = (req, next) => {
       req.url.includes(`/user/client/${companyId}`);
 
     const urlPath = req.url.split('?')[0];
+    const urlSearch = req.url.includes('?') ? req.url.slice(req.url.indexOf('?')) : '';
     if (shouldAddClientId && !urlPath.endsWith(companyId) && !alreadyContainsClientIdInPath) {
-       req = req.clone({ url: `${req.url}/${companyId}` });
+      req = req.clone({ url: `${urlPath}/${companyId}${urlSearch}` });
     }
   }
 

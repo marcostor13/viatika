@@ -1,8 +1,7 @@
 import { Injectable, inject } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { environment } from '../../environments/environment';
-import { UserStateService } from './user-state.service';
 
 export type AsientoTipo =
   | 'solicitud'
@@ -29,26 +28,17 @@ export interface IGeneratedFile {
 @Injectable({ providedIn: 'root' })
 export class AccountingEntriesService {
   private http = inject(HttpClient);
-  private userState = inject(UserStateService);
   private url = `${environment.api}/accounting-entries`;
 
-  /** Genera los archivos de asientos de una rendición. */
   generate(
     reportId: string,
     tipos?: AsientoTipo[]
   ): Observable<{ files: IGeneratedFile[] }> {
-    const query = tipos?.length ? `?tipos=${tipos.join(',')}` : '';
-    const clientId =
-      (this.userState.getUser() as { companyId?: string })?.companyId || '';
-    // Se incluye el clientId en la ruta (convención del app); el backend igual
-    // prioriza el clientId del JWT.
-    const path = clientId
-      ? `${this.url}/${reportId}/${clientId}`
-      : `${this.url}/${reportId}`;
-    return this.http.get<{ files: IGeneratedFile[] }>(`${path}${query}`);
+    let params = new HttpParams();
+    if (tipos?.length) params = params.set('tipos', tipos.join(','));
+    return this.http.get<{ files: IGeneratedFile[] }>(`${this.url}/${reportId}`, { params });
   }
 
-  /** Dispara la descarga en el navegador de un archivo base64 (.xlsx). */
   downloadBase64(file: IGeneratedFile): void {
     const bytes = atob(file.base64);
     const buffer = new Uint8Array(bytes.length);
