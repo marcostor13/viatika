@@ -207,9 +207,34 @@ export class SolicitudViaticosComponent implements OnInit {
       if (fromReport && amount > 0) {
         this.pendingBalanceFromReportId.set(fromReport);
         this.pendingBalanceAmount.set(amount);
+        // El saldo heredado pertenece al centro de costo de la rendición de origen:
+        // se fija automáticamente y se bloquea (no puede trasladarse a otro).
+        this.lockProjectFromSourceReport(fromReport);
       }
       this.loadCatalogues();
     }
+  }
+
+  /**
+   * Fija y bloquea el centro de costo a partir de la rendición que origina el saldo
+   * heredado: ese saldo solo puede usarse en su mismo centro de costo, no en otro.
+   */
+  private lockProjectFromSourceReport(reportId: string): void {
+    this.expenseReportsService.findOne(reportId).subscribe({
+      next: (report) => {
+        const raw = report?.projectId as unknown;
+        const pid =
+          raw && typeof raw === 'object'
+            ? String((raw as { _id?: string })._id ?? '')
+            : String(raw ?? '');
+        if (!pid) return;
+        const ctrl = this.form.get('projectId');
+        ctrl?.setValue(pid);
+        this.selectedProjectId.set(pid);
+        ctrl?.disable({ emitEvent: false });
+      },
+      error: () => {},
+    });
   }
 
   /** Carga los saldos de viáticos elegibles (mismo centro de costo) y limpia la selección. */
@@ -553,6 +578,9 @@ export class SolicitudViaticosComponent implements OnInit {
     }
 
     const place = (this.form.value.place || '').trim();
+    // getRawValue: el centro de costo puede estar deshabilitado (saldo heredado),
+    // y los controles deshabilitados no aparecen en form.value.
+    const projectId = (this.form.getRawValue().projectId as string) ?? '';
     const linesPayload: IAdvanceLinePayload[] = [];
 
     for (let i = 0; i < this.lines.length; i++) {
@@ -592,7 +620,7 @@ export class SolicitudViaticosComponent implements OnInit {
         ...(this.selectedLng != null && { lng: this.selectedLng }),
         startDate: `${startStr}T12:00:00.000Z`,
         endDate: `${endStr}T12:00:00.000Z`,
-        projectId: this.form.value.projectId as string,
+        projectId,
         lines: linesPayload,
         observations: (this.form.value.observations || '').trim() || undefined,
         ...(this.canUseSaldoBag && saldoIds.length > 0 && { saldoIds }),
@@ -616,7 +644,7 @@ export class SolicitudViaticosComponent implements OnInit {
         ...(this.selectedLng != null && { lng: this.selectedLng }),
         startDate: `${startStr}T12:00:00.000Z`,
         endDate: `${endStr}T12:00:00.000Z`,
-        projectId: this.form.value.projectId as string,
+        projectId,
         lines: linesPayload,
         observations: (this.form.value.observations || '').trim() || undefined,
         ...(hasPending && {
@@ -640,7 +668,7 @@ export class SolicitudViaticosComponent implements OnInit {
       ...(this.selectedLng != null && { lng: this.selectedLng }),
       startDate: `${startStr}T12:00:00.000Z`,
       endDate: `${endStr}T12:00:00.000Z`,
-      projectId: this.form.value.projectId as string,
+      projectId,
       lines: linesPayload,
       observations: (this.form.value.observations || '').trim() || undefined,
       ...(hasPending && {

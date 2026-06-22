@@ -9,6 +9,7 @@ import { InvoicesService } from '../../invoices/services/invoices.service';
 import { UserStateService } from '../../../services/user-state.service';
 import { NotificationService } from '../../../services/notification.service';
 import { AdvanceService } from '../../../services/advance.service';
+import { CategoriaService } from '../../../services/categoria.service';
 import { IExpenseReport } from '../../../interfaces/expense-report.interface';
 import { IAdvance, ADVANCE_STATUS_LABELS, ADVANCE_STATUS_COLORS } from '../../../interfaces/advance.interface';
 import { IUserResponse } from '../../../interfaces/user.interface';
@@ -87,10 +88,13 @@ export class RendicionesAdminComponent implements OnInit {
   private userStateService = inject(UserStateService);
   private notifications = inject(NotificationService);
   private advanceService = inject(AdvanceService);
+  private categoriaService = inject(CategoriaService);
   private fb = inject(FormBuilder);
 
   private allReports: IExpenseReport[] = [];
   private allOrphanedAdvances: IAdvance[] = [];
+  /** Nombre de categoría por id, para mostrar el detalle de líneas al aprobar. */
+  private categoryNameById = new Map<string, string>();
 
   filteredItems: UnifiedRendicionItem[] = [];
   users: IUserResponse[] = [];
@@ -155,6 +159,29 @@ export class RendicionesAdminComponent implements OnInit {
       next: (projects) => { this.projects = projects; },
       error: () => {},
     });
+
+    this.categoriaService.getAllFlat().subscribe({
+      next: (cats) => {
+        this.categoryNameById.clear();
+        for (const c of cats ?? []) this.categoryNameById.set(String(c._id), c.name);
+      },
+      error: () => {},
+    });
+  }
+
+  /** Líneas por categoría del viático en revisión (vacío si no es viático). */
+  approveViaticoLines(): any[] {
+    const item = this.pendingApproveItem();
+    if (!item || item.source !== 'report') return [];
+    const raw = item.raw as IExpenseReport;
+    return raw.type === 'viatico' ? ((raw as any).viaticoLines ?? []) : [];
+  }
+
+  /** Nombre de la categoría de una línea (acepta id suelto o ya poblado). */
+  viaticoCategoryName(line: any): string {
+    const c = line?.categoryId;
+    if (c && typeof c === 'object' && 'name' in c) return (c as { name: string }).name;
+    return this.categoryNameById.get(String(c)) || '—';
   }
 
   applyFilters(): void {
