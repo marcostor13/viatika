@@ -188,7 +188,7 @@ export class RendicionesDirectasComponent implements OnInit {
       open: 'Abierta', solicited: 'Solicitada', submitted: 'Enviada',
       pending_accounting: 'En contabilidad', approved: 'Aprobada',
       rejected: 'Rechazada', closed: 'Cerrada', liquidated: 'Liquidada',
-      reimbursed: 'Reembolsada',
+      reimbursed: 'Reembolsada', cancelled: 'Cancelada',
     };
     return map[String(r?.status || '')] ?? (r?.status || '—');
   }
