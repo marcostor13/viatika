@@ -44,9 +44,28 @@ export class NuevaRendicionDirectaDepositoComponent implements OnInit {
 
   form: FormGroup = this.fb.group({
     userId: ['', Validators.required],
+    metodoPago: ['deposito', Validators.required],
     gestion: [''],
     amount: [null, [Validators.required, Validators.min(0.01)]],
   });
+
+  /** En efectivo el comprobante es opcional; en depósito sigue siendo obligatorio. */
+  get isEfectivo(): boolean {
+    return this.form.get('metodoPago')?.value === 'efectivo';
+  }
+
+  /** El comprobante solo bloquea el envío cuando el método es depósito. */
+  get requiresReceipt(): boolean {
+    return !this.isEfectivo;
+  }
+
+  get isReceiptMissing(): boolean {
+    return this.requiresReceipt && !this.depositReceiptUrl;
+  }
+
+  setMetodoPago(metodo: 'deposito' | 'efectivo'): void {
+    this.form.patchValue({ metodoPago: metodo });
+  }
 
   ngOnInit(): void {
     this.loadTargetUsers();
@@ -158,7 +177,7 @@ export class NuevaRendicionDirectaDepositoComponent implements OnInit {
       this.form.markAllAsTouched();
       return;
     }
-    if (!this.depositReceiptUrl) {
+    if (this.isReceiptMissing) {
       this.notificationService.show('Debes adjuntar el comprobante de depósito.', 'error');
       return;
     }
@@ -168,8 +187,9 @@ export class NuevaRendicionDirectaDepositoComponent implements OnInit {
       userId: v.userId,
       amount: Number(v.amount),
       concepto: v.gestion?.trim() || undefined,
+      metodoPago: v.metodoPago,
       scannedAmount: this.depositScannedAmount ?? undefined,
-      receiptUrl: this.depositReceiptUrl,
+      receiptUrl: this.depositReceiptUrl || undefined,
       receiptFileName: this.depositReceiptName || undefined,
       receiptMimeType: this.depositReceiptMimeType || undefined,
       receiptSizeBytes: this.depositReceiptSizeBytes || undefined,

@@ -3,8 +3,7 @@ import { Directive, Input, TemplateRef } from '@angular/core';
 /**
  * Define una columna para `<app-data-table>`. Es una directiva estructural: el
  * contenido marcado con `*appColumn` se captura como plantilla y la tabla lo
- * reutiliza tanto en la vista de tabla (>=1600px) como en la de cards (<1600px),
- * de modo que el renderizado de cada celda vive en un solo lugar.
+ * renderiza en la celda correspondiente.
  *
  * Uso:
  *   <ng-container *appColumn="'fecha'; header: 'Fecha'; align: 'left'; let row">
@@ -34,22 +33,20 @@ export class ColumnDirective {
   @Input('appColumnHeaderClass') headerClass = '';
 
   /**
-   * Clases de visibilidad responsiva aplicadas SOLO en la vista de tabla,
-   * p.ej. 'hidden md:table-cell' para ocultar en anchos intermedios.
+   * Clases de visibilidad responsiva opcionales, p.ej. 'hidden md:table-cell'.
+   * Por defecto vacío: la columna siempre se muestra y, al reducir la pantalla,
+   * se accede mediante el scroll horizontal de la tabla.
    */
   @Input('appColumnHideOn') hideOn = '';
 
-  /** Si la columna aparece en la vista de card (<1600px). */
-  @Input('appColumnInCard') inCard = true;
-
-  /** Etiqueta a mostrar en la card; si está vacía se usa `header`. */
-  @Input('appColumnCardLabel') cardLabel = '';
-
   /**
-   * En card, ocupa todo el ancho sin etiqueta (útil para acciones, títulos
-   * principales o descripciones largas).
+   * Si es `true`, la columna NO se muestra como columna fija de la tabla, sino
+   * dentro del panel que se despliega al expandir la fila (chevron). Útil para
+   * tablas con muchas columnas: las secundarias se marcan como detalle y la
+   * tabla se ve completa sin scroll. Si ninguna columna es de detalle, la tabla
+   * se comporta como una tabla normal (sin chevron).
    */
-  @Input('appColumnCardFull') cardFull = false;
+  @Input('appColumnDetail') detail = false;
 
   constructor(public tpl: TemplateRef<{ $implicit: any; index: number }>) {}
 

@@ -184,7 +184,6 @@
       <app-data-table
         [items]="unifiedViaticoList"
         [rowClickable]="true"
-        minWidth="700px"
         (rowClick)="navigateToUnifiedItem($event.row, $event.event)"
       >
         <!-- Fecha -->
@@ -205,12 +204,12 @@
         </ng-container>
 
         <!-- Destino -->
-        <ng-container *appColumn="'destino'; header: 'Destino'; hideOn: 'hidden md:table-cell'; cellClass: 'text-gray-600 max-w-[200px]'; let item">
+        <ng-container *appColumn="'destino'; header: 'Destino'; detail: true; cellClass: 'text-gray-600'; let item">
           <span class="break-words">{{ item.place }}</span>
         </ng-container>
 
         <!-- Período -->
-        <ng-container *appColumn="'periodo'; header: 'Período'; hideOn: 'hidden lg:table-cell'; cellClass: 'text-xs text-gray-500'; let item">
+        <ng-container *appColumn="'periodo'; header: 'Período'; detail: true; cellClass: 'text-gray-500'; let item">
           {{ item.dateRange || '—' }}
         </ng-container>
 
@@ -220,12 +219,12 @@
         </ng-container>
 
         <!-- Comprobantes -->
-        <ng-container *appColumn="'comprobantes'; header: 'Comprobantes'; align: 'center'; hideOn: 'hidden md:table-cell'; cellClass: 'text-gray-600'; let item">
+        <ng-container *appColumn="'comprobantes'; header: 'Comprobantes'; detail: true; align: 'center'; cellClass: 'text-gray-600'; let item">
           <span class="text-xs">{{ item.expensesCount }}</span>
         </ng-container>
 
         <!-- Acciones -->
-        <ng-container *appColumn="'acciones'; header: 'Acciones'; align: 'right'; cardFull: true; let item">
+        <ng-container *appColumn="'acciones'; header: 'Acciones'; align: 'right'; let item">
           <div class="flex items-center justify-end gap-1" (click)="$event.stopPropagation()">
 
             @if (item.isInExpensePhase) {
@@ -385,16 +384,15 @@
     <app-data-table
       [items]="filteredDirectaReports"
       [rowClickable]="true"
-      minWidth="600px"
       (rowClick)="goToReportDetail($event.row, $event.event)"
     >
       <!-- Fecha -->
-      <ng-container *appColumn="'fecha'; header: 'Fecha'; cellClass: 'text-xs text-gray-500'; let r">
+      <ng-container *appColumn="'fecha'; header: 'Fecha'; detail: true; cellClass: 'text-gray-500'; let r">
         {{ r.createdAt | date:'dd/MM/yyyy' }}
       </ng-container>
 
       <!-- Código -->
-      <ng-container *appColumn="'codigo'; header: 'Código'; hideOn: 'hidden sm:table-cell'; let r">
+      <ng-container *appColumn="'codigo'; header: 'Código'; let r">
         @if (r.codigo) {
           <span class="font-mono text-xs font-bold text-primary bg-primary/10 px-2 py-0.5 rounded">{{ r.codigo }}</span>
         } @else {
@@ -426,7 +424,7 @@
       </ng-container>
 
       <!-- Gastos -->
-      <ng-container *appColumn="'gastos'; header: 'Gastos'; align: 'center'; hideOn: 'hidden md:table-cell'; cellClass: 'text-gray-600 text-xs'; let r">
+      <ng-container *appColumn="'gastos'; header: 'Gastos'; detail: true; align: 'center'; cellClass: 'text-gray-600 text-xs'; let r">
         {{ r.expenseIds.length || 0 }}
       </ng-container>
 
@@ -436,7 +434,7 @@
       </ng-container>
 
       <!-- Saldo -->
-      <ng-container *appColumn="'saldo'; header: 'Saldo'; align: 'right'; hideOn: 'hidden md:table-cell'; cellClass: 'whitespace-nowrap tabular-nums'; let r">
+      <ng-container *appColumn="'saldo'; header: 'Saldo'; align: 'right'; cellClass: 'whitespace-nowrap tabular-nums'; let r">
         <span [ngClass]="hasReportSaldo(r) ? (getReportSaldo(r) >= 0 ? 'text-green-600 font-semibold' : 'text-red-600 font-semibold') : 'text-gray-400'">
           @if (hasReportSaldo(r)) {
             S/ {{ getReportSaldo(r) | number:'1.2-2' }}
@@ -447,7 +445,7 @@
       </ng-container>
 
       <!-- Acciones -->
-      <ng-container *appColumn="'acciones'; header: 'Acciones'; align: 'right'; cardFull: true; let r">
+      <ng-container *appColumn="'acciones'; header: 'Acciones'; align: 'right'; let r">
         <div class="flex items-center justify-end gap-1" (click)="$event.stopPropagation()">
           <button
             type="button"
@@ -556,7 +554,7 @@
       </button>
     </div>
   } @else {
-    <app-data-table [items]="filteredCajaChicaReports" minWidth="480px">
+    <app-data-table [items]="filteredCajaChicaReports">
       <!-- Fecha -->
       <ng-container *appColumn="'fecha'; header: 'Fecha'; cellClass: 'text-xs text-gray-500'; let report">
         {{ report.createdAt | date:'dd/MM/yyyy' }}
@@ -571,7 +569,7 @@
       </ng-container>
 
       <!-- Comprobantes -->
-      <ng-container *appColumn="'comprobantes'; header: 'Comprobantes'; align: 'center'; hideOn: 'hidden sm:table-cell'; cellClass: 'text-gray-600 text-xs'; let report">
+      <ng-container *appColumn="'comprobantes'; header: 'Comprobantes'; align: 'center'; cellClass: 'text-gray-600 text-xs'; let report">
         {{ report.expenseIds.length }}
       </ng-container>
 
@@ -581,7 +579,7 @@
       </ng-container>
 
       <!-- Acciones -->
-      <ng-container *appColumn="'acciones'; header: 'Acciones'; align: 'right'; cardFull: true; let report">
+      <ng-container *appColumn="'acciones'; header: 'Acciones'; align: 'right'; let report">
         <div class="flex items-center justify-end gap-1">
           <a
             [routerLink]="['/mis-rendiciones', report._id, 'detalle']"

@@ -98,11 +98,9 @@
         <table class="hidden sm:table w-full text-sm">
           <thead class="bg-background border-b border-tertiary/20">
             <tr>
+              <th class="px-2 py-3 w-8"></th>
               <th class="text-left px-5 py-3 text-xs font-semibold text-tertiary uppercase tracking-wider">Categoría</th>
               <th class="text-left px-5 py-3 text-xs font-semibold text-tertiary uppercase tracking-wider">Cuenta</th>
-              <th class="text-left px-5 py-3 text-xs font-semibold text-tertiary uppercase tracking-wider">Perfiles de Categoría</th>
-              <th class="text-left px-5 py-3 text-xs font-semibold text-tertiary uppercase tracking-wider">Descripción</th>
-              <th class="text-left px-5 py-3 text-xs font-semibold text-tertiary uppercase tracking-wider">Observaciones</th>
               <th class="text-right px-5 py-3 text-xs font-semibold text-tertiary uppercase tracking-wider">Límite (S/)</th>
               <th class="text-left px-5 py-3 text-xs font-semibold text-tertiary uppercase tracking-wider">Estado</th>
               <th class="text-right px-5 py-3 text-xs font-semibold text-tertiary uppercase tracking-wider">Acciones</th>
@@ -110,27 +108,22 @@
           </thead>
           <tbody class="divide-y divide-tertiary/10">
             @for (cat of result().data; track cat._id) {
-              <tr class="hover:bg-background/50 transition-colors">
-                <td class="px-5 py-3.5 font-medium text-secondary">{{ cat.name }}</td>
+              <tr class="hover:bg-background/50 transition-colors" [class.bg-background]="isExpanded(cat._id)">
+                <!-- Expandir -->
+                <td class="px-2 py-3.5">
+                  <button type="button" (click)="toggleExpand(cat._id, $event)" title="Ver más"
+                    [attr.aria-expanded]="isExpanded(cat._id)"
+                    class="inline-flex items-center justify-center w-6 h-6 rounded-md text-tertiary hover:bg-tertiary/10 hover:text-secondary transition-colors">
+                    <svg class="w-4 h-4 transition-transform" [class.rotate-90]="isExpanded(cat._id)" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
+                    </svg>
+                  </button>
+                </td>
+                <td class="px-5 py-3.5 font-medium text-secondary break-words">{{ cat.name }}</td>
                 <td class="px-5 py-3.5">
                   @if (cat.cuenta) {
                     <span class="font-mono text-xs bg-background px-2 py-1 rounded-lg border border-tertiary/20 text-tertiary">{{ cat.cuenta }}</span>
                   } @else { <span class="text-tertiary/50">—</span> }
-                </td>
-                <td class="px-5 py-3.5">
-                  @if (perfilesForCategory(cat._id).length) {
-                    <div class="flex flex-wrap gap-1">
-                      @for (perfil of perfilesForCategory(cat._id); track perfil) {
-                        <span class="text-xs text-primary bg-primary/10 px-2 py-0.5 rounded-full border border-primary/20">{{ perfil }}</span>
-                      }
-                    </div>
-                  } @else { <span class="text-tertiary/50">—</span> }
-                </td>
-                <td class="px-5 py-3.5 text-tertiary max-w-[260px]">
-                  <span class="block truncate" [title]="cat.description || ''">{{ cat.description || '—' }}</span>
-                </td>
-                <td class="px-5 py-3.5 text-tertiary max-w-[220px]">
-                  <span class="block truncate" [title]="cat.observaciones || ''">{{ cat.observaciones || '—' }}</span>
                 </td>
                 <td class="px-5 py-3.5 text-right tabular-nums text-secondary">
                   @if (cat.limit != null) { {{ cat.limit | number:'1.2-2' }} } @else { <span class="text-tertiary/50">—</span> }
@@ -157,6 +150,32 @@
                   </div>
                 </td>
               </tr>
+              @if (isExpanded(cat._id)) {
+              <tr class="bg-background/60">
+                <td class="px-5 pb-3.5 pt-0" colspan="6">
+                  <div class="grid grid-cols-1 sm:grid-cols-3 gap-x-6 gap-y-2 pl-8">
+                    <div>
+                      <span class="block text-tertiary uppercase tracking-wide text-[10px] font-semibold">Perfiles de Categoría</span>
+                      @if (perfilesForCategory(cat._id).length) {
+                        <div class="flex flex-wrap gap-1 mt-0.5">
+                          @for (perfil of perfilesForCategory(cat._id); track perfil) {
+                            <span class="text-xs text-primary bg-primary/10 px-2 py-0.5 rounded-full border border-primary/20">{{ perfil }}</span>
+                          }
+                        </div>
+                      } @else { <span class="text-sm text-tertiary/50">—</span> }
+                    </div>
+                    <div>
+                      <span class="block text-tertiary uppercase tracking-wide text-[10px] font-semibold">Descripción</span>
+                      <span class="text-sm text-tertiary break-words">{{ cat.description || '—' }}</span>
+                    </div>
+                    <div>
+                      <span class="block text-tertiary uppercase tracking-wide text-[10px] font-semibold">Observaciones</span>
+                      <span class="text-sm text-tertiary break-words">{{ cat.observaciones || '—' }}</span>
+                    </div>
+                  </div>
+                </td>
+              </tr>
+              }
             }
           </tbody>
         </table>
