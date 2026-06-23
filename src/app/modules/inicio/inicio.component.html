@@ -194,11 +194,11 @@
     }"></ng-container>
     <ng-container *ngTemplateOutlet="kpiCard; context: {
       title: 'Rendiciones de viáticos', value: kpiRendicionesViaticos(), accent: 'blue',
-      link: '/mis-rendiciones', qp: { tab: 'viaticos' }, hint: 'por rendir / cerrar'
+      link: '/mis-rendiciones', qp: { tab: 'viaticos' }, hint: 'por rendir'
     }"></ng-container>
     <ng-container *ngTemplateOutlet="kpiCard; context: {
-      title: 'Por enviar a revisión', value: kpiPendientesViaticos(), accent: 'red',
-      link: '/mis-rendiciones', qp: { tab: 'viaticos' }, hint: 'con gastos por subir o enviar'
+      title: 'Rendiciones cerradas', value: kpiViaticosCerradas(), accent: 'green',
+      link: '/mis-rendiciones', qp: { tab: 'viaticos' }, hint: 'finalizadas'
     }"></ng-container>
   </div>
   <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-4">

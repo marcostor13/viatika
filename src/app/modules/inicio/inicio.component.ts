@@ -121,6 +121,9 @@ export class InicioComponent implements OnInit {
   /** Estados que NO cuentan como "sin cerrar" (rendición finalizada). */
   private readonly CLOSED_STATUSES = ['closed', 'cancelled', 'rejected', 'reimbursed'];
 
+  /** Estados que cuentan como rendición de viáticos CERRADA/finalizada con éxito. */
+  private readonly VIATICO_CLOSED_STATUSES = ['closed', 'reimbursed', 'settled', 'returned'];
+
   // ─── Greeting ─────────────────────────────────────────────────────
   get greeting(): string {
     const h = new Date().getHours();
@@ -184,8 +187,36 @@ export class InicioComponent implements OnInit {
       .map((r) => this.reportRow(r))
   );
 
+  /**
+   * Una rendición de viáticos cuenta como CERRADA cuando llegó a un estado final
+   * (cerrada / reembolsada / liquidada / saldo devuelto) O cuando su saldo pendiente
+   * ya fue resuelto: reutilizado/trasladado a otra solicitud o devuelto con
+   * comprobante. Mismo criterio que `isReportEffectivelyClosed` de mis-rendiciones.
+   */
+  private isViaticoCerrado(r: IExpenseReport): boolean {
+    return this.VIATICO_CLOSED_STATUSES.includes(r.status)
+      || !!(r as any).pendingBalanceUsedInRendicionId
+      || !!(r as any).pendingBalanceUsedInAdvanceId
+      || !!(r as any).returnVoucher;
+  }
+
+  /**
+   * VIÁTICOS — Rendiciones CERRADAS. Misma partición que misRendicionesViaticosRows
+   * pero con las rendiciones ya finalizadas (incluye saldo reutilizado en otra solicitud).
+   */
+  misRendicionesViaticosCerradasRows = computed<DashRow[]>(() => {
+    const fromViatico = this.viaticoReports()
+      .filter((r) => this.isViaticoCerrado(r))
+      .map((r) => this.reportRow(r));
+    const legacy = this.reports()
+      .filter((r) => !this.isDirecta(r) && r.type !== 'viatico' && this.isViaticoCerrado(r))
+      .map((r) => this.reportRow(r));
+    return [...fromViatico, ...legacy].sort((a, b) => this.ts(b.createdAt) - this.ts(a.createdAt));
+  });
+
   kpiSolicitudesViaticos = computed(() => this.misSolicitudesViaticosRows().length);
   kpiRendicionesViaticos = computed(() => this.misRendicionesViaticosRows().length);
+  kpiViaticosCerradas = computed(() => this.misRendicionesViaticosCerradasRows().length);
   kpiDirectasSinCerrar = computed(() => this.misDirectasRows().length);
 
   /**
@@ -426,11 +457,11 @@ export class InicioComponent implements OnInit {
   // ─── Helpers de estilo para tarjetas KPI reutilizables ────────────
   private readonly ACCENT_BG: Record<string, string> = {
     yellow: 'bg-yellow-100', blue: 'bg-blue-100', purple: 'bg-purple-100',
-    primary: 'bg-primary/10', red: 'bg-red-100',
+    primary: 'bg-primary/10', red: 'bg-red-100', green: 'bg-green-100',
   };
   private readonly ACCENT_TEXT: Record<string, string> = {
     yellow: 'text-yellow-600', blue: 'text-blue-600', purple: 'text-purple-600',
-    primary: 'text-primary', red: 'text-red-600',
+    primary: 'text-primary', red: 'text-red-600', green: 'text-green-600',
   };
   iconBg(accent: string, active: boolean): string {
     return active ? (this.ACCENT_BG[accent] ?? 'bg-gray-100') : 'bg-gray-100';
