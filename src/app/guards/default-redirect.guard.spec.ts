@@ -90,13 +90,13 @@ describe('defaultRedirectGuard', () => {
     expect(router.createUrlTree).toHaveBeenCalledWith(['/hub']);
   });
 
-  it('redirects other roles to /admin-users by default', () => {
+  it('redirects coordinador (and other roles) to /inicio by default', () => {
     userState.isAuthenticated.and.returnValue(true);
     userState.isColaborador.and.returnValue(false);
     userState.isSuperAdmin.and.returnValue(false);
     userState.isAdmin.and.returnValue(false);
     userState.isContabilidad.and.returnValue(false);
     run();
-    expect(router.createUrlTree).toHaveBeenCalledWith(['/admin-users']);
+    expect(router.createUrlTree).toHaveBeenCalledWith(['/inicio']);
   });
 });
