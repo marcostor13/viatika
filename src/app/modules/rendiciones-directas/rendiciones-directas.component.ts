@@ -99,6 +99,18 @@ export class RendicionesDirectasComponent implements OnInit {
 
   isRowSelected(id: string): boolean { return this.selectedIds().has(id); }
 
+  // ─── Filas expandibles (detalle inline para tablas densas) ──────────────────
+  // En vez de scroll horizontal, las columnas secundarias se muestran al
+  // expandir cada fila, así toda la información queda accesible sin recortes.
+  expandedRows = signal<Set<string>>(new Set<string>());
+  toggleExpand(id: string, event?: Event): void {
+    event?.stopPropagation();
+    const set = new Set<string>(this.expandedRows());
+    set.has(id) ? set.delete(id) : set.add(id);
+    this.expandedRows.set(set);
+  }
+  isExpanded(id: string): boolean { return this.expandedRows().has(id); }
+
   get allSelected(): boolean { const d = this.data(); return d.length > 0 && this.selectedIds().size === d.length; }
   get anySelected(): boolean { return this.selectedIds().size > 0; }
   get selectedCount(): number { return this.selectedIds().size; }
