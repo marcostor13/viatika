@@ -5,6 +5,7 @@ import { forkJoin } from 'rxjs';
 import { UserStateService } from '../../services/user-state.service';
 import { ExpenseReportsService } from '../../services/expense-reports.service';
 import { AdvanceService } from '../../services/advance.service';
+import { SaldoService } from '../../services/saldo.service';
 import { IExpenseReport } from '../../interfaces/expense-report.interface';
 import { IAdvance, ADVANCE_STATUS_LABELS, ADVANCE_STATUS_COLORS } from '../../interfaces/advance.interface';
 
@@ -18,6 +19,7 @@ export class InicioComponent implements OnInit {
   private userState = inject(UserStateService);
   private expenseReportsService = inject(ExpenseReportsService);
   private advanceService = inject(AdvanceService);
+  saldoService = inject(SaldoService);
   private router = inject(Router);
 
   isLoading = signal(true);
@@ -75,6 +77,19 @@ export class InicioComponent implements OnInit {
     this.advances().filter((a) => a.status === 'pending_l1' || a.status === 'pending_l2').length
   );
 
+  /**
+   * Rendiciones directas del colaborador que siguen en curso (pendientes de
+   * resolución). Estados activos: en preparación, registrando gastos, enviada
+   * o en contabilidad. Las finalizadas (aprobada/cerrada/rechazada/etc.) no cuentan.
+   */
+  kpiDirectasPendientes = computed(() =>
+    this.reports().filter(
+      (r) =>
+        (r.isDirecta || r.type === 'directa') &&
+        ['solicited', 'open', 'submitted', 'pending_accounting'].includes(r.status)
+    ).length
+  );
+
   paidAdvances = computed(() =>
     this.advances()
       .filter((a) => a.status === 'paid' || a.status === 'partially_paid')
@@ -118,6 +133,9 @@ export class InicioComponent implements OnInit {
   }
 
   ngOnInit() {
+    // Bolsa total disponible (usa el token del usuario autenticado).
+    this.saldoService.refreshTotal();
+
     const user = this.userState.getUser() as any;
     const userId = user?._id;
     const clientId = user?.companyId || user?.clientId;

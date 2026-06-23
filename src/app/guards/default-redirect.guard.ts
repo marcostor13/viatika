@@ -27,5 +27,5 @@ export const defaultRedirectGuard: CanActivateFn = () => {
   }
 
   // Coordinador
-  return router.createUrlTree(['/admin-users']);
+  return router.createUrlTree(['/inicio']);
 };
