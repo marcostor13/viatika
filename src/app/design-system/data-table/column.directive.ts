@@ -39,6 +39,15 @@ export class ColumnDirective {
    */
   @Input('appColumnHideOn') hideOn = '';
 
+  /**
+   * Si es `true`, la columna NO se muestra como columna fija de la tabla, sino
+   * dentro del panel que se despliega al expandir la fila (chevron). Útil para
+   * tablas con muchas columnas: las secundarias se marcan como detalle y la
+   * tabla se ve completa sin scroll. Si ninguna columna es de detalle, la tabla
+   * se comporta como una tabla normal (sin chevron).
+   */
+  @Input('appColumnDetail') detail = false;
+
   constructor(public tpl: TemplateRef<{ $implicit: any; index: number }>) {}
 
   // Permite el tipado del contexto de la plantilla en modo estricto.

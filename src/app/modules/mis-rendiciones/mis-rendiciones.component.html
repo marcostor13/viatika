@@ -204,12 +204,12 @@
         </ng-container>
 
         <!-- Destino -->
-        <ng-container *appColumn="'destino'; header: 'Destino'; cellClass: 'text-gray-600 max-w-[200px]'; let item">
+        <ng-container *appColumn="'destino'; header: 'Destino'; detail: true; cellClass: 'text-gray-600'; let item">
           <span class="break-words">{{ item.place }}</span>
         </ng-container>
 
         <!-- Período -->
-        <ng-container *appColumn="'periodo'; header: 'Período'; cellClass: 'text-xs text-gray-500'; let item">
+        <ng-container *appColumn="'periodo'; header: 'Período'; detail: true; cellClass: 'text-gray-500'; let item">
           {{ item.dateRange || '—' }}
         </ng-container>
 
@@ -219,7 +219,7 @@
         </ng-container>
 
         <!-- Comprobantes -->
-        <ng-container *appColumn="'comprobantes'; header: 'Comprobantes'; align: 'center'; cellClass: 'text-gray-600'; let item">
+        <ng-container *appColumn="'comprobantes'; header: 'Comprobantes'; detail: true; align: 'center'; cellClass: 'text-gray-600'; let item">
           <span class="text-xs">{{ item.expensesCount }}</span>
         </ng-container>
 
@@ -387,7 +387,7 @@
       (rowClick)="goToReportDetail($event.row, $event.event)"
     >
       <!-- Fecha -->
-      <ng-container *appColumn="'fecha'; header: 'Fecha'; cellClass: 'text-xs text-gray-500'; let r">
+      <ng-container *appColumn="'fecha'; header: 'Fecha'; detail: true; cellClass: 'text-gray-500'; let r">
         {{ r.createdAt | date:'dd/MM/yyyy' }}
       </ng-container>
 
@@ -424,7 +424,7 @@
       </ng-container>
 
       <!-- Gastos -->
-      <ng-container *appColumn="'gastos'; header: 'Gastos'; align: 'center'; cellClass: 'text-gray-600 text-xs'; let r">
+      <ng-container *appColumn="'gastos'; header: 'Gastos'; detail: true; align: 'center'; cellClass: 'text-gray-600 text-xs'; let r">
         {{ r.expenseIds.length || 0 }}
       </ng-container>
 

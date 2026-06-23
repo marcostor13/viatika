@@ -5,6 +5,7 @@ import {
   Input,
   Output,
   QueryList,
+  signal,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ColumnDirective } from './column.directive';
@@ -52,6 +53,44 @@ export class DataTableComponent {
 
   get cols(): ColumnDirective[] {
     return this.columns ? this.columns.toArray() : [];
+  }
+
+  /** Columnas que se muestran siempre como columnas de la tabla. */
+  get mainCols(): ColumnDirective[] {
+    return this.cols.filter((c) => !c.detail);
+  }
+
+  /** Columnas que se despliegan al expandir la fila. */
+  get detailCols(): ColumnDirective[] {
+    return this.cols.filter((c) => c.detail);
+  }
+
+  /** Hay detalle expandible solo si alguna columna se marcó como `detail`. */
+  get expandable(): boolean {
+    return this.detailCols.length > 0;
+  }
+
+  /** Columnas que ocupa la fila de detalle (todas las visibles + el chevron). */
+  get detailColspan(): number {
+    return this.mainCols.length + (this.expandable ? 1 : 0);
+  }
+
+  private expandedKeys = signal<Set<unknown>>(new Set<unknown>());
+
+  rowKey(row: any): unknown {
+    return row?.[this.trackKey];
+  }
+
+  isExpanded(row: any): boolean {
+    return this.expandedKeys().has(this.rowKey(row));
+  }
+
+  toggleExpand(row: any, event: Event): void {
+    event.stopPropagation();
+    const key = this.rowKey(row);
+    const next = new Set(this.expandedKeys());
+    next.has(key) ? next.delete(key) : next.add(key);
+    this.expandedKeys.set(next);
   }
 
   trackRow = (index: number, row: any): unknown => row?.[this.trackKey] ?? index;
