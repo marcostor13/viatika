@@ -3,7 +3,7 @@
   <!-- ── Greeting ──────────────────────────────────────────────── -->
   <div class="mb-7">
     <h1 class="text-2xl font-bold text-secondary">{{ greeting }}, {{ userName }} 👋</h1>
-    <p class="text-sm text-tertiary mt-1">Aquí tienes un resumen de tu actividad.</p>
+    <p class="text-sm text-tertiary mt-1">{{ subtitle }}</p>
   </div>
 
   @if (isLoading()) {
@@ -12,79 +12,228 @@
   </div>
   } @else {
 
-  <!-- ── KPI Cards: pendientes ──────────────────────────────────── -->
-  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
+  <!-- ════════════════════════════════════════════════════════════ -->
+  <!--  COORDINADOR                                                  -->
+  <!-- ════════════════════════════════════════════════════════════ -->
+  @if (isCoordinador) {
 
-    <!-- Solicitudes de viáticos pendientes (primero) -->
-    <a
-      routerLink="/mis-rendiciones"
-      [queryParams]="{ tab: 'viaticos' }"
-      class="bg-quaternary rounded-2xl border border-tertiary/20 p-5 flex flex-col gap-3 hover:border-primary/40 hover:bg-primary/5 transition-all"
-    >
+  <!-- ── Sección: Aprobaciones de mi equipo ───────────────────────── -->
+  <h2 class="text-sm font-bold text-secondary uppercase tracking-wider mb-3">Aprobaciones de mi equipo</h2>
+
+  <!-- KPI Cards -->
+  <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+
+    <!-- Solicitudes por aprobar (PRIMERO) -->
+    <a routerLink="/rendiciones"
+      class="bg-quaternary rounded-2xl border border-tertiary/20 p-5 flex flex-col gap-3 hover:border-primary/40 hover:bg-primary/5 transition-all">
       <div class="flex items-center justify-between">
-        <span class="text-xs font-semibold text-tertiary uppercase tracking-wider">Solicitudes de viáticos</span>
+        <span class="text-xs font-semibold text-tertiary uppercase tracking-wider">Solicitudes por aprobar</span>
         <div class="w-8 h-8 rounded-xl flex items-center justify-center"
-          [class]="kpiAnticiposPendientes() > 0 ? 'bg-yellow-100' : 'bg-gray-100'">
+          [class]="kpiSolicitudesPendientes() > 0 ? 'bg-red-100' : 'bg-gray-100'">
           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"
-            class="w-4 h-4" [class]="kpiAnticiposPendientes() > 0 ? 'text-yellow-600' : 'text-tertiary'">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 18.75a60.07 60.07 0 0 1 15.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 0 1 3 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25M2.25 6v9m18-10.5v.75c0 .414.336.75.75.75h.75m-1.5-1.5h.375c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125h-.375m1.5-1.5H21a.75.75 0 0 0-.75.75v.75m0 0H3.75m0 0h-.375a1.125 1.125 0 0 1-1.125-1.125V15m1.5 1.5v-.75A.75.75 0 0 0 3 15h-.75M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Zm3 0h.008v.008H18V10.5Zm-12 0h.008v.008H6V10.5Z" />
+            class="w-4 h-4" [class]="kpiSolicitudesPendientes() > 0 ? 'text-red-600' : 'text-tertiary'">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
           </svg>
         </div>
       </div>
-      <p class="text-3xl font-bold text-secondary">{{ kpiAnticiposPendientes() }}</p>
+      <p class="text-3xl font-bold text-secondary">{{ kpiSolicitudesPendientes() }}</p>
       <p class="text-xs text-tertiary">
-        @if (kpiAnticiposPendientes() > 0) { pendiente{{ kpiAnticiposPendientes() !== 1 ? 's' : '' }} de aprobación }
-        @else { sin pendientes }
+        @if (kpiSolicitudesPendientes() > 0) { solicitud{{ kpiSolicitudesPendientes() !== 1 ? 'es' : '' }} de viáticos por aprobar }
+        @else { sin solicitudes pendientes }
       </p>
     </a>
 
-    <!-- Rendiciones directas pendientes -->
-    <a
-      routerLink="/mis-rendiciones"
-      [queryParams]="{ tab: 'directas' }"
-      class="bg-quaternary rounded-2xl border border-tertiary/20 p-5 flex flex-col gap-3 hover:border-primary/40 hover:bg-primary/5 transition-all"
-    >
+    <!-- Rendiciones por aprobar -->
+    <a routerLink="/rendiciones"
+      class="bg-quaternary rounded-2xl border border-tertiary/20 p-5 flex flex-col gap-3 hover:border-primary/40 hover:bg-primary/5 transition-all">
       <div class="flex items-center justify-between">
-        <span class="text-xs font-semibold text-tertiary uppercase tracking-wider">Rendiciones directas</span>
+        <span class="text-xs font-semibold text-tertiary uppercase tracking-wider">Rendiciones por aprobar</span>
         <div class="w-8 h-8 rounded-xl flex items-center justify-center"
-          [class]="kpiDirectasPendientes() > 0 ? 'bg-blue-100' : 'bg-gray-100'">
+          [class]="kpiRendicionesPorAprobar() > 0 ? 'bg-blue-100' : 'bg-gray-100'">
           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"
-            class="w-4 h-4" [class]="kpiDirectasPendientes() > 0 ? 'text-blue-600' : 'text-tertiary'">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
+            class="w-4 h-4" [class]="kpiRendicionesPorAprobar() > 0 ? 'text-blue-600' : 'text-tertiary'">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
           </svg>
         </div>
       </div>
-      <p class="text-3xl font-bold text-secondary">{{ kpiDirectasPendientes() }}</p>
+      <p class="text-3xl font-bold text-secondary">{{ kpiRendicionesPorAprobar() }}</p>
       <p class="text-xs text-tertiary">
-        @if (kpiDirectasPendientes() > 0) { pendiente{{ kpiDirectasPendientes() !== 1 ? 's' : '' }} }
-        @else { sin pendientes }
-      </p>
-    </a>
-
-    <!-- Bolsa total disponible -->
-    <a
-      routerLink="/saldo"
-      class="bg-quaternary rounded-2xl border border-tertiary/20 p-5 flex flex-col gap-3 hover:border-primary/40 hover:bg-primary/5 transition-all"
-    >
-      <div class="flex items-center justify-between">
-        <span class="text-xs font-semibold text-tertiary uppercase tracking-wider">Bolsa total disponible</span>
-        <div class="w-8 h-8 rounded-xl flex items-center justify-center"
-          [class]="saldoService.total() > 0 ? 'bg-primary/10' : 'bg-gray-100'">
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"
-            class="w-4 h-4" [class]="saldoService.total() > 0 ? 'text-primary' : 'text-tertiary'">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v12m-3-2.818.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
-          </svg>
-        </div>
-      </div>
-      <p class="text-3xl font-bold text-secondary">S/. {{ saldoService.total() | number:'1.2-2' }}</p>
-      <p class="text-xs text-tertiary">
-        @if (saldoService.total() > 0) { disponible para usar }
-        @else { sin saldo disponible }
+        @if (kpiRendicionesPorAprobar() > 0) { rendición{{ kpiRendicionesPorAprobar() !== 1 ? 'es' : '' }} esperando revisión }
+        @else { sin rendiciones por aprobar }
       </p>
     </a>
 
   </div>
 
+  <!-- Listados -->
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+    <ng-container *ngTemplateOutlet="listCard; context: {
+      title: 'Solicitudes por aprobar',
+      rows: visibleSolicitudes(),
+      total: solicitudesRows().length,
+      showAllSig: showAllAprobaciones,
+      empty: 'No hay solicitudes de viáticos por aprobar.',
+      showUser: true,
+      approveKind: 'solicitud'
+    }"></ng-container>
+
+    <ng-container *ngTemplateOutlet="listCard; context: {
+      title: 'Rendiciones por aprobar',
+      rows: visibleRendicionesAprob(),
+      total: rendicionesRows().length,
+      showAllSig: showAllPersonal,
+      empty: 'No hay rendiciones de viáticos por aprobar.',
+      showUser: true,
+      approveKind: 'rendicion'
+    }"></ng-container>
+  </div>
+
+  <!-- ── Sección: Mi actividad (rendiciones propias del coordinador) ── -->
+  <h2 class="text-sm font-bold text-secondary uppercase tracking-wider mt-9 mb-3">Mi actividad</h2>
+  <ng-container *ngTemplateOutlet="miActividad"></ng-container>
+
+  }
+  <!-- ════════════════════════════════════════════════════════════ -->
+  <!--  COLABORADOR                                                  -->
+  <!-- ════════════════════════════════════════════════════════════ -->
+  @else {
+
+  <ng-container *ngTemplateOutlet="miActividad"></ng-container>
+
+  }
+
   } <!-- end @else isLoading -->
 
 </div>
+
+<!-- ── Plantilla reutilizable de listado (5 + expandir) ──────────── -->
+<ng-template #listCard let-title="title" let-rows="rows" let-total="total" let-showAllSig="showAllSig"
+  let-empty="empty" let-showUser="showUser" let-approveKind="approveKind">
+  <div class="bg-quaternary rounded-2xl border border-tertiary/20 overflow-hidden">
+    <div class="px-5 py-4 border-b border-tertiary/10 flex items-center justify-between">
+      <h2 class="text-sm font-semibold text-secondary">{{ title }}</h2>
+      <span class="text-xs text-tertiary">{{ total }}</span>
+    </div>
+
+    @if (rows.length === 0) {
+    <p class="px-5 py-10 text-center text-sm text-tertiary">{{ empty }}</p>
+    } @else {
+    <ul class="divide-y divide-tertiary/10">
+      @for (row of rows; track row._id) {
+      <li (click)="goToRow(row)"
+        class="px-5 py-3 flex items-center gap-3 hover:bg-primary/5 cursor-pointer transition-colors">
+        <div class="min-w-0 flex-1">
+          <p class="text-sm font-medium text-secondary truncate">{{ row.title }}</p>
+          <p class="text-xs text-tertiary truncate">
+            @if (showUser) {<span class="font-medium text-secondary/70">{{ row.userName }}</span> · }@if (row.project) {{{ row.project }} · }{{ row.createdAt | date:'dd/MM/yyyy' }}
+          </p>
+        </div>
+        <span class="text-sm font-semibold text-secondary whitespace-nowrap">S/. {{ row.amount | number:'1.2-2' }}</span>
+        <span class="text-[11px] font-medium px-2 py-0.5 rounded-full whitespace-nowrap" [class]="row.statusColor">{{ row.statusLabel }}</span>
+        @if (approveKind && canApproveRow(row, approveKind)) {
+        <button (click)="approveRow(row, approveKind, $event)" [disabled]="acting() === row._id"
+          class="text-[11px] font-semibold px-2.5 py-1 rounded-lg bg-green-600 text-white hover:bg-green-700 disabled:opacity-50 whitespace-nowrap transition-colors">
+          {{ acting() === row._id ? '...' : (approveKind === 'rendicion' ? 'Aprobar rendición' : 'Aprobar') }}
+        </button>
+        }
+      </li>
+      }
+    </ul>
+
+    @if (total > PREVIEW) {
+    <button (click)="showAllSig.set(!showAllSig())"
+      class="w-full px-5 py-3 text-xs font-semibold text-primary hover:bg-primary/5 transition-colors border-t border-tertiary/10">
+      {{ showAllSig() ? 'Ver menos' : 'Expandir (' + (total - PREVIEW) + ' más)' }}
+    </button>
+    }
+    }
+  </div>
+</ng-template>
+
+<!-- ── Tarjeta KPI reutilizable ──────────────────────────────────── -->
+<ng-template #kpiCard let-title="title" let-value="value" let-hint="hint" let-link="link"
+  let-qp="qp" let-accent="accent" let-money="money">
+  <a [routerLink]="link" [queryParams]="qp || {}"
+    class="bg-quaternary rounded-2xl border border-tertiary/20 p-5 flex flex-col gap-3 hover:border-primary/40 hover:bg-primary/5 transition-all">
+    <div class="flex items-center justify-between">
+      <span class="text-xs font-semibold text-tertiary uppercase tracking-wider">{{ title }}</span>
+      <div class="w-8 h-8 rounded-xl flex items-center justify-center" [class]="iconBg(accent, value > 0)">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5"
+          stroke="currentColor" class="w-4 h-4" [class]="iconText(accent, value > 0)">
+          @if (money) {
+          <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v12m-3-2.818.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+          } @else {
+          <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
+          }
+        </svg>
+      </div>
+    </div>
+    <p class="text-3xl font-bold text-secondary">@if (money) {S/. {{ value | number:'1.2-2' }}} @else {{{ value }}}</p>
+    <p class="text-xs text-tertiary">{{ hint }}</p>
+  </a>
+</ng-template>
+
+<!-- ── "Mi actividad" reutilizable (colaborador + coordinador) ───── -->
+<!-- Separa VIÁTICOS (solicitudes + rendiciones) de RENDICIONES DIRECTAS. -->
+<ng-template #miActividad>
+  <!-- Bolsa (siempre) -->
+  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-2">
+    <ng-container *ngTemplateOutlet="kpiCard; context: {
+      title: 'Bolsa total disponible', value: saldoService.total(), money: true, accent: 'primary',
+      link: '/saldo', hint: saldoService.total() > 0 ? 'disponible para usar' : 'sin saldo disponible'
+    }"></ng-container>
+  </div>
+
+  <!-- VIÁTICOS -->
+  @if (canSeeViaticos) {
+  <h3 class="text-xs font-bold text-tertiary uppercase tracking-wider mt-6 mb-3">Viáticos</h3>
+  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+    <ng-container *ngTemplateOutlet="kpiCard; context: {
+      title: 'Solicitudes de viáticos', value: kpiSolicitudesViaticos(), accent: 'yellow',
+      link: '/mis-rendiciones', qp: { tab: 'viaticos' }, hint: 'pendientes de aprobación'
+    }"></ng-container>
+    <ng-container *ngTemplateOutlet="kpiCard; context: {
+      title: 'Rendiciones de viáticos', value: kpiRendicionesViaticos(), accent: 'blue',
+      link: '/mis-rendiciones', qp: { tab: 'viaticos' }, hint: 'por rendir / cerrar'
+    }"></ng-container>
+    <ng-container *ngTemplateOutlet="kpiCard; context: {
+      title: 'Por enviar a revisión', value: kpiPendientesViaticos(), accent: 'red',
+      link: '/mis-rendiciones', qp: { tab: 'viaticos' }, hint: 'con gastos por subir o enviar'
+    }"></ng-container>
+  </div>
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-4">
+    <ng-container *ngTemplateOutlet="listCard; context: {
+      title: 'Mis solicitudes de viáticos', rows: visibleSolViaticos(),
+      total: misSolicitudesViaticosRows().length, showAllSig: showAllViaticos,
+      empty: 'No tienes solicitudes de viáticos.', showUser: false
+    }"></ng-container>
+    <ng-container *ngTemplateOutlet="listCard; context: {
+      title: 'Mis rendiciones de viáticos', rows: visibleRendViaticos(),
+      total: misRendicionesViaticosRows().length, showAllSig: showAllRendiciones,
+      empty: 'No tienes rendiciones de viáticos.', showUser: false
+    }"></ng-container>
+  </div>
+  }
+
+  <!-- RENDICIONES DIRECTAS -->
+  @if (canSeeRendiciones) {
+  <h3 class="text-xs font-bold text-tertiary uppercase tracking-wider mt-6 mb-3">Rendiciones directas</h3>
+  <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+    <ng-container *ngTemplateOutlet="kpiCard; context: {
+      title: 'Rendiciones directas', value: kpiDirectasSinCerrar(), accent: 'purple',
+      link: '/mis-rendiciones', qp: { tab: 'directas' }, hint: 'sin cerrar'
+    }"></ng-container>
+    <ng-container *ngTemplateOutlet="kpiCard; context: {
+      title: 'Por enviar a revisión', value: kpiPendientesDirectas(), accent: 'red',
+      link: '/mis-rendiciones', qp: { tab: 'directas' }, hint: 'con gastos por subir o enviar'
+    }"></ng-container>
+  </div>
+  <div class="grid grid-cols-1 gap-4 mt-4">
+    <ng-container *ngTemplateOutlet="listCard; context: {
+      title: 'Mis rendiciones directas', rows: visibleDirectasPropias(),
+      total: misDirectasRows().length, showAllSig: showAllDirectas,
+      empty: 'No tienes rendiciones directas.', showUser: false
+    }"></ng-container>
+  </div>
+  }
+</ng-template>
