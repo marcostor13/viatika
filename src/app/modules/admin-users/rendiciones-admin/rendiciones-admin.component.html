@@ -110,18 +110,28 @@
     <table class="hidden md:table w-full text-sm">
       <thead>
         <tr class="bg-background border-b border-tertiary/15">
+          <th class="px-2 py-3.5 w-8"></th>
           <th class="text-left px-5 py-3.5 text-xs font-semibold text-tertiary uppercase tracking-wider">Colaborador</th>
           <th class="text-left px-4 py-3.5 text-xs font-semibold text-tertiary uppercase tracking-wider">Título</th>
-          <th class="text-left px-4 py-3.5 text-xs font-semibold text-tertiary uppercase tracking-wider">Centro de Costo</th>
           <th class="text-right px-4 py-3.5 text-xs font-semibold text-tertiary uppercase tracking-wider">Presupuesto</th>
-          <th class="text-left px-4 py-3.5 text-xs font-semibold text-tertiary uppercase tracking-wider">Fecha</th>
           <th class="text-center px-4 py-3.5 text-xs font-semibold text-tertiary uppercase tracking-wider">Estado</th>
           <th class="text-right px-5 py-3.5 text-xs font-semibold text-tertiary uppercase tracking-wider">Acciones</th>
         </tr>
       </thead>
       <tbody class="divide-y divide-tertiary/8">
         @for (item of filteredItems; track item._id) {
-        <tr class="hover:bg-background/60 transition-colors group">
+        <tr class="hover:bg-background/60 transition-colors group" [class.bg-background]="isExpanded(item._id)">
+
+          <!-- Expandir -->
+          <td class="px-2 py-3.5">
+            <button type="button" (click)="toggleExpand(item._id, $event)" title="Ver más"
+              [attr.aria-expanded]="isExpanded(item._id)"
+              class="inline-flex items-center justify-center w-6 h-6 rounded-md text-tertiary hover:bg-tertiary/10 hover:text-secondary transition-colors">
+              <svg class="w-4 h-4 transition-transform" [class.rotate-90]="isExpanded(item._id)" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
+              </svg>
+            </button>
+          </td>
 
           <!-- Colaborador -->
           <td class="px-5 py-3.5">
@@ -134,7 +144,7 @@
               </button>
               <button
                 (click)="goToDetail(item)"
-                class="font-semibold text-primary hover:underline truncate text-left"
+                class="font-semibold text-primary hover:underline break-words text-left"
               >
                 {{ item.userName }}
               </button>
@@ -142,21 +152,13 @@
           </td>
 
           <!-- Título -->
-          <td class="px-4 py-3.5 max-w-[220px]">
-            <span class="block truncate font-medium text-secondary" [title]="item.title">{{ item.title }}</span>
+          <td class="px-4 py-3.5">
+            <span class="block break-words font-medium text-secondary" [title]="item.title">{{ item.title }}</span>
           </td>
-
-          <!-- Centro de Costo -->
-          <td class="px-4 py-3.5 text-tertiary">{{ item.projectName }}</td>
 
           <!-- Presupuesto -->
           <td class="px-4 py-3.5 text-right">
             <span class="text-base font-bold text-secondary tabular-nums">S/ {{ item.amount | number:'1.2-2' }}</span>
-          </td>
-
-          <!-- Fecha -->
-          <td class="px-4 py-3.5 whitespace-nowrap">
-            <span class="text-xs text-tertiary">{{ item.createdAt | date:'dd/MM/yyyy' }}</span>
           </td>
 
           <!-- Estado -->
@@ -168,7 +170,7 @@
 
           <!-- Acciones -->
           <td class="px-5 py-3.5">
-            <div class="flex items-center justify-end gap-1">
+            <div class="flex flex-wrap items-center justify-end gap-1">
               <button
                 (click)="goToDetail(item)" title="Ver detalle"
                 class="p-2 rounded-lg text-tertiary hover:text-primary hover:bg-primary/10 transition-colors"
@@ -224,6 +226,22 @@
           </td>
 
         </tr>
+        @if (isExpanded(item._id)) {
+        <tr class="bg-background/60">
+          <td class="px-4 pb-3.5 pt-0" colspan="6">
+            <div class="grid grid-cols-2 sm:grid-cols-3 gap-x-6 gap-y-2 pl-8">
+              <div>
+                <span class="block text-tertiary uppercase tracking-wide text-[10px] font-semibold">Centro de Costo</span>
+                <span class="text-sm text-secondary break-words">{{ item.projectName }}</span>
+              </div>
+              <div>
+                <span class="block text-tertiary uppercase tracking-wide text-[10px] font-semibold">Fecha</span>
+                <span class="text-sm text-secondary">{{ item.createdAt | date:'dd/MM/yyyy' }}</span>
+              </div>
+            </div>
+          </td>
+        </tr>
+        }
         }
       </tbody>
     </table>

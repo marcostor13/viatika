@@ -26,6 +26,16 @@ export class RendicionesCajaChicaComponent implements OnInit {
   searchFilter = signal('');
   filterStatus = signal('');
 
+  // ─── Filas expandibles (detalle inline para no cortar columnas) ─────────────
+  expandedRows = signal<Set<string>>(new Set<string>());
+  toggleExpand(id: string, event?: Event): void {
+    event?.stopPropagation();
+    const set = new Set<string>(this.expandedRows());
+    set.has(id) ? set.delete(id) : set.add(id);
+    this.expandedRows.set(set);
+  }
+  isExpanded(id: string): boolean { return this.expandedRows().has(id); }
+
   filteredReports = computed(() => {
     const s = this.searchFilter().toLowerCase().trim();
     const status = this.filterStatus();

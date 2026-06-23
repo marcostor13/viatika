@@ -5,11 +5,6 @@ module.exports = {
   ],
   theme: {
     extend: {
-      screens: {
-        // Punto de corte de las tablas reutilizables: a 1600px o menos se
-        // muestran como cards apiladas; por encima, como tabla clásica.
-        'tbl': '1600px',
-      },
       fontFamily: {
         sans: ['"Inter"', 'sans-serif'],
         heading: ['"Zilla Slab"', 'serif'],

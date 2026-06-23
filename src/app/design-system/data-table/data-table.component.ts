@@ -5,16 +5,19 @@ import {
   Input,
   Output,
   QueryList,
+  signal,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ColumnDirective } from './column.directive';
 
 /**
- * Tabla reutilizable y responsiva.
+ * Tabla reutilizable.
  *
- * - A >=1600px (`tbl:` en Tailwind) se renderiza como tabla clásica.
- * - A <1600px cada fila se convierte en una card apilada con pares
- *   etiqueta/valor, reutilizando las mismas plantillas de celda.
+ * Por defecto la tabla SE AJUSTA al ancho disponible (sin `minWidth`): al
+ * reducir la pantalla las columnas no se ocultan, el texto de cada celda se
+ * envuelve (wrap) según sus clases y toda la tabla queda visible sin scroll.
+ * Si se necesita un ancho mínimo (p.ej. para forzar scroll en tablas muy
+ * densas) puede pasarse `minWidth`.
  *
  * Las columnas se declaran con la directiva `*appColumn` (ver ColumnDirective).
  * Los estados de carga/vacío los maneja el componente padre; aquí solo se pinta
@@ -36,8 +39,12 @@ export class DataTableComponent {
   /** Si la fila/card es clickeable (cursor + emite rowClick). */
   @Input() rowClickable = false;
 
-  /** Ancho mínimo de la tabla antes de hacer scroll horizontal. */
-  @Input() minWidth = '700px';
+  /**
+   * Ancho mínimo opcional. Vacío (por defecto) = la tabla se ajusta al
+   * contenedor y se ve completa. Si se define (p.ej. '900px'), por debajo de
+   * ese ancho aparece scroll horizontal.
+   */
+  @Input() minWidth = '';
 
   /** Emitido al hacer click en una fila/card (cuando rowClickable). */
   @Output() rowClick = new EventEmitter<{ row: any; event: Event }>();
@@ -48,8 +55,42 @@ export class DataTableComponent {
     return this.columns ? this.columns.toArray() : [];
   }
 
-  get cardCols(): ColumnDirective[] {
-    return this.cols.filter((c) => c.inCard);
+  /** Columnas que se muestran siempre como columnas de la tabla. */
+  get mainCols(): ColumnDirective[] {
+    return this.cols.filter((c) => !c.detail);
+  }
+
+  /** Columnas que se despliegan al expandir la fila. */
+  get detailCols(): ColumnDirective[] {
+    return this.cols.filter((c) => c.detail);
+  }
+
+  /** Hay detalle expandible solo si alguna columna se marcó como `detail`. */
+  get expandable(): boolean {
+    return this.detailCols.length > 0;
+  }
+
+  /** Columnas que ocupa la fila de detalle (todas las visibles + el chevron). */
+  get detailColspan(): number {
+    return this.mainCols.length + (this.expandable ? 1 : 0);
+  }
+
+  private expandedKeys = signal<Set<unknown>>(new Set<unknown>());
+
+  rowKey(row: any): unknown {
+    return row?.[this.trackKey];
+  }
+
+  isExpanded(row: any): boolean {
+    return this.expandedKeys().has(this.rowKey(row));
+  }
+
+  toggleExpand(row: any, event: Event): void {
+    event.stopPropagation();
+    const key = this.rowKey(row);
+    const next = new Set(this.expandedKeys());
+    next.has(key) ? next.delete(key) : next.add(key);
+    this.expandedKeys.set(next);
   }
 
   trackRow = (index: number, row: any): unknown => row?.[this.trackKey] ?? index;

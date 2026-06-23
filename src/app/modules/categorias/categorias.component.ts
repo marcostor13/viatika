@@ -40,6 +40,18 @@ export class CategoriasComponent implements OnInit {
   // --- Category state ---
   result = signal<IPaginatedResult<ICategory>>({ data: [], total: 0, page: 1, pages: 0, limit: 20 });
   loading = signal(false);
+
+  // ─── Filas expandibles (detalle inline para no cortar columnas) ─────────────
+  expandedRows = signal<Set<string>>(new Set<string>());
+  toggleExpand(id: string | undefined, event?: Event): void {
+    if (!id) return;
+    event?.stopPropagation();
+    const set = new Set<string>(this.expandedRows());
+    set.has(id) ? set.delete(id) : set.add(id);
+    this.expandedRows.set(set);
+  }
+  isExpanded(id: string | undefined): boolean { return !!id && this.expandedRows().has(id); }
+
   search = signal('');
   page = signal(1);
   limit = signal(20);
