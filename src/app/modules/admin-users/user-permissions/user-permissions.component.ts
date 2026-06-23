@@ -50,6 +50,7 @@ export class UserPermissionsComponent implements OnInit {
     { key: 'tesoreria', label: 'Pagos', description: 'Registrar comprobantes de pago de viáticos' },
     { key: 'configuracion', label: 'Configuración', description: 'Configurar parámetros de la empresa' },
     { key: 'audit-log', label: 'Actividad', description: 'Ver el registro de actividad de la empresa' },
+    { key: 'caja-chica', label: 'Rendicion Caja Chica', description: 'Crear y subir comprobantes de caja chica propios' },
   ];
 
   permissions: IUserPermissions = {

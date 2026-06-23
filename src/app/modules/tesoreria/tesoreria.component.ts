@@ -41,14 +41,37 @@ export class TesoreriaComponent implements OnInit {
   pendingAdvances: IAdvance[] = [];
   /** Rendiciones aprobadas con reembolso al colaborador pendiente de comprobante (Fase 6) */
   pendingReimbursements: IExpenseReport[] = [];
+  /** Viáticos con status viatico_approved o partially_paid pendientes de pago. */
+  pendingViaticoPayments: IExpenseReport[] = [];
+  /** Viáticos con al menos un pago de contabilidad registrado (pestaña "En pago"). */
+  paidViaticoPayments: IExpenseReport[] = [];
 
   selectedAdvance: IAdvance | null = null;
   selectedReportReimbursement: IExpenseReport | null = null;
+  selectedViaticoReport: IExpenseReport | null = null;
+  showViaticoPaymentModal = false;
+  viaticoPaymentReceiptUrl: string | null = null;
+  viaticoPaymentReceiptName: string | null = null;
+  viaticoPaymentReceiptMimeType: string | null = null;
+  viaticoPaymentReceiptSizeBytes: number | null = null;
+  isUploadingViaticoReceipt = signal(false);
+  isScanningViaticoPayment = signal(false);
+  viaticoScannedAmount: number | null = null;
+  viaticoOperationNumber: string | null = null;
+  viaticoOperationDate: string | null = null;
+  viaticoOperationTime: string | null = null;
   showReimbursementModal = false;
   reimbursementReceiptUrl: string | null = null;
   reimbursementReceiptName: string | null = null;
   reimbursementReceiptMimeType: string | null = null;
   reimbursementReceiptSizeBytes: number | null = null;
+  // Reembolso: escaneo del comprobante (OCR) — solo autocompleta, sin alerta
+  isScanningReimbursement = signal(false);
+  reimbursementScannedAmount: number | null = null;
+  reimbursementTitular: string | null = null;
+  reimbursementOperationNumber: string | null = null;
+  reimbursementOperationDate: string | null = null;
+  reimbursementOperationTime: string | null = null;
   showPaymentModal = false;
   showRejectModal = false;
   showReturnModal = false;
@@ -157,12 +180,14 @@ export class TesoreriaComponent implements OnInit {
         this.loadPendingReimbursements();
         this.loadPendingReturns();
         this.loadDirectaDepositReports();
+        this.loadPendingViaticoPayments();
       },
       error: () => {
         this.isLoading.set(false);
         this.loadPendingReimbursements();
         this.loadPendingReturns();
         this.loadDirectaDepositReports();
+        this.loadPendingViaticoPayments();
       },
     });
   }
@@ -192,6 +217,174 @@ export class TesoreriaComponent implements OnInit {
     this.advanceService.findPendingReturns(String(cid)).subscribe({
       next: rows => { this.pendingReturns = rows ?? []; },
       error: () => { this.pendingReturns = []; },
+    });
+  }
+
+  private loadPendingViaticoPayments(): void {
+    const cid = this.clientId;
+    if (!cid || !this.canPayAndSettle) {
+      this.pendingViaticoPayments = [];
+      this.paidViaticoPayments = [];
+      return;
+    }
+    this.expenseReportsService.findAllByClient(cid).subscribe({
+      next: reports => {
+        const viaticos = (reports ?? []).filter(r => r.type === 'viatico');
+        // "Por pagar": aprobados o con pago parcial pendiente de completar.
+        this.pendingViaticoPayments = viaticos.filter(
+          r => ['viatico_approved', 'partially_paid'].includes(r.status)
+        );
+        // "En pago": tienen al menos un pago de contabilidad registrado. Se filtra
+        // por viaticoPayments (no por estado/viaticoPaidAmount) para excluir los
+        // cubiertos 100% con saldo, que se abren sin pago de contabilidad.
+        this.paidViaticoPayments = viaticos.filter(
+          r => Array.isArray(r.viaticoPayments) && r.viaticoPayments.length > 0
+        );
+      },
+      error: () => {
+        this.pendingViaticoPayments = [];
+        this.paidViaticoPayments = [];
+      },
+    });
+  }
+
+  viaticoUserName(report: IExpenseReport): string {
+    const u = report.userId;
+    if (u && typeof u === 'object' && 'name' in u) return (u as { name: string }).name || '—';
+    return '—';
+  }
+
+  viaticoRemaining(report: IExpenseReport): number {
+    return Math.max(Number(report.viaticoAmount ?? 0) - Number(report.viaticoPaidAmount ?? 0), 0);
+  }
+
+  openViaticoPaymentModal(report: IExpenseReport): void {
+    this.selectedViaticoReport = report;
+    const remaining = this.viaticoRemaining(report);
+    this.paymentForm.reset({
+      amount: remaining > 0 ? remaining : null,
+      method: 'transferencia_bancaria',
+      bankName: '',
+      accountNumber: '',
+      cci: '',
+      transferDate: new Date().toISOString().split('T')[0],
+      reference: '',
+    });
+    const u = typeof report.userId === 'object' ? report.userId : null;
+    const bankAccount = u && typeof u === 'object' && 'bankAccount' in u
+      ? (u as { bankAccount?: { bankName?: string; accountNumber?: string; cci?: string } }).bankAccount
+      : undefined;
+    if (bankAccount) {
+      this.paymentForm.patchValue({
+        bankName: bankAccount.bankName,
+        accountNumber: bankAccount.accountNumber,
+        cci: bankAccount.cci,
+      });
+    }
+    this.viaticoPaymentReceiptUrl = null;
+    this.viaticoPaymentReceiptName = null;
+    this.viaticoPaymentReceiptMimeType = null;
+    this.viaticoPaymentReceiptSizeBytes = null;
+    this.viaticoScannedAmount = null;
+    this.viaticoOperationNumber = null;
+    this.viaticoOperationDate = null;
+    this.viaticoOperationTime = null;
+    this.showViaticoPaymentModal = true;
+  }
+
+  removeViaticoPaymentReceipt(): void {
+    this.viaticoPaymentReceiptUrl = null;
+    this.viaticoPaymentReceiptName = null;
+    this.viaticoPaymentReceiptMimeType = null;
+    this.viaticoPaymentReceiptSizeBytes = null;
+    this.viaticoScannedAmount = null;
+    this.viaticoOperationNumber = null;
+    this.viaticoOperationDate = null;
+    this.viaticoOperationTime = null;
+    const remaining = this.selectedViaticoReport ? this.viaticoRemaining(this.selectedViaticoReport) : null;
+    this.paymentForm.patchValue({ amount: remaining && remaining > 0 ? remaining : null });
+  }
+
+  onViaticoPaymentReceiptSelected(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    if (!file) return;
+    const allowedTypes = ['application/pdf', 'image/jpeg', 'image/png'];
+    if (!allowedTypes.includes(file.type)) {
+      this.notificationService.show('Formato inválido. Usa PDF, JPG o PNG.', 'error');
+      input.value = '';
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      this.notificationService.show('El comprobante no puede superar 10MB.', 'error');
+      input.value = '';
+      return;
+    }
+    this.isUploadingViaticoReceipt.set(true);
+    this.uploadService.upload(file).subscribe({
+      next: res => {
+        this.viaticoPaymentReceiptUrl = res.url;
+        this.viaticoPaymentReceiptName = file.name;
+        this.viaticoPaymentReceiptMimeType = file.type;
+        this.viaticoPaymentReceiptSizeBytes = file.size;
+        this.isUploadingViaticoReceipt.set(false);
+        this.isScanningViaticoPayment.set(true);
+        this.expenseReportsService.scanDepositAmount(res.url, file.type).subscribe({
+          next: scan => {
+            this.isScanningViaticoPayment.set(false);
+            const amount = Number(scan?.amount) || 0;
+            this.viaticoScannedAmount = amount > 0 ? amount : null;
+            this.viaticoOperationNumber = scan?.operationNumber || null;
+            this.viaticoOperationDate = scan?.fecha || null;
+            this.viaticoOperationTime = scan?.hora || null;
+            const patch: Record<string, unknown> = {};
+            if (amount > 0) patch['amount'] = amount;
+            if (scan?.operationNumber && !this.paymentForm.value.reference) patch['reference'] = scan.operationNumber;
+            if (Object.keys(patch).length) this.paymentForm.patchValue(patch);
+          },
+          error: () => {
+            this.isScanningViaticoPayment.set(false);
+            this.notificationService.show('No se pudo escanear el comprobante. Ingresa el monto manualmente.', 'warning');
+          },
+        });
+      },
+      error: () => {
+        this.notificationService.show('No se pudo subir el comprobante', 'error');
+        this.isUploadingViaticoReceipt.set(false);
+      },
+    });
+  }
+
+  confirmViaticoPayment(): void {
+    if (!this.selectedViaticoReport || this.paymentForm.invalid) return;
+    const method = this.paymentForm.get('method')?.value;
+    if (method !== 'efectivo' && !this.viaticoPaymentReceiptUrl) {
+      this.notificationService.show('Debes adjuntar el comprobante de pago.', 'error');
+      return;
+    }
+    this.isActing.set(true);
+    this.expenseReportsService.registerViaticoPayment(this.selectedViaticoReport._id, {
+      ...this.paymentForm.value,
+      amount: Number(this.paymentForm.value.amount),
+      paymentReceiptUrl: this.viaticoPaymentReceiptUrl || undefined,
+      paymentReceiptFileName: this.viaticoPaymentReceiptName || undefined,
+      paymentReceiptMimeType: this.viaticoPaymentReceiptMimeType || undefined,
+      paymentReceiptSizeBytes: this.viaticoPaymentReceiptSizeBytes || undefined,
+      scannedAmount: this.viaticoScannedAmount ?? undefined,
+      operationNumber: this.viaticoOperationNumber || undefined,
+      operationDate: this.viaticoOperationDate || undefined,
+      operationTime: this.viaticoOperationTime || undefined,
+    }).subscribe({
+      next: () => {
+        this.notificationService.show('Pago de viático registrado correctamente', 'success');
+        this.showViaticoPaymentModal = false;
+        this.loadData();
+        this.isActing.set(false);
+      },
+      error: e => {
+        this.notificationService.show(e.error?.message || 'Error al registrar el pago', 'error');
+        this.isActing.set(false);
+      },
     });
   }
 
@@ -415,7 +608,13 @@ export class TesoreriaComponent implements OnInit {
 
   openReimbursementModal(report: IExpenseReport): void {
     this.selectedReportReimbursement = report;
+    // El monto del reembolso es fijo (= |settlement.difference|). El modal no
+    // tiene input de monto, así que lo seteamos aquí; de lo contrario el control
+    // `amount` (requerido) quedaría en null y el formulario nunca sería válido,
+    // bloqueando "Confirmar reembolso" incluso en efectivo.
+    const reembolsoAmount = Math.abs(Number(report.settlement?.difference ?? 0)) || null;
     this.paymentForm.reset({
+      amount: reembolsoAmount,
       method: 'transferencia_bancaria',
       bankName: '',
       accountNumber: '',
@@ -427,6 +626,7 @@ export class TesoreriaComponent implements OnInit {
     this.reimbursementReceiptName = null;
     this.reimbursementReceiptMimeType = null;
     this.reimbursementReceiptSizeBytes = null;
+    this.resetReimbursementScanState();
     const user = typeof report.userId === 'object' ? report.userId : null;
     const bankAccount = user && typeof user === 'object' && 'bankAccount' in user
       ? (user as { bankAccount?: { bankName?: string; accountNumber?: string; cci?: string } }).bankAccount
@@ -465,10 +665,42 @@ export class TesoreriaComponent implements OnInit {
         this.reimbursementReceiptSizeBytes = file.size;
         this.notificationService.show('Comprobante cargado correctamente', 'success');
         this.isUploadingReceipt.set(false);
+        this.scanReimbursementReceipt(res.url, file.type);
       },
       error: () => {
         this.notificationService.show('No se pudo subir el comprobante', 'error');
         this.isUploadingReceipt.set(false);
+      },
+    });
+  }
+
+  private resetReimbursementScanState(): void {
+    this.reimbursementScannedAmount = null;
+    this.reimbursementTitular = null;
+    this.reimbursementOperationNumber = null;
+    this.reimbursementOperationDate = null;
+    this.reimbursementOperationTime = null;
+  }
+
+  /** Escanea el comprobante del reembolso y autocompleta los datos (sin alerta de discrepancia). */
+  private scanReimbursementReceipt(url: string, mimeType?: string): void {
+    this.isScanningReimbursement.set(true);
+    this.expenseReportsService.scanDepositAmount(url, mimeType).subscribe({
+      next: res => {
+        this.isScanningReimbursement.set(false);
+        const amount = Number(res?.amount) || 0;
+        this.reimbursementScannedAmount = amount > 0 ? amount : null;
+        this.reimbursementTitular = res?.titular || null;
+        this.reimbursementOperationNumber = res?.operationNumber || null;
+        this.reimbursementOperationDate = res?.fecha || null;
+        this.reimbursementOperationTime = res?.hora || null;
+        if (res?.operationNumber && !this.paymentForm.value.reference) {
+          this.paymentForm.patchValue({ reference: res.operationNumber });
+        }
+      },
+      error: () => {
+        this.isScanningReimbursement.set(false);
+        this.notificationService.show('No se pudo escanear el comprobante. Completa los datos manualmente.', 'warning');
       },
     });
   }
@@ -488,6 +720,11 @@ export class TesoreriaComponent implements OnInit {
         paymentReceiptFileName: this.reimbursementReceiptName || undefined,
         paymentReceiptMimeType: this.reimbursementReceiptMimeType || undefined,
         paymentReceiptSizeBytes: this.reimbursementReceiptSizeBytes || undefined,
+        scannedAmount: this.reimbursementScannedAmount ?? undefined,
+        operationNumber: this.reimbursementOperationNumber || this.paymentForm.value.reference || undefined,
+        operationDate: this.reimbursementOperationDate || undefined,
+        operationTime: this.reimbursementOperationTime || undefined,
+        titular: this.reimbursementTitular || undefined,
       })
       .subscribe({
         next: () => {
@@ -522,7 +759,8 @@ export class TesoreriaComponent implements OnInit {
 
   confirmPayment() {
     if (!this.selectedAdvance || this.paymentForm.invalid) return;
-    if (!this.paymentReceiptUrl) {
+    const method = this.paymentForm.get('method')?.value;
+    if (method !== 'efectivo' && !this.paymentReceiptUrl) {
       this.notificationService.show('Debes adjuntar el comprobante de pago.', 'error');
       return;
     }
@@ -530,7 +768,7 @@ export class TesoreriaComponent implements OnInit {
     this.advanceService.registerPayment(this.selectedAdvance._id, {
       ...this.paymentForm.value,
       amount: Number(this.paymentForm.value.amount),
-      paymentReceiptUrl: this.paymentReceiptUrl,
+      paymentReceiptUrl: this.paymentReceiptUrl || undefined,
       paymentReceiptFileName: this.paymentReceiptName || undefined,
       paymentReceiptMimeType: this.paymentReceiptMimeType || undefined,
       paymentReceiptSizeBytes: this.paymentReceiptSizeBytes || undefined,

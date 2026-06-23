@@ -88,6 +88,11 @@ export interface IReturnProof {
   fileKey?: string;
   uploadedAt: string;
   note?: string;
+  /** Datos extraídos del comprobante por OCR/visión (informativos). */
+  scannedAmount?: number;
+  operationDate?: string;
+  operationTime?: string;
+  titular?: string;
 }
 
 export interface IReturnValidation {

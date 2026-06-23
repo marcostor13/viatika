@@ -37,11 +37,19 @@ export class RendicionesDirectasComponent implements OnInit {
   private router = inject(Router);
   private adminUsersService = inject(AdminUsersService);
 
-  // Estado
+  // Pestañas: "rendiciones" (una fila por rendición) y "gastos" (por comprobante).
+  activeTab = signal<'rendiciones' | 'gastos'>('rendiciones');
+  setTab(tab: 'rendiciones' | 'gastos'): void { this.activeTab.set(tab); }
+
+  // Estado — pestaña Gastos (por comprobante)
   loading = signal(false);
   data = signal<any[]>([]);
   total = signal(0);
   pages = signal(0);
+
+  // Estado — pestaña Rendiciones directas (por reporte)
+  reports = signal<any[]>([]);
+  loadingReports = signal(false);
 
   // Filtros
   filterDateFrom = '';
@@ -63,11 +71,14 @@ export class RendicionesDirectasComponent implements OnInit {
   approvingId = signal<string | null>(null);
   deletingId = signal<string | null>(null);
   confirmDeleteExpense = signal<any | null>(null);
+  confirmApproveExpense = signal<any | null>(null);
   isExportingExcel = signal(false);
   isExportingPdf = signal(false);
 
   // Selección para exportar
   selectedIds = signal<Set<string>>(new Set<string>());
+
+  get isContabilidad(): boolean { return this.userState.isContabilidad(); }
 
   toggleSelectAll(): void {
     const all = this.data();
@@ -95,6 +106,7 @@ export class RendicionesDirectasComponent implements OnInit {
 
   ngOnInit(): void {
     this.loadCatalogs();
+    this.loadReports();
     this.loadData();
   }
 
@@ -128,13 +140,67 @@ export class RendicionesDirectasComponent implements OnInit {
     });
   }
 
-  applyFilters(): void { this.page = 1; this.loadData(); }
+  loadReports(): void {
+    const cid = this.clientId;
+    if (!cid) return;
+    this.loadingReports.set(true);
+    this.expenseReportsService.findDirectRendicionReports(cid, {
+      dateFrom: this.filterDateFrom || undefined,
+      dateTo: this.filterDateTo || undefined,
+      userId: this.filterUserId || undefined,
+    }).subscribe({
+      next: rows => { this.reports.set(rows ?? []); this.loadingReports.set(false); },
+      error: () => { this.loadingReports.set(false); this.notifications.show('Error al cargar las rendiciones', 'error'); },
+    });
+  }
+
+  applyFilters(): void { this.page = 1; this.loadReports(); this.loadData(); }
 
   clearFilters(): void {
     this.filterDateFrom = ''; this.filterDateTo = ''; this.filterProjectId = '';
     this.filterCategoryId = ''; this.filterDocNumber = ''; this.filterTipo = '';
     this.filterUserId = '';
-    this.page = 1; this.loadData();
+    this.page = 1; this.loadReports(); this.loadData();
+  }
+
+  // ─── Helpers pestaña Rendiciones directas (nivel reporte) ────────────────────
+
+  reportColaborador(r: any): string {
+    const u = r?.userId;
+    if (!u) return '—';
+    return (typeof u === 'object' ? u.name || u.email : u) || '—';
+  }
+
+  reportOrigenLabel(r: any): string {
+    const labels: Record<string, string> = { contabilidad: 'Contabilidad', coordinador: 'Coordinador', colaborador: 'Colaborador' };
+    return labels[r?.origin] ?? 'Colaborador';
+  }
+
+  reportOrigenBadgeClass(r: any): string {
+    if (r?.origin === 'contabilidad') return 'bg-blue-100 text-blue-700';
+    if (r?.origin === 'coordinador') return 'bg-purple-100 text-purple-700';
+    return 'bg-gray-100 text-gray-600';
+  }
+
+  reportStatusLabel(r: any): string {
+    if (r?.effectivelyClosed) return 'Cerrada';
+    const map: Record<string, string> = {
+      open: 'Abierta', solicited: 'Solicitada', submitted: 'Enviada',
+      pending_accounting: 'En contabilidad', approved: 'Aprobada',
+      rejected: 'Rechazada', closed: 'Cerrada', liquidated: 'Liquidada',
+      reimbursed: 'Reembolsada', cancelled: 'Cancelada',
+    };
+    return map[String(r?.status || '')] ?? (r?.status || '—');
+  }
+
+  reportFecha(r: any): string { return formatFechaEmisionDdMmYyyy(r?.createdAt) || '—'; }
+
+  viewReport(r: any): void {
+    this.router.navigate(['/mis-rendiciones', String(r._id), 'detalle']);
+  }
+
+  get reportsTotalGastado(): number {
+    return this.reports().reduce((sum, r) => sum + (Number(r?.totalGastado) || 0), 0);
   }
 
   goToPage(p: number): void { if (p < 1 || p > this.pages()) return; this.page = p; this.loadData(); }
@@ -142,6 +208,12 @@ export class RendicionesDirectasComponent implements OnInit {
   // ─── Navegación ──────────────────────────────────────────────────────────────
 
   viewDetail(e: any): void {
+    // Una fila de depósito apunta al reporte (su _id es el id de la rendición),
+    // no a un gasto: navega al detalle de la rendición directa.
+    if (this.isDeposito(e)) {
+      this.router.navigate(['/mis-rendiciones', String(e._id), 'detalle']);
+      return;
+    }
     this.router.navigate(['/mis-rendiciones/gasto', String(e._id)]);
   }
 
@@ -151,9 +223,18 @@ export class RendicionesDirectasComponent implements OnInit {
 
   // ─── Aprobación ──────────────────────────────────────────────────────────────
 
-  approveExpense(e: any, event: Event): void {
+  openApproveConfirm(e: any, event: Event): void {
     event.stopPropagation();
     if (this.approvingId() || this.isRevisado(e)) return;
+    this.confirmApproveExpense.set(e);
+  }
+
+  cancelApprove(): void { this.confirmApproveExpense.set(null); }
+
+  doApprove(): void {
+    const e = this.confirmApproveExpense();
+    if (!e) return;
+    this.confirmApproveExpense.set(null);
     this.approvingId.set(e._id);
     this.invoicesService.approveByContabilidad(e._id).subscribe({
       next: () => {
@@ -170,6 +251,8 @@ export class RendicionesDirectasComponent implements OnInit {
       },
     });
   }
+
+  approveExpense(e: any, event: Event): void { this.openApproveConfirm(e, event); }
 
   // ─── Eliminación ─────────────────────────────────────────────────────────────
 
@@ -208,7 +291,11 @@ export class RendicionesDirectasComponent implements OnInit {
     return {};
   }
 
+  /** Fila placeholder que representa una directa con depósito sin comprobantes aún. */
+  isDeposito(e: any): boolean { return e?._isDepositPlaceholder === true; }
+
   getTypeKey(e: any): string {
+    if (this.isDeposito(e)) return 'directa_deposito';
     const t = e?.expenseType;
     if (t === 'planilla_movilidad') return 'planilla_movilidad';
     if (t === 'otros_gastos') return 'otros_gastos';
@@ -218,6 +305,7 @@ export class RendicionesDirectasComponent implements OnInit {
   }
 
   getTypeCode(e: any): string {
+    if (this.isDeposito(e)) return 'DEP';
     const type = e?.expenseType;
     if (type === 'planilla_movilidad') return 'PM';
     if (type === 'comprobante_caja') return 'CC';
@@ -241,6 +329,7 @@ export class RendicionesDirectasComponent implements OnInit {
 
   getTypeBadgeClass(e: any): string {
     const code = this.getTypeCode(e);
+    if (code === 'DEP') return 'bg-emerald-100 text-emerald-700';
     if (code === 'PM') return 'bg-yellow-100 text-yellow-800';
     if (code === 'CC') return 'bg-purple-100 text-purple-800';
     if (code === 'SC' || code === 'OT') return 'bg-gray-100 text-gray-600';
@@ -257,6 +346,24 @@ export class RendicionesDirectasComponent implements OnInit {
   }
 
   getRendicionTitle(e: any): string { return e._report?.motivo || e._report?.title || '—'; }
+
+  /** Nombre del usuario que generó la rendición directa (createdBy del reporte). */
+  getGeneradoPor(e: any): string { return e._report?._generatedByName || '—'; }
+
+  /** Origen/tipo de la rendición directa: Contabilidad, Coordinador o Colaborador. */
+  getOrigen(e: any): string { return e._report?._origin || 'colaborador'; }
+
+  getOrigenLabel(e: any): string {
+    const labels: Record<string, string> = { contabilidad: 'Contabilidad', coordinador: 'Coordinador', colaborador: 'Colaborador' };
+    return labels[this.getOrigen(e)] ?? 'Colaborador';
+  }
+
+  getOrigenBadgeClass(e: any): string {
+    const o = this.getOrigen(e);
+    if (o === 'contabilidad') return 'bg-blue-100 text-blue-700';
+    if (o === 'coordinador') return 'bg-purple-100 text-purple-700';
+    return 'bg-gray-100 text-gray-600';
+  }
 
   getProject(e: any): string {
     const p = e._projectDoc || e._project?.[0];
@@ -299,7 +406,15 @@ export class RendicionesDirectasComponent implements OnInit {
 
   getProveedor(e: any): string {
     const type = e?.expenseType;
-    if (type === 'planilla_movilidad' || type === 'comprobante_caja' || type === 'otros_gastos') return '-';
+    if (type === 'planilla_movilidad' || type === 'otros_gastos') return '-';
+    if (type === 'comprobante_caja') {
+      try {
+        const d = this.getData(e);
+        const raw = d['payload'];
+        const obj: any = typeof raw === 'string' ? JSON.parse(raw) : (raw ?? {});
+        return String(obj['entregadoA'] || '-');
+      } catch { return '-'; }
+    }
     const d = this.getData(e);
     const r = d['razonSocial'];
     if (typeof r === 'string' && r.trim()) return r.trim();
@@ -307,6 +422,7 @@ export class RendicionesDirectasComponent implements OnInit {
   }
 
   getConcepto(e: any): string {
+    if (this.isDeposito(e)) return e?.description || 'Depósito de saldo';
     const type = e?.expenseType;
     if (type === 'planilla_movilidad') { const rows: any[] = e?.mobilityRows || []; const first = rows[0]; return first?.gestion || `${rows.length} filas`; }
     if (type === 'otros_gastos') return e?.description || 'DJ firmada';
@@ -316,6 +432,7 @@ export class RendicionesDirectasComponent implements OnInit {
   }
 
   getFecha(e: any): string {
+    if (this.isDeposito(e)) return e.fechaEmision || formatFechaEmisionDdMmYyyy(e.createdAt) || '—';
     const type = e?.expenseType;
     if (type === 'planilla_movilidad') { const rows: any[] = e?.mobilityRows || []; const dates = rows.map((r: any) => r.fecha).filter(Boolean); return dates.length ? ([...dates].sort()[0]) : '—'; }
     if (type === 'otros_gastos') return e.fechaEmision || formatFechaEmisionDdMmYyyy(e.createdAt) || '—';
@@ -356,7 +473,7 @@ export class RendicionesDirectasComponent implements OnInit {
   getEstadoContClass(e: any): string { return e.approvalCont?.status === 'approved' ? 'bg-teal-100 text-teal-700' : 'bg-yellow-100 text-yellow-700'; }
   isRevisado(e: any): boolean { return e.approvalCont?.status === 'approved'; }
   getTotal(e: any): number { const t = e?.total; if (typeof t === 'number') return t; const n = Number(t); return Number.isNaN(n) ? 0 : n; }
-  get totalMonto(): number { return this.data().reduce((sum, e) => sum + this.getTotal(e), 0); }
+  get totalMonto(): number { return this.data().reduce((sum, e) => sum + (this.isDeposito(e) ? 0 : this.getTotal(e)), 0); }
 
   private mapExpenseStatus(status?: string): string {
     const s = String(status || 'pending').toLowerCase();

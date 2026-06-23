@@ -1007,6 +1007,49 @@
   <!-- ===== COMPROBANTE DE CAJA ===== -->
   @if(expenseType() === 'comprobante_caja') {
   <div class="bg-quaternary rounded-xl shadow-soft border border-gray-100 p-3 sm:p-6 space-y-5">
+
+    <!-- Escanear comprobante (opcional): autorellena los campos -->
+    @if(!id) {
+    <div class="flex flex-col gap-2">
+      <label class="text-sm font-medium text-secondary">Escanear comprobante (opcional)</label>
+      @if(!cashVoucherFileName) {
+      <label
+        class="flex flex-col items-center justify-center gap-2 w-full px-4 py-6 rounded-lg border-2 border-dashed border-gray-300 bg-background cursor-pointer hover:border-primary hover:bg-primary/5 transition-colors"
+        [class.pointer-events-none]="isScanningVoucher()" [class.opacity-60]="isScanningVoucher()">
+        @if(isScanningVoucher()) {
+        <span class="inline-flex items-center gap-2 text-sm text-secondary">
+          <span class="inline-block w-4 h-4 border-2 border-primary/40 border-t-primary rounded-full animate-spin"></span>
+          Escaneando comprobante...
+        </span>
+        } @else {
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-7 h-7 text-gray-400">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5" />
+        </svg>
+        <span class="text-sm text-secondary">Sube una foto o PDF para extraer los datos automáticamente</span>
+        <span class="text-xs text-gray-400">Los campos quedarán editables</span>
+        }
+        <input type="file" accept="image/*,application/pdf" class="hidden"
+          [disabled]="isScanningVoucher()" (change)="onCashVoucherFileSelected($event)" />
+      </label>
+      } @else {
+      <div class="flex items-center justify-between gap-3 w-full px-4 py-3 rounded-lg border border-green-200 bg-green-50">
+        <span class="inline-flex items-center gap-2 text-sm text-green-700 truncate">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 shrink-0">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+          </svg>
+          <span class="truncate">{{ cashVoucherFileName }}</span>
+        </span>
+        <button type="button" (click)="removeCashVoucherFile()" title="Quitar archivo"
+          class="p-1.5 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors shrink-0">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+      }
+    </div>
+    }
+
     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
       <div class="flex flex-col gap-2">
         <label class="text-sm font-medium text-secondary">Entregado a <span class="text-error">*</span></label>

@@ -28,13 +28,8 @@
       <!-- Total (desktop) -->
       <div class="hidden sm:flex items-center gap-6 shrink-0">
         <div class="text-right">
-          @if (hasPendingBalance) {
-          <p class="text-xs text-gray-400">Total anticipo</p>
-          <p class="text-xl font-bold text-gray-900">S/ {{ totalAnticipo() | number:'1.2-2' }}</p>
-          } @else {
           <p class="text-xs text-gray-400">Total general</p>
           <p class="text-xl font-bold text-gray-900">S/ {{ totalGeneral() | number:'1.2-2' }}</p>
-          }
         </div>
         <button
           type="button"
@@ -76,9 +71,9 @@
       <div>
         <p class="text-sm font-semibold text-amber-800">Solicitud con saldo pendiente</p>
         <p class="text-sm text-amber-700 mt-0.5">
-          Esta solicitud incluye un saldo pendiente de
+          Tienes un saldo pendiente de
           <strong>S/ {{ pendingBalanceAmount() | number:'1.2-2' }}</strong>
-          trasladado desde tu rendicion anterior. El detalle por categoria representa el monto adicional que estas solicitando.
+          trasladado desde tu rendicion anterior. Se usa para financiar este viático: cubre el costo de las categorías, contabilidad deposita solo la diferencia y, si el saldo supera el costo, el sobrante vuelve a tu bolsa.
         </p>
       </div>
     </div>
@@ -120,6 +115,13 @@
               class="w-full px-3.5 py-2.5 text-sm rounded-xl border border-gray-300 bg-white text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-shadow"
               [class.border-red-400]="form.get('place')?.invalid && form.get('place')?.touched"
             />
+            @if (isResubmit && form.get('place')?.value) {
+            <p class="text-xs text-gray-500">
+              Dirección actual:
+              <span class="font-medium text-gray-700">{{ form.get('place')?.value }}</span>.
+              Escribe arriba solo si deseas cambiarla.
+            </p>
+            }
             @if (form.get('place')?.invalid && form.get('place')?.touched) {
             <p class="text-xs text-red-500">El lugar es obligatorio</p>
             }
@@ -171,7 +173,67 @@
             @if (form.get('projectId')?.invalid && form.get('projectId')?.touched) {
             <p class="text-xs text-red-500">Seleccione un centro de costo</p>
             }
+            @if (hasPendingBalance) {
+            <p class="text-xs text-gray-500">El centro de costo queda fijo por el saldo heredado; ese saldo solo puede usarse aquí.</p>
+            }
           </div>
+
+          <!-- Saldo de la bolsa (mismo centro de costo) -->
+          @if (canUseSaldoBag && selectedProjectId()) {
+          <div class="md:col-span-2 flex flex-col gap-2">
+            <label class="text-sm font-medium text-gray-700">
+              Financiar con saldo (opcional)
+            </label>
+            <p class="text-xs text-gray-500 -mt-1">
+              Solo aparecen saldos de viáticos del mismo centro de costo. Se usa solo lo necesario: si el saldo supera el total, el sobrante vuelve a tu bolsa y contabilidad no deposita nada; si el total es mayor, contabilidad deposita la diferencia.
+            </p>
+            @if (loadingSaldos()) {
+              <p class="text-sm text-gray-400">Cargando saldos...</p>
+            } @else if (saldos().length === 0) {
+              <p class="text-sm text-gray-400">No hay saldos disponibles para este centro de costo.</p>
+            } @else {
+              <div class="space-y-2">
+                @for (s of saldos(); track s._id) {
+                <label
+                  class="flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-colors"
+                  [class.border-primary]="isSaldoSelected(s._id)"
+                  [class.bg-blue-50]="isSaldoSelected(s._id)"
+                  [class.border-gray-200]="!isSaldoSelected(s._id)"
+                >
+                  <input
+                    type="checkbox"
+                    [checked]="isSaldoSelected(s._id)"
+                    (change)="toggleSaldo(s._id)"
+                    class="w-4 h-4 accent-primary"
+                  />
+                  <span class="flex-1 min-w-0 text-sm text-gray-700">
+                    {{ s.type === 'pago' ? 'Pago' : 'Saldo de rendición' }}
+                    @if (saldoDescripcion(s)) {
+                      <span class="block text-xs text-gray-500 truncate">{{ saldoDescripcion(s) }}</span>
+                    }
+                  </span>
+                  <span class="text-sm font-semibold text-gray-900 shrink-0">S/ {{ s.amount | number:'1.2-2' }}</span>
+                </label>
+                }
+              </div>
+              @if (selectedSaldoTotal() > 0) {
+              <div class="flex items-center justify-between bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-2.5">
+                <span class="text-sm font-medium text-emerald-700">Saldo aplicado</span>
+                <span class="text-base font-bold text-emerald-700">S/ {{ saldoUsed() | number:'1.2-2' }}</span>
+              </div>
+                @if (saldoExcess() > 0.009) {
+                <p class="text-xs font-medium text-emerald-700 -mt-1">
+                  El sobrante de S/ {{ saldoExcess() | number:'1.2-2' }} volverá a tu bolsa. Contabilidad no deposita nada.
+                </p>
+                } @else if (contabilidadDeposita() > 0.009) {
+                <p class="text-xs text-gray-500 -mt-1">
+                  Contabilidad depositará la diferencia: S/ {{ contabilidadDeposita() | number:'1.2-2' }}.
+                </p>
+                }
+              }
+            }
+          </div>
+          }
 
           <!-- Observaciones -->
           <div class="md:col-span-2 flex flex-col gap-1.5">
@@ -358,17 +420,22 @@
         @if (hasPendingBalance) {
         <div class="px-4 py-3.5 bg-gray-50 border-t-2 border-gray-200 flex flex-col gap-1.5 lg:items-end">
           <div class="flex items-center justify-between lg:justify-end lg:gap-16">
-            <span class="text-sm text-gray-500">Saldo pendiente (rendicion anterior)</span>
-            <span class="text-sm font-semibold text-amber-700 tabular-nums">S/ {{ pendingBalanceAmount() | number:'1.2-2' }}</span>
-          </div>
-          <div class="flex items-center justify-between lg:justify-end lg:gap-16">
-            <span class="text-sm text-gray-500">Adicional (lineas)</span>
+            <span class="text-sm text-gray-500">Costo (lineas)</span>
             <span class="text-sm font-semibold text-gray-700 tabular-nums">S/ {{ totalGeneral() | number:'1.2-2' }}</span>
           </div>
-          <div class="flex items-center justify-between lg:justify-end lg:gap-16 pt-1 border-t border-gray-200 mt-0.5">
-            <span class="text-sm font-semibold text-gray-700 uppercase tracking-wide">Total anticipo</span>
-            <span class="text-base font-bold text-gray-900 tabular-nums">S/ {{ totalAnticipo() | number:'1.2-2' }}</span>
+          <div class="flex items-center justify-between lg:justify-end lg:gap-16">
+            <span class="text-sm text-gray-500">Saldo pendiente aplicado</span>
+            <span class="text-sm font-semibold text-amber-700 tabular-nums">- S/ {{ pendingUsed() | number:'1.2-2' }}</span>
           </div>
+          <div class="flex items-center justify-between lg:justify-end lg:gap-16 pt-1 border-t border-gray-200 mt-0.5">
+            <span class="text-sm font-semibold text-gray-700 uppercase tracking-wide">Contabilidad deposita</span>
+            <span class="text-base font-bold text-gray-900 tabular-nums">S/ {{ pendingDeposita() | number:'1.2-2' }}</span>
+          </div>
+          @if (pendingExcess() > 0.009) {
+          <p class="text-xs font-medium text-emerald-700 mt-0.5 lg:text-right">
+            El sobrante de S/ {{ pendingExcess() | number:'1.2-2' }} volverá a tu bolsa. Contabilidad no deposita nada.
+          </p>
+          }
         </div>
         } @else {
         <div class="px-4 py-3.5 bg-gray-50 border-t-2 border-gray-200 flex items-center justify-between gap-4 lg:justify-end">
@@ -385,13 +452,8 @@
   <!-- Mobile footer -->
   <div class="sm:hidden sticky bottom-0 bg-white border-t border-gray-200 px-4 py-3 flex items-center justify-between gap-3 shadow-lg">
     <div>
-      @if (hasPendingBalance) {
-      <p class="text-xs text-gray-400">Total anticipo</p>
-      <p class="text-base font-bold text-gray-900">S/ {{ totalAnticipo() | number:'1.2-2' }}</p>
-      } @else {
       <p class="text-xs text-gray-400">Total</p>
       <p class="text-base font-bold text-gray-900">S/ {{ totalGeneral() | number:'1.2-2' }}</p>
-      }
     </div>
     <button
       type="button"

@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, signal, computed, HostListener } from '@angular/core';
+import { Component, OnInit, OnDestroy, inject, signal, computed, HostListener, WritableSignal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
@@ -10,7 +10,12 @@ import { CompanyConfigService } from '../../../services/company-config.service';
 import { ConfirmationService } from '../../../services/confirmation.service';
 import { InvoicesService } from '../../invoices/services/invoices.service';
 import { UploadService } from '../../../services/upload.service';
-import { IExpenseReport } from '../../../interfaces/expense-report.interface';
+import {
+  AccountingEntriesService,
+  IGeneratedFile,
+  AsientoTipo,
+} from '../../../services/accounting-entries.service';
+import { IExpenseReport, IReportFinancingSaldo } from '../../../interfaces/expense-report.interface';
 import { IProject } from '../../invoices/interfaces/project.interface';
 import { IAdvance, IAdvancePayment, ADVANCE_STATUS_LABELS, ADVANCE_STATUS_COLORS } from '../../../interfaces/advance.interface';
 import { ButtonComponent } from '../../../design-system/button/button.component';
@@ -29,6 +34,12 @@ import {
   resolveExpenseFechaEmision,
 } from '../../../utils/fecha-emision.util';
 
+/** Paso del proceso de generación de asientos, para el modal de progreso. */
+interface AsientoStep {
+  label: string;
+  status: 'pending' | 'active' | 'done';
+}
+
 @Component({
   selector: 'app-rendicion-detail',
   standalone: true,
@@ -42,7 +53,7 @@ import {
   templateUrl: './rendicion-detail.component.html',
   styleUrls: ['./rendicion-detail.component.scss']
 })
-export class RendicionDetailComponent implements OnInit {
+export class RendicionDetailComponent implements OnInit, OnDestroy {
   private route = inject(ActivatedRoute);
   private router = inject(Router);
   private expenseReportsService = inject(ExpenseReportsService);
@@ -54,6 +65,7 @@ export class RendicionDetailComponent implements OnInit {
   private rendicionExportService = inject(RendicionExportService);
   private companyConfigService = inject(CompanyConfigService);
   private uploadService = inject(UploadService);
+  private accountingEntriesService = inject(AccountingEntriesService);
   id: string = this.route.snapshot.params['id'];
   report: IExpenseReport | null = null;
   isLoading = true;
@@ -127,15 +139,44 @@ export class RendicionDetailComponent implements OnInit {
   }
 
   get saldoLibre(): number {
+    // Viáticos unificados: el fondo disponible es siempre viaticoPaidAmount − gastado
+    // (incluye el saldo de la bolsa prefinanciado + el depósito de contabilidad). Va
+    // primero para no confundirse con la rama de "directa financiada con bolsa" cuando
+    // el viático también tiene saldoIds (si no, mostraría solo el saldo, no el total).
+    if (this.report?.type === 'viatico') {
+      const viaticoPaid = Number((this.report as any)?.viaticoPaidAmount ?? 0);
+      return viaticoPaid - this.totalGastado;
+    }
     // Rendición directa con depósito de Contabilidad: el saldo a devolver es el
     // depósito menos lo gastado (en vivo), no el monto del settlement almacenado.
     if (this.hasDirectaDeposit) {
       return this.directaSaldo;
     }
+    // Rendición directa creada desde el saldo de otra: el presupuesto es el saldo heredado.
+    if (this.hasPendingBalanceCredit) {
+      return this.pendingBalanceCreditAmount - this.totalGastado;
+    }
+    // Rendición directa financiada con la bolsa: el saldo libre es presupuesto (saldos) − gastado.
+    if (this.hasFinancingSaldos) {
+      return this.financingSaldoDisponible;
+    }
     if (this.settlement?.difference !== undefined && this.settlement.difference !== null) {
       return this.settlement.difference;
     }
     return this.totalAnticipado - this.totalGastado;
+  }
+
+  /** Tipo de settlement efectivo para viáticos: calculado en vivo desde viaticoPaidAmount. */
+  private get effectiveSettlementType(): string | undefined {
+    if (this.report?.type === 'viatico') {
+      const viaticoPaid = Number((this.report as any)?.viaticoPaidAmount ?? 0);
+      if (viaticoPaid <= 0 && this.totalGastado <= 0) {
+        return (this.report as any)?.settlement?.type;
+      }
+      const diff = viaticoPaid - this.totalGastado;
+      return Math.abs(diff) < 0.01 ? 'equilibrado' : diff > 0 ? 'devolucion' : 'reembolso';
+    }
+    return (this.report as any)?.settlement?.type;
   }
 
   /** Rendición directa iniciada por Contabilidad (tiene depósito con saldo). */
@@ -149,6 +190,41 @@ export class RendicionDetailComponent implements OnInit {
 
   get directaSaldo(): number {
     return this.directaDeposited - this.totalGastado;
+  }
+
+  /** Saldos de la bolsa (poblados) que financiaron esta rendición directa. */
+  get financingSaldos(): IReportFinancingSaldo[] {
+    const s = this.report?.saldoIds as unknown[];
+    return Array.isArray(s)
+      ? (s.filter(x => x && typeof x === 'object') as IReportFinancingSaldo[])
+      : [];
+  }
+
+  get hasFinancingSaldos(): boolean {
+    return this.financingSaldos.length > 0;
+  }
+
+  get financingSaldosTotal(): number {
+    return this.financingSaldos.reduce((a, s) => a + (Number(s.amount) || 0), 0);
+  }
+
+  /** Saldo disponible de una directa financiada con la bolsa: presupuesto (saldos) − gastado. */
+  get financingSaldoDisponible(): number {
+    return this.financingSaldosTotal - this.totalGastado;
+  }
+
+  /** Tipo legible del saldo financiador. */
+  financingSaldoTipo(s: IReportFinancingSaldo): string {
+    return s.type === 'pago' ? 'Pago de contabilidad' : 'Saldo de rendición';
+  }
+
+  /** Detalle del saldo financiador: gestión/motivo, código de origen o N° de operación. */
+  financingSaldoLabel(s: IReportFinancingSaldo): string {
+    if (s.concepto?.trim()) return s.concepto.trim();
+    const r = s.sourceReportId;
+    if (r && typeof r !== 'string') return r.codigo || r.title || r.gestion || '';
+    if (s.type === 'pago' && s.deposit?.operationNumber) return `Op. ${s.deposit.operationNumber}`;
+    return '';
   }
 
   ngOnInit(): void {
@@ -204,9 +280,14 @@ export class RendicionDetailComponent implements OnInit {
     const advances = this.advances
       .filter(a => ['approved', 'partially_paid', 'paid', 'settled'].includes(a.status))
       .reduce((sum, a) => sum + Number(a.paidAmount ?? a.amount), 0);
+    // Para viáticos unificados (type='viatico'), el monto pagado está en viaticoPaidAmount
+    // del propio ExpenseReport, no en Advances vinculados.
+    const viaticoPaid = this.report?.type === 'viatico'
+      ? Number((this.report as any).viaticoPaidAmount ?? 0)
+      : 0;
     // El depósito de una rendición directa iniciada por Contabilidad funciona como
     // anticipo: el saldo no gastado debe devolverlo el colaborador/coordinador.
-    return advances + (this.hasDirectaDeposit ? this.directaDeposited : 0);
+    return advances + viaticoPaid + (this.hasDirectaDeposit ? this.directaDeposited : 0);
   }
 
   get paidAdvances(): IAdvance[] {
@@ -215,7 +296,10 @@ export class RendicionDetailComponent implements OnInit {
 
   get hasPaidAdvanceForReport(): boolean {
     // Con el primer pago (parcial o total) el colaborador ya puede rendir.
-    return this.advances.some(a => ['partially_paid', 'paid', 'settled'].includes(a.status));
+    if (this.advances.some(a => ['partially_paid', 'paid', 'settled'].includes(a.status))) return true;
+    // Para viáticos unificados el pago está en viaticoPaidAmount, no en un Advance.
+    if (this.report?.type === 'viatico' && Number((this.report as any).viaticoPaidAmount ?? 0) > 0) return true;
+    return false;
   }
 
   /** Pagos parciales de un anticipo (para el desglose del presupuesto). */
@@ -255,6 +339,22 @@ export class RendicionDetailComponent implements OnInit {
         this.updateDocCounts(data);
         this.isLoading = false;
         this.loadExpensesPage(1);
+        // Auto-cierre: viáticos equilibrados que quedaron en 'approved' por datos stale.
+        if (
+          (data as any)?.type === 'viatico' &&
+          data?.status === 'approved' &&
+          this.effectiveSettlementType === 'equilibrado' &&
+          this.userStateService.isContabilidad()
+        ) {
+          this.expenseReportsService.close(this.id).subscribe({
+            next: (closed) => {
+              this.report = closed;
+              this.calculateTotals();
+              this.updateDocCounts(closed);
+            },
+            error: () => {},
+          });
+        }
       },
       error: (err) => {
         console.error('Error fetching report detail', err);
@@ -319,10 +419,13 @@ export class RendicionDetailComponent implements OnInit {
     const canViewAdminUsers = this.userStateService.isAdmin() || this.userStateService.isSuperAdmin();
     if (this.isAdminView && ownerId && canViewAdminUsers) {
       this.router.navigate(['/admin-users', ownerId, 'details']);
+    } else if (this.isAdminView && this.userStateService.isContabilidad()) {
+      this.router.navigate(['/rendiciones'], this.report?.isDirecta ? { queryParams: { tab: 'directas' } } : {});
     } else if (this.isAdminView) {
       this.router.navigate(['/tesoreria']);
     } else {
-      this.router.navigate(['/mis-rendiciones']);
+      const tab = this.route.snapshot.queryParamMap.get('tab');
+      this.router.navigate(['/mis-rendiciones'], tab ? { queryParams: { tab } } : {});
     }
   }
 
@@ -359,6 +462,155 @@ export class RendicionDetailComponent implements OnInit {
       || (this.userStateService.isCoordinador() && this.userStateService.hasModulePermission('rendiciones'));
   }
 
+  // --- Descarga de asientos contables (solo Contabilidad) ---
+  downloadingAsientos = false;
+
+  // Modal de progreso paso a paso de la generación de asientos.
+  asientosModalOpen = signal(false);
+  asientosSteps = signal<AsientoStep[]>([]);
+  asientosError = signal<string | null>(null);
+  asientosDone = signal(false);
+  private asientosStepTimer: ReturnType<typeof setInterval> | null = null;
+
+  /** Pasos mostrados al usuario (reflejan el proceso real del backend). */
+  private asientosStepLabels(): string[] {
+    return [
+      'Leyendo datos de la rendición',
+      'Verificando caché de asientos',
+      'Clasificando cuentas contables con IA',
+      'Calculando tipo de cambio',
+      'Generando archivos Excel (Contanet)',
+    ];
+  }
+
+  /** Solo el rol Contabilidad puede descargar los asientos contables. */
+  get canDownloadAsientos(): boolean {
+    return this.userStateService.isContabilidad();
+  }
+
+  private clearAsientosTimer(): void {
+    if (this.asientosStepTimer) {
+      clearInterval(this.asientosStepTimer);
+      this.asientosStepTimer = null;
+    }
+  }
+
+  /**
+   * Avanza el paso activo. No pasa del último automáticamente: ese se marca
+   * como completado solo cuando el backend responde.
+   */
+  private advanceAsientoStep(): void {
+    const steps = this.asientosSteps();
+    const activeIdx = steps.findIndex((s) => s.status === 'active');
+    if (activeIdx === -1 || activeIdx >= steps.length - 1) return;
+    this.asientosSteps.set(
+      steps.map((s, i) => {
+        if (i === activeIdx) return { ...s, status: 'done' };
+        if (i === activeIdx + 1) return { ...s, status: 'active' };
+        return s;
+      })
+    );
+  }
+
+  private markAllAsientoStepsDone(): void {
+    this.asientosSteps.set(
+      this.asientosSteps().map((s) => ({ ...s, status: 'done' }))
+    );
+  }
+
+  /** Cierra el modal de asientos (solo si ya no está cargando). */
+  closeAsientosModal(): void {
+    if (this.downloadingAsientos) return;
+    this.clearAsientosTimer();
+    this.asientosModalOpen.set(false);
+  }
+
+  ngOnDestroy(): void {
+    this.clearAsientosTimer();
+  }
+
+  /**
+   * Tipos de asiento que pueden producir salida para esta rendición.
+   * Evita pedir al backend trabajo innecesario (devolución/reembolso solo
+   * aplican si el tipo de liquidación coincide). `solicitud` se mantiene
+   * siempre porque depende de anticipos no visibles en este modelo; el
+   * backend la descarta si no hay anticipos.
+   */
+  private applicableAsientoTipos(): AsientoTipo[] {
+    const tipos: AsientoTipo[] = ['solicitud'];
+    if (this.report?.expenseIds?.length) {
+      tipos.push('compra', 'aplicacion');
+    }
+    const settlementType = this.report?.settlement?.type;
+    if (settlementType === 'devolucion') tipos.push('devolucion');
+    if (settlementType === 'reembolso') tipos.push('reembolso');
+    return tipos;
+  }
+
+  downloadAsientos(): void {
+    if (!this.report?._id || this.downloadingAsientos) return;
+    this.downloadingAsientos = true;
+    this.asientosError.set(null);
+    this.asientosDone.set(false);
+    this.asientosSteps.set(
+      this.asientosStepLabels().map((label, i) => ({
+        label,
+        status: i === 0 ? 'active' : 'pending',
+      }))
+    );
+    this.asientosModalOpen.set(true);
+    this.clearAsientosTimer();
+    this.asientosStepTimer = setInterval(() => this.advanceAsientoStep(), 850);
+
+    this.accountingEntriesService
+      .generate(this.report._id, this.applicableAsientoTipos())
+      .subscribe({
+        next: (res: { files: IGeneratedFile[] }) => {
+          this.clearAsientosTimer();
+          this.downloadingAsientos = false;
+          this.markAllAsientoStepsDone();
+          const files = res?.files ?? [];
+          if (!files.length) {
+            this.asientosError.set(
+              'No hay asientos que generar para esta rendición.'
+            );
+            return;
+          }
+          this.asientosDone.set(true);
+          for (const file of files) {
+            this.accountingEntriesService.downloadBase64(file);
+          }
+          const conErrores = files.filter((f) => f.cuadreErrors?.length);
+          // Breve confirmación visual antes de cerrar el modal.
+          setTimeout(() => {
+            this.asientosModalOpen.set(false);
+            if (conErrores.length) {
+              this.notificationService.show(
+                `Asientos descargados. Atención: ${conErrores
+                  .map((f) => f.tipo)
+                  .join(', ')} con descuadre. Revisa el desglose contable.`,
+                'error'
+              );
+            } else {
+              this.notificationService.show(
+                `Asientos descargados (${files.length} archivo(s)).`,
+                'success'
+              );
+            }
+          }, 1000);
+        },
+        error: (err) => {
+          this.clearAsientosTimer();
+          this.downloadingAsientos = false;
+          this.asientosError.set(
+            err?.error?.message ||
+              err?.message ||
+              'Error desconocido al generar los asientos.'
+          );
+        },
+      });
+  }
+
   get canApproveExpenses(): boolean {
     if (this.userStateService.isContabilidad()) return false;
     if (this.userStateService.isCoordinador() && this.userStateService.hasModulePermission('rendiciones')) return true;
@@ -374,12 +626,18 @@ export class RendicionDetailComponent implements OnInit {
     return false;
   }
 
-  /** Colaborador puede agregar gastos (rendición ya aprobada/abierta). */
+  /** Colaborador puede agregar gastos (rendición ya aprobada/abierta, o rechazada en fase de gastos). */
   get canAddExpenses(): boolean {
     if (!this.report || this.isAdminView) return false;
-    if (this.report.status !== 'open') return false;
+    const isRejectedGasPhase = this.report.status === 'rejected' && !this.isSolicitudPhase;
+    if (this.report.status !== 'open' && !isRejectedGasPhase) return false;
+    // Caja chica finalizada por Contabilidad: el total quedó congelado, no se
+    // pueden subir más gastos a esta rendición.
+    if (this.report.lockedByCajaChica) return false;
     // Rendición directa: no necesita anticipo pagado para agregar gastos
-    if (this.report.isDirecta) return true;
+    if (this.report.isDirecta || this.report.isCajaChica) return true;
+    // Rendición rechazada en fase de gastos: el anticipo ya fue pagado antes del envío
+    if (isRejectedGasPhase) return true;
     return this.hasPaidAdvanceForReport;
   }
 
@@ -402,6 +660,7 @@ export class RendicionDetailComponent implements OnInit {
 
   get canSubmitReport(): boolean {
     if (!this.report || this.isAdminView) return false;
+    if (this.report.isCajaChica) return false;
     if (!(this.report.status === 'open' || this.report.status === 'rejected')) return false;
     const expenses = this.report.expenseIds || [];
     return expenses.length > 0;
@@ -726,7 +985,10 @@ export class RendicionDetailComponent implements OnInit {
 
   getExpenseProveedor(expense: any): string {
     const type = expense?.expenseType;
-    if (type === 'planilla_movilidad' || type === 'comprobante_caja' || type === 'otros_gastos') return '-';
+    if (type === 'planilla_movilidad' || type === 'otros_gastos') return '-';
+    if (type === 'comprobante_caja') {
+      return String(this.getCashVoucherPayload(expense)['entregadoA'] || '-');
+    }
     const d = this.getExpenseDataObject(expense);
     const razonSocial = d['razonSocial'];
     if (typeof razonSocial === 'string' && razonSocial.trim()) return razonSocial.trim();
@@ -1080,7 +1342,27 @@ export class RendicionDetailComponent implements OnInit {
 
   getReportStatusLabel(): string {
     if (!this.report) return '';
-    const labels: Record<IExpenseReport['status'], string> = {
+    // Saldo ya resuelto (trasladado o devuelto) => se muestra como Cerrada.
+    if (this.isEffectivelyClosed) return 'Cerrada';
+    if (this.report.isDirecta) {
+      const directaLabels: Partial<Record<IExpenseReport['status'], string>> = {
+        solicited: 'Solicitada',
+        open: 'Abierta',
+        submitted: 'Enviada',
+        pending_accounting: 'Pendiente de Contabilidad',
+        approved: 'Aprobada',
+        rejected: 'Rechazada',
+        reimbursed: 'Reembolsada',
+        closed: 'Cerrada',
+        cancelled: 'Cancelada',
+      };
+      return directaLabels[this.report.status] ?? this.report.status;
+    }
+    // Viático con pago registrado y en fase de carga de gastos.
+    if (this.report.type === 'viatico' && this.report.status === 'open' && Number((this.report as any).viaticoPaidAmount ?? 0) > 0) {
+      return 'Registrando gastos';
+    }
+    const labels: Partial<Record<IExpenseReport['status'], string>> = {
       solicited: 'Solicitada',
       open: 'Abierta',
       submitted: 'Enviada',
@@ -1090,6 +1372,14 @@ export class RendicionDetailComponent implements OnInit {
       reimbursed: 'Reembolsada',
       closed: 'Cerrada',
       cancelled: 'Cancelada',
+      // Estados de viáticos
+      pending_l1: 'En solicitud',
+      pending_l2: 'Aprobada por coordinador',
+      viatico_approved: 'Aprobada',
+      partially_paid: 'Pago parcial',
+      paid: 'Pagada',
+      settled: 'Liquidada',
+      returned: 'Saldo devuelto',
     };
     return labels[this.report.status] ?? this.report.status;
   }
@@ -1126,6 +1416,14 @@ export class RendicionDetailComponent implements OnInit {
     if (u && typeof u === 'object' && 'bankAccount' in u) {
       const ba = (u as { bankAccount?: { accountNumber?: string; cci?: string } }).bankAccount;
       return ba?.cci || ba?.accountNumber;
+    }
+    return undefined;
+  }
+
+  getCollaboratorBankName(): string | undefined {
+    const u = this.report?.userId;
+    if (u && typeof u === 'object' && 'bankAccount' in u) {
+      return (u as { bankAccount?: { bankName?: string } }).bankAccount?.bankName?.toUpperCase();
     }
     return undefined;
   }
@@ -1221,11 +1519,14 @@ export class RendicionDetailComponent implements OnInit {
       .slice(0, 50);
     const comprobantes = (this.report.expenseIds || []).map((exp: Record<string, unknown>) => {
       const dataObj = this.getExpenseDataObject(exp);
+      const expType = exp['expenseType'] as string;
       let provider = exp['provider'] as string || dataObj['razonSocial'] as string || '';
+      if (!provider && expType === 'comprobante_caja') {
+        provider = String(this.getCashVoucherPayload(exp)['entregadoA'] || '');
+      }
       if (!provider && this.getExpenseTypeLabel(exp) === 'Planilla movilidad') {
         provider = 'Planilla de Movilidad';
       }
-      const expType = exp['expenseType'] as string;
       let numDoc = '';
       if (expType === 'planilla_movilidad' || expType === 'comprobante_caja') {
         numDoc = typeof exp['internalCode'] === 'string' ? exp['internalCode'] : '';
@@ -1263,13 +1564,7 @@ export class RendicionDetailComponent implements OnInit {
       };
     });
     const anticipos = this.advances.flatMap((a) => {
-      const fechaSolicitud = a.createdAt
-        ? new Date(a.createdAt).toLocaleDateString('es-PE', {
-            day: '2-digit',
-            month: '2-digit',
-            year: 'numeric',
-          })
-        : '—';
+      const fechaSolicitud = a.createdAt ? this.formatEmissionDate(a.createdAt) : '—';
       const estado = this.ADVANCE_STATUS_LABELS[a.status] ?? a.status;
       if (a.pendingBalanceAmount !== undefined && a.additionalAmount !== undefined) {
         return [
@@ -1285,19 +1580,55 @@ export class RendicionDetailComponent implements OnInit {
     if (this.hasDirectaDeposit && this.report.directaDeposit) {
       const dep = this.report.directaDeposit;
       const rawDate = dep.depositDate || dep.operationDate || dep.createdAt;
-      const fechaSolicitud = rawDate
-        ? new Date(rawDate).toLocaleDateString('es-PE', {
-            day: '2-digit',
-            month: '2-digit',
-            year: 'numeric',
-          })
-        : '—';
+      const fechaSolicitud = rawDate ? this.formatEmissionDate(rawDate) : '—';
       anticipos.unshift({
         descripcion: 'Depósito de Contabilidad',
         monto: this.directaDeposited,
         estado: 'Depositado',
         fechaSolicitud,
       });
+    }
+    // Rendición directa creada desde el saldo de otra rendición: el saldo heredado
+    // funciona como ingreso (igual que un anticipo/depósito), por lo que debe
+    // figurar en la columna Ingresos del reporte. Sin esto, el reporte no muestra
+    // el saldo heredado y el cuadre de reembolso/rendir queda incompleto.
+    if (this.hasPendingBalanceCredit) {
+      const rawDate = this.report.createdAt;
+      const fechaSolicitud = rawDate ? this.formatEmissionDate(rawDate) : '—';
+      const origenCodigo = this.report.pendingBalanceFromCodigo;
+      anticipos.unshift({
+        descripcion: origenCodigo
+          ? `Saldo heredado (${origenCodigo})`
+          : 'Saldo heredado (rendición anterior)',
+        monto: this.pendingBalanceCreditAmount,
+        estado: 'Traspasado',
+        fechaSolicitud,
+      });
+    }
+    // Viático: lo pagado por contabilidad (viaticoPaidAmount menos lo cubierto por el
+    // saldo de la bolsa, que ya figura aparte en financiamientoSaldos) es un ingreso.
+    if (this.report.type === 'viatico') {
+      const viaticoPaid = Number(
+        (this.report as { viaticoPaidAmount?: number }).viaticoPaidAmount ?? 0
+      );
+      const bolsaTotal = this.hasFinancingSaldos ? this.financingSaldosTotal : 0;
+      const deposito = Math.round((viaticoPaid - bolsaTotal) * 100) / 100;
+      if (deposito > 0.01) {
+        const pagos = (
+          this.report as {
+            viaticoPayments?: { transferDate?: string; createdAt?: string }[];
+          }
+        ).viaticoPayments;
+        const rawDate =
+          pagos?.[0]?.transferDate || pagos?.[0]?.createdAt || this.report.createdAt;
+        const fechaSolicitud = rawDate ? this.formatEmissionDate(rawDate) : '—';
+        anticipos.unshift({
+          descripcion: 'Depósito de Contabilidad',
+          monto: deposito,
+          estado: 'Depositado',
+          fechaSolicitud,
+        });
+      }
     }
     return {
       fileBaseName: `rendicion_${this.report.codigo || this.id}_${safeName}`.replace(/_+/g, '_'),
@@ -1310,11 +1641,20 @@ export class RendicionDetailComponent implements OnInit {
       codigo: this.report.codigo || undefined,
       gestion: this.report.gestion || undefined,
       descripcionRendicion: this.report.description || undefined,
+      financiamientoSaldos: this.hasFinancingSaldos
+        ? this.financingSaldos.map(s => ({
+            tipo: this.financingSaldoTipo(s),
+            detalle: this.financingSaldoLabel(s),
+            monto: Number(s.amount) || 0,
+            fecha: s.deposit?.operationDate
+              || (s.createdAt ? new Date(s.createdAt).toLocaleDateString('es-PE') : ''),
+          }))
+        : undefined,
       colaborador: this.getCollaboratorDisplayName(),
       presupuesto: this.report.budget ?? 0,
       totalGastado: this.totalGastado,
       totalAnticipado: this.totalAnticipado,
-      saldoLibre: this.saldoLibre,
+      saldoLibre: this.hasFinancingSaldos ? this.financingSaldoDisponible : this.saldoLibre,
       fechaGeneracion: new Date().toLocaleString('es-PE', {
         dateStyle: 'short',
         timeStyle: 'short',
@@ -1498,6 +1838,30 @@ export class RendicionDetailComponent implements OnInit {
       });
   }
 
+  /**
+   * Escanea (OCR/visión) un comprobante de depósito/transferencia ya subido y entrega
+   * monto, fecha, hora, n° de operación y titular. Reutiliza el mismo endpoint que el
+   * pago de anticipo y el depósito de rendición directa.
+   */
+  private scanComprobante(
+    url: string,
+    mimeType: string | undefined,
+    scanning: WritableSignal<boolean>,
+    onResult: (res: { amount: number; fecha?: string; hora?: string; operationNumber?: string; titular?: string }) => void
+  ): void {
+    scanning.set(true);
+    this.expenseReportsService.scanDepositAmount(url, mimeType).subscribe({
+      next: (res) => {
+        scanning.set(false);
+        onResult(res ?? { amount: 0 });
+      },
+      error: () => {
+        scanning.set(false);
+        this.notificationService.show('No se pudo escanear el comprobante. Completa los datos manualmente.', 'warning');
+      },
+    });
+  }
+
   // ─── Cierre: voucher de devolucion (colaborador) ──────────────────────────
 
   showReturnVoucherModal = signal(false);
@@ -1508,15 +1872,55 @@ export class RendicionDetailComponent implements OnInit {
   returnVoucherDepositDate = signal(new Date().toISOString().split('T')[0]);
   returnVoucherBank = signal('');
   returnVoucherOperation = signal('');
+  // Datos detectados por el escaneo del comprobante
+  isScanningReturnVoucher = signal(false);
+  returnVoucherScannedAmount = signal<number | null>(null);
+  returnVoucherTitular = signal<string | null>(null);
+  returnVoucherOperationDate = signal<string | null>(null);
+  returnVoucherOperationTime = signal<string | null>(null);
 
-  /** Saldo de esta rendición ya fue utilizado para crear otra solicitud. */
+  /** Saldo de esta rendición ya fue utilizado para crear otra solicitud o rendición directa. */
   get isSaldoUsadoEnOtraRendicion(): boolean {
-    return !!(this.report as any)?.pendingBalanceUsedInAdvanceId;
+    return !!(this.report as any)?.pendingBalanceUsedInAdvanceId
+      || !!(this.report as any)?.pendingBalanceUsedInRendicionId;
+  }
+
+  /**
+   * La rendición se considera cerrada (a efectos de visualización) cuando su
+   * saldo pendiente ya fue resuelto: trasladado a otra solicitud, o devuelto
+   * por el colaborador mediante comprobante de depósito. En esos casos el
+   * label y el badge deben mostrarse como "Cerrada".
+   */
+  get isEffectivelyClosed(): boolean {
+    if (this.report?.status === 'closed') return true;
+    if (this.isSaldoUsadoEnOtraRendicion) return true;
+    if ((this.report as any)?.returnVoucher) return true;
+    return false;
+  }
+
+  /** Esta rendición directa fue creada usando el saldo de otra (saldo heredado). */
+  get hasPendingBalanceCredit(): boolean {
+    return !!(this.report?.isDirecta
+      && !this.report?.directaDeposit
+      && this.report?.pendingBalanceFromReportId
+      && (this.report?.pendingBalanceAmount ?? 0) > 0);
+  }
+
+  get pendingBalanceCreditAmount(): number {
+    return Number(this.report?.pendingBalanceAmount ?? 0);
+  }
+
+  /** Texto del origen del saldo heredado: el código de la rendición fuente si se conoce. */
+  get pendingBalanceFromLabel(): string {
+    const codigo = this.report?.pendingBalanceFromCodigo;
+    return codigo
+      ? `Traspasado desde ${codigo}`
+      : 'Traspasado desde rendición anterior';
   }
 
   /** Devuelve true cuando el saldo esperado corresponde a una devolución del colaborador. */
   private get isDevolucionExpected(): boolean {
-    const settlementType = (this.report as any)?.settlement?.type;
+    const settlementType = this.effectiveSettlementType;
     return settlementType === 'devolucion' || (!settlementType && this.saldoLibre > 0.01);
   }
 
@@ -1540,7 +1944,7 @@ export class RendicionDetailComponent implements OnInit {
 
   /** Devuelve true cuando el saldo esperado corresponde a un reembolso al colaborador. */
   private get isReembolsoExpected(): boolean {
-    const settlementType = (this.report as any)?.settlement?.type;
+    const settlementType = this.effectiveSettlementType;
     return settlementType === 'reembolso' || (!settlementType && this.saldoLibre < -0.01);
   }
 
@@ -1557,9 +1961,17 @@ export class RendicionDetailComponent implements OnInit {
     this.returnVoucherUrl.set(null);
     this.returnVoucherFileName.set(null);
     this.returnVoucherDepositDate.set(new Date().toISOString().split('T')[0]);
-    this.returnVoucherBank.set('');
+    this.returnVoucherBank.set(this.getCollaboratorBankName() ?? '');
     this.returnVoucherOperation.set('');
+    this.returnVoucherScannedAmount.set(null);
+    this.returnVoucherTitular.set(null);
+    this.returnVoucherOperationDate.set(null);
+    this.returnVoucherOperationTime.set(null);
     this.showReturnVoucherModal.set(true);
+  }
+
+  get returnVoucherHasDetectedData(): boolean {
+    return !!(this.returnVoucherTitular() || this.returnVoucherOperationDate() || this.returnVoucherOperationTime() || this.returnVoucherScannedAmount());
   }
 
   onReturnVoucherFileSelected(event: Event): void {
@@ -1584,6 +1996,16 @@ export class RendicionDetailComponent implements OnInit {
         this.returnVoucherFileName.set(file.name);
         this.notificationService.show('Comprobante subido', 'success');
         this.isUploadingReturnVoucher.set(false);
+        this.scanComprobante(res.url, file.type, this.isScanningReturnVoucher, (r) => {
+          this.returnVoucherScannedAmount.set(Number(r.amount) > 0 ? Number(r.amount) : null);
+          this.returnVoucherTitular.set(r.titular || null);
+          this.returnVoucherOperationDate.set(r.fecha || null);
+          this.returnVoucherOperationTime.set(r.hora || null);
+          if (r.operationNumber && !this.returnVoucherOperation()) this.returnVoucherOperation.set(r.operationNumber);
+          if (this.returnVoucherHasDetectedData) {
+            this.notificationService.show('Datos detectados del comprobante.', 'success');
+          }
+        });
       },
       error: () => {
         this.notificationService.show('No se pudo subir el comprobante', 'error');
@@ -1605,6 +2027,10 @@ export class RendicionDetailComponent implements OnInit {
       operationNumber: this.returnVoucherOperation() || undefined,
       fileUrl,
       fileName: this.returnVoucherFileName() || undefined,
+      scannedAmount: this.returnVoucherScannedAmount() ?? undefined,
+      operationDate: this.returnVoucherOperationDate() || undefined,
+      operationTime: this.returnVoucherOperationTime() || undefined,
+      titular: this.returnVoucherTitular() || undefined,
     }).subscribe({
       next: (res) => {
         this.report = res;
@@ -1633,6 +2059,12 @@ export class RendicionDetailComponent implements OnInit {
   adminReembolsoBank = signal('');
   adminReembolsoRef = signal('');
   adminReembolsoMethod = signal<'transferencia_bancaria' | 'efectivo' | 'cheque'>('transferencia_bancaria');
+  // Datos detectados por el escaneo del comprobante
+  isScanningAdminReembolso = signal(false);
+  adminReembolsoScannedAmount = signal<number | null>(null);
+  adminReembolsoTitular = signal<string | null>(null);
+  adminReembolsoOperationDate = signal<string | null>(null);
+  adminReembolsoOperationTime = signal<string | null>(null);
 
   openAdminReembolsoModal(): void {
     this.adminReembolsoUrl.set(null);
@@ -1641,7 +2073,15 @@ export class RendicionDetailComponent implements OnInit {
     this.adminReembolsoBank.set('');
     this.adminReembolsoRef.set('');
     this.adminReembolsoMethod.set('transferencia_bancaria');
+    this.adminReembolsoScannedAmount.set(null);
+    this.adminReembolsoTitular.set(null);
+    this.adminReembolsoOperationDate.set(null);
+    this.adminReembolsoOperationTime.set(null);
     this.showAdminReembolsoModal.set(true);
+  }
+
+  get adminReembolsoHasDetectedData(): boolean {
+    return !!(this.adminReembolsoTitular() || this.adminReembolsoOperationDate() || this.adminReembolsoOperationTime() || this.adminReembolsoScannedAmount());
   }
 
   onAdminReembolsoFileSelected(event: Event): void {
@@ -1666,6 +2106,16 @@ export class RendicionDetailComponent implements OnInit {
         this.adminReembolsoFileName.set(file.name);
         this.notificationService.show('Comprobante subido', 'success');
         this.isUploadingAdminReembolso.set(false);
+        this.scanComprobante(res.url, file.type, this.isScanningAdminReembolso, (r) => {
+          this.adminReembolsoScannedAmount.set(Number(r.amount) > 0 ? Number(r.amount) : null);
+          this.adminReembolsoTitular.set(r.titular || null);
+          this.adminReembolsoOperationDate.set(r.fecha || null);
+          this.adminReembolsoOperationTime.set(r.hora || null);
+          if (r.operationNumber && !this.adminReembolsoRef()) this.adminReembolsoRef.set(r.operationNumber);
+          if (this.adminReembolsoHasDetectedData) {
+            this.notificationService.show('Datos detectados del comprobante.', 'success');
+          }
+        });
       },
       error: () => {
         this.notificationService.show('No se pudo subir el comprobante', 'error');
@@ -1693,6 +2143,11 @@ export class RendicionDetailComponent implements OnInit {
       reference: this.adminReembolsoRef() || undefined,
       paymentReceiptUrl: fileUrl || undefined,
       paymentReceiptFileName: this.adminReembolsoFileName() || undefined,
+      scannedAmount: this.adminReembolsoScannedAmount() ?? undefined,
+      operationNumber: this.adminReembolsoRef() || undefined,
+      operationDate: this.adminReembolsoOperationDate() || undefined,
+      operationTime: this.adminReembolsoOperationTime() || undefined,
+      titular: this.adminReembolsoTitular() || undefined,
     }).subscribe({
       next: (res) => {
         this.report = res;
@@ -1723,6 +2178,16 @@ export class RendicionDetailComponent implements OnInit {
   returnProofBank = signal('');
   returnProofOperation = signal('');
   returnProofNote = signal('');
+  // Datos detectados por el escaneo del comprobante
+  isScanningReturnProof = signal(false);
+  returnProofScannedAmount = signal<number | null>(null);
+  returnProofTitular = signal<string | null>(null);
+  returnProofOperationDate = signal<string | null>(null);
+  returnProofOperationTime = signal<string | null>(null);
+
+  get returnProofHasDetectedData(): boolean {
+    return !!(this.returnProofTitular() || this.returnProofOperationDate() || this.returnProofOperationTime() || this.returnProofScannedAmount());
+  }
 
   get advancesWithPendingReturn(): typeof this.advances {
     return this.advances.filter(
@@ -1756,9 +2221,13 @@ export class RendicionDetailComponent implements OnInit {
     this.returnProofUrl.set(null);
     this.returnProofFileName.set(null);
     this.returnProofDepositDate.set(new Date().toISOString().split('T')[0]);
-    this.returnProofBank.set('');
+    this.returnProofBank.set(this.getCollaboratorBankName() ?? '');
     this.returnProofOperation.set('');
     this.returnProofNote.set('');
+    this.returnProofScannedAmount.set(null);
+    this.returnProofTitular.set(null);
+    this.returnProofOperationDate.set(null);
+    this.returnProofOperationTime.set(null);
     this.showReturnProofModal.set(true);
   }
 
@@ -1784,6 +2253,16 @@ export class RendicionDetailComponent implements OnInit {
         this.returnProofFileName.set(file.name);
         this.notificationService.show('Comprobante subido', 'success');
         this.isUploadingReturnProof.set(false);
+        this.scanComprobante(res.url, file.type, this.isScanningReturnProof, (r) => {
+          this.returnProofScannedAmount.set(Number(r.amount) > 0 ? Number(r.amount) : null);
+          this.returnProofTitular.set(r.titular || null);
+          this.returnProofOperationDate.set(r.fecha || null);
+          this.returnProofOperationTime.set(r.hora || null);
+          if (r.operationNumber && !this.returnProofOperation()) this.returnProofOperation.set(r.operationNumber);
+          if (this.returnProofHasDetectedData) {
+            this.notificationService.show('Datos detectados del comprobante.', 'success');
+          }
+        });
       },
       error: () => {
         this.notificationService.show('No se pudo subir el comprobante', 'error');
@@ -1808,6 +2287,10 @@ export class RendicionDetailComponent implements OnInit {
       operationNumber: this.returnProofOperation(),
       fileUrl,
       note: this.returnProofNote() || undefined,
+      scannedAmount: this.returnProofScannedAmount() ?? undefined,
+      operationDate: this.returnProofOperationDate() || undefined,
+      operationTime: this.returnProofOperationTime() || undefined,
+      titular: this.returnProofTitular() || undefined,
     }).subscribe({
       next: () => {
         this.notificationService.show('Comprobante enviado correctamente', 'success');
@@ -2256,11 +2739,63 @@ export class RendicionDetailComponent implements OnInit {
     this.notificationService.show('Declaración jurada descargada', 'success');
   }
 
+  // ─── Nueva solicitud con saldo (bifurca según tipo de rendición) ─────────────
+
+  showNuevaDirectaConSaldoModal = signal(false);
+  nuevaDirectaGestion = signal('');
+  isCreatingDirectaConSaldo = signal(false);
+
   openNuevaSolicitudConSaldo(): void {
-    this.router.navigate(['/mis-rendiciones/solicitud-viaticos/nueva'], {
-      queryParams: {
-        pendingBalanceFromReportId: this.id,
-        pendingBalanceAmount: this.saldoLibre,
+    if (this.report?.isDirecta) {
+      this.nuevaDirectaGestion.set('');
+      this.showNuevaDirectaConSaldoModal.set(true);
+    } else {
+      this.router.navigate(['/mis-rendiciones/solicitud-viaticos/nueva'], {
+        queryParams: {
+          pendingBalanceFromReportId: this.id,
+          pendingBalanceAmount: this.saldoLibre,
+        },
+      });
+    }
+  }
+
+  createNuevaDirectaConSaldo(): void {
+    const gestion = this.nuevaDirectaGestion().trim();
+    if (!gestion) {
+      this.notificationService.show('Ingresa una descripción de gestión', 'warning');
+      return;
+    }
+    const user = this.userStateService.getUser() as any;
+    const userId = user?._id ?? '';
+    const clientId =
+      user?.companyId ||
+      user?.client?._id ||
+      (typeof user?.clientId === 'string' ? user.clientId : user?.clientId?._id) ||
+      '';
+    if (!userId || !clientId) {
+      this.notificationService.show('No se pudo identificar al usuario o empresa.', 'error');
+      return;
+    }
+    this.isCreatingDirectaConSaldo.set(true);
+    this.expenseReportsService.create({
+      isDirecta: true,
+      gestion,
+      userId,
+      clientId,
+      pendingBalanceFromReportId: this.id,
+      pendingBalanceAmount: this.saldoLibre,
+    }).subscribe({
+      next: (_newReport) => {
+        this.isCreatingDirectaConSaldo.set(false);
+        this.showNuevaDirectaConSaldoModal.set(false);
+        this.notificationService.show('Nueva rendición creada con el saldo disponible.', 'success');
+        this.router.navigate(['/mis-rendiciones'], { queryParams: { tab: 'directas' } });
+      },
+      error: (err) => {
+        this.isCreatingDirectaConSaldo.set(false);
+        const raw = err?.error?.message;
+        const msg = Array.isArray(raw) ? raw.join(', ') : raw;
+        this.notificationService.show(msg || 'Error al crear la nueva rendición.', 'error');
       },
     });
   }

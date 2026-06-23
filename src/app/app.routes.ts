@@ -144,8 +144,8 @@ export const routes: Routes = [
       {
         path: 'rendiciones',
         loadComponent: () =>
-          import('./modules/admin-users/rendiciones-admin/rendiciones-admin.component').then(
-            (m) => m.RendicionesAdminComponent
+          import('./modules/admin-users/rendiciones-admin/rendiciones-tabs.component').then(
+            (m) => m.RendicionesTabsComponent
           ),
         canActivate: [authModuleGuard('rendiciones')],
       },
@@ -238,6 +238,14 @@ export const routes: Routes = [
         canActivate: [AuthColaboradorGuard],
       },
       {
+        path: 'saldo',
+        loadComponent: () =>
+          import('./modules/saldo/saldo.component').then(
+            (m) => m.SaldoComponent
+          ),
+        canActivate: [AuthColaboradorGuard],
+      },
+      {
         path: 'mis-rendiciones/nueva',
         loadComponent: () =>
           import('./modules/mis-rendiciones/nueva-rendicion-directa/nueva-rendicion-directa.component').then(
@@ -278,27 +286,11 @@ export const routes: Routes = [
         canActivate: [AuthColaboradorGuard],
       },
       {
-        path: 'mis-documentos',
-        loadComponent: () =>
-          import('./modules/mis-documentos/mis-documentos.component').then(
-            (m) => m.MisDocumentosComponent
-          ),
-        canActivate: [AuthColaboradorGuard],
-      },
-      {
         path: 'mi-firma',
         loadComponent: () =>
           import('./modules/firma-digital/firma-digital.component').then(
             (m) => m.FirmaDigitalComponent
           ),
-      },
-      {
-        path: 'viaticos',
-        loadComponent: () =>
-          import('./modules/viaticos/viaticos.component').then(
-            (m) => m.ViaticosComponent
-          ),
-        canActivate: [AuthViaticosGuard],
       },
       {
         path: 'viaticos/:id',
@@ -310,11 +302,8 @@ export const routes: Routes = [
       },
       {
         path: 'rendiciones-directas',
-        loadComponent: () =>
-          import('./modules/rendiciones-directas/rendiciones-directas.component').then(
-            (m) => m.RendicionesDirectasComponent
-          ),
-        canActivate: [AuthAdmin2Guard],
+        redirectTo: '/rendiciones?tab=directas',
+        pathMatch: 'full',
       },
       {
         path: 'tesoreria',
@@ -411,6 +400,27 @@ export const routes: Routes = [
             (m) => m.CajaChicaComponent
           ),
         canActivate: [AuthColaboradorGuard],
+      },
+      {
+        path: 'mis-rendiciones/nueva-caja-chica',
+        loadComponent: () =>
+          import('./modules/mis-rendiciones/nueva-caja-chica/nueva-caja-chica.component').then(
+            (m) => m.NuevaCajaChicaComponent
+          ),
+        canActivate: [AuthColaboradorGuard],
+      },
+      {
+        path: 'rendiciones-caja-chica',
+        redirectTo: '/rendiciones?tab=caja-chica',
+        pathMatch: 'full',
+      },
+      {
+        path: 'rendiciones-caja-chica/:id',
+        loadComponent: () =>
+          import('./modules/rendiciones-caja-chica/rendicion-caja-chica-detalle/rendicion-caja-chica-detalle.component').then(
+            (m) => m.RendicionCajaChicaDetalleComponent
+          ),
+        canActivate: [AuthAdmin2Guard],
       },
     ],
   },

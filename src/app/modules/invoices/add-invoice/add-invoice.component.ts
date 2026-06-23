@@ -112,6 +112,12 @@ export default class AddInvoiceComponent implements OnInit {
   isEditingOcrAmount = signal(false);
   editedOcrTotal = signal<number | null>(null);
 
+  // --- Escaneo OCR del comprobante de caja (autorellena el formulario) ---
+  isScanningVoucher = signal(false);
+  cashVoucherFileUrl: string | null = null;
+  cashVoucherFileName: string | null = null;
+  private cashVoucherMimeType: string | undefined;
+
   get ocrAmountWasEdited(): boolean {
     const edited = this.editedOcrTotal();
     return edited !== null && edited !== this.ocrTotalAmount();
@@ -160,7 +166,7 @@ export default class AddInvoiceComponent implements OnInit {
   /** Tras crear/actualizar gasto: vuelve según el contexto y rol. */
   private navigateAfterExpenseSave(): void {
     if (this.fromContabilidad) {
-      this.router.navigate(['/rendiciones-directas']);
+      this.router.navigate(['/rendiciones'], { queryParams: { tab: 'directas' } });
       return;
     }
     if (this.isDirectaMode) {
@@ -1236,6 +1242,83 @@ export default class AddInvoiceComponent implements OnInit {
     });
   }
 
+  /**
+   * Comprobante de caja: al seleccionar un archivo (imagen/PDF) se sube a S3 y se
+   * escanea con OCR para autorellenar los campos del formulario. Los campos
+   * quedan editables y el archivo se guarda como documento del comprobante.
+   */
+  onCashVoucherFileSelected(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    if (!input.files || !input.files[0]) return;
+    const file = input.files[0];
+    this.selectedFile = file;
+    this.cashVoucherFileName = file.name;
+    this.cashVoucherMimeType = file.type;
+
+    this.isScanningVoucher.set(true);
+    const { downloadUrl$ } = this.uploadService.uploadFile(file, environment.storagePath);
+    downloadUrl$.subscribe({
+      next: (url) => {
+        this.cashVoucherFileUrl = url;
+        this.invoiceService
+          .scanCashVoucher({ url, mimeType: this.cashVoucherMimeType })
+          .subscribe({
+            next: (data) => {
+              this.isScanningVoucher.set(false);
+              this.applyCashVoucherScan(data);
+              this.notificationService.show(
+                'Datos extraidos del comprobante. Revisa y corrige si es necesario.',
+                'success'
+              );
+            },
+            error: (error) => {
+              // El archivo ya quedó subido; solo falló el OCR. Se permite carga manual.
+              this.isScanningVoucher.set(false);
+              this.notificationService.show(
+                'No se pudieron extraer los datos automaticamente. Completa los campos manualmente. ' +
+                  (error.error?.message || error.message || ''),
+                'warning'
+              );
+            },
+          });
+      },
+      error: (err) => {
+        this.isScanningVoucher.set(false);
+        this.cashVoucherFileUrl = null;
+        this.cashVoucherFileName = null;
+        this.notificationService.show('Error al subir el archivo: ' + err.message, 'error');
+      },
+    });
+  }
+
+  /** Vuelca los datos extraídos por OCR a los campos del comprobante de caja. */
+  private applyCashVoucherScan(data: {
+    entregadoA?: string;
+    fecha?: string;
+    direccion?: string;
+    concepto?: string;
+    monto?: number;
+  }): void {
+    const patch: any = {};
+    if (data.entregadoA) patch.voucherEntregadoA = data.entregadoA;
+    if (data.direccion) patch.voucherDireccion = data.direccion;
+    if (data.concepto) patch.voucherConcepto = data.concepto;
+    if (data.fecha) {
+      const iso = this.formatDateForInput(data.fecha);
+      if (iso) patch.voucherFecha = iso;
+    }
+    if (typeof data.monto === 'number' && data.monto > 0) patch.voucherMonto = data.monto;
+    this.form.patchValue(patch);
+  }
+
+  /** Quita el archivo escaneado del comprobante de caja. */
+  removeCashVoucherFile(): void {
+    this.selectedFile = null as any;
+    this.cashVoucherFileUrl = null;
+    this.cashVoucherFileName = null;
+    this.cashVoucherMimeType = undefined;
+  }
+
   saveCashVoucher() {
     const entregadoA = (this.form.get('voucherEntregadoA')?.value || '').trim();
     const direccion = (this.form.get('voucherDireccion')?.value || '').trim();
@@ -1257,6 +1340,7 @@ export default class AddInvoiceComponent implements OnInit {
       expenseReportId: this.rendicionId || undefined,
       total: monto,
       fechaEmision: fecha || undefined,
+      imageUrl: this.cashVoucherFileUrl || undefined,
       data: JSON.stringify({
         entregadoA,
         direccion,

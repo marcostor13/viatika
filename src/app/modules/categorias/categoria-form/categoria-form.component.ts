@@ -13,6 +13,7 @@ interface CategoryForm {
   name: string;
   description: string;
   cuenta: string;
+  cuentaDestino6x: string;
   observaciones: string;
   limit: number | null;
 }
@@ -34,7 +35,7 @@ export class CategoriaFormComponent implements OnInit {
   loading = signal(false);
   saving = signal(false);
 
-  form: CategoryForm = { name: '', description: '', cuenta: '', observaciones: '', limit: null };
+  form: CategoryForm = { name: '', description: '', cuenta: '', cuentaDestino6x: '', observaciones: '', limit: null };
 
   perfiles: ICategoryGroup[] = [];
   selectedPerfiles = new Set<string>();
@@ -87,6 +88,7 @@ export class CategoriaFormComponent implements OnInit {
           name: cat.name,
           description: cat.description ?? '',
           cuenta: cat.cuenta ?? '',
+          cuentaDestino6x: cat.cuentaDestino6x ?? '',
           observaciones: cat.observaciones ?? '',
           limit: cat.limit ?? null,
         };
@@ -109,6 +111,7 @@ export class CategoriaFormComponent implements OnInit {
       name: this.form.name.trim(),
       description: this.form.description.trim() || undefined,
       cuenta: this.form.cuenta.trim() || undefined,
+      cuentaDestino6x: this.form.cuentaDestino6x.trim() || undefined,
       observaciones: this.form.observaciones.trim() || undefined,
       limit: this.form.limit,
       perfilIds: Array.from(this.selectedPerfiles),
