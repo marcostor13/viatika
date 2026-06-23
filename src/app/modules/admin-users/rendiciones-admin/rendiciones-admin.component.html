@@ -134,7 +134,7 @@
               </button>
               <button
                 (click)="goToDetail(item)"
-                class="font-semibold text-primary hover:underline truncate text-left"
+                class="font-semibold text-primary hover:underline break-words text-left"
               >
                 {{ item.userName }}
               </button>
@@ -142,12 +142,12 @@
           </td>
 
           <!-- Título -->
-          <td class="px-4 py-3.5 max-w-[220px]">
-            <span class="block truncate font-medium text-secondary" [title]="item.title">{{ item.title }}</span>
+          <td class="px-4 py-3.5">
+            <span class="block break-words font-medium text-secondary" [title]="item.title">{{ item.title }}</span>
           </td>
 
           <!-- Centro de Costo -->
-          <td class="px-4 py-3.5 text-tertiary">{{ item.projectName }}</td>
+          <td class="px-4 py-3.5 text-tertiary break-words">{{ item.projectName }}</td>
 
           <!-- Presupuesto -->
           <td class="px-4 py-3.5 text-right">
@@ -168,7 +168,7 @@
 
           <!-- Acciones -->
           <td class="px-5 py-3.5">
-            <div class="flex items-center justify-end gap-1">
+            <div class="flex flex-wrap items-center justify-end gap-1">
               <button
                 (click)="goToDetail(item)" title="Ver detalle"
                 class="p-2 rounded-lg text-tertiary hover:text-primary hover:bg-primary/10 transition-colors"

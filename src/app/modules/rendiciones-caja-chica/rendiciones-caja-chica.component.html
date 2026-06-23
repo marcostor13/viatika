@@ -84,8 +84,8 @@
                   {{ statusLabel(report.status) }}
                 </span>
               </td>
-              <td class="px-4 py-3.5 font-mono text-xs text-gray-500">{{ report.codigo }}</td>
-              <td class="px-4 py-3.5 font-semibold text-gray-900 max-w-xs truncate">{{ report.title }}</td>
+              <td class="px-4 py-3.5 font-mono text-xs text-gray-500 break-words">{{ report.codigo }}</td>
+              <td class="px-4 py-3.5 font-semibold text-gray-900 break-words">{{ report.title }}</td>
               <td class="px-4 py-3.5 text-center text-gray-600">{{ report.selectedReports.length }}</td>
               <td class="px-4 py-3.5 text-right font-semibold text-gray-800">S/ {{ report.totalAmount | number:'1.2-2' }}</td>
               <td class="px-4 py-3.5 text-gray-500 text-xs whitespace-nowrap">{{ report.createdAt | date:'dd/MM/yyyy' }}</td>

@@ -10,11 +10,13 @@ import { CommonModule } from '@angular/common';
 import { ColumnDirective } from './column.directive';
 
 /**
- * Tabla reutilizable y responsiva.
+ * Tabla reutilizable.
  *
- * - A >=1600px (`tbl:` en Tailwind) se renderiza como tabla clásica.
- * - A <1600px cada fila se convierte en una card apilada con pares
- *   etiqueta/valor, reutilizando las mismas plantillas de celda.
+ * Por defecto la tabla SE AJUSTA al ancho disponible (sin `minWidth`): al
+ * reducir la pantalla las columnas no se ocultan, el texto de cada celda se
+ * envuelve (wrap) según sus clases y toda la tabla queda visible sin scroll.
+ * Si se necesita un ancho mínimo (p.ej. para forzar scroll en tablas muy
+ * densas) puede pasarse `minWidth`.
  *
  * Las columnas se declaran con la directiva `*appColumn` (ver ColumnDirective).
  * Los estados de carga/vacío los maneja el componente padre; aquí solo se pinta
@@ -36,8 +38,12 @@ export class DataTableComponent {
   /** Si la fila/card es clickeable (cursor + emite rowClick). */
   @Input() rowClickable = false;
 
-  /** Ancho mínimo de la tabla antes de hacer scroll horizontal. */
-  @Input() minWidth = '700px';
+  /**
+   * Ancho mínimo opcional. Vacío (por defecto) = la tabla se ajusta al
+   * contenedor y se ve completa. Si se define (p.ej. '900px'), por debajo de
+   * ese ancho aparece scroll horizontal.
+   */
+  @Input() minWidth = '';
 
   /** Emitido al hacer click en una fila/card (cuando rowClickable). */
   @Output() rowClick = new EventEmitter<{ row: any; event: Event }>();
@@ -46,10 +52,6 @@ export class DataTableComponent {
 
   get cols(): ColumnDirective[] {
     return this.columns ? this.columns.toArray() : [];
-  }
-
-  get cardCols(): ColumnDirective[] {
-    return this.cols.filter((c) => c.inCard);
   }
 
   trackRow = (index: number, row: any): unknown => row?.[this.trackKey] ?? index;
