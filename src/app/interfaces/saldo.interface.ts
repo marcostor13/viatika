@@ -1,6 +1,7 @@
 export type SaldoType = 'pago' | 'rendicion_directa' | 'rendicion';
 export type SaldoStatus = 'available' | 'consumed';
 export type SaldoContext = 'rendicion_directa' | 'viatico';
+export type MetodoPago = 'deposito' | 'efectivo';
 
 export interface ISaldoProjectRef {
   _id: string;
@@ -16,6 +17,7 @@ export interface ISaldoSourceReportRef {
 
 export interface ISaldoDeposit {
   amount: number;
+  metodoPago?: MetodoPago;
   receiptUrl?: string;
   operationNumber?: string;
   operationDate?: string;
@@ -43,8 +45,9 @@ export interface ICreatePagoSaldoPayload {
   userId: string;
   amount: number;
   concepto?: string;
+  metodoPago?: MetodoPago;
   scannedAmount?: number;
-  receiptUrl: string;
+  receiptUrl?: string;
   receiptFileName?: string;
   receiptMimeType?: string;
   receiptSizeBytes?: number;
