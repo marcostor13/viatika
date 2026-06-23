@@ -131,7 +131,7 @@
         <p class="text-sm font-medium">Sin resultados. Ajusta los filtros.</p>
       </div>
     } @else {
-      <div class="overflow-x-auto">
+      <div class="overflow-x-auto hidden sm:block">
         <table class="w-full text-sm divide-y divide-gray-200">
           <thead class="bg-gray-50 text-xs font-semibold text-gray-500 uppercase tracking-wider text-left">
             <tr>
@@ -323,6 +323,82 @@
         </table>
       </div>
 
+      <!-- Mobile: tarjetas (gastos) -->
+      <div class="sm:hidden flex flex-col gap-3 p-3">
+        @for (e of data(); track e._id) {
+        <div class="border border-gray-200 rounded-xl p-3.5" [ngClass]="isRowSelected(e._id) ? 'bg-primary/5 border-primary/30' : ''">
+          <div class="flex items-start justify-between gap-2 mb-2">
+            <div class="flex items-center gap-2 min-w-0">
+              <input type="checkbox" [checked]="isRowSelected(e._id)" (change)="toggleSelect(e._id, $event)"
+                class="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary/20 cursor-pointer shrink-0" />
+              <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-bold tabular-nums shrink-0" [ngClass]="getTypeBadgeClass(e)">{{ getTypeCode(e) }}</span>
+              <span class="text-xs text-gray-500 truncate">{{ getFecha(e) }}</span>
+            </div>
+            <span class="text-sm font-semibold text-gray-900 tabular-nums whitespace-nowrap shrink-0">S/ {{ getTotal(e) | number:'1.2-2' }}</span>
+          </div>
+          <p class="text-sm font-medium text-gray-900 break-words mb-2">{{ getColaborador(e) }}</p>
+          <div class="grid grid-cols-2 gap-x-4 gap-y-2 text-xs mb-3">
+            <div>
+              <span class="block text-gray-400 uppercase tracking-wide text-[10px] font-semibold">N° Doc</span>
+              <span class="font-mono text-gray-700 break-words">{{ getDocNumber(e) }}</span>
+            </div>
+            <div>
+              <span class="block text-gray-400 uppercase tracking-wide text-[10px] font-semibold">Proyecto</span>
+              <span class="text-gray-700 break-words">{{ getProject(e) }}</span>
+            </div>
+            <div>
+              <span class="block text-gray-400 uppercase tracking-wide text-[10px] font-semibold">Categoría</span>
+              <span class="text-gray-700 break-words">{{ getCategory(e) }}</span>
+            </div>
+            <div>
+              <span class="block text-gray-400 uppercase tracking-wide text-[10px] font-semibold">Proveedor</span>
+              <span class="text-gray-700 break-words">{{ getProveedor(e) }}</span>
+            </div>
+            <div class="col-span-2">
+              <span class="block text-gray-400 uppercase tracking-wide text-[10px] font-semibold">Concepto</span>
+              <span class="text-gray-600 break-words">{{ getConcepto(e) }}</span>
+            </div>
+          </div>
+          <div class="flex items-center justify-between gap-2 pt-2 border-t border-gray-100">
+            <span class="text-xs">
+              @if (isDeposito(e)) {
+                <span class="text-gray-400">—</span>
+              } @else if (isRevisado(e)) {
+                <span class="inline-flex items-center gap-0.5 px-2 py-0.5 rounded font-semibold bg-green-100 text-green-700">Revisado</span>
+              } @else {
+                <span class="text-yellow-600 font-medium">Pendiente revisión</span>
+              }
+            </span>
+            <div class="flex items-center gap-1">
+              <button type="button" (click)="viewDetail(e)" title="Detalle"
+                class="inline-flex items-center justify-center w-8 h-8 rounded-lg text-gray-500 hover:bg-gray-100 hover:text-gray-900 transition-colors">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z" />
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+                </svg>
+              </button>
+              @if (hasFile(e)) {
+                <button type="button" (click)="openFile(e, $event)" title="Abrir doc."
+                  class="inline-flex items-center justify-center w-8 h-8 rounded-lg text-gray-500 hover:bg-gray-100 hover:text-blue-600 transition-colors">
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M18.375 12.739l-7.693 7.693a4.5 4.5 0 0 1-6.364-6.364l10.94-10.94A3 3 0 1 1 19.5 7.372L8.552 18.32m.009-.01-.01.01m5.699-9.941-7.81 7.81a1.5 1.5 0 0 0 2.112 2.13" />
+                  </svg>
+                </button>
+              }
+              @if (!isDeposito(e)) {
+                <button type="button" (click)="openDeleteConfirm(e, $event)" title="Eliminar"
+                  class="inline-flex items-center justify-center w-8 h-8 rounded-lg text-gray-500 hover:bg-red-50 hover:text-red-600 transition-colors">
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
+                  </svg>
+                </button>
+              }
+            </div>
+          </div>
+        </div>
+        }
+      </div>
+
       <!-- Paginacion -->
       @if (pages() > 1) {
       <div class="flex items-center justify-center gap-1 px-4 py-3 border-t border-gray-100">
@@ -360,7 +436,7 @@
         <p class="text-sm font-medium">Sin rendiciones directas. Ajusta los filtros.</p>
       </div>
     } @else {
-      <div class="overflow-x-auto">
+      <div class="overflow-x-auto hidden sm:block">
         <table class="w-full text-sm divide-y divide-gray-200">
           <thead class="bg-gray-50 text-xs font-semibold text-gray-500 uppercase tracking-wider text-left">
             <tr>
@@ -436,6 +512,45 @@
             }
           </tbody>
         </table>
+      </div>
+
+      <!-- Mobile: tarjetas (rendiciones) -->
+      <div class="sm:hidden flex flex-col gap-3 p-3">
+        @for (r of reports(); track r._id) {
+        <div class="border border-gray-200 rounded-xl p-3.5 active:bg-gray-50 transition-colors" (click)="viewReport(r)">
+          <div class="flex items-center justify-between gap-2 mb-2">
+            <span class="font-mono text-xs font-semibold text-gray-800">{{ r.codigo || '—' }}</span>
+            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-600">{{ reportStatusLabel(r) }}</span>
+          </div>
+          <p class="text-sm font-medium text-gray-900 break-words mb-2">{{ reportColaborador(r) }}</p>
+          <div class="grid grid-cols-2 gap-x-4 gap-y-2 text-xs">
+            <div>
+              <span class="block text-gray-400 uppercase tracking-wide text-[10px] font-semibold">Saldo S/</span>
+              <span class="tabular-nums" [ngClass]="(r.saldo ?? 0) < 0 ? 'text-red-600 font-semibold' : 'text-gray-700'">{{ r.saldo == null ? '—' : ('S/ ' + (r.saldo | number:'1.2-2')) }}</span>
+            </div>
+            <div>
+              <span class="block text-gray-400 uppercase tracking-wide text-[10px] font-semibold">Gastado S/</span>
+              <span class="text-gray-900 font-semibold tabular-nums">S/ {{ r.totalGastado | number:'1.2-2' }}</span>
+            </div>
+            <div>
+              <span class="block text-gray-400 uppercase tracking-wide text-[10px] font-semibold">Depósito S/</span>
+              <span class="text-gray-700 tabular-nums">{{ r.hasDeposit ? ('S/ ' + (r.deposited | number:'1.2-2')) : '—' }}</span>
+            </div>
+            <div>
+              <span class="block text-gray-400 uppercase tracking-wide text-[10px] font-semibold">N° Gastos</span>
+              <span class="text-gray-700 tabular-nums">{{ r.expenseCount }}</span>
+            </div>
+            <div>
+              <span class="block text-gray-400 uppercase tracking-wide text-[10px] font-semibold">Fecha</span>
+              <span class="text-gray-700">{{ reportFecha(r) }}</span>
+            </div>
+            <div>
+              <span class="block text-gray-400 uppercase tracking-wide text-[10px] font-semibold">Generado por</span>
+              <span class="text-gray-700 break-words">{{ r.generatedByName || '—' }}</span>
+            </div>
+          </div>
+        </div>
+        }
       </div>
     }
     }
