@@ -935,7 +935,9 @@ export class MisRendicionesComponent implements OnInit {
         createdAt: r.createdAt,
         statusLabel: this.getLegacyReportLabel(r),
         statusColor: this.getLegacyReportColor(r),
-        projectLabel: '—',
+        // Las rendiciones legacy también tienen projectId; se resuelve igual que
+        // en los viáticos (requiere que el backend lo popule en findAllByUser).
+        projectLabel: this.viaticoProjectLabel(r),
         place: r.location ?? '—',
         dateRange: this.reportDateRange(r),
         amount: r.budget,
