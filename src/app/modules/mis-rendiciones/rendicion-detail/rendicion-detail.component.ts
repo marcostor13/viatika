@@ -1954,9 +1954,21 @@ export class RendicionDetailComponent implements OnInit, OnDestroy {
     return settlementType === 'reembolso' || (!settlementType && this.saldoLibre < -0.01);
   }
 
-  /** Admin puede registrar el reembolso al colaborador cuando la rendición está aprobada o cerrada con saldo a reembolsar. */
+  /**
+   * Registrar el reembolso al colaborador es una acción de tesorería. El
+   * coordinador NUNCA registra el pago, aunque tenga vista de administración,
+   * el permiso de aprobación L2 o los módulos de tesorería/contabilidad: el
+   * rol es el discriminador (mismo criterio que el backend en
+   * register-reimbursement-payment). Lo registra Contabilidad o SuperAdmin.
+   */
   get canAdminRegisterReembolso(): boolean {
     if (!this.isAdminView) return false;
+    if (this.userStateService.isCoordinador()) return false;
+    const canPay =
+      this.userStateService.isContabilidad() ||
+      this.userStateService.isSuperAdmin() ||
+      this.userStateService.canApproveL2();
+    if (!canPay) return false;
     const status = this.report?.status;
     if (status !== 'approved' && status !== 'reimbursed' && status !== 'closed') return false;
     if (!this.isReembolsoExpected) return false;
