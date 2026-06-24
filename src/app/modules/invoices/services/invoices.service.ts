@@ -251,7 +251,7 @@ export class InvoicesService {
 
   updateNotificationSettings(
     companyId: string,
-    settings: { enabled: boolean; frequency: 'semanal' | 'mensual' }
+    settings: { enabled: boolean; frequency: 'semanal' | 'mensual'; notificationDay?: number }
   ): Observable<void> {
     return this.http.patch<void>(
       `${this.companyConfigUrl}/${companyId}/notification-settings`,

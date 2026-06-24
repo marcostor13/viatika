@@ -423,6 +423,17 @@
           {{ companyConfig?.notificationSettings?.frequency === 'semanal' ? 'Semanal' : 'Mensual' }}
         </span>
       </div>
+      @if (companyConfig?.notificationSettings?.frequency === 'semanal') {
+      <div class="flex items-center justify-between py-3 border-b border-gray-100">
+        <div>
+          <p class="text-sm font-medium text-gray-900">Dia de envio semanal</p>
+          <p class="text-xs text-gray-500 mt-0.5">Dia de la semana en que se envian los recordatorios</p>
+        </div>
+        <span class="text-sm font-semibold text-gray-900">
+          {{ ['Domingo','Lunes','Martes','Miercoles','Jueves','Viernes','Sabado'][companyConfig?.notificationSettings?.notificationDay ?? 1] }}
+        </span>
+      </div>
+      }
       }
     </div>
     }
@@ -454,7 +465,6 @@
               class="h-4 w-4 text-purple-600 focus:ring-purple-500 border-gray-300"
             />
             <span class="text-sm text-gray-900">Semanal</span>
-            <span class="text-xs text-gray-500">(cada lunes)</span>
           </label>
           <label class="flex items-center gap-2 cursor-pointer">
             <input
@@ -468,11 +478,38 @@
             <span class="text-xs text-gray-500">(el dia 1 de cada mes)</span>
           </label>
         </div>
-        <p class="text-xs text-gray-500 mt-3">
-          El colaborador recibe un recordatorio si no cargo comprobantes en el periodo.<br>
-          El coordinador recibe un resumen de los comprobantes pendientes de aprobacion.
+      </div>
+
+      @if (notificationsFrequency === 'semanal') {
+      <div>
+        <label for="notifDay" class="block text-sm font-medium text-gray-700 mb-2">
+          Dia de envio semanal
+        </label>
+        <select
+          id="notifDay"
+          [(ngModel)]="notificationsDay"
+          class="w-full max-w-xs px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm"
+        >
+          <option [ngValue]="1">Lunes</option>
+          <option [ngValue]="2">Martes</option>
+          <option [ngValue]="3">Miercoles</option>
+          <option [ngValue]="4">Jueves</option>
+          <option [ngValue]="5">Viernes</option>
+          <option [ngValue]="0">Domingo</option>
+          <option [ngValue]="6">Sabado</option>
+        </select>
+        <p class="text-xs text-gray-500 mt-1">
+          Dia en que se envian recordatorios semanales a coordinadores y contabilidad.
         </p>
       </div>
+      }
+
+      <p class="text-xs text-gray-500">
+        El colaborador recibe un aviso el ultimo dia de su viatico.<br>
+        El coordinador recibe un recordatorio de rendiciones pendientes de revision.<br>
+        Contabilidad recibe un recordatorio de rendiciones pendientes de aprobacion contable.<br>
+        Para viáticos de menos de 7 dias, se envia una notificacion urgente 1 dia antes del vencimiento.
+      </p>
       }
 
       <div class="flex space-x-3">
