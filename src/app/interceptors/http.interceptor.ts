@@ -63,6 +63,8 @@ export const httpInterceptor: HttpInterceptorFn = (req, next) => {
     '/saldo',
     '/saldo/',
     '/accounting-entries',
+    '/upload',
+    '/upload/',
   ];
 
   const isExcludedEndpoint = excludedEndpoints.some(
