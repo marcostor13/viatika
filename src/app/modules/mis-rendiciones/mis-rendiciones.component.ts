@@ -689,9 +689,15 @@ export class MisRendicionesComponent implements OnInit {
     const noExpenseApproval = !report.hasApprovedExpense;
     if (!noReportApproval || !noExpenseApproval) return false;
 
-    // Rendición directa creada por Contabilidad para el colaborador, o creada con
-    // saldo heredado de otra: no la puede eliminar (solo Contabilidad).
-    if (report.isDirecta && (report.createdByOther || report.inheritedBalance))
+    // Rendición directa creada por Contabilidad para el colaborador: no la puede
+    // eliminar (solo Contabilidad).
+    if (report.isDirecta && report.createdByOther) return false;
+
+    // Rendición directa con saldo heredado de otra: el dueño puede eliminarla
+    // MIENTRAS no haya subido ningún gasto (el borrado devuelve el saldo a la
+    // bolsa y libera la rendición de origen). Con gastos ya cargados, solo
+    // Contabilidad. Espeja la validación del backend (remove).
+    if (report.isDirecta && report.inheritedBalance && (report.expenseIds?.length ?? 0) > 0)
       return false;
 
     // Caja chica ya jalada por Contabilidad (borrador o finalizado): no la puede
@@ -935,7 +941,9 @@ export class MisRendicionesComponent implements OnInit {
         createdAt: r.createdAt,
         statusLabel: this.getLegacyReportLabel(r),
         statusColor: this.getLegacyReportColor(r),
-        projectLabel: '—',
+        // Las rendiciones legacy también tienen projectId; se resuelve igual que
+        // en los viáticos (requiere que el backend lo popule en findAllByUser).
+        projectLabel: this.viaticoProjectLabel(r),
         place: r.location ?? '—',
         dateRange: this.reportDateRange(r),
         amount: r.budget,
