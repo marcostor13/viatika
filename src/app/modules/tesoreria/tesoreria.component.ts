@@ -258,6 +258,19 @@ export class TesoreriaComponent implements OnInit {
     return Math.max(Number(report.viaticoAmount ?? 0) - Number(report.viaticoPaidAmount ?? 0), 0);
   }
 
+  /**
+   * Contabilidad puede completar el pago de un viático con saldo del anticipo
+   * pendiente. Incluye los estados posteriores al envío del colaborador
+   * (submitted/pending_accounting), donde el pago restante sigue siendo válido.
+   */
+  canCompleteViaticoPayment(report: IExpenseReport): boolean {
+    return (
+      this.canPayAndSettle &&
+      this.viaticoRemaining(report) > 0.009 &&
+      ['viatico_approved', 'partially_paid', 'submitted', 'pending_accounting'].includes(report.status)
+    );
+  }
+
   openViaticoPaymentModal(report: IExpenseReport): void {
     this.selectedViaticoReport = report;
     const remaining = this.viaticoRemaining(report);

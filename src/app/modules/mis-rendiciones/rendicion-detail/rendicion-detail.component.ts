@@ -630,7 +630,10 @@ export class RendicionDetailComponent implements OnInit, OnDestroy {
   get canAddExpenses(): boolean {
     if (!this.report || this.isAdminView) return false;
     const isRejectedGasPhase = this.report.status === 'rejected' && !this.isSolicitudPhase;
-    if (this.report.status !== 'open' && !isRejectedGasPhase) return false;
+    // Viático con pago parcial: contabilidad ya depositó parte del anticipo, por lo
+    // que el colaborador puede empezar a cargar gastos aunque falte completar el pago.
+    const isPartialViatico = this.report.type === 'viatico' && this.report.status === 'partially_paid';
+    if (this.report.status !== 'open' && !isRejectedGasPhase && !isPartialViatico) return false;
     // Caja chica finalizada por Contabilidad: el total quedó congelado, no se
     // pueden subir más gastos a esta rendición.
     if (this.report.lockedByCajaChica) return false;
@@ -661,7 +664,10 @@ export class RendicionDetailComponent implements OnInit, OnDestroy {
   get canSubmitReport(): boolean {
     if (!this.report || this.isAdminView) return false;
     if (this.report.isCajaChica) return false;
-    if (!(this.report.status === 'open' || this.report.status === 'rejected')) return false;
+    // Viático con pago parcial: el colaborador puede enviar aunque contabilidad aún
+    // no complete el depósito (el pago restante se registra después del envío).
+    const isPartialViatico = this.report.type === 'viatico' && this.report.status === 'partially_paid';
+    if (!(this.report.status === 'open' || this.report.status === 'rejected' || isPartialViatico)) return false;
     const expenses = this.report.expenseIds || [];
     return expenses.length > 0;
   }
