@@ -53,6 +53,7 @@ export class ConfiguracionComponent implements OnInit {
   showNotificationsForm = false;
   notificationsEnabled = false;
   notificationsFrequency: 'semanal' | 'mensual' = 'semanal';
+  notificationsDay: number = 1;
   isSavingNotifications = false;
 
   // Profile
@@ -109,6 +110,7 @@ export class ConfiguracionComponent implements OnInit {
         this.limitsMovilidadDiario = config?.limits?.movilidadDiario ?? null;
         this.notificationsEnabled = config?.notificationSettings?.enabled ?? false;
         this.notificationsFrequency = config?.notificationSettings?.frequency ?? 'semanal';
+        this.notificationsDay = config?.notificationSettings?.notificationDay ?? 1;
       }
     );
   }
@@ -145,6 +147,7 @@ export class ConfiguracionComponent implements OnInit {
   editNotifications() {
     this.notificationsEnabled = this.companyConfig?.notificationSettings?.enabled ?? false;
     this.notificationsFrequency = this.companyConfig?.notificationSettings?.frequency ?? 'semanal';
+    this.notificationsDay = this.companyConfig?.notificationSettings?.notificationDay ?? 1;
     this.showNotificationsForm = true;
   }
 
@@ -152,6 +155,7 @@ export class ConfiguracionComponent implements OnInit {
     this.showNotificationsForm = false;
     this.notificationsEnabled = this.companyConfig?.notificationSettings?.enabled ?? false;
     this.notificationsFrequency = this.companyConfig?.notificationSettings?.frequency ?? 'semanal';
+    this.notificationsDay = this.companyConfig?.notificationSettings?.notificationDay ?? 1;
   }
 
   saveNotifications() {
@@ -161,6 +165,7 @@ export class ConfiguracionComponent implements OnInit {
     this.invoicesService.updateNotificationSettings(companyId, {
       enabled: this.notificationsEnabled,
       frequency: this.notificationsFrequency,
+      notificationDay: this.notificationsDay,
     }).subscribe({
       next: () => {
         this.notificationService.show('Configuración de notificaciones guardada', 'success');
