@@ -412,6 +412,8 @@ export class GastoDetalleComponent implements OnInit {
     const reportStatus = exp['_reportStatus'] as string | undefined;
     if (reportStatus && ['approved', 'closed', 'cancelled'].includes(reportStatus)) return false;
     const st = String(exp['status'] ?? 'pending').toLowerCase();
-    return !['approved', 'rejected'].includes(st);
+    // Un comprobante rechazado puede corregirlo el colaborador; solo queda
+    // bloqueado cuando ya está aprobado.
+    return st !== 'approved';
   }
 }
