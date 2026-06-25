@@ -533,6 +533,85 @@
   </section>
   } <!-- end canConfigureEmpresa: notificaciones -->
 
+  @if (canConfigureEmpresa) {
+  <section class="bg-white rounded-lg shadow-lg p-6 mb-8">
+    <div class="flex justify-between items-center mb-6">
+      <div>
+        <h2 class="text-xl font-semibold text-gray-900">Correos de Tesoreria</h2>
+        <p class="text-sm text-gray-500 mt-1">Cuando Contabilidad aprueba una rendicion, se notifica a estos correos con los datos de pago del colaborador.</p>
+      </div>
+      @if (!showTesoreriaEmailsForm) {
+        <app-button label="Editar" variant="primary" size="md" (clicked)="editTesoreriaEmails()" />
+      }
+    </div>
+
+    @if (!showTesoreriaEmailsForm) {
+    <div class="space-y-2">
+      @if ((companyConfig?.tesoreriaEmails ?? []).length === 0) {
+        <p class="text-gray-400 text-sm">No hay correos configurados.</p>
+      } @else {
+        @for (email of companyConfig?.tesoreriaEmails ?? []; track email) {
+          <div class="flex items-center gap-2 px-3 py-2 bg-gray-50 rounded-lg border border-gray-200 text-sm">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-gray-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 0 1-2.25 2.25h-15a2.25 2.25 0 0 1-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25m19.5 0v.243a2.25 2.25 0 0 1-1.07 1.916l-7.5 4.615a2.25 2.25 0 0 1-2.36 0L3.32 8.91a2.25 2.25 0 0 1-1.07-1.916V6.75" />
+            </svg>
+            <span class="text-gray-700">{{ email }}</span>
+          </div>
+        }
+      }
+    </div>
+    }
+
+    @if (showTesoreriaEmailsForm) {
+    <div class="space-y-4">
+      <div class="space-y-2">
+        @for (email of tesoreriaEmails; track email; let i = $index) {
+          <div class="flex items-center gap-2 px-3 py-2 bg-gray-50 rounded-lg border border-gray-200">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-gray-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 0 1-2.25 2.25h-15a2.25 2.25 0 0 1-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25m19.5 0v.243a2.25 2.25 0 0 1-1.07 1.916l-7.5 4.615a2.25 2.25 0 0 1-2.36 0L3.32 8.91a2.25 2.25 0 0 1-1.07-1.916V6.75" />
+            </svg>
+            <span class="flex-1 text-sm text-gray-700">{{ email }}</span>
+            <button type="button" (click)="removeTesoreriaEmail(i)" class="text-red-400 hover:text-red-600 transition-colors">
+              <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+        }
+      </div>
+      <div class="flex gap-2">
+        <input
+          type="email"
+          [(ngModel)]="newTesoreriaEmail"
+          (keyup.enter)="addTesoreriaEmail()"
+          placeholder="correo@empresa.com"
+          class="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+        />
+        <button type="button" (click)="addTesoreriaEmail()" class="px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-sm font-medium transition-colors">
+          Agregar
+        </button>
+      </div>
+      <div class="flex gap-3">
+        <app-button
+          label="Guardar"
+          variant="primary"
+          size="md"
+          [disabled]="isSavingTesoreriaEmails"
+          (clicked)="saveTesoreriaEmails()"
+        />
+        <app-button
+          label="Cancelar"
+          variant="secondary"
+          size="md"
+          [disabled]="isSavingTesoreriaEmails"
+          (clicked)="cancelTesoreriaEmailsEdit()"
+        />
+      </div>
+    </div>
+    }
+  </section>
+  } <!-- end canConfigureEmpresa: tesoreria emails -->
+
   @if (canConfigureContabilidad) {
   <section class="bg-white rounded-lg shadow-lg p-6 mb-8">
     <div class="flex justify-between items-center mb-6">

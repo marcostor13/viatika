@@ -27,6 +27,8 @@ import {
   RendicionExportData,
   ReceiptExportData,
   SingleExpenseAffidavitData,
+  ComprobantePage,
+  FacturaPageData,
 } from '../../../services/rendicion-export.service';
 import { SolicitudViaticosModalComponent } from '../solicitud-viaticos-modal/solicitud-viaticos-modal.component';
 import {
@@ -769,6 +771,7 @@ export class RendicionDetailComponent implements OnInit, OnDestroy {
   deletingExpenseId = signal<string | null>(null);
   isExportingExcel = signal(false);
   isExportingPdf = signal(false);
+  isExportingFullPdf = signal(false);
   showAffidavitModal = signal(false);
   isGeneratingAffidavit = signal(false);
   affidavitType = signal<'viaticos_nacionales' | 'viajes_exterior'>('viaticos_nacionales');
@@ -1725,6 +1728,181 @@ export class RendicionDetailComponent implements OnInit, OnDestroy {
     }
   }
 
+  private buildMobilityPageData(expense: Record<string, unknown>): MobilitySheetExportData {
+    const rows = this.mobilityRows(expense).map(r => ({
+      fecha: String(r['fecha'] || ''),
+      clienteProveedor: String(r['clienteProveedor'] || ''),
+      origen: String(r['origen'] || ''),
+      destino: String(r['destino'] || ''),
+      gestion: String(r['gestion'] || ''),
+      total: this.mobilityRowTotal(r),
+      proyecto: this.resolveRowProjectLabel(r['proyectId']),
+      colaborador: String(r['colaboradorNombre'] || this.getCollaboratorDisplayName() || ''),
+    }));
+    const total = rows.reduce((sum, r) => sum + (r.total || 0), 0);
+    const firstFecha = rows.find(r => r.fecha)?.fecha;
+    let periodo = '';
+    if (firstFecha) {
+      const d = new Date(firstFecha);
+      if (!isNaN(d.getTime())) {
+        periodo = d.toLocaleString('es-PE', { month: 'long' }).toUpperCase();
+      }
+    }
+    return {
+      fileBaseName: `planilla_movilidad_${String(expense['_id'] || 'sin_id')}`,
+      collaborator: this.getCollaboratorDisplayName(),
+      collaboratorDni: this.report?.idDocument,
+      internalCode: typeof expense['internalCode'] === 'string' ? expense['internalCode'] : undefined,
+      location: this.report?.location,
+      generatedAt: new Date().toLocaleString('es-PE', { dateStyle: 'short', timeStyle: 'short' }),
+      periodo,
+      proyecto: this.getExpenseProjectName(expense),
+      rows,
+      total,
+      signature: this.getCollaboratorSignature(),
+    };
+  }
+
+  private buildCashVoucherPageData(expense: Record<string, unknown>): CashVoucherExportData {
+    const payloadObj = this.getCashVoucherPayload(expense);
+    const companyName = this.userStateService.getUser()?.client?.businessName
+      || this.companyConfigService.getCompanyConfig()?.businessName;
+    return {
+      fileBaseName: `comprobante_caja_${String(expense['_id'] || 'sin_id')}`,
+      collaborator: this.getCollaboratorDisplayName(),
+      collaboratorDni: this.report?.idDocument,
+      internalCode: typeof expense['internalCode'] === 'string' ? expense['internalCode'] : undefined,
+      entregadoA: String(payloadObj['entregadoA'] || '—'),
+      direccion: String(payloadObj['direccion'] || ''),
+      concepto: String(payloadObj['concepto'] || this.getExpenseDescription(expense)),
+      monto: this.getExpenseTotal(expense),
+      generatedAt: new Date().toLocaleDateString('es-PE'),
+      signature: this.getCollaboratorSignature(),
+      projectName: this.getProjectName(),
+      clientName: companyName,
+      fechaEmision: typeof expense['fechaEmision'] === 'string' ? expense['fechaEmision'] : undefined,
+    };
+  }
+
+  private buildReceiptPageData(expense: Record<string, unknown>): ReceiptExportData {
+    const dataObj = this.getExpenseDataObject(expense);
+    return {
+      fileBaseName: `recibo_caja_${String(expense['_id'] || 'sin_id')}`,
+      collaborator: this.getCollaboratorDisplayName(),
+      collaboratorDni: this.report?.idDocument,
+      razonSocial: String(dataObj['razonSocial'] || '—'),
+      ruc: dataObj['ruc'] ? String(dataObj['ruc']) : undefined,
+      numeroDocumento: dataObj['numeroDocumento'] ? String(dataObj['numeroDocumento']) : undefined,
+      concepto: String(dataObj['concepto'] || this.getExpenseDescription(expense)),
+      fecha: this.emissionDateText(expense),
+      monto: this.getExpenseTotal(expense),
+      signature: this.getCollaboratorSignature(),
+    };
+  }
+
+  private buildAffidavitPageData(
+    expense: Record<string, unknown>,
+    titulo: string,
+    mobilityRows?: MobilitySheetExportData['rows'],
+    receiptFields?: Array<{ label: string; value: string }>,
+    descripcion?: string,
+  ): SingleExpenseAffidavitData {
+    const client = this.userStateService.getUser()?.client;
+    return {
+      fileBaseName: `dj_${String(expense['_id'] || 'sin_id')}`,
+      titulo,
+      colaborador: String(expense['declaracionJuradaFirmante'] || this.getCollaboratorDisplayName()),
+      colaboradorDni: this.report?.idDocument,
+      empresaNombre: client?.businessName,
+      fechaGeneracion: new Date().toLocaleDateString('es-PE'),
+      total: this.getExpenseTotal(expense),
+      mobilityRows,
+      receiptFields,
+      descripcion,
+      signature: this.getCollaboratorSignature(),
+    };
+  }
+
+  private buildFacturaPageData(expense: Record<string, unknown>, index: number): FacturaPageData {
+    const dataObj = this.getExpenseDataObject(expense);
+    const tipoComp = String(dataObj['tipoComprobante'] || '');
+    let tipo = 'Factura';
+    if (tipoComp === '03') tipo = 'Boleta de Venta';
+    else if (tipoComp === '12') tipo = 'Ticket';
+    return {
+      tipo,
+      razonSocial: String(dataObj['razonSocial'] || ''),
+      rucEmisor: String(dataObj['rucEmisor'] || ''),
+      serie: String(dataObj['serie'] || ''),
+      correlativo: String(dataObj['correlativo'] || ''),
+      fechaEmision: this.emissionDateText(expense),
+      montoTotal: this.getExpenseTotal(expense),
+      moneda: String(dataObj['moneda'] || 'PEN'),
+      comentario: this.getExpenseComentario(expense) || undefined,
+      placaVehiculo: this.getExpensePlaca(expense) || undefined,
+      descripcion: String(expense['description'] || dataObj['description'] || ''),
+      index,
+    };
+  }
+
+  async exportRendicionFullPdf(): Promise<void> {
+    const summaryData = this.buildExportData();
+    if (!summaryData) {
+      this.notificationService.show('No hay datos para exportar', 'error');
+      return;
+    }
+    const expenses = (this.report?.expenseIds || []) as Record<string, unknown>[];
+    const pages: ComprobantePage[] = [];
+    let facturaIndex = 0;
+
+    for (const exp of expenses) {
+      const typeKey = this.getExpenseTypeKey(exp);
+      const expType = exp['expenseType'] as string;
+
+      if (typeKey === 'planilla_movilidad') {
+        pages.push({ type: 'mobility', data: this.buildMobilityPageData(exp) });
+      } else if (typeKey === 'comprobante_caja') {
+        pages.push({ type: 'cash_voucher', data: this.buildCashVoucherPageData(exp) });
+      } else if (expType === 'recibo_caja') {
+        pages.push({ type: 'receipt', data: this.buildReceiptPageData(exp) });
+      } else if (typeKey === 'otros_gastos') {
+        pages.push({
+          type: 'affidavit',
+          data: this.buildAffidavitPageData(
+            exp,
+            'OTROS GASTOS',
+            undefined,
+            undefined,
+            String(exp['description'] || '—'),
+          ),
+        });
+      } else {
+        const fileUrl = this.getExpenseFileUrl(exp);
+        if (fileUrl) {
+          const label = String(exp['expenseType'] || 'Factura');
+          if (/\.(jpe?g|png|gif|webp)(\?|#|$)/i.test(fileUrl)) {
+            pages.push({ type: 'factura_image', url: fileUrl, label });
+          } else {
+            pages.push({ type: 'factura_pdf', url: fileUrl, label });
+          }
+        } else {
+          facturaIndex++;
+          pages.push({ type: 'factura', data: this.buildFacturaPageData(exp, facturaIndex) });
+        }
+      }
+    }
+
+    this.isExportingFullPdf.set(true);
+    try {
+      await this.rendicionExportService.exportFullRendicionPdf(summaryData, pages);
+      this.notificationService.show('PDF completo descargado', 'success');
+    } catch {
+      this.notificationService.show('No se pudo generar el PDF completo', 'error');
+    } finally {
+      this.isExportingFullPdf.set(false);
+    }
+  }
+
   affidavitCandidates(): Array<Record<string, unknown> & { _id: string }> {
     const expenses = (this.report?.expenseIds || []) as Array<Record<string, unknown>>;
     return expenses
@@ -2538,67 +2716,13 @@ export class RendicionDetailComponent implements OnInit, OnDestroy {
 
   async exportMobilitySheet(expense: Record<string, unknown>): Promise<void> {
     if (this.getExpenseTypeKey(expense) !== 'planilla_movilidad') return;
-    const rows = this.mobilityRows(expense).map(r => ({
-      fecha: String(r['fecha'] || ''),
-      clienteProveedor: String(r['clienteProveedor'] || ''),
-      origen: String(r['origen'] || ''),
-      destino: String(r['destino'] || ''),
-      gestion: String(r['gestion'] || ''),
-      total: this.mobilityRowTotal(r),
-      proyecto: this.resolveRowProjectLabel(r['proyectId']),
-      colaborador: String(r['colaboradorNombre'] || this.getCollaboratorDisplayName() || ''),
-    }));
-    const total = rows.reduce((sum, r) => sum + (r.total || 0), 0);
-    const firstFecha = rows.find(r => r.fecha)?.fecha;
-    let periodo = '';
-    if (firstFecha) {
-      const d = new Date(firstFecha);
-      if (!isNaN(d.getTime())) {
-        periodo = d.toLocaleString('es-PE', { month: 'long' }).toUpperCase();
-      }
-    }
-    const data: MobilitySheetExportData = {
-      fileBaseName: `planilla_movilidad_${String(expense['_id'] || 'sin_id')}`,
-      collaborator: this.getCollaboratorDisplayName(),
-      collaboratorDni: this.report?.idDocument,
-      internalCode:
-        typeof expense['internalCode'] === 'string' ? expense['internalCode'] : undefined,
-      location: this.report?.location,
-      generatedAt: new Date().toLocaleString('es-PE', {
-        dateStyle: 'short',
-        timeStyle: 'short',
-      }),
-      periodo,
-      proyecto: this.getExpenseProjectName(expense),
-      rows,
-      total,
-      signature: this.getCollaboratorSignature(),
-    };
-    await this.rendicionExportService.exportMobilitySheetToPdf(data);
+    await this.rendicionExportService.exportMobilitySheetToPdf(this.buildMobilityPageData(expense));
     this.notificationService.show('Planilla de movilidad descargada en PDF', 'success');
   }
 
   exportCashVoucher(expense: Record<string, unknown>): void {
     if (this.getExpenseTypeKey(expense) !== 'comprobante_caja') return;
-    const payloadObj = this.getCashVoucherPayload(expense);
-    const companyName = this.userStateService.getUser()?.client?.businessName
-      || this.companyConfigService.getCompanyConfig()?.businessName;
-    const data: CashVoucherExportData = {
-      fileBaseName: `comprobante_caja_${String(expense['_id'] || 'sin_id')}`,
-      collaborator: this.getCollaboratorDisplayName(),
-      collaboratorDni: this.report?.idDocument,
-      internalCode: typeof expense['internalCode'] === 'string' ? expense['internalCode'] : undefined,
-      entregadoA: String(payloadObj['entregadoA'] || '—'),
-      direccion: String(payloadObj['direccion'] || ''),
-      concepto: String(payloadObj['concepto'] || this.getExpenseDescription(expense)),
-      monto: this.getExpenseTotal(expense),
-      generatedAt: new Date().toLocaleDateString('es-PE'),
-      signature: this.getCollaboratorSignature(),
-      projectName: this.getProjectName(),
-      clientName: companyName,
-      fechaEmision: typeof expense['fechaEmision'] === 'string' ? expense['fechaEmision'] : undefined,
-    };
-    this.rendicionExportService.exportCashVoucherToPdf(data);
+    this.rendicionExportService.exportCashVoucherToPdf(this.buildCashVoucherPageData(expense));
     this.notificationService.show('Comprobante de caja descargado en PDF', 'success');
   }
 
