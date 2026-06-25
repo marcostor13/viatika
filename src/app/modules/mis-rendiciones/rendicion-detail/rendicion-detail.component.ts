@@ -1317,15 +1317,37 @@ export class RendicionDetailComponent implements OnInit, OnDestroy {
     return expense._id ?? `idx-${_index}`;
   }
 
-  /** Solo el colaborador dueño puede editar/eliminar comprobantes pendientes en rendición abierta o rechazada. */
+  /**
+   * La rendición sigue en revisión, por lo que el colaborador puede corregir un
+   * comprobante que le rechazaron. El rechazo es por-comprobante: la rendición
+   * permanece en `submitted` (revisión del coordinador) o `pending_accounting`
+   * (revisión de contabilidad) mientras tanto, no en estado finalizado.
+   */
+  get canCorrectRejectedExpense(): boolean {
+    if (!this.report || this.isAdminView) return false;
+    if (this.report.lockedByCajaChica) return false;
+    const correctable: IExpenseReport['status'][] = [
+      'open',
+      'rejected',
+      'submitted',
+      'pending_accounting',
+      'partially_paid',
+    ];
+    return correctable.includes(this.report.status);
+  }
+
+  /** El colaborador dueño puede editar/eliminar sus comprobantes pendientes (rendición abierta/rechazada) o corregir los que le rechazaron. */
   canMutateOwnExpense(expense: { createdBy?: string; status?: string }): boolean {
-    if (!this.collaboratorCanEdit) return false;
     const uid = this.userStateService.getUser()?._id;
     if (!uid) return false;
     if (String(expense.createdBy ?? '') !== String(uid)) return false;
     const st = expense.status ?? 'pending';
-    if (st === 'approved' || st === 'rejected') return false;
-    return true;
+    if (st === 'approved') return false;
+    // Comprobante rechazado por coordinador/contabilidad: corrección habilitada
+    // mientras la rendición siga en revisión.
+    if (st === 'rejected') return this.canCorrectRejectedExpense;
+    // Pendiente / validación SUNAT: edición normal (rendición abierta o rechazada).
+    return this.collaboratorCanEdit;
   }
 
   /** Coordinador (con permiso rendiciones) o Contabilidad pueden editar/eliminar cualquier comprobante pendiente. */
