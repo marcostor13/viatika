@@ -245,6 +245,7 @@ export class InvoicesService {
         logo: client.logo,
         limits: client.limits,
         notificationSettings: client.notificationSettings,
+        tesoreriaEmails: client.tesoreriaEmails ?? [],
       }))
     );
   }
@@ -256,6 +257,13 @@ export class InvoicesService {
     return this.http.patch<void>(
       `${this.companyConfigUrl}/${companyId}/notification-settings`,
       settings
+    );
+  }
+
+  updateTesoreriaEmails(companyId: string, emails: string[]): Observable<void> {
+    return this.http.patch<void>(
+      `${this.companyConfigUrl}/${companyId}/tesoreria-emails`,
+      { emails }
     );
   }
 

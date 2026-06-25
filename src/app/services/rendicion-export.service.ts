@@ -177,6 +177,30 @@ export interface SingleExpenseAffidavitData {
   signature?: string;
 }
 
+export interface FacturaPageData {
+  tipo: string;
+  razonSocial?: string;
+  rucEmisor?: string;
+  serie?: string;
+  correlativo?: string;
+  fechaEmision?: string;
+  montoTotal?: number;
+  moneda?: string;
+  comentario?: string;
+  placaVehiculo?: string;
+  descripcion?: string;
+  index: number;
+}
+
+export type ComprobantePage =
+  | { type: 'factura'; data: FacturaPageData }
+  | { type: 'factura_image'; url: string; label: string }
+  | { type: 'factura_pdf'; url: string; label: string }
+  | { type: 'mobility'; data: MobilitySheetExportData }
+  | { type: 'cash_voucher'; data: CashVoucherExportData }
+  | { type: 'receipt'; data: ReceiptExportData }
+  | { type: 'affidavit'; data: SingleExpenseAffidavitData };
+
 const RED_HEADER = 'FF912f2c'; // Dark red for headers
 const YELLOW_CELL = 'FFFFFF00'; // Yellow for summary cell
 
@@ -570,9 +594,9 @@ export class RendicionExportService {
     );
   }
 
-  async exportToPdf(data: RendicionExportData): Promise<void> {
+  async exportToPdf(data: RendicionExportData, inDoc?: jsPDF, returnBytes?: boolean): Promise<Uint8Array | void> {
     data = { ...data, signature: await this.resolveSignature(data.signature) };
-    const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+    const doc = inDoc ?? new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
     let y = 15;
 
     const logoB64 = await this.getLogoBase64();
@@ -810,7 +834,10 @@ export class RendicionExportService {
       doc.text(`DNI N° ${data.idDocument}`, centerPage, lineY + 8, { align: 'center' });
     }
 
-    doc.save(`${data.fileBaseName}.pdf`);
+    if (!inDoc) {
+      if (returnBytes) return new Uint8Array(doc.output('arraybuffer'));
+      doc.save(`${data.fileBaseName}.pdf`);
+    }
   }
 
   async exportAffidavitToPdf(data: AffidavitExportData): Promise<void> {
@@ -853,9 +880,11 @@ export class RendicionExportService {
     doc.save(`${data.fileBaseName}.pdf`);
   }
 
-  async exportMobilitySheetToPdf(data: MobilitySheetExportData): Promise<void> {
+  async exportMobilitySheetToPdf(data: MobilitySheetExportData, inDoc?: jsPDF, returnBytes?: boolean): Promise<Uint8Array | void> {
     data = { ...data, signature: await this.resolveSignature(data.signature) };
-    const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+    const isNew = !inDoc;
+    const doc = inDoc ?? new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+    if (!isNew) doc.addPage([210, 297], 'portrait');
     const lm = 14;
     const rm = 196;
     const pageW = 210;
@@ -1086,13 +1115,18 @@ export class RendicionExportService {
       y,
     );
 
-    doc.save(`${data.fileBaseName}.pdf`);
+    if (isNew) {
+      if (returnBytes) return new Uint8Array(doc.output('arraybuffer'));
+      doc.save(`${data.fileBaseName}.pdf`);
+    }
   }
 
-  async exportCashVoucherToPdf(data: CashVoucherExportData): Promise<void> {
+  async exportCashVoucherToPdf(data: CashVoucherExportData, inDoc?: jsPDF, returnBytes?: boolean): Promise<Uint8Array | void> {
     data = { ...data, signature: await this.resolveSignature(data.signature) };
+    const isNew = !inDoc;
     // Quarter A4: 105 x 148 mm
-    const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: [105, 148] });
+    const doc = inDoc ?? new jsPDF({ orientation: 'portrait', unit: 'mm', format: [105, 148] });
+    if (!isNew) doc.addPage([105, 148], 'portrait');
     const pageW = 105;
     const lm = 7;
     const rm = 98;
@@ -1205,12 +1239,17 @@ export class RendicionExportService {
     doc.text(data.clientName || '', pageW / 2, 144, { align: 'center' });
     doc.setTextColor(0, 0, 0);
 
-    doc.save(`${data.fileBaseName}.pdf`);
+    if (isNew) {
+      if (returnBytes) return new Uint8Array(doc.output('arraybuffer'));
+      doc.save(`${data.fileBaseName}.pdf`);
+    }
   }
 
-  async exportReceiptToPdf(data: ReceiptExportData): Promise<void> {
+  async exportReceiptToPdf(data: ReceiptExportData, inDoc?: jsPDF, returnBytes?: boolean): Promise<Uint8Array | void> {
     data = { ...data, signature: await this.resolveSignature(data.signature) };
-    const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+    const isNew = !inDoc;
+    const doc = inDoc ?? new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+    if (!isNew) doc.addPage([210, 297], 'portrait');
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(13);
     doc.text('RECIBO DE CAJA', 105, 18, { align: 'center' });
@@ -1248,7 +1287,10 @@ export class RendicionExportService {
       doc.text(`DNI N° ${data.collaboratorDni}`, 105, sigY + 16, { align: 'center' });
     }
 
-    doc.save(`${data.fileBaseName}.pdf`);
+    if (isNew) {
+      if (returnBytes) return new Uint8Array(doc.output('arraybuffer'));
+      doc.save(`${data.fileBaseName}.pdf`);
+    }
   }
 
   async exportMobilitySheetToExcel(data: MobilitySheetExportData): Promise<void> {
@@ -1477,9 +1519,11 @@ export class RendicionExportService {
     );
   }
 
-  async exportSingleExpenseAffidavitToPdf(data: SingleExpenseAffidavitData): Promise<void> {
+  async exportSingleExpenseAffidavitToPdf(data: SingleExpenseAffidavitData, inDoc?: jsPDF, returnBytes?: boolean): Promise<Uint8Array | void> {
     data = { ...data, signature: await this.resolveSignature(data.signature) };
-    const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+    const isNew = !inDoc;
+    const doc = inDoc ?? new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+    if (!isNew) doc.addPage([210, 297], 'portrait');
 
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(13);
@@ -1546,7 +1590,170 @@ export class RendicionExportService {
       doc.text(`DNI N° ${data.colaboradorDni}`, center, y, { align: 'center' });
     }
 
-    doc.save(`${data.fileBaseName}.pdf`);
+    if (isNew) {
+      if (returnBytes) return new Uint8Array(doc.output('arraybuffer'));
+      doc.save(`${data.fileBaseName}.pdf`);
+    }
+  }
+
+  private async _renderFacturaContent(doc: jsPDF, data: FacturaPageData): Promise<void> {
+    const pageW = 210;
+    const lm = 14;
+    const rm = 196;
+
+    const logoB64 = await this.getLogoBase64();
+    if (logoB64) {
+      doc.addImage(logoB64, 'PNG', rm - 40, 6, 40, 12);
+    }
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(13);
+    doc.text(data.tipo.toUpperCase(), pageW / 2, 16, { align: 'center' });
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(9);
+    doc.text(`Comprobante N° ${data.index}`, pageW / 2, 22, { align: 'center' });
+
+    doc.setLineWidth(0.3);
+    doc.line(lm, 26, rm, 26);
+
+    let y = 35;
+    const row = (label: string, value: string | undefined) => {
+      if (!value) return;
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(9);
+      doc.text(`${label}:`, lm, y);
+      doc.setFont('helvetica', 'normal');
+      const lines = doc.splitTextToSize(value, rm - lm - 52) as string[];
+      doc.text(lines, lm + 52, y);
+      y += lines.length > 1 ? lines.length * 5 + 2 : 7;
+    };
+
+    row('Proveedor', data.razonSocial || undefined);
+    row('RUC', data.rucEmisor || undefined);
+    if (data.serie && data.correlativo) {
+      row('N° Documento', `${data.serie}-${data.correlativo}`);
+    }
+    row('Fecha Emisión', data.fechaEmision || undefined);
+    if (data.montoTotal !== undefined) {
+      row('Monto', `${data.moneda || 'PEN'} ${data.montoTotal.toFixed(2)}`);
+    }
+    row('Comentario', data.comentario || undefined);
+    row('Placa Vehículo', data.placaVehiculo || undefined);
+    row('Descripción', data.descripcion || undefined);
+  }
+
+  async exportFullRendicionPdf(
+    summaryData: RendicionExportData,
+    pages: ComprobantePage[],
+  ): Promise<void> {
+    const { PDFDocument } = await import('pdf-lib');
+    const sections: Uint8Array[] = [];
+
+    const summaryBytes = await this.exportToPdf(summaryData, undefined, true);
+    if (summaryBytes) sections.push(summaryBytes);
+
+    for (const page of pages) {
+      try {
+        let bytes: Uint8Array | null = null;
+        switch (page.type) {
+          case 'mobility':
+            bytes = (await this.exportMobilitySheetToPdf(page.data, undefined, true)) as Uint8Array ?? null;
+            break;
+          case 'cash_voucher':
+            bytes = (await this.exportCashVoucherToPdf(page.data, undefined, true)) as Uint8Array ?? null;
+            break;
+          case 'receipt':
+            bytes = (await this.exportReceiptToPdf(page.data, undefined, true)) as Uint8Array ?? null;
+            break;
+          case 'affidavit':
+            bytes = (await this.exportSingleExpenseAffidavitToPdf(page.data, undefined, true)) as Uint8Array ?? null;
+            break;
+          case 'factura': {
+            const fichaDoc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+            await this._renderFacturaContent(fichaDoc, page.data);
+            bytes = new Uint8Array(fichaDoc.output('arraybuffer'));
+            break;
+          }
+          case 'factura_image':
+            bytes = await this._buildImageSectionBytes(page.url);
+            break;
+          case 'factura_pdf':
+            bytes = await this._fetchBytes(page.url);
+            break;
+        }
+        if (bytes) sections.push(bytes);
+      } catch {
+        // skip failed section
+      }
+    }
+
+    const merged = await PDFDocument.create();
+    for (const section of sections) {
+      try {
+        const src = await PDFDocument.load(section, { ignoreEncryption: true });
+        const copied = await merged.copyPages(src, src.getPageIndices());
+        copied.forEach(p => merged.addPage(p));
+      } catch {
+        // skip invalid section
+      }
+    }
+
+    const mergedBytes = await merged.save();
+    this.triggerDownload(
+      new Blob([mergedBytes], { type: 'application/pdf' }),
+      `${summaryData.fileBaseName}_completo.pdf`,
+    );
+  }
+
+  private async _buildImageSectionBytes(url: string): Promise<Uint8Array | null> {
+    try {
+      const response = await fetch(url);
+      if (!response.ok) return null;
+      const blob = await response.blob();
+      const base64 = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+      });
+      const mimeType = blob.type || 'image/jpeg';
+      const isPng = mimeType.includes('png');
+      const format = isPng ? 'PNG' : 'JPEG';
+
+      const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+        const el = new Image();
+        el.onload = () => resolve(el);
+        el.onerror = reject;
+        el.src = base64;
+      });
+
+      const pageW = 210;
+      const pageH = 297;
+      const margin = 10;
+      const maxW = pageW - margin * 2;
+      const maxH = pageH - margin * 2;
+      const scale = Math.min(maxW / img.naturalWidth, maxH / img.naturalHeight);
+      const drawW = img.naturalWidth * scale;
+      const drawH = img.naturalHeight * scale;
+      const x = (pageW - drawW) / 2;
+      const y = (pageH - drawH) / 2;
+
+      const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+      doc.addImage(base64, format, x, y, drawW, drawH);
+      return new Uint8Array(doc.output('arraybuffer'));
+    } catch {
+      return null;
+    }
+  }
+
+  private async _fetchBytes(url: string): Promise<Uint8Array | null> {
+    try {
+      const response = await fetch(url);
+      if (!response.ok) return null;
+      return new Uint8Array(await response.arrayBuffer());
+    } catch {
+      return null;
+    }
   }
 
   private triggerDownload(blob: Blob, filename: string): void {
