@@ -542,6 +542,19 @@ export class RendicionesDirectasComponent implements OnInit {
     if (this.filterDateFrom || this.filterDateTo) filters.push(`Periodo: ${this.filterDateFrom || '...'} al ${this.filterDateTo || '...'}`);
     if (this.filterTipo) filters.push(`Tipo: ${this.filterTipo}`);
 
+    // Cta / CCI: solo tiene sentido cuando el reporte es de un único colaborador.
+    // Si el consolidado mezcla varios, no se muestra una cuenta (sería ambigua).
+    const colaboradores = new Map<string, any>();
+    for (const e of expenses) {
+      const u = (e as any)._report?.userId;
+      if (u && typeof u === 'object') colaboradores.set(String(u._id), u);
+    }
+    let accountNumber: string | undefined;
+    if (colaboradores.size === 1) {
+      const ba = [...colaboradores.values()][0]?.bankAccount;
+      accountNumber = ba?.cci || ba?.accountNumber || undefined;
+    }
+
     const comprobantes = expenses.map(e => {
       const type = e?.expenseType;
       let provider = this.getProveedor(e);
@@ -564,6 +577,7 @@ export class RendicionesDirectasComponent implements OnInit {
       estado: `${this.total()} documento(s)`,
       descripcionRendicion: filters.length ? filters.join(' | ') : undefined,
       colaborador: 'Reporte consolidado',
+      accountNumber,
       presupuesto: 0,
       totalGastado,
       totalAnticipado: 0,
