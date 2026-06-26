@@ -1442,6 +1442,15 @@ export class RendicionDetailComponent implements OnInit, OnDestroy {
     return undefined;
   }
 
+  /**
+   * DNI del colaborador para los PDFs/Excel. Usa el snapshot `idDocument` del reporte
+   * y, si viene vacío (caso habitual: nunca se guardó), cae al DNI configurado en el
+   * perfil del usuario (`userId.dni`, que el endpoint de detalle sí popula).
+   */
+  collaboratorDniForPdf(): string | undefined {
+    return this.report?.idDocument || this.getCollaboratorDni();
+  }
+
   getCollaboratorAccountNumber(): string | undefined {
     const u = this.report?.userId;
     if (u && typeof u === 'object' && 'bankAccount' in u) {
@@ -1696,7 +1705,7 @@ export class RendicionDetailComponent implements OnInit, OnDestroy {
       settlement: this.getSettlementForExport(),
       // New fields
       accountNumber: this.report.accountNumber || this.getCollaboratorAccountNumber(),
-      idDocument: this.report.idDocument || this.getCollaboratorDni(),
+      idDocument: this.collaboratorDniForPdf(),
       peopleNames: this.report.peopleNames,
       location: this.report.location,
       startDate: this.report.startDate ? new Date(this.report.startDate).toLocaleDateString('es-PE') : undefined,
@@ -1773,7 +1782,7 @@ export class RendicionDetailComponent implements OnInit, OnDestroy {
     return {
       fileBaseName: `planilla_movilidad_${String(expense['_id'] || 'sin_id')}`,
       collaborator: this.getCollaboratorDisplayName(),
-      collaboratorDni: this.report?.idDocument,
+      collaboratorDni: this.collaboratorDniForPdf(),
       internalCode: typeof expense['internalCode'] === 'string' ? expense['internalCode'] : undefined,
       location: this.report?.location,
       generatedAt: new Date().toLocaleString('es-PE', { dateStyle: 'short', timeStyle: 'short' }),
@@ -1792,7 +1801,7 @@ export class RendicionDetailComponent implements OnInit, OnDestroy {
     return {
       fileBaseName: `comprobante_caja_${String(expense['_id'] || 'sin_id')}`,
       collaborator: this.getCollaboratorDisplayName(),
-      collaboratorDni: this.report?.idDocument,
+      collaboratorDni: this.collaboratorDniForPdf(),
       internalCode: typeof expense['internalCode'] === 'string' ? expense['internalCode'] : undefined,
       entregadoA: String(payloadObj['entregadoA'] || '—'),
       direccion: String(payloadObj['direccion'] || ''),
@@ -1811,7 +1820,7 @@ export class RendicionDetailComponent implements OnInit, OnDestroy {
     return {
       fileBaseName: `recibo_caja_${String(expense['_id'] || 'sin_id')}`,
       collaborator: this.getCollaboratorDisplayName(),
-      collaboratorDni: this.report?.idDocument,
+      collaboratorDni: this.collaboratorDniForPdf(),
       razonSocial: String(dataObj['razonSocial'] || '—'),
       ruc: dataObj['ruc'] ? String(dataObj['ruc']) : undefined,
       numeroDocumento: dataObj['numeroDocumento'] ? String(dataObj['numeroDocumento']) : undefined,
@@ -1834,7 +1843,7 @@ export class RendicionDetailComponent implements OnInit, OnDestroy {
       fileBaseName: `dj_${String(expense['_id'] || 'sin_id')}`,
       titulo,
       colaborador: String(expense['declaracionJuradaFirmante'] || this.getCollaboratorDisplayName()),
-      colaboradorDni: this.report?.idDocument,
+      colaboradorDni: this.collaboratorDniForPdf(),
       empresaNombre: client?.businessName,
       fechaGeneracion: new Date().toLocaleDateString('es-PE'),
       total: this.getExpenseTotal(expense),
@@ -1986,7 +1995,7 @@ export class RendicionDetailComponent implements OnInit, OnDestroy {
       empresaNombre: this.companyConfigService.getCompanyConfig()?.businessName ?? '',
       empresaRuc: this.companyConfigService.getCompanyConfig()?.businessId ?? '',
       colaborador: this.getCollaboratorDisplayName(),
-      documentoColaborador: this.report?.idDocument,
+      documentoColaborador: this.collaboratorDniForPdf(),
       fechaGeneracion: new Date().toLocaleString('es-PE', {
         dateStyle: 'short',
         timeStyle: 'short',
@@ -2772,7 +2781,7 @@ export class RendicionDetailComponent implements OnInit, OnDestroy {
     const data: MobilitySheetExportData = {
       fileBaseName: `planilla_movilidad_${String(expense['_id'] || 'sin_id')}`,
       collaborator: this.getCollaboratorDisplayName(),
-      collaboratorDni: this.report?.idDocument,
+      collaboratorDni: this.collaboratorDniForPdf(),
       internalCode: typeof expense['internalCode'] === 'string' ? expense['internalCode'] : undefined,
       location: this.report?.location,
       generatedAt: new Date().toLocaleString('es-PE', { dateStyle: 'short', timeStyle: 'short' }),
@@ -2803,7 +2812,7 @@ export class RendicionDetailComponent implements OnInit, OnDestroy {
       fileBaseName: `dj_planilla_movilidad_${String(expense['_id'] || 'sin_id')}`,
       titulo: 'PLANILLA DE MOVILIDAD',
       colaborador: this.getCollaboratorDisplayName(),
-      colaboradorDni: this.report?.idDocument,
+      colaboradorDni: this.collaboratorDniForPdf(),
       empresaNombre: client?.businessName,
       fechaGeneracion: new Date().toLocaleDateString('es-PE'),
       total,
@@ -2821,7 +2830,7 @@ export class RendicionDetailComponent implements OnInit, OnDestroy {
     const data: ReceiptExportData = {
       fileBaseName: `recibo_caja_${String(expense['_id'] || 'sin_id')}`,
       collaborator: this.getCollaboratorDisplayName(),
-      collaboratorDni: this.report?.idDocument,
+      collaboratorDni: this.collaboratorDniForPdf(),
       razonSocial: String(dataObj['razonSocial'] || '—'),
       ruc: dataObj['ruc'] ? String(dataObj['ruc']) : undefined,
       numeroDocumento: dataObj['numeroDocumento'] ? String(dataObj['numeroDocumento']) : undefined,
@@ -2850,7 +2859,7 @@ export class RendicionDetailComponent implements OnInit, OnDestroy {
       fileBaseName: `dj_recibo_caja_${String(expense['_id'] || 'sin_id')}`,
       titulo: 'RECIBO DE CAJA',
       colaborador: this.getCollaboratorDisplayName(),
-      colaboradorDni: this.report?.idDocument,
+      colaboradorDni: this.collaboratorDniForPdf(),
       empresaNombre: client?.businessName,
       fechaGeneracion: new Date().toLocaleDateString('es-PE'),
       total: this.getExpenseTotal(expense),
@@ -2874,7 +2883,7 @@ export class RendicionDetailComponent implements OnInit, OnDestroy {
       fileBaseName: `dj_comprobante_caja_${String(expense['_id'] || 'sin_id')}`,
       titulo: 'COMPROBANTE DE CAJA',
       colaborador: this.getCollaboratorDisplayName(),
-      colaboradorDni: this.report?.idDocument,
+      colaboradorDni: this.collaboratorDniForPdf(),
       empresaNombre: client?.businessName,
       fechaGeneracion: new Date().toLocaleDateString('es-PE'),
       total: this.getExpenseTotal(expense),
@@ -2892,7 +2901,7 @@ export class RendicionDetailComponent implements OnInit, OnDestroy {
       fileBaseName: `dj_otros_gastos_${String(expense['_id'] || 'sin_id')}`,
       titulo: 'OTROS GASTOS',
       colaborador: String(expense['declaracionJuradaFirmante'] || this.getCollaboratorDisplayName()),
-      colaboradorDni: this.report?.idDocument,
+      colaboradorDni: this.collaboratorDniForPdf(),
       empresaNombre: client?.businessName,
       fechaGeneracion: new Date().toLocaleDateString('es-PE'),
       total: this.getExpenseTotal(expense),

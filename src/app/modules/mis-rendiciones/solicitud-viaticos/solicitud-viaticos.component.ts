@@ -180,6 +180,15 @@ export class SolicitudViaticosComponent implements OnInit {
     return !!this.route.snapshot.paramMap.get('id');
   }
 
+  /** Fecha de hoy en formato YYYY-MM-DD (local) para el atributo `min` de las fechas. */
+  get todayStr(): string {
+    const d = new Date();
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  }
+
   get hasPendingBalance(): boolean {
     return !!this.pendingBalanceFromReportId() && this.pendingBalanceAmount() > 0;
   }
@@ -586,14 +595,11 @@ export class SolicitudViaticosComponent implements OnInit {
     }
 
     if (start < today) {
-      const obs = (this.form.value.observations || '').trim();
-      if (obs.length < 10) {
-        this.notifications.show(
-          'Para fechas de inicio pasadas, las observaciones deben tener al menos 10 caracteres.',
-          'error'
-        );
-        return;
-      }
+      this.notifications.show(
+        'La fecha de inicio no puede ser anterior a hoy.',
+        'error'
+      );
+      return;
     }
 
     const place = (this.form.value.place || '').trim();

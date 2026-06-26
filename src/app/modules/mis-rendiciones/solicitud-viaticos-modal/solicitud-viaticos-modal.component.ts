@@ -371,14 +371,11 @@ export class SolicitudViaticosModalComponent implements OnChanges {
     }
 
     if (start < today) {
-      const obs = (this.form.value.observations || '').trim();
-      if (obs.length < 10) {
-        this.notifications.show(
-          'Para fechas de inicio pasadas, las observaciones deben tener al menos 10 caracteres.',
-          'error'
-        );
-        return;
-      }
+      this.notifications.show(
+        'La fecha de inicio no puede ser anterior a hoy.',
+        'error'
+      );
+      return;
     }
 
     const place = (this.form.value.place || '').trim();
@@ -453,5 +450,14 @@ export class SolicitudViaticosModalComponent implements OnChanges {
 
   projectLabel(p: IProject): string {
     return p.code ? `${p.code} — ${p.name}` : p.name;
+  }
+
+  /** Fecha de hoy en formato YYYY-MM-DD (local) para el atributo `min` de las fechas. */
+  get todayStr(): string {
+    const d = new Date();
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
   }
 }

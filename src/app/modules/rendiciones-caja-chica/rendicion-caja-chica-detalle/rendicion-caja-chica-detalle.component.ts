@@ -190,9 +190,12 @@ export class RendicionCajaChicaDetalleComponent implements OnInit {
     for (const sr of report.selectedReports) {
       const er: any = sr.expenseReport ?? (typeof sr.expenseReportId === 'object' ? sr.expenseReportId : null);
       const expenses: any[] = er?.expenseIds ?? [];
+      const colaboradorDni =
+        er?.userId && typeof er.userId === 'object' ? er.userId.dni : undefined;
       for (const inv of expenses) {
         rows.push({
           colaborador: sr.colaboradorName,
+          colaboradorDni,
           tipo: this.expenseTypeLabel(inv.expenseType ?? ''),
           fecha: this.getInvDate(inv),
           centroCosto: this.getInvCentroCosto(inv),
