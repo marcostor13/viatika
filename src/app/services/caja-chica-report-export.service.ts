@@ -11,6 +11,7 @@ const RED_HEADER = 'FF912f2c';
 
 export interface CajaChicaExportRow {
   colaborador: string;
+  colaboradorDni?: string;
   tipo: string;
   fecha: string;
   centroCosto: string;
@@ -107,6 +108,13 @@ export class CajaChicaReportExportService {
       y += 5;
       doc.setFont('helvetica', 'normal');
       doc.setTextColor(80);
+
+      const colaboradorDni = colRows.find((r) => r.colaboradorDni)?.colaboradorDni;
+      if (colaboradorDni) {
+        doc.setFontSize(8);
+        doc.text(`DNI:  ${colaboradorDni}`, margin, y);
+        y += 5;
+      }
 
       y += 3;
 
@@ -311,7 +319,9 @@ export class CajaChicaReportExportService {
         currentColaborador = row.colaborador;
         ws.mergeCells(r, 1, r, lastDataCol);
         const cColHeader = ws.getCell(r, 1);
-        cColHeader.value = row.colaborador;
+        cColHeader.value = row.colaboradorDni
+          ? `${row.colaborador}   —   DNI: ${row.colaboradorDni}`
+          : row.colaborador;
         cColHeader.font = { bold: true, color: { argb: 'FF912f2c' } };
         cColHeader.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFBF3EE' } };
         cColHeader.alignment = { horizontal: 'left' };

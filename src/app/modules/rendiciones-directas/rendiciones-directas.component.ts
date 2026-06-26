@@ -357,6 +357,12 @@ export class RendicionesDirectasComponent implements OnInit {
     return (typeof u === 'object' ? u.name || u.email : u) || '—';
   }
 
+  /** DNI del colaborador de la rendición (perfil del usuario), para los PDFs. */
+  getColaboradorDni(e: any): string | undefined {
+    const u = e._report?.userId;
+    return u && typeof u === 'object' ? u.dni : undefined;
+  }
+
   getRendicionTitle(e: any): string { return e._report?.motivo || e._report?.title || '—'; }
 
   /** Nombre del usuario que generó la rendición directa (createdBy del reporte). */
@@ -498,21 +504,21 @@ export class RendicionesDirectasComponent implements OnInit {
   async exportMobilityPdf(e: any, event: Event): Promise<void> {
     event.stopPropagation();
     const rows = this.mobilityRows(e).map((r: any) => ({ fecha: String(r.fecha || ''), clienteProveedor: String(r.clienteProveedor || ''), origen: String(r.origen || ''), destino: String(r.destino || ''), gestion: String(r.gestion || ''), total: this.mobilityRowTotal(r), proyecto: this.resolveProjectLabel(r.proyectId), colaborador: String(r.colaboradorNombre || this.getColaborador(e) || '') }));
-    const data: MobilitySheetExportData = { fileBaseName: `planilla_${e._id}`, collaborator: this.getColaborador(e), internalCode: e.internalCode, generatedAt: new Date().toLocaleString('es-PE', { dateStyle: 'short', timeStyle: 'short' }), proyecto: this.getProject(e), rows, total: this.getTotal(e) };
+    const data: MobilitySheetExportData = { fileBaseName: `planilla_${e._id}`, collaborator: this.getColaborador(e), collaboratorDni: this.getColaboradorDni(e), internalCode: e.internalCode, generatedAt: new Date().toLocaleString('es-PE', { dateStyle: 'short', timeStyle: 'short' }), proyecto: this.getProject(e), rows, total: this.getTotal(e) };
     await this.exportService.exportMobilitySheetToPdf(data);
   }
 
   async exportMobilityExcel(e: any, event: Event): Promise<void> {
     event.stopPropagation();
     const rows = this.mobilityRows(e).map((r: any) => ({ fecha: String(r.fecha || ''), clienteProveedor: String(r.clienteProveedor || ''), origen: String(r.origen || ''), destino: String(r.destino || ''), gestion: String(r.gestion || ''), total: this.mobilityRowTotal(r), proyecto: this.resolveProjectLabel(r.proyectId), colaborador: String(r.colaboradorNombre || this.getColaborador(e) || '') }));
-    const data: MobilitySheetExportData = { fileBaseName: `planilla_${e._id}`, collaborator: this.getColaborador(e), internalCode: e.internalCode, generatedAt: new Date().toLocaleString('es-PE', { dateStyle: 'short', timeStyle: 'short' }), proyecto: this.getProject(e), rows, total: this.getTotal(e) };
+    const data: MobilitySheetExportData = { fileBaseName: `planilla_${e._id}`, collaborator: this.getColaborador(e), collaboratorDni: this.getColaboradorDni(e), internalCode: e.internalCode, generatedAt: new Date().toLocaleString('es-PE', { dateStyle: 'short', timeStyle: 'short' }), proyecto: this.getProject(e), rows, total: this.getTotal(e) };
     await this.exportService.exportMobilitySheetToExcel(data);
   }
 
   async exportCashVoucherPdf(e: any, event: Event): Promise<void> {
     event.stopPropagation();
     const payload = this.cashVoucherPayload(e);
-    const data: CashVoucherExportData = { fileBaseName: `comprobante_${e._id}`, collaborator: this.getColaborador(e), internalCode: e.internalCode, entregadoA: String(payload['entregadoA'] || ''), direccion: String(payload['direccion'] || ''), concepto: String(payload['concepto'] || ''), monto: this.getTotal(e), generatedAt: new Date().toLocaleString('es-PE', { dateStyle: 'short', timeStyle: 'short' }), projectName: this.getProject(e), fechaEmision: this.emissionDateText(e) };
+    const data: CashVoucherExportData = { fileBaseName: `comprobante_${e._id}`, collaborator: this.getColaborador(e), collaboratorDni: this.getColaboradorDni(e), internalCode: e.internalCode, entregadoA: String(payload['entregadoA'] || ''), direccion: String(payload['direccion'] || ''), concepto: String(payload['concepto'] || ''), monto: this.getTotal(e), generatedAt: new Date().toLocaleString('es-PE', { dateStyle: 'short', timeStyle: 'short' }), projectName: this.getProject(e), fechaEmision: this.emissionDateText(e) };
     await this.exportService.exportCashVoucherToPdf(data);
   }
 
@@ -520,7 +526,7 @@ export class RendicionesDirectasComponent implements OnInit {
     event.stopPropagation();
     const d = this.getData(e);
     const payload: any = typeof d['payload'] === 'string' ? (() => { try { return JSON.parse(String(d['payload'])); } catch { return {}; } })() : (d['payload'] ?? {});
-    const data: ReceiptExportData = { fileBaseName: `recibo_${e._id}`, collaborator: this.getColaborador(e), razonSocial: String(e.receiptRazonSocial || payload['razonSocial'] || ''), ruc: String(e.receiptRuc || payload['ruc'] || ''), numeroDocumento: String(payload['numeroDocumento'] || e.receiptNumeroDocumento || ''), concepto: String(e.receiptConcepto || payload['concepto'] || ''), fecha: this.emissionDateText(e), monto: this.getTotal(e) };
+    const data: ReceiptExportData = { fileBaseName: `recibo_${e._id}`, collaborator: this.getColaborador(e), collaboratorDni: this.getColaboradorDni(e), razonSocial: String(e.receiptRazonSocial || payload['razonSocial'] || ''), ruc: String(e.receiptRuc || payload['ruc'] || ''), numeroDocumento: String(payload['numeroDocumento'] || e.receiptNumeroDocumento || ''), concepto: String(e.receiptConcepto || payload['concepto'] || ''), fecha: this.emissionDateText(e), monto: this.getTotal(e) };
     await this.exportService.exportReceiptToPdf(data);
   }
 
