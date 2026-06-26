@@ -194,6 +194,19 @@ export class RendicionesAdminComponent implements OnInit {
     return this.categoryNameById.get(String(c)) || '—';
   }
 
+  // Acordeón del detalle por categoría en el modal de aprobación (índices expandidos; colapsado por defecto)
+  expandedApproveLineIds = signal<Set<number>>(new Set());
+
+  toggleApproveLine(index: number): void {
+    const s = new Set(this.expandedApproveLineIds());
+    if (s.has(index)) { s.delete(index); } else { s.add(index); }
+    this.expandedApproveLineIds.set(s);
+  }
+
+  isApproveLineExpanded(index: number): boolean {
+    return this.expandedApproveLineIds().has(index);
+  }
+
   applyFilters(): void {
     const reportItems: UnifiedRendicionItem[] = this.allReports.map(r => {
       const uid = typeof r.userId === 'object' ? r.userId?._id : r.userId;
