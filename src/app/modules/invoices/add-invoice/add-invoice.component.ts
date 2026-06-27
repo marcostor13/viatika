@@ -1152,18 +1152,24 @@ export default class AddInvoiceComponent implements OnInit {
         const sub = this.otrosSubTipo();
         const isDJ = sub === 'DJ';
         const isBV = sub === 'BV';
+        const rucEmisorOk = !!(this.form.get('rucEmisor')?.value || '').toString().trim();
         const bvDocOk = !isBV || (
-          !!(this.form.get('rucEmisor')?.value || '').toString().trim() &&
+          rucEmisorOk &&
           !!(this.form.get('serie')?.value || '').toString().trim() &&
           !!(this.form.get('correlativo')?.value || '').toString().trim()
         );
+        // RUC Emisor obligatorio para TK, BV y RC (todos los sub-tipos con documento físico)
+        const rucOk = !this.otrosSubTipoMuestraDocumento() || rucEmisorOk;
         return (
           proyectOk &&
           this.form.get('categoryId')?.valid === true &&
           // DJ requiere checkbox; otros sub-tipos no
           (!!this.id || !isDJ || !!this.form.get('declaracionJurada')?.value) &&
           (this.form.get('totalOtros')?.value > 0) &&
-          bvDocOk
+          // El adjunto es obligatorio al crear (todos los sub-tipos)
+          (!!this.id || !!this.selectedFile) &&
+          bvDocOk &&
+          rucOk
         );
       }
       case 'recibo_caja':
@@ -1508,9 +1514,21 @@ export default class AddInvoiceComponent implements OnInit {
       return;
     }
 
-    this.isLoading.set(true);
+    // El adjunto es obligatorio para todos los sub-tipos de otros gastos
+    if (!this.selectedFile) {
+      this.notificationService.show('Debes adjuntar el comprobante', 'error');
+      return;
+    }
 
     const muestraDoc = this.otrosSubTipoMuestraDocumento();
+    // RUC Emisor obligatorio para TK, BV y RC
+    if (muestraDoc && !(this.form.get('rucEmisor')?.value || '').toString().trim()) {
+      this.notificationService.show('Debes ingresar el RUC del emisor', 'error');
+      return;
+    }
+
+    this.isLoading.set(true);
+
     const serie = muestraDoc ? (this.form.get('serie')?.value || '').toString().trim() : '';
     const correlativo = muestraDoc ? (this.form.get('correlativo')?.value || '').toString().trim() : '';
     const rucEmisor = muestraDoc ? (this.form.get('rucEmisor')?.value || '').toString().trim() : '';
