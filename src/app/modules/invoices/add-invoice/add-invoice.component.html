@@ -870,7 +870,7 @@
       <div class="flex flex-col gap-2">
         <label for="otrosRucEmisor" class="text-sm font-medium text-secondary">
           RUC Emisor
-          @if (otrosSubTipo() === 'BV') { <span class="text-error">*</span> }
+          @if (otrosSubTipoMuestraDocumento()) { <span class="text-error">*</span> }
         </label>
         <input id="otrosRucEmisor" type="text" formControlName="rucEmisor"
           (blur)="lookupRazonSocial($any($event.target).value)"
