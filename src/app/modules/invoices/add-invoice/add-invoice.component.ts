@@ -1163,6 +1163,8 @@ export default class AddInvoiceComponent implements OnInit {
           // DJ requiere checkbox; otros sub-tipos no
           (!!this.id || !isDJ || !!this.form.get('declaracionJurada')?.value) &&
           (this.form.get('totalOtros')?.value > 0) &&
+          // El adjunto es obligatorio al crear (todos los sub-tipos)
+          (!!this.id || !!this.selectedFile) &&
           bvDocOk
         );
       }
@@ -1505,6 +1507,12 @@ export default class AddInvoiceComponent implements OnInit {
     const firmante = isDJ ? (currentUser?.name || '').trim() : '';
     if (!total || total <= 0) {
       this.notificationService.show('Ingresa un monto válido', 'error');
+      return;
+    }
+
+    // El adjunto es obligatorio para todos los sub-tipos de otros gastos
+    if (!this.selectedFile) {
+      this.notificationService.show('Debes adjuntar el comprobante', 'error');
       return;
     }
 

@@ -914,14 +914,14 @@
     </div>
     @if(!id) {
     <div class="flex flex-col gap-2">
-      <label class="text-sm font-medium text-secondary">Adjunto (opcional)</label>
+      <label class="text-sm font-medium text-secondary">Adjunto <span class="text-error">*</span></label>
       <div class="bg-background border-2 border-dashed border-tertiary rounded-xl p-6 text-center cursor-pointer hover:border-primary hover:bg-primary/5 transition-all duration-200 group"
         (click)="fileInputOtros.click()">
         <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 mx-auto text-tertiary group-hover:text-primary transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
         </svg>
         <p class="mt-2 text-sm text-secondary font-medium">
-          {{ selectedFile ? selectedFile.name : 'Haz clic para adjuntar un comprobante (opcional)' }}
+          {{ selectedFile ? selectedFile.name : 'Haz clic para adjuntar un comprobante' }}
         </p>
         <p class="mt-1 text-xs text-tertiary">PDF, JPG, PNG</p>
         <input type="file" accept="*/*" (change)="onFileSelected($event)" class="hidden" #fileInputOtros />
