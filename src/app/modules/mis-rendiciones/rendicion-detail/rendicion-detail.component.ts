@@ -1708,8 +1708,8 @@ export class RendicionDetailComponent implements OnInit, OnDestroy {
       idDocument: this.collaboratorDniForPdf(),
       peopleNames: this.report.peopleNames,
       location: this.report.location,
-      startDate: this.report.startDate ? new Date(this.report.startDate).toLocaleDateString('es-PE') : undefined,
-      endDate: this.report.endDate ? new Date(this.report.endDate).toLocaleDateString('es-PE') : undefined,
+      startDate: (this.report.startDate ?? this.report.viaticoStartDate) ? new Date((this.report.startDate ?? this.report.viaticoStartDate) as string).toLocaleDateString('es-PE') : undefined,
+      endDate: (this.report.endDate ?? this.report.viaticoEndDate) ? new Date((this.report.endDate ?? this.report.viaticoEndDate) as string).toLocaleDateString('es-PE') : undefined,
       items: (this.report.items || []).map(i => ({
         descripcion: i.description,
         importe: i.amount,
@@ -1876,6 +1876,104 @@ export class RendicionDetailComponent implements OnInit, OnDestroy {
     };
   }
 
+  private parseDateSafe(raw: string): Date | null {
+    if (!raw) return null;
+    if (/^\d{4}-\d{2}-\d{2}/.test(raw)) {
+      const [y, m, day] = raw.slice(0, 10).split('-').map(Number);
+      return new Date(y, m - 1, day);
+    }
+    const d = new Date(raw);
+    return isNaN(d.getTime()) ? null : d;
+  }
+
+  private dateToYmd(d: Date): string {
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${d.getFullYear()}-${m}-${day}`;
+  }
+
+  private buildConsolidatedMobilityPageData(
+    mobilityExpenses: Record<string, unknown>[],
+  ): MobilitySheetExportData | null {
+    if (!mobilityExpenses.length) return null;
+
+    const totalAmount = Math.round(
+      mobilityExpenses.reduce(
+        (sum, exp) => sum + this.mobilityRows(exp).reduce((s, r) => s + this.mobilityRowTotal(r), 0),
+        0,
+      ) * 100,
+    ) / 100;
+
+    if (totalAmount <= 0) return null;
+
+    const DAILY_RATE = 40;
+    const rows: MobilitySheetExportData['rows'] = [];
+
+    // Las rendiciones de anticipo guardan las fechas en startDate/endDate, pero las
+    // de viatico unificado las guardan en viaticoStartDate/viaticoEndDate. Sin este
+    // fallback el viatico cae al else y no separa el total en tramos de S/40 por dia.
+    const startDate = this.parseDateSafe(
+      (this.report?.startDate ?? this.report?.viaticoStartDate) as string ?? '',
+    );
+    const endDate = this.parseDateSafe(
+      (this.report?.endDate ?? this.report?.viaticoEndDate) as string ?? '',
+    );
+
+    if (startDate && endDate) {
+      const day2 = new Date(startDate);
+      day2.setDate(day2.getDate() + 1);
+
+      const msPerDay = 24 * 60 * 60 * 1000;
+      const daysFromDay2 = Math.max(0, Math.round((endDate.getTime() - day2.getTime()) / msPerDay) + 1);
+      const rowsNeeded = Math.ceil(totalAmount / DAILY_RATE);
+
+      const cur = rowsNeeded <= daysFromDay2 ? new Date(day2) : new Date(startDate);
+
+      let remaining = totalAmount;
+      while (remaining > 0.005) {
+        const dayAmount = Math.min(DAILY_RATE, Math.round(remaining * 100) / 100);
+        rows.push({
+          fecha: this.dateToYmd(cur),
+          clienteProveedor: '',
+          origen: '',
+          destino: '',
+          gestion: '',
+          total: dayAmount,
+          colaborador: this.getCollaboratorDisplayName(),
+        });
+        remaining = Math.round((remaining - dayAmount) * 100) / 100;
+        cur.setDate(cur.getDate() + 1);
+      }
+    } else {
+      rows.push({
+        fecha: '',
+        clienteProveedor: '',
+        origen: '',
+        destino: '',
+        gestion: '',
+        total: totalAmount,
+        colaborador: this.getCollaboratorDisplayName(),
+      });
+    }
+
+    const periodo = startDate
+      ? startDate.toLocaleString('es-PE', { month: 'long' }).toUpperCase()
+      : '';
+
+    return {
+      fileBaseName: 'planilla_movilidad_consolidada',
+      collaborator: this.getCollaboratorDisplayName(),
+      collaboratorDni: this.collaboratorDniForPdf(),
+      location: this.report?.location,
+      generatedAt: new Date().toLocaleString('es-PE', { dateStyle: 'short', timeStyle: 'short' }),
+      periodo,
+      proyecto: this.getProjectName(),
+      rows,
+      total: totalAmount,
+      signature: this.getCollaboratorSignature(),
+    };
+  }
+
   async exportRendicionFullPdf(): Promise<void> {
     const summaryData = this.buildExportData();
     if (!summaryData) {
@@ -1886,12 +1984,19 @@ export class RendicionDetailComponent implements OnInit, OnDestroy {
     const pages: ComprobantePage[] = [];
     let facturaIndex = 0;
 
+    const mobilityExpenses = expenses.filter(e => this.getExpenseTypeKey(e) === 'planilla_movilidad');
+    let mobilityPageAdded = false;
+
     for (const exp of expenses) {
       const typeKey = this.getExpenseTypeKey(exp);
       const expType = exp['expenseType'] as string;
 
       if (typeKey === 'planilla_movilidad') {
-        pages.push({ type: 'mobility', data: this.buildMobilityPageData(exp) });
+        if (!mobilityPageAdded) {
+          const consolidated = this.buildConsolidatedMobilityPageData(mobilityExpenses);
+          if (consolidated) pages.push({ type: 'mobility', data: consolidated });
+          mobilityPageAdded = true;
+        }
       } else if (typeKey === 'comprobante_caja') {
         pages.push({ type: 'cash_voucher', data: this.buildCashVoucherPageData(exp) });
       } else if (expType === 'recibo_caja') {
