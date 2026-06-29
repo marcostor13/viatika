@@ -1708,8 +1708,8 @@ export class RendicionDetailComponent implements OnInit, OnDestroy {
       idDocument: this.collaboratorDniForPdf(),
       peopleNames: this.report.peopleNames,
       location: this.report.location,
-      startDate: this.report.startDate ? new Date(this.report.startDate).toLocaleDateString('es-PE') : undefined,
-      endDate: this.report.endDate ? new Date(this.report.endDate).toLocaleDateString('es-PE') : undefined,
+      startDate: (this.report.startDate ?? this.report.viaticoStartDate) ? new Date((this.report.startDate ?? this.report.viaticoStartDate) as string).toLocaleDateString('es-PE') : undefined,
+      endDate: (this.report.endDate ?? this.report.viaticoEndDate) ? new Date((this.report.endDate ?? this.report.viaticoEndDate) as string).toLocaleDateString('es-PE') : undefined,
       items: (this.report.items || []).map(i => ({
         descripcion: i.description,
         importe: i.amount,
@@ -1909,8 +1909,15 @@ export class RendicionDetailComponent implements OnInit, OnDestroy {
     const DAILY_RATE = 40;
     const rows: MobilitySheetExportData['rows'] = [];
 
-    const startDate = this.parseDateSafe(this.report?.startDate as string ?? '');
-    const endDate = this.parseDateSafe(this.report?.endDate as string ?? '');
+    // Las rendiciones de anticipo guardan las fechas en startDate/endDate, pero las
+    // de viatico unificado las guardan en viaticoStartDate/viaticoEndDate. Sin este
+    // fallback el viatico cae al else y no separa el total en tramos de S/40 por dia.
+    const startDate = this.parseDateSafe(
+      (this.report?.startDate ?? this.report?.viaticoStartDate) as string ?? '',
+    );
+    const endDate = this.parseDateSafe(
+      (this.report?.endDate ?? this.report?.viaticoEndDate) as string ?? '',
+    );
 
     if (startDate && endDate) {
       const day2 = new Date(startDate);
