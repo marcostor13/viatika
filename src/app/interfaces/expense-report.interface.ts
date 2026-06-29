@@ -33,6 +33,10 @@ export interface ICreateViaticoPayload {
   additionalAmount?: number;
   /** Saldos de la bolsa seleccionados (mismo centro de costo) que financian esta solicitud. */
   saldoIds?: string[];
+  /** Cuenta bancaria alternativa para el depósito (opcional). */
+  bankName?: string;
+  accountNumber?: string;
+  cci?: string;
 }
 
 export interface IResubmitViaticoPayload {
@@ -47,6 +51,10 @@ export interface IResubmitViaticoPayload {
   observations?: string;
   /** Saldos de la bolsa re-seleccionados al corregir (si el viático no tiene ya uno). */
   saldoIds?: string[];
+  /** Cuenta bancaria alternativa para el depósito (opcional). */
+  bankName?: string;
+  accountNumber?: string;
+  cci?: string;
 }
 
 export const VIATICO_REPORT_STATUS_LABELS: Partial<Record<IExpenseReportStatus, string>> = {
@@ -155,6 +163,9 @@ export interface IExpenseReport {
   viaticoRejectionReason?: string;
   viaticoObservations?: string;
   viaticoSolicitudVersion?: number;
+  viaticoBankName?: string;
+  viaticoAccountNumber?: string;
+  viaticoCci?: string;
   /** Motivo indicado por el administrador al rechazar */
   rejectionReason?: string;
   /** Quién rechazó: coordinador (revisión inicial) o contabilidad (aprobación final). */

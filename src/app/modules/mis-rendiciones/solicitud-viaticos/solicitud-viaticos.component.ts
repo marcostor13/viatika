@@ -69,6 +69,7 @@ export class SolicitudViaticosComponent implements OnInit {
   private saldoService = inject(SaldoService);
 
   submitting = signal(false);
+  useCustomBank = signal(false);
 
   // Saldos de viáticos del mismo centro de costo (bolsa).
   saldos = signal<ISaldo[]>([]);
@@ -173,6 +174,9 @@ export class SolicitudViaticosComponent implements OnInit {
     endDate: ['', Validators.required],
     projectId: ['', Validators.required],
     observations: [''],
+    bankName: [''],
+    accountNumber: [''],
+    cci: [''],
     lines: this.fb.array([this.createLineGroup()]),
   });
 
@@ -387,6 +391,10 @@ export class SolicitudViaticosComponent implements OnInit {
       endDate: this.ymdFromDate(adv.endDate),
       observations: adv.observations ?? '',
     });
+    if (adv.requestAccountNumber) {
+      this.useCustomBank.set(true);
+      this.form.patchValue({ bankName: adv.requestBankName ?? '', accountNumber: adv.requestAccountNumber, cci: adv.requestCci ?? '' });
+    }
     // Sin emitir: evita que el listener de `projectId` borre las categorías
     // de las líneas que acabamos de restaurar.
     this.form.get('projectId')?.setValue(pid, { emitEvent: false });
@@ -425,6 +433,10 @@ export class SolicitudViaticosComponent implements OnInit {
       endDate: this.ymdFromDate(report.viaticoEndDate),
       observations: report.viaticoObservations ?? '',
     });
+    if (report.viaticoAccountNumber) {
+      this.useCustomBank.set(true);
+      this.form.patchValue({ bankName: report.viaticoBankName ?? '', accountNumber: report.viaticoAccountNumber, cci: report.viaticoCci ?? '' });
+    }
     this.form.get('projectId')?.setValue(pid, { emitEvent: false });
     this.selectedProjectId.set(pid);
 
@@ -536,6 +548,13 @@ export class SolicitudViaticosComponent implements OnInit {
     this.selectedLng = ev.lng;
   }
 
+  toggleCustomBank(): void {
+    this.useCustomBank.update(v => !v);
+    if (!this.useCustomBank()) {
+      this.form.patchValue({ bankName: '', accountNumber: '', cci: '' });
+    }
+  }
+
   goBack(): void {
     const fromReport = this.pendingBalanceFromReportId();
     if (fromReport) {
@@ -627,6 +646,12 @@ export class SolicitudViaticosComponent implements OnInit {
     const pendingAmt = this.pendingBalanceAmount();
     const hasPending = !!(fromReportId && pendingAmt > 0);
 
+    const customBank = this.useCustomBank() ? {
+      bankName: (this.form.value.bankName || '').trim() || undefined,
+      accountNumber: (this.form.value.accountNumber || '').trim() || undefined,
+      cci: (this.form.value.cci || '').trim() || undefined,
+    } : {};
+
     this.submitting.set(true);
 
     // Saldos de la bolsa: prefinancian el viático. El saldo nunca cubre más que el
@@ -651,6 +676,7 @@ export class SolicitudViaticosComponent implements OnInit {
         lines: linesPayload,
         observations: (this.form.value.observations || '').trim() || undefined,
         ...(this.canUseSaldoBag && saldoIds.length > 0 && { saldoIds }),
+        ...customBank,
       };
       this.expenseReportsService.resubmitViatico(viatico._id, resubmitPayload).subscribe({
         next: () => this.onSubmitSuccess(true),
@@ -679,6 +705,7 @@ export class SolicitudViaticosComponent implements OnInit {
           pendingBalanceAmount: pendingAmt,
           additionalAmount: linesTotal,
         }),
+        ...customBank,
       };
       this.advanceService.resubmit(adv._id, legacyPayload).subscribe({
         next: () => this.onSubmitSuccess(true),
@@ -706,6 +733,7 @@ export class SolicitudViaticosComponent implements OnInit {
         additionalAmount: linesTotal,
       }),
       ...(this.canUseSaldoBag && saldoIds.length > 0 && { saldoIds }),
+      ...customBank,
     };
     this.expenseReportsService.createViatico(viaticoPayload).subscribe({
       next: () => this.onSubmitSuccess(false),

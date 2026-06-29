@@ -283,16 +283,25 @@ export class TesoreriaComponent implements OnInit {
       transferDate: new Date().toISOString().split('T')[0],
       reference: '',
     });
-    const u = typeof report.userId === 'object' ? report.userId : null;
-    const bankAccount = u && typeof u === 'object' && 'bankAccount' in u
-      ? (u as { bankAccount?: { bankName?: string; accountNumber?: string; cci?: string } }).bankAccount
-      : undefined;
-    if (bankAccount) {
+    // Prefer bank data from the solicitud itself; fall back to user profile.
+    if (report.viaticoAccountNumber) {
       this.paymentForm.patchValue({
-        bankName: bankAccount.bankName,
-        accountNumber: bankAccount.accountNumber,
-        cci: bankAccount.cci,
+        bankName: report.viaticoBankName ?? '',
+        accountNumber: report.viaticoAccountNumber,
+        cci: report.viaticoCci ?? '',
       });
+    } else {
+      const u = typeof report.userId === 'object' ? report.userId : null;
+      const bankAccount = u && typeof u === 'object' && 'bankAccount' in u
+        ? (u as { bankAccount?: { bankName?: string; accountNumber?: string; cci?: string } }).bankAccount
+        : undefined;
+      if (bankAccount) {
+        this.paymentForm.patchValue({
+          bankName: bankAccount.bankName,
+          accountNumber: bankAccount.accountNumber,
+          cci: bankAccount.cci,
+        });
+      }
     }
     this.viaticoPaymentReceiptUrl = null;
     this.viaticoPaymentReceiptName = null;
