@@ -150,6 +150,9 @@ export interface IAdvance {
   pendingBalanceFromReportId?: string;
   pendingBalanceAmount?: number;
   additionalAmount?: number;
+  requestBankName?: string;
+  requestAccountNumber?: string;
+  requestCci?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -196,6 +199,9 @@ export interface ICreateAdvancePayload {
   pendingBalanceFromReportId?: string;
   pendingBalanceAmount?: number;
   additionalAmount?: number;
+  bankName?: string;
+  accountNumber?: string;
+  cci?: string;
 }
 
 export interface IApproveAdvancePayload {
