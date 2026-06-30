@@ -466,6 +466,7 @@ export class RendicionDetailComponent implements OnInit, OnDestroy {
 
   // --- Descarga de asientos contables (solo Contabilidad) ---
   downloadingAsientos = false;
+  clearingAsientosCache = signal(false);
 
   // Modal de progreso paso a paso de la generación de asientos.
   asientosModalOpen = signal(false);
@@ -604,6 +605,16 @@ export class RendicionDetailComponent implements OnInit, OnDestroy {
         error: (err) => {
           this.clearAsientosTimer();
           this.downloadingAsientos = false;
+          console.group('[asientos] ERROR detalle');
+          console.log('status:', err?.status);
+          console.log('statusText:', err?.statusText);
+          console.log('message:', err?.message);
+          console.log('error.message:', err?.error?.message);
+          console.log('error (raw):', err?.error);
+          console.log('¿status 0?', err?.status === 0, '→ probable timeout nginx o CORS');
+          console.log('¿status 408?', err?.status === 408, '→ timeout NestJS (>295 s)');
+          console.log('¿status 403?', err?.status === 403, '→ rol no autorizado en backend');
+          console.groupEnd();
           this.asientosError.set(
             err?.error?.message ||
               err?.message ||
@@ -611,6 +622,21 @@ export class RendicionDetailComponent implements OnInit, OnDestroy {
           );
         },
       });
+  }
+
+  clearAsientosCache(): void {
+    if (!this.report?._id || this.clearingAsientosCache()) return;
+    this.clearingAsientosCache.set(true);
+    this.accountingEntriesService.clearCache(this.report._id).subscribe({
+      next: (res) => {
+        this.clearingAsientosCache.set(false);
+        this.notificationService.show(`Cache liberado (${res.deleted} entrada(s) eliminada(s)).`, 'success');
+      },
+      error: () => {
+        this.clearingAsientosCache.set(false);
+        this.notificationService.show('No se pudo limpiar el cache.', 'error');
+      },
+    });
   }
 
   get canApproveExpenses(): boolean {
