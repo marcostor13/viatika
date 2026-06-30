@@ -1,6 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
+import { tap } from 'rxjs/operators';
 import { environment } from '../../environments/environment';
 
 export type AsientoTipo =
@@ -36,7 +37,19 @@ export class AccountingEntriesService {
   ): Observable<{ files: IGeneratedFile[] }> {
     let params = new HttpParams();
     if (tipos?.length) params = params.set('tipos', tipos.join(','));
-    return this.http.get<{ files: IGeneratedFile[] }>(`${this.url}/${reportId}`, { params });
+    const fullUrl = `${this.url}/${reportId}?tipos=${tipos?.join(',') ?? ''}`;
+    const t0 = Date.now();
+    console.log('[asientos] REQUEST →', fullUrl);
+    return this.http.get<{ files: IGeneratedFile[] }>(`${this.url}/${reportId}`, { params }).pipe(
+      tap({
+        next: (res) => console.log(`[asientos] RESPONSE OK — ${((Date.now() - t0) / 1000).toFixed(1)}s — ${res?.files?.length ?? 0} archivo(s)`),
+        error: (err) => console.error(`[asientos] RESPONSE ERROR — ${((Date.now() - t0) / 1000).toFixed(1)}s — status=${err?.status}`, err),
+      })
+    );
+  }
+
+  clearCache(reportId: string): Observable<{ deleted: number }> {
+    return this.http.delete<{ deleted: number }>(`${this.url}/cache/${reportId}`);
   }
 
   downloadBase64(file: IGeneratedFile): void {
