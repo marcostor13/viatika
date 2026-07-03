@@ -14,12 +14,13 @@ import {
 import { ExpenseReportsService } from '../../services/expense-reports.service';
 import { IExpenseReport } from '../../interfaces/expense-report.interface';
 import { RouterModule, Router, ActivatedRoute } from '@angular/router';
+import { ViaticoSolicitudDetailComponent } from '../viaticos/viatico-solicitud-detail/viatico-solicitud-detail.component';
 type Tab = 'pendientes' | 'aprobados' | 'devoluciones' | 'rendiciones-directas';
 
 @Component({
   selector: 'app-tesoreria',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, RouterModule],
+  imports: [CommonModule, ReactiveFormsModule, RouterModule, ViaticoSolicitudDetailComponent],
   templateUrl: './tesoreria.component.html',
 })
 export class TesoreriaComponent implements OnInit {
@@ -50,6 +51,8 @@ export class TesoreriaComponent implements OnInit {
   selectedReportReimbursement: IExpenseReport | null = null;
   selectedViaticoReport: IExpenseReport | null = null;
   showViaticoPaymentModal = false;
+  /** Reporte mostrado en el popup de detalle de solicitud de viático. */
+  viaticoDetailReport = signal<IExpenseReport | null>(null);
   viaticoPaymentReceiptUrl: string | null = null;
   viaticoPaymentReceiptName: string | null = null;
   viaticoPaymentReceiptMimeType: string | null = null;
@@ -256,6 +259,33 @@ export class TesoreriaComponent implements OnInit {
 
   viaticoRemaining(report: IExpenseReport): number {
     return Math.max(Number(report.viaticoAmount ?? 0) - Number(report.viaticoPaidAmount ?? 0), 0);
+  }
+
+  /** Nombre del centro de costo (projectId poblado) para el popup de detalle. */
+  viaticoProjectName(report: IExpenseReport): string {
+    const p = report.projectId as any;
+    if (p && typeof p === 'object') {
+      return p.code ? `${p.code} — ${p.name ?? ''}`.trim() : (p.name ?? '—');
+    }
+    return '—';
+  }
+
+  /**
+   * Fase de solicitud de un viático: aún no se paga/abre para registrar gastos.
+   * En esa fase se muestra el popup; si el colaborador ya está registrando gastos
+   * (open/partially_paid y posteriores) se navega directo a la rendición.
+   */
+  isViaticoSolicitud(status: string): boolean {
+    return ['pending_l1', 'pending_l2', 'viatico_approved'].includes(status);
+  }
+
+  /** "Detalle" de un viático: popup si sigue en solicitud, si no navega a la rendición. */
+  openViaticoDetail(report: IExpenseReport): void {
+    if (this.isViaticoSolicitud(report.status)) {
+      this.viaticoDetailReport.set(report);
+    } else {
+      this.router.navigate(['/mis-rendiciones', report._id, 'detalle']);
+    }
   }
 
   /**

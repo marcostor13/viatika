@@ -548,3 +548,10 @@
   </div>
 </div>
 }
+
+<!-- Popup: detalle de solicitud de viático -->
+<app-viatico-solicitud-detail
+  [report]="viaticoDetailReport"
+  [userName]="viaticoDetailItem()?.userName ?? ''"
+  [projectName]="viaticoDetailItem()?.projectName ?? ''"
+  (closed)="viaticoDetailItem.set(null)" />
