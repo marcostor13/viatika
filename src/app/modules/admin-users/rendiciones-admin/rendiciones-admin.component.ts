@@ -14,6 +14,7 @@ import { IExpenseReport } from '../../../interfaces/expense-report.interface';
 import { IAdvance, ADVANCE_STATUS_LABELS, ADVANCE_STATUS_COLORS } from '../../../interfaces/advance.interface';
 import { IUserResponse } from '../../../interfaces/user.interface';
 import { IProject } from '../../invoices/interfaces/project.interface';
+import { ViaticoSolicitudDetailComponent } from '../../viaticos/viatico-solicitud-detail/viatico-solicitud-detail.component';
 
 const REPORT_STATUS_LABELS: Record<string, string> = {
   // Rendición normal
@@ -76,7 +77,7 @@ export type UnifiedRendicionItem = {
 @Component({
   selector: 'app-rendiciones-admin',
   standalone: true,
-  imports: [CommonModule, FormsModule, ReactiveFormsModule, RouterModule],
+  imports: [CommonModule, FormsModule, ReactiveFormsModule, RouterModule, ViaticoSolicitudDetailComponent],
   templateUrl: './rendiciones-admin.component.html',
 })
 export class RendicionesAdminComponent implements OnInit {
@@ -301,7 +302,34 @@ export class RendicionesAdminComponent implements OnInit {
     return !!(this.filterUserId || this.filterProjectId || this.filterDateFrom || this.filterDateTo);
   }
 
+  // Detalle de solicitud de viático (popup): coordinador/contabilidad ven lo solicitado
+  // (lugar, fechas, líneas por categoría, montos) sin salir de la vista.
+  viaticoDetailItem = signal<UnifiedRendicionItem | null>(null);
+
+  get viaticoDetailReport(): IExpenseReport | null {
+    const it = this.viaticoDetailItem();
+    return it ? (it.raw as IExpenseReport) : null;
+  }
+
+  /**
+   * Fase de solicitud de un viático: aún no se paga/abre para registrar gastos.
+   * En esta fase el "Ver detalle" abre el popup con la solicitud; una vez que el
+   * colaborador ya está registrando gastos (open/partially_paid y posteriores) el
+   * botón navega directo a la rendición.
+   */
+  isViaticoSolicitud(status: string): boolean {
+    return ['pending_l1', 'pending_l2', 'viatico_approved'].includes(status);
+  }
+
   goToDetail(item: UnifiedRendicionItem): void {
+    if (
+      item.source === 'report' &&
+      (item.raw as IExpenseReport).type === 'viatico' &&
+      this.isViaticoSolicitud((item.raw as IExpenseReport).status)
+    ) {
+      this.viaticoDetailItem.set(item);
+      return;
+    }
     if (item.source === 'advance') {
       this.router.navigate(['/viaticos', item._id]);
     } else {

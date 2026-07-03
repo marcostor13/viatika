@@ -339,10 +339,10 @@
               </td>
               <td class="px-5 py-3.5 text-right">
                 <div class="flex items-center justify-end gap-2">
-                  <a [routerLink]="['/mis-rendiciones', rep._id, 'detalle']"
+                  <button type="button" (click)="openViaticoDetail(rep)"
                     class="text-xs px-3 py-1.5 border border-tertiary/30 text-secondary rounded-lg hover:bg-background transition-colors font-medium">
                     Detalle
-                  </a>
+                  </button>
                   <button type="button" (click)="openViaticoPaymentModal(rep)" [disabled]="isActing()"
                     class="text-xs px-3 py-1.5 bg-primary text-white rounded-lg hover:bg-primary/90 disabled:opacity-50 font-medium transition-colors">
                     {{ (rep.viaticoPaidAmount ?? 0) > 0 ? 'Pago parcial' : 'Registrar pago' }}
@@ -369,10 +369,10 @@
               </td>
               <td class="px-5 py-3.5 text-right">
                 <div class="flex items-center justify-end gap-2">
-                  <a [routerLink]="['/mis-rendiciones', rep._id, 'detalle']"
+                  <button type="button" (click)="openViaticoDetail(rep)"
                     class="text-xs px-3 py-1.5 border border-tertiary/30 text-secondary rounded-lg hover:bg-background transition-colors font-medium">
                     Detalle
-                  </a>
+                  </button>
                   @if (canCompleteViaticoPayment(rep)) {
                   <button type="button" (click)="openViaticoPaymentModal(rep)" [disabled]="isActing()"
                     class="text-xs px-3 py-1.5 bg-primary text-white rounded-lg hover:bg-primary/90 disabled:opacity-50 transition-colors font-medium">
@@ -464,10 +464,10 @@
             </div>
           </div>
           <div class="flex gap-2">
-            <a [routerLink]="['/mis-rendiciones', rep._id, 'detalle']"
+            <button type="button" (click)="openViaticoDetail(rep)"
               class="text-xs px-3 py-1.5 border border-tertiary/30 text-secondary rounded-lg hover:bg-background transition-colors font-medium">
               Detalle
-            </a>
+            </button>
             <button type="button" (click)="openViaticoPaymentModal(rep)" [disabled]="isActing()"
               class="flex-1 text-xs px-3 py-1.5 bg-primary text-white rounded-lg hover:bg-primary/90 disabled:opacity-50 font-medium transition-colors">
               {{ (rep.viaticoPaidAmount ?? 0) > 0 ? 'Pago parcial' : 'Registrar pago' }}
@@ -494,10 +494,10 @@
             </div>
           </div>
           <div class="flex gap-2">
-            <a [routerLink]="['/mis-rendiciones', rep._id, 'detalle']"
+            <button type="button" (click)="openViaticoDetail(rep)"
               class="text-xs px-3 py-1.5 border border-tertiary/30 text-secondary rounded-lg hover:bg-background transition-colors font-medium">
               Detalle
-            </a>
+            </button>
             @if (canCompleteViaticoPayment(rep)) {
             <button type="button" (click)="openViaticoPaymentModal(rep)" [disabled]="isActing()"
               class="flex-1 text-xs px-3 py-1.5 bg-primary text-white rounded-lg hover:bg-primary/90 disabled:opacity-50 font-medium transition-colors">
@@ -1189,4 +1189,11 @@
   </div>
 </div>
 }
+
+<!-- Popup: detalle de solicitud de viático -->
+<app-viatico-solicitud-detail
+  [report]="viaticoDetailReport()"
+  [userName]="viaticoDetailReport() ? viaticoUserName(viaticoDetailReport()!) : ''"
+  [projectName]="viaticoDetailReport() ? viaticoProjectName(viaticoDetailReport()!) : ''"
+  (closed)="viaticoDetailReport.set(null)" />
 
