@@ -1656,13 +1656,30 @@ export class RendicionDetailComponent implements OnInit, OnDestroy {
       });
     }
     // Viático: lo pagado por contabilidad (viaticoPaidAmount menos lo cubierto por el
-    // saldo de la bolsa, que ya figura aparte en financiamientoSaldos) es un ingreso.
+    // saldo de la bolsa y por el saldo heredado, que figuran aparte) es un ingreso.
     if (this.report.type === 'viatico') {
       const viaticoPaid = Number(
         (this.report as { viaticoPaidAmount?: number }).viaticoPaidAmount ?? 0
       );
-      const bolsaTotal = this.hasFinancingSaldos ? this.financingSaldosTotal : 0;
-      const deposito = Math.round((viaticoPaid - bolsaTotal) * 100) / 100;
+      // Saldo heredado de otra rendición: es un ingreso propio (no un depósito de
+      // Contabilidad). Se acota a lo realmente aplicado (viaticoPaid − bolsa).
+      const heredado = this.viaticoHeredadoAplicado;
+      if (heredado > 0.01) {
+        const origenCodigo = this.report.pendingBalanceFromCodigo;
+        const rawDate = this.report.createdAt;
+        const fechaSolicitud = rawDate ? this.formatEmissionDate(rawDate) : '—';
+        anticipos.unshift({
+          descripcion: origenCodigo
+            ? `Saldo heredado (${origenCodigo})`
+            : 'Saldo heredado (rendición anterior)',
+          monto: heredado,
+          estado: 'Traspasado',
+          fechaSolicitud,
+        });
+      }
+      // Depósito de Contabilidad = lo pagado menos lo cubierto por heredado y por la bolsa
+      // (esta última acotada a lo realmente aplicado, no al monto total del saldo consumido).
+      const deposito = Math.round((viaticoPaid - this.viaticoBolsaAplicadaTotal - heredado) * 100) / 100;
       if (deposito > 0.01) {
         const pagos = (
           this.report as {
@@ -1692,13 +1709,16 @@ export class RendicionDetailComponent implements OnInit, OnDestroy {
       gestion: this.report.gestion || undefined,
       descripcionRendicion: this.report.description || undefined,
       financiamientoSaldos: this.hasFinancingSaldos
-        ? this.financingSaldos.map(s => ({
-            tipo: this.financingSaldoTipo(s),
-            detalle: this.financingSaldoLabel(s),
-            monto: Number(s.amount) || 0,
-            fecha: s.deposit?.operationDate
-              || (s.createdAt ? new Date(s.createdAt).toLocaleDateString('es-PE') : ''),
-          }))
+        ? this.viaticoSaldosAplicados
+            .filter(({ amount }) => amount > 0.01 || !this.isViatico)
+            .map(({ saldo: s, amount }) => ({
+              tipo: this.financingSaldoTipo(s),
+              detalle: this.financingSaldoLabel(s),
+              // En viáticos, el monto realmente aplicado (el excedente ya volvió a la bolsa).
+              monto: this.isViatico ? amount : (Number(s.amount) || 0),
+              fecha: s.deposit?.operationDate
+                || (s.createdAt ? new Date(s.createdAt).toLocaleDateString('es-PE') : ''),
+            }))
         : undefined,
       colaborador: this.getCollaboratorDisplayName(),
       presupuesto: this.report.budget ?? 0,
@@ -2246,6 +2266,120 @@ export class RendicionDetailComponent implements OnInit, OnDestroy {
     return codigo
       ? `Traspasado desde ${codigo}`
       : 'Traspasado desde rendición anterior';
+  }
+
+  /** Es una rendición de viáticos (type='viatico'). */
+  get isViatico(): boolean {
+    return this.report?.type === 'viatico';
+  }
+
+  /**
+   * Presupuesto de un viático: el TOTAL solicitado (viaticoAmount), independientemente
+   * de cuánto se haya financiado ya con saldo heredado/bolsa o depositado Contabilidad.
+   * El "Saldo Disponible" (saldoLibre) sí refleja solo lo ya financiado.
+   */
+  get viaticoPresupuesto(): number {
+    return Number((this.report as any)?.viaticoAmount ?? this.report?.budget ?? 0);
+  }
+
+  /** Parte del viático ya financiada (saldo heredado/bolsa + depósitos de Contabilidad). */
+  get viaticoFinanciado(): number {
+    return Number((this.report as any)?.viaticoPaidAmount ?? 0);
+  }
+
+  /** Monto que Contabilidad aún debe depositar para completar el presupuesto del viático. */
+  get viaticoPendienteDeposito(): number {
+    const pend = Math.round((this.viaticoPresupuesto - this.viaticoFinanciado) * 100) / 100;
+    return pend > 0.01 ? pend : 0;
+  }
+
+  /** El viático fue financiado (total o parcialmente) con el saldo heredado de otra rendición. */
+  get hasViaticoInheritedBalance(): boolean {
+    return !!(this.isViatico
+      && this.report?.pendingBalanceFromReportId
+      && (this.report?.pendingBalanceAmount ?? 0) > 0);
+  }
+
+  /**
+   * Saldo heredado realmente aplicado a este viático: acotado a lo financiado
+   * (viaticoPaidAmount − saldos de la bolsa), sin el excedente que ya volvió a la bolsa
+   * cuando el heredado superaba el total. Así el desglose siempre cuadra:
+   * heredado aplicado + bolsa + pendiente de depósito = presupuesto.
+   */
+  get viaticoHeredadoAplicado(): number {
+    if (!this.hasViaticoInheritedBalance) return 0;
+    const bolsaTotal = this.hasFinancingSaldos ? this.financingSaldosTotal : 0;
+    const aplicado = Math.round((this.viaticoFinanciado - bolsaTotal) * 100) / 100;
+    return Math.min(this.pendingBalanceCreditAmount, Math.max(aplicado, 0));
+  }
+
+  /**
+   * Saldos de la bolsa con el monto REALMENTE aplicado a este viático (no el monto total
+   * del saldo consumido). Cuando el saldo supera el costo del viático, solo se usa lo
+   * necesario y el excedente vuelve a la bolsa como otro saldo; aquí lo acotamos a lo
+   * financiado (viaticoPaidAmount − saldo heredado) para no sobre-contar.
+   */
+  get viaticoSaldosAplicados(): { saldo: IReportFinancingSaldo; amount: number }[] {
+    let restante = this.isViatico
+      ? Math.max(
+          Math.round((this.viaticoFinanciado - this.viaticoHeredadoAplicado) * 100) / 100,
+          0
+        )
+      : Number.POSITIVE_INFINITY;
+    const out: { saldo: IReportFinancingSaldo; amount: number }[] = [];
+    for (const s of this.financingSaldos) {
+      const full = Number(s.amount) || 0;
+      const amount = Math.round(Math.min(full, restante) * 100) / 100;
+      out.push({ saldo: s, amount });
+      restante = Math.round((restante - amount) * 100) / 100;
+    }
+    return out;
+  }
+
+  /** Total del saldo de la bolsa realmente aplicado a este viático (capado). */
+  get viaticoBolsaAplicadaTotal(): number {
+    return Math.round(
+      this.viaticoSaldosAplicados.reduce((a, r) => a + r.amount, 0) * 100
+    ) / 100;
+  }
+
+  /**
+   * Desglose del presupuesto de un viático (composición del monto ya financiado): saldo
+   * heredado + saldos de la bolsa (capados) + depósito de Contabilidad. La suma de estas
+   * filas es viaticoPaidAmount; lo que falte hasta el total va en `viaticoPendienteDeposito`.
+   */
+  get viaticoFinancingRows(): { label: string; amount: number }[] {
+    if (!this.isViatico) return [];
+    const rows: { label: string; amount: number }[] = [];
+    if (this.viaticoHeredadoAplicado > 0.01) {
+      rows.push({
+        label: `Saldo heredado · ${this.pendingBalanceFromLabel}`,
+        amount: this.viaticoHeredadoAplicado,
+      });
+    }
+    for (const { saldo, amount } of this.viaticoSaldosAplicados) {
+      if (amount <= 0.01) continue;
+      const detalle = this.financingSaldoLabel(saldo);
+      rows.push({
+        label: `${this.financingSaldoTipo(saldo)}${detalle ? ' · ' + detalle : ''}`,
+        amount,
+      });
+    }
+    const deposito = Math.round(
+      (this.viaticoFinanciado - this.viaticoHeredadoAplicado - this.viaticoBolsaAplicadaTotal) * 100
+    ) / 100;
+    if (deposito > 0.01) {
+      rows.push({ label: 'Depósito de Contabilidad', amount: deposito });
+    }
+    return rows;
+  }
+
+  /**
+   * Presupuesto a mostrar en resúmenes/modales: el total solicitado para viáticos,
+   * lo anticipado para el resto de rendiciones.
+   */
+  get presupuestoDisplay(): number {
+    return this.isViatico ? this.viaticoPresupuesto : this.totalAnticipado;
   }
 
   /** Devuelve true cuando el saldo esperado corresponde a una devolución del colaborador. */
