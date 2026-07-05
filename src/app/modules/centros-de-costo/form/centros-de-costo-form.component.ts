@@ -113,6 +113,10 @@ export class CentrosDeCostoFormComponent implements OnInit {
       this.notification.show('El nombre es obligatorio', 'error');
       return;
     }
+    if (!this.form.categoryGroupId) {
+      this.notification.show('El perfil de categoría es obligatorio', 'error');
+      return;
+    }
     this.saving = true;
     const companyId = this.userStateService.getUser()?.companyId || '';
     const payload: Partial<IProject> = {
