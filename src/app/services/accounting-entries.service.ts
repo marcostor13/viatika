@@ -38,6 +38,10 @@ export interface IAccountingEntryStatus {
   /** El archivo listo ya no refleja el estado actual de la rendición. */
   stale?: boolean;
   completedAt?: string;
+  /** No se puede (re)generar ahora por el estado de la rendición (no cerrada). */
+  blocked?: boolean;
+  /** Motivo del bloqueo, para mostrar al usuario. */
+  blockedReason?: string;
 }
 
 @Injectable({ providedIn: 'root' })

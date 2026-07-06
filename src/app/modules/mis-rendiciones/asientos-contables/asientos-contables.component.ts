@@ -140,9 +140,19 @@ export class AsientosContablesComponent implements OnInit, OnDestroy {
     this.files.set(this.files().map((f) => byTipo.get(f.tipo) ?? f));
   }
 
+  /** Un tipo está bloqueado si el backend indica que no puede generarse en el estado actual. */
+  isBlocked(tipo: AsientoTipo): boolean {
+    return !!this.files().find((f) => f.tipo === tipo)?.blocked;
+  }
+
+  /** Hay al menos un tipo generable (no bloqueado) → tiene sentido "Generar todos". */
+  get hasGeneratableTipo(): boolean {
+    return this.files().some((f) => !f.blocked);
+  }
+
   /** Genera (o regenera, con `force`) un único tipo de asiento en 2do plano. */
   generate(tipo: AsientoTipo, force = false): void {
-    if (this.isTriggering(tipo)) return;
+    if (this.isTriggering(tipo) || this.isBlocked(tipo)) return;
     const triggering = new Set(this.triggering());
     triggering.add(tipo);
     this.triggering.set(triggering);
