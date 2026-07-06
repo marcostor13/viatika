@@ -57,6 +57,7 @@ export class UserPermissionsComponent implements OnInit {
     modules: [],
     canApproveL1: false,
     canApproveL2: false,
+    canBackdateViaticos: false,
     categoryIds: [],
   };
 
@@ -73,6 +74,7 @@ export class UserPermissionsComponent implements OnInit {
           modules: user.permissions?.modules ?? [],
           canApproveL1: user.permissions?.canApproveL1 ?? false,
           canApproveL2: user.permissions?.canApproveL2 ?? false,
+          canBackdateViaticos: user.permissions?.canBackdateViaticos ?? false,
           categoryIds: user.permissions?.categoryIds ?? [],
         };
         this.maybeApplyDefault();

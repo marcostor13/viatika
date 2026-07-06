@@ -74,6 +74,18 @@
             <p class="text-xs text-gray-500 mt-0.5">Puede aprobar viáticos de montos superiores a S/ 500 en segunda instancia, registrar pagos y liquidaciones.</p>
           </div>
         </label>
+
+        <label class="flex items-start gap-4 p-3 rounded-lg border border-gray-100 hover:bg-gray-50 cursor-pointer transition-colors">
+          <input
+            type="checkbox"
+            class="mt-0.5 h-4 w-4 rounded border-gray-300 text-primary accent-primary cursor-pointer"
+            [(ngModel)]="permissions.canBackdateViaticos"
+          />
+          <div>
+            <p class="text-sm font-medium text-gray-800">Permitir fechas anteriores en solicitud de viáticos</p>
+            <p class="text-xs text-gray-500 mt-0.5">Habilita elegir fechas de inicio/fin anteriores a la fecha de hoy en el calendario de solicitud de viáticos. Desactivado por defecto.</p>
+          </div>
+        </label>
       </div>
     </div>
 

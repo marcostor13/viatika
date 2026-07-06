@@ -182,6 +182,14 @@ export class UserStateService {
     return this.getPermissions().canApproveL2 === true;
   }
 
+  /**
+   * Permite ingresar fechas anteriores a hoy en la solicitud de viáticos.
+   * Flag explícito por usuario (sin bypass por rol): default false para todos.
+   */
+  canBackdateViaticos(): boolean {
+    return (this.getPermissions() as { canBackdateViaticos?: boolean }).canBackdateViaticos === true;
+  }
+
   canAccessTesoreria(): boolean {
     if (this.isSuperAdmin() || this.isContabilidad() || this.isAdmin()) return true;
     const perms = this.getPermissions();
