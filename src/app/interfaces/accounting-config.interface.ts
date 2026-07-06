@@ -35,6 +35,8 @@ export interface IAccountingConfig {
   subCentroCosto?: string;
   tipoCambio?: number;
   cuentaReembolso: '14' | '46';
+  /** Formato del archivo de asientos: 'styled' (.xlsx liviano) o 'template' (.xlsm idéntico). */
+  excelOutputMode: 'styled' | 'template';
   bankAccounts: IBankAccount[];
 }
 
@@ -60,5 +62,6 @@ export const DEFAULT_ACCOUNTING_CONFIG: IAccountingConfig = {
   subCentroCosto: '',
   tipoCambio: 1,
   cuentaReembolso: '14',
+  excelOutputMode: 'styled',
   bankAccounts: [],
 };
