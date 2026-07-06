@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy, inject, signal, computed, HostListener, WritableSignal } from '@angular/core';
+import { Component, OnInit, inject, signal, computed, HostListener, WritableSignal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
@@ -12,7 +12,7 @@ import { InvoicesService } from '../../invoices/services/invoices.service';
 import { UploadService } from '../../../services/upload.service';
 import {
   AccountingEntriesService,
-  IGeneratedFile,
+  IAccountingEntryStatus,
   AsientoTipo,
 } from '../../../services/accounting-entries.service';
 import { IExpenseReport, IReportFinancingSaldo } from '../../../interfaces/expense-report.interface';
@@ -36,12 +36,6 @@ import {
   resolveExpenseFechaEmision,
 } from '../../../utils/fecha-emision.util';
 
-/** Paso del proceso de generación de asientos, para el modal de progreso. */
-interface AsientoStep {
-  label: string;
-  status: 'pending' | 'active' | 'done';
-}
-
 @Component({
   selector: 'app-rendicion-detail',
   standalone: true,
@@ -55,7 +49,7 @@ interface AsientoStep {
   templateUrl: './rendicion-detail.component.html',
   styleUrls: ['./rendicion-detail.component.scss']
 })
-export class RendicionDetailComponent implements OnInit, OnDestroy {
+export class RendicionDetailComponent implements OnInit {
   private route = inject(ActivatedRoute);
   private router = inject(Router);
   private expenseReportsService = inject(ExpenseReportsService);
@@ -341,6 +335,7 @@ export class RendicionDetailComponent implements OnInit, OnDestroy {
         this.updateDocCounts(data);
         this.isLoading = false;
         this.loadExpensesPage(1);
+        if (this.canDownloadAsientos) this.fetchAsientosStatus();
         // Auto-cierre: viáticos equilibrados que quedaron en 'approved' por datos stale.
         if (
           (data as any)?.type === 'viatico' &&
@@ -464,71 +459,29 @@ export class RendicionDetailComponent implements OnInit, OnDestroy {
       || (this.userStateService.isCoordinador() && this.userStateService.hasModulePermission('rendiciones'));
   }
 
-  // --- Descarga de asientos contables (solo Contabilidad) ---
-  downloadingAsientos = false;
+  // --- Asientos contables (solo Contabilidad): indicador + navegación a página dedicada ---
+  // El detalle completo (generar/regenerar/descargar, descuadres, avisos) vive en su propia
+  // página (`/mis-rendiciones/:id/asientos-contables`): con hasta 25+ descuadres por tipo,
+  // un modal quedaba demasiado apretado para mostrar esa información con claridad.
+  asientosFiles = signal<IAccountingEntryStatus[]>([]);
 
-  // Modal de progreso paso a paso de la generación de asientos.
-  asientosModalOpen = signal(false);
-  asientosSteps = signal<AsientoStep[]>([]);
-  asientosError = signal<string | null>(null);
-  asientosDone = signal(false);
-  private asientosStepTimer: ReturnType<typeof setInterval> | null = null;
-
-  /** Pasos mostrados al usuario (reflejan el proceso real del backend). */
-  private asientosStepLabels(): string[] {
-    return [
-      'Leyendo datos de la rendición',
-      'Verificando caché de asientos',
-      'Clasificando cuentas contables con IA',
-      'Calculando tipo de cambio',
-      'Generando archivos Excel (Contanet)',
-    ];
-  }
-
-  /** Solo el rol Contabilidad puede descargar los asientos contables. */
+  /** Solo el rol Contabilidad puede generar/descargar los asientos contables. */
   get canDownloadAsientos(): boolean {
     return this.userStateService.isContabilidad();
   }
 
-  private clearAsientosTimer(): void {
-    if (this.asientosStepTimer) {
-      clearInterval(this.asientosStepTimer);
-      this.asientosStepTimer = null;
-    }
-  }
-
   /**
-   * Avanza el paso activo. No pasa del último automáticamente: ese se marca
-   * como completado solo cuando el backend responde.
+   * Color del indicador en el botón "Asientos contables", para que el estado
+   * se vea sin necesidad de entrar a la página de detalle.
    */
-  private advanceAsientoStep(): void {
-    const steps = this.asientosSteps();
-    const activeIdx = steps.findIndex((s) => s.status === 'active');
-    if (activeIdx === -1 || activeIdx >= steps.length - 1) return;
-    this.asientosSteps.set(
-      steps.map((s, i) => {
-        if (i === activeIdx) return { ...s, status: 'done' };
-        if (i === activeIdx + 1) return { ...s, status: 'active' };
-        return s;
-      })
-    );
-  }
-
-  private markAllAsientoStepsDone(): void {
-    this.asientosSteps.set(
-      this.asientosSteps().map((s) => ({ ...s, status: 'done' }))
-    );
-  }
-
-  /** Cierra el modal de asientos (solo si ya no está cargando). */
-  closeAsientosModal(): void {
-    if (this.downloadingAsientos) return;
-    this.clearAsientosTimer();
-    this.asientosModalOpen.set(false);
-  }
-
-  ngOnDestroy(): void {
-    this.clearAsientosTimer();
+  get asientosBadgeClass(): string | null {
+    const files = this.asientosFiles();
+    if (!files.length) return null;
+    if (files.some((f) => f.status === 'processing')) return 'bg-blue-500 animate-pulse';
+    if (files.some((f) => f.status === 'error')) return 'bg-red-500';
+    if (files.some((f) => f.status === 'ready' && f.stale)) return 'bg-amber-500';
+    if (files.some((f) => f.status === 'ready')) return 'bg-green-500';
+    return null;
   }
 
   /**
@@ -549,78 +502,21 @@ export class RendicionDetailComponent implements OnInit, OnDestroy {
     return tipos;
   }
 
-  downloadAsientos(): void {
-    if (!this.report?._id || this.downloadingAsientos) return;
-    this.downloadingAsientos = true;
-    this.asientosError.set(null);
-    this.asientosDone.set(false);
-    this.asientosSteps.set(
-      this.asientosStepLabels().map((label, i) => ({
-        label,
-        status: i === 0 ? 'active' : 'pending',
-      }))
-    );
-    this.asientosModalOpen.set(true);
-    this.clearAsientosTimer();
-    this.asientosStepTimer = setInterval(() => this.advanceAsientoStep(), 850);
-
+  /** Consulta el estado una sola vez, solo para pintar el indicador del botón. */
+  private fetchAsientosStatus(): void {
+    if (!this.report?._id) return;
     this.accountingEntriesService
-      .generate(this.report._id, this.applicableAsientoTipos())
+      .getStatus(this.report._id, this.applicableAsientoTipos())
       .subscribe({
-        next: (res: { files: IGeneratedFile[] }) => {
-          this.clearAsientosTimer();
-          this.downloadingAsientos = false;
-          this.markAllAsientoStepsDone();
-          const files = res?.files ?? [];
-          if (!files.length) {
-            this.asientosError.set(
-              'No hay asientos que generar para esta rendición.'
-            );
-            return;
-          }
-          this.asientosDone.set(true);
-          for (const file of files) {
-            this.accountingEntriesService.downloadBase64(file);
-          }
-          const conErrores = files.filter((f) => f.cuadreErrors?.length);
-          // Breve confirmación visual antes de cerrar el modal.
-          setTimeout(() => {
-            this.asientosModalOpen.set(false);
-            if (conErrores.length) {
-              this.notificationService.show(
-                `Asientos descargados. Atención: ${conErrores
-                  .map((f) => f.tipo)
-                  .join(', ')} con descuadre. Revisa el desglose contable.`,
-                'error'
-              );
-            } else {
-              this.notificationService.show(
-                `Asientos descargados (${files.length} archivo(s)).`,
-                'success'
-              );
-            }
-          }, 1000);
-        },
-        error: (err) => {
-          this.clearAsientosTimer();
-          this.downloadingAsientos = false;
-          console.group('[asientos] ERROR detalle');
-          console.log('status:', err?.status);
-          console.log('statusText:', err?.statusText);
-          console.log('message:', err?.message);
-          console.log('error.message:', err?.error?.message);
-          console.log('error (raw):', err?.error);
-          console.log('¿status 0?', err?.status === 0, '→ probable timeout nginx o CORS');
-          console.log('¿status 408?', err?.status === 408, '→ timeout NestJS (>295 s)');
-          console.log('¿status 403?', err?.status === 403, '→ rol no autorizado en backend');
-          console.groupEnd();
-          this.asientosError.set(
-            err?.error?.message ||
-              err?.message ||
-              'Error desconocido al generar los asientos.'
-          );
-        },
+        next: (res) => this.asientosFiles.set(res?.files ?? []),
+        error: () => {},
       });
+  }
+
+  /** Navega a la página dedicada de asientos contables. */
+  goToAsientosContables(): void {
+    if (!this.report?._id) return;
+    this.router.navigate(['/mis-rendiciones', this.report._id, 'asientos-contables']);
   }
 
   get canApproveExpenses(): boolean {

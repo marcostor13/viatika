@@ -286,6 +286,14 @@ export const routes: Routes = [
         canActivate: [AuthColaboradorGuard],
       },
       {
+        path: 'mis-rendiciones/:id/asientos-contables',
+        loadComponent: () =>
+          import('./modules/mis-rendiciones/asientos-contables/asientos-contables.component').then(
+            (m) => m.AsientosContablesComponent
+          ),
+        canActivate: [AuthColaboradorGuard],
+      },
+      {
         path: 'mi-firma',
         loadComponent: () =>
           import('./modules/firma-digital/firma-digital.component').then(
