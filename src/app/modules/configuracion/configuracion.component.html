@@ -652,6 +652,12 @@
           <p class="text-xs text-gray-500">Cuenta de reembolso</p>
           <p class="text-sm font-medium text-gray-900">{{ accountingConfig.cuentaReembolso }}</p>
         </div>
+        <div class="py-2 border-b border-gray-100">
+          <p class="text-xs text-gray-500">Formato del archivo de asientos</p>
+          <p class="text-sm font-medium text-gray-900">
+            {{ accountingConfig.excelOutputMode === 'template' ? 'Plantilla Contanet (.xlsm idéntico)' : 'Rápido con estilo (.xlsx)' }}
+          </p>
+        </div>
       </div>
       } @else {
       <p class="text-sm text-gray-500 italic">Aún no hay configuración contable. Pulsa "Editar" para crearla con los valores por defecto.</p>
@@ -688,6 +694,29 @@
               <option value="46">46 (Cuentas por pagar diversas)</option>
             </select>
           </div>
+        </div>
+      </div>
+
+      <!-- Formato del archivo de asientos -->
+      <div>
+        <h3 class="text-sm font-semibold text-gray-800 mb-3">Formato del archivo de asientos</h3>
+        <div class="space-y-2">
+          <label class="flex items-start gap-3 p-3 border rounded-lg cursor-pointer"
+                 [class]="accountingForm.excelOutputMode === 'styled' ? 'border-purple-400 bg-purple-50' : 'border-gray-200'">
+            <input type="radio" name="excelOutputMode" value="styled" [(ngModel)]="accountingForm.excelOutputMode" class="mt-1" />
+            <span>
+              <span class="block text-sm font-medium text-gray-900">Rápido con estilo (.xlsx)</span>
+              <span class="block text-xs text-gray-500">Archivo liviano con cabeceras formateadas, sin macros. Recomendado: más rápido y ligero. Contanet lee los datos igual.</span>
+            </span>
+          </label>
+          <label class="flex items-start gap-3 p-3 border rounded-lg cursor-pointer"
+                 [class]="accountingForm.excelOutputMode === 'template' ? 'border-purple-400 bg-purple-50' : 'border-gray-200'">
+            <input type="radio" name="excelOutputMode" value="template" [(ngModel)]="accountingForm.excelOutputMode" class="mt-1" />
+            <span>
+              <span class="block text-sm font-medium text-gray-900">Plantilla Contanet (.xlsm idéntico)</span>
+              <span class="block text-xs text-gray-500">Archivo idéntico a la plantilla original, con macros y estilos exactos. Úsalo si necesitas el .xlsm tal cual.</span>
+            </span>
+          </label>
         </div>
       </div>
 
