@@ -15,6 +15,8 @@ import { IAdvance, ADVANCE_STATUS_LABELS, ADVANCE_STATUS_COLORS } from '../../..
 import { IUserResponse } from '../../../interfaces/user.interface';
 import { IProject } from '../../invoices/interfaces/project.interface';
 import { ViaticoSolicitudDetailComponent } from '../../viaticos/viatico-solicitud-detail/viatico-solicitud-detail.component';
+import { WorkerSelectComponent } from '../../../design-system/worker-select/worker-select.component';
+import { ProjectSelectComponent } from '../../../design-system/project-select/project-select.component';
 
 const REPORT_STATUS_LABELS: Record<string, string> = {
   // Rendición normal
@@ -77,7 +79,7 @@ export type UnifiedRendicionItem = {
 @Component({
   selector: 'app-rendiciones-admin',
   standalone: true,
-  imports: [CommonModule, FormsModule, ReactiveFormsModule, RouterModule, ViaticoSolicitudDetailComponent],
+  imports: [CommonModule, FormsModule, ReactiveFormsModule, RouterModule, ViaticoSolicitudDetailComponent, WorkerSelectComponent, ProjectSelectComponent],
   templateUrl: './rendiciones-admin.component.html',
 })
 export class RendicionesAdminComponent implements OnInit {
@@ -118,8 +120,13 @@ export class RendicionesAdminComponent implements OnInit {
 
   filterUserId = '';
   filterProjectId = '';
+  filterStatus = '';
   filterDateFrom = '';
   filterDateTo = '';
+  sortBy: 'date_desc' | 'date_asc' | 'amount_desc' | 'amount_asc' = 'date_desc';
+
+  /** Estados presentes en los datos (para el <select> de Estado); se recalcula al aplicar filtros. */
+  statusOptions: { value: string; label: string }[] = [];
 
   // Approve modal
   showApproveModal = signal(false);
@@ -208,7 +215,8 @@ export class RendicionesAdminComponent implements OnInit {
     return this.expandedApproveLineIds().has(index);
   }
 
-  applyFilters(): void {
+  /** Construye la lista unificada (sin filtrar) a partir de reportes y anticipos huérfanos. */
+  private buildItems(): UnifiedRendicionItem[] {
     const reportItems: UnifiedRendicionItem[] = this.allReports.map(r => {
       const uid = typeof r.userId === 'object' ? r.userId?._id : r.userId;
       const pid = typeof r.projectId === 'object' ? r.projectId?._id : r.projectId;
@@ -265,7 +273,18 @@ export class RendicionesAdminComponent implements OnInit {
       };
     });
 
-    const items = [...reportItems, ...advanceItems];
+    return [...reportItems, ...advanceItems];
+  }
+
+  applyFilters(): void {
+    const items = this.buildItems();
+
+    // Estados presentes en el conjunto sin filtrar → lista estable para el <select> de Estado.
+    const statusMap = new Map<string, string>();
+    for (const i of items) if (!statusMap.has(i.status)) statusMap.set(i.status, i.statusLabel);
+    this.statusOptions = [...statusMap.entries()]
+      .map(([value, label]) => ({ value, label }))
+      .sort((a, b) => a.label.localeCompare(b.label));
 
     let result = items;
 
@@ -274,6 +293,9 @@ export class RendicionesAdminComponent implements OnInit {
     }
     if (this.filterProjectId) {
       result = result.filter(i => i.projectId === this.filterProjectId);
+    }
+    if (this.filterStatus) {
+      result = result.filter(i => i.status === this.filterStatus);
     }
     if (this.filterDateFrom) {
       const from = new Date(this.filterDateFrom).getTime();
@@ -285,21 +307,31 @@ export class RendicionesAdminComponent implements OnInit {
       result = result.filter(i => new Date(i.createdAt).getTime() <= to.getTime());
     }
 
-    this.filteredItems = result.sort(
-      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-    );
+    this.filteredItems = this.sortItems(result);
+  }
+
+  /** Ordena según `sortBy` (fecha o monto, ascendente/descendente). */
+  private sortItems(items: UnifiedRendicionItem[]): UnifiedRendicionItem[] {
+    const arr = [...items];
+    switch (this.sortBy) {
+      case 'amount_desc': return arr.sort((a, b) => b.amount - a.amount);
+      case 'amount_asc':  return arr.sort((a, b) => a.amount - b.amount);
+      case 'date_asc':    return arr.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+      default:            return arr.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    }
   }
 
   clearFilters(): void {
     this.filterUserId = '';
     this.filterProjectId = '';
+    this.filterStatus = '';
     this.filterDateFrom = '';
     this.filterDateTo = '';
     this.applyFilters();
   }
 
   get hasActiveFilters(): boolean {
-    return !!(this.filterUserId || this.filterProjectId || this.filterDateFrom || this.filterDateTo);
+    return !!(this.filterUserId || this.filterProjectId || this.filterStatus || this.filterDateFrom || this.filterDateTo);
   }
 
   // Detalle de solicitud de viático (popup): coordinador/contabilidad ven lo solicitado

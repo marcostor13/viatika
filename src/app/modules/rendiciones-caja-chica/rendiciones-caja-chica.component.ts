@@ -25,6 +25,7 @@ export class RendicionesCajaChicaComponent implements OnInit {
 
   searchFilter = signal('');
   filterStatus = signal('');
+  sortBy = signal<'date_desc' | 'date_asc' | 'total_desc' | 'total_asc'>('date_desc');
 
   // ─── Filas expandibles (detalle inline para no cortar columnas) ─────────────
   expandedRows = signal<Set<string>>(new Set<string>());
@@ -39,11 +40,18 @@ export class RendicionesCajaChicaComponent implements OnInit {
   filteredReports = computed(() => {
     const s = this.searchFilter().toLowerCase().trim();
     const status = this.filterStatus();
-    return this.reports().filter(r => {
+    const rows = this.reports().filter(r => {
       const matchSearch = !s || r.title.toLowerCase().includes(s) || (r.codigo ?? '').toLowerCase().includes(s);
       const matchStatus = !status || r.status === status;
       return matchSearch && matchStatus;
     });
+    const arr = [...rows];
+    switch (this.sortBy()) {
+      case 'total_desc': return arr.sort((a, b) => (Number(b.totalAmount) || 0) - (Number(a.totalAmount) || 0));
+      case 'total_asc':  return arr.sort((a, b) => (Number(a.totalAmount) || 0) - (Number(b.totalAmount) || 0));
+      case 'date_asc':   return arr.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+      default:           return arr.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    }
   });
 
   ngOnInit(): void {

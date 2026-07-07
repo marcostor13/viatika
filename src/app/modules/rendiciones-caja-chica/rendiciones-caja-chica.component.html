@@ -19,7 +19,7 @@
 
   <!-- Filtros -->
   <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-4 mb-5">
-    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+    <div class="grid grid-cols-1 sm:grid-cols-4 gap-3">
       <div class="sm:col-span-2">
         <label class="block text-xs font-medium text-gray-500 mb-1">Buscar</label>
         <div class="relative">
@@ -39,6 +39,16 @@
           <option value="">Todos</option>
           <option value="draft">Borrador</option>
           <option value="finalized">Finalizado</option>
+        </select>
+      </div>
+      <div>
+        <label class="block text-xs font-medium text-gray-500 mb-1">Ordenar por</label>
+        <select [ngModel]="sortBy()" (ngModelChange)="sortBy.set($event)"
+          class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 bg-white">
+          <option value="date_desc">Fecha (reciente primero)</option>
+          <option value="date_asc">Fecha (antigua primero)</option>
+          <option value="total_desc">Total (mayor a menor)</option>
+          <option value="total_asc">Total (menor a mayor)</option>
         </select>
       </div>
     </div>
