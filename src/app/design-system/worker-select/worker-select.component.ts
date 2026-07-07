@@ -47,6 +47,10 @@ export class WorkerSelectComponent implements ControlValueAccessor, OnDestroy {
   placeholder = input<string>('Seleccione un trabajador…');
   /** Marca visual de error (borde rojo). */
   invalid = input<boolean>(false);
+  /** Permite limpiar la selección (muestra una opción para no filtrar). */
+  allowEmpty = input<boolean>(false);
+  /** Etiqueta de la opción vacía cuando `allowEmpty` es true. */
+  emptyLabel = input<string>('Sin asignar');
   /** Clases extra para el botón disparador. */
   triggerClass = input<string>('');
 
@@ -131,10 +135,19 @@ export class WorkerSelectComponent implements ControlValueAccessor, OnDestroy {
     const spaceAbove = rect.top - margin;
     const dropUp = spaceBelow < 240 && spaceAbove > spaceBelow;
     const maxHeight = Math.min(360, Math.max(160, dropUp ? spaceAbove : spaceBelow));
+    // El panel es al menos tan ancho como el disparador, con un mínimo cómodo para leer
+    // etiquetas largas (nombre + correo) aunque el filtro viva en una columna angosta.
+    // Se recorta al viewport y se realinea a la derecha si se desbordaría.
+    const viewportWidth = document.documentElement.clientWidth;
+    const width = Math.min(Math.max(rect.width, 320), viewportWidth - margin * 2);
+    let left = rect.left;
+    if (left + width > viewportWidth - margin) {
+      left = Math.max(margin, viewportWidth - margin - width);
+    }
     this.panelPos.set({
       top: dropUp ? rect.top : rect.bottom,
-      left: rect.left,
-      width: rect.width,
+      left,
+      width,
       maxHeight,
       dropUp,
     });
@@ -148,6 +161,12 @@ export class WorkerSelectComponent implements ControlValueAccessor, OnDestroy {
   pick(w: WorkerOption): void {
     this.selectedId.set(w._id ?? '');
     this.onChange(this.selectedId());
+    this.close();
+  }
+
+  clear(): void {
+    this.selectedId.set('');
+    this.onChange('');
     this.close();
   }
 

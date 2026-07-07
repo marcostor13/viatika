@@ -1,6 +1,8 @@
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnInit, inject, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { WorkerSelectComponent } from '../../design-system/worker-select/worker-select.component';
+import { ProjectSelectComponent } from '../../design-system/project-select/project-select.component';
 import { Router } from '@angular/router';
 import { ExpenseReportsService } from '../../services/expense-reports.service';
 import { UserStateService } from '../../services/user-state.service';
@@ -25,7 +27,7 @@ import {
 @Component({
   selector: 'app-rendiciones-directas',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, WorkerSelectComponent, ProjectSelectComponent],
   templateUrl: './rendiciones-directas.component.html',
 })
 export class RendicionesDirectasComponent implements OnInit {
@@ -50,6 +52,42 @@ export class RendicionesDirectasComponent implements OnInit {
   // Estado — pestaña Rendiciones directas (por reporte)
   reports = signal<any[]>([]);
   loadingReports = signal(false);
+
+  // Filtro de estado y orden para la pestaña Rendiciones directas (client-side:
+  // la lista de reportes se carga completa, sin paginación, así que se puede
+  // filtrar/ordenar sobre el conjunto ya cargado sin perder resultados).
+  reportStatusFilter = signal('');
+  reportSortBy = signal<'date_desc' | 'date_asc' | 'gastado_desc' | 'gastado_asc'>('date_desc');
+
+  /**
+   * Etiquetas de estado presentes en los reportes cargados (para el <select> de Estado).
+   * Se deduplica por la etiqueta visible —no por el `status` crudo— porque varios estados
+   * distintos se muestran con la misma etiqueta (p. ej. `status: 'closed'`, o cualquier
+   * estado con `effectivelyClosed: true`, se ven todos como "Cerrada"). Agruparlos evita
+   * opciones repetidas y hace que el filtro coincida con lo que el usuario ve en la columna.
+   */
+  reportStatusOptions = computed<string[]>(() => {
+    const set = new Set<string>();
+    for (const r of this.reports()) {
+      const label = this.reportStatusLabel(r);
+      if (label && label !== '—') set.add(label);
+    }
+    return [...set].sort((a, b) => a.localeCompare(b));
+  });
+
+  /** Reportes tras aplicar filtro de estado y orden (lo que se muestra en la tabla). */
+  displayedReports = computed<any[]>(() => {
+    const status = this.reportStatusFilter();
+    let rows = this.reports();
+    if (status) rows = rows.filter(r => this.reportStatusLabel(r) === status);
+    const arr = [...rows];
+    switch (this.reportSortBy()) {
+      case 'gastado_desc': return arr.sort((a, b) => (Number(b?.totalGastado) || 0) - (Number(a?.totalGastado) || 0));
+      case 'gastado_asc':  return arr.sort((a, b) => (Number(a?.totalGastado) || 0) - (Number(b?.totalGastado) || 0));
+      case 'date_asc':     return arr.sort((a, b) => new Date(a?.createdAt).getTime() - new Date(b?.createdAt).getTime());
+      default:             return arr.sort((a, b) => new Date(b?.createdAt).getTime() - new Date(a?.createdAt).getTime());
+    }
+  });
 
   // Filtros
   filterDateFrom = '';
@@ -172,6 +210,7 @@ export class RendicionesDirectasComponent implements OnInit {
     this.filterDateFrom = ''; this.filterDateTo = ''; this.filterProjectId = '';
     this.filterCategoryId = ''; this.filterDocNumber = ''; this.filterTipo = '';
     this.filterUserId = '';
+    this.reportStatusFilter.set(''); this.reportSortBy.set('date_desc');
     this.page = 1; this.loadReports(); this.loadData();
   }
 
@@ -212,7 +251,7 @@ export class RendicionesDirectasComponent implements OnInit {
   }
 
   get reportsTotalGastado(): number {
-    return this.reports().reduce((sum, r) => sum + (Number(r?.totalGastado) || 0), 0);
+    return this.displayedReports().reduce((sum, r) => sum + (Number(r?.totalGastado) || 0), 0);
   }
 
   goToPage(p: number): void { if (p < 1 || p > this.pages()) return; this.page = p; this.loadData(); }
