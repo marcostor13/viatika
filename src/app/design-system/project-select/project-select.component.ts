@@ -132,10 +132,19 @@ export class ProjectSelectComponent implements ControlValueAccessor, OnDestroy {
     // Abre hacia arriba si abajo hay poco espacio y arriba hay más.
     const dropUp = spaceBelow < 240 && spaceAbove > spaceBelow;
     const maxHeight = Math.min(360, Math.max(160, dropUp ? spaceAbove : spaceBelow));
+    // El panel es al menos tan ancho como el disparador, con un mínimo cómodo para leer
+    // etiquetas largas (código — nombre) aunque el filtro viva en una columna angosta.
+    // Se recorta al viewport y se realinea a la derecha si se desbordaría.
+    const viewportWidth = document.documentElement.clientWidth;
+    const width = Math.min(Math.max(rect.width, 320), viewportWidth - margin * 2);
+    let left = rect.left;
+    if (left + width > viewportWidth - margin) {
+      left = Math.max(margin, viewportWidth - margin - width);
+    }
     this.panelPos.set({
       top: dropUp ? rect.top : rect.bottom,
-      left: rect.left,
-      width: rect.width,
+      left,
+      width,
       maxHeight,
       dropUp,
     });

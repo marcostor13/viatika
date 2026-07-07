@@ -193,6 +193,21 @@ export class SolicitudViaticosComponent implements OnInit {
     return `${y}-${m}-${day}`;
   }
 
+  /** Permiso por usuario: habilita fechas anteriores a hoy en el calendario. */
+  get canBackdate(): boolean {
+    return this.userState.canBackdateViaticos();
+  }
+
+  /** `min` de la fecha inicio: hoy, salvo que el usuario tenga el permiso de retroactividad. */
+  get minStartDate(): string | null {
+    return this.canBackdate ? null : this.todayStr;
+  }
+
+  /** `min` de la fecha fin: nunca antes de la fecha inicio; si no hay inicio, hoy (o libre si hay permiso). */
+  get minEndDate(): string | null {
+    return (this.form.get('startDate')?.value as string) || (this.canBackdate ? null : this.todayStr);
+  }
+
   get hasPendingBalance(): boolean {
     return !!this.pendingBalanceFromReportId() && this.pendingBalanceAmount() > 0;
   }
@@ -613,7 +628,7 @@ export class SolicitudViaticosComponent implements OnInit {
       return;
     }
 
-    if (start < today) {
+    if (!this.canBackdate && start < today) {
       this.notifications.show(
         'La fecha de inicio no puede ser anterior a hoy.',
         'error'

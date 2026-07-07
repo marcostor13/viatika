@@ -63,6 +63,8 @@ export interface IUserPermissions {
   modules: string[];
   canApproveL1: boolean;
   canApproveL2: boolean;
+  /** Permite elegir fechas anteriores a hoy en la solicitud de viáticos. Por defecto false. */
+  canBackdateViaticos?: boolean;
   /** Categorías sueltas asignadas directamente (independientes de los perfiles). */
   categoryIds?: string[];
   /** @deprecated usar categoryProfileIds. */

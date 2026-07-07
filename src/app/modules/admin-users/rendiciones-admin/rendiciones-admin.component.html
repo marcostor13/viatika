@@ -20,34 +20,47 @@
 
   <!-- Filters -->
   <div class="bg-quaternary rounded-2xl border border-tertiary/20 shadow-soft p-5 mb-6">
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
 
-      <!-- Usuario -->
+      <!-- Colaborador (buscable / tipeable) -->
       <div>
         <label class="block text-xs font-medium text-tertiary mb-1">Colaborador</label>
-        <select
+        <app-worker-select
           [(ngModel)]="filterUserId"
           (ngModelChange)="applyFilters()"
-          class="w-full px-3 py-2 text-sm border border-tertiary/30 rounded-xl bg-background text-secondary focus:outline-none focus:ring-2 focus:ring-primary/30"
-        >
-          <option value="">Todos</option>
-          @for (user of users; track user._id) {
-          <option [value]="user._id">{{ user.name }}</option>
-          }
-        </select>
+          [workers]="users"
+          [allowEmpty]="true"
+          emptyLabel="Todos"
+          placeholder="Todos"
+          triggerClass="!bg-background !border-tertiary/30 !py-2"
+        />
       </div>
 
-      <!-- Proyecto / Centro de costo -->
+      <!-- Centro de costo (buscable / tipeable) -->
       <div>
         <label class="block text-xs font-medium text-tertiary mb-1">Centro de Costo</label>
-        <select
+        <app-project-select
           [(ngModel)]="filterProjectId"
+          (ngModelChange)="applyFilters()"
+          [projects]="projects"
+          [allowEmpty]="true"
+          emptyLabel="Todos"
+          placeholder="Todos"
+          triggerClass="!bg-background !border-tertiary/30 !py-2"
+        />
+      </div>
+
+      <!-- Estado -->
+      <div>
+        <label class="block text-xs font-medium text-tertiary mb-1">Estado</label>
+        <select
+          [(ngModel)]="filterStatus"
           (ngModelChange)="applyFilters()"
           class="w-full px-3 py-2 text-sm border border-tertiary/30 rounded-xl bg-background text-secondary focus:outline-none focus:ring-2 focus:ring-primary/30"
         >
           <option value="">Todos</option>
-          @for (project of projects; track project._id) {
-          <option [value]="project._id">{{ project.name }}</option>
+          @for (s of statusOptions; track s.value) {
+          <option [value]="s.value">{{ s.label }}</option>
           }
         </select>
       </div>
@@ -72,6 +85,21 @@
           (ngModelChange)="applyFilters()"
           class="w-full px-3 py-2 text-sm border border-tertiary/30 rounded-xl bg-background text-secondary focus:outline-none focus:ring-2 focus:ring-primary/30"
         />
+      </div>
+
+      <!-- Ordenar -->
+      <div>
+        <label class="block text-xs font-medium text-tertiary mb-1">Ordenar por</label>
+        <select
+          [(ngModel)]="sortBy"
+          (ngModelChange)="applyFilters()"
+          class="w-full px-3 py-2 text-sm border border-tertiary/30 rounded-xl bg-background text-secondary focus:outline-none focus:ring-2 focus:ring-primary/30"
+        >
+          <option value="date_desc">Fecha (reciente primero)</option>
+          <option value="date_asc">Fecha (antigua primero)</option>
+          <option value="amount_desc">Monto (mayor a menor)</option>
+          <option value="amount_asc">Monto (menor a mayor)</option>
+        </select>
       </div>
 
     </div>
