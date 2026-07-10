@@ -1,0 +1,208 @@
+@if (report) {
+<div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-secondary/50 backdrop-blur-sm"
+     (click)="close()">
+  <div class="bg-quaternary rounded-2xl shadow-xl border border-tertiary/20 w-full max-w-2xl max-h-[90vh] overflow-y-auto"
+       (click)="$event.stopPropagation()">
+
+    <!-- Header -->
+    <div class="flex items-start justify-between gap-3 p-6 pb-4 border-b border-tertiary/10 sticky top-0 bg-quaternary z-10">
+      <div class="flex items-center gap-3 min-w-0">
+        <div class="w-11 h-11 rounded-xl bg-primary/15 text-primary flex items-center justify-center shrink-0">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M9 6.75V15m6-6v8.25m.503 3.498 4.875-2.437c.381-.19.622-.58.622-1.006V4.82c0-.836-.88-1.38-1.628-1.006l-3.869 1.934c-.317.159-.69.159-1.006 0L9.503 3.252a1.125 1.125 0 0 0-1.006 0L3.622 5.689C3.24 5.879 3 6.27 3 6.695V19.18c0 .836.88 1.38 1.628 1.006l3.869-1.934c.317-.159.69-.159 1.006 0l4.994 2.497c.317.158.69.158 1.006 0Z"/>
+          </svg>
+        </div>
+        <div class="min-w-0">
+          <h2 class="text-base font-bold text-secondary truncate">Solicitud de viáticos</h2>
+          <p class="text-xs text-tertiary mt-0.5 truncate">{{ report.viaticoPlace || report.title || '—' }}</p>
+        </div>
+      </div>
+      <div class="flex items-center gap-2 shrink-0">
+        <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold" [class]="statusColor">
+          {{ statusLabel }}
+        </span>
+        <button (click)="close()" class="p-1.5 rounded-lg text-tertiary hover:text-secondary hover:bg-background transition-colors" title="Cerrar">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <div class="p-6 pt-4 space-y-5">
+
+      <!-- Datos generales -->
+      <div class="grid grid-cols-2 sm:grid-cols-3 gap-x-6 gap-y-3">
+        @if (userName) {
+        <div>
+          <span class="block text-tertiary uppercase tracking-wide text-[10px] font-semibold">Colaborador</span>
+          <span class="text-sm text-secondary break-words">{{ userName }}</span>
+        </div>
+        }
+        @if (projectName) {
+        <div>
+          <span class="block text-tertiary uppercase tracking-wide text-[10px] font-semibold">Centro de costo</span>
+          <span class="text-sm text-secondary break-words">{{ projectName }}</span>
+        </div>
+        }
+        <div>
+          <span class="block text-tertiary uppercase tracking-wide text-[10px] font-semibold">Lugar</span>
+          <span class="text-sm text-secondary break-words">{{ report.viaticoPlace || '—' }}</span>
+        </div>
+        <div>
+          <span class="block text-tertiary uppercase tracking-wide text-[10px] font-semibold">Desde</span>
+          <span class="text-sm text-secondary">{{ report.viaticoStartDate ? (report.viaticoStartDate | date:'dd/MM/yyyy') : '—' }}</span>
+        </div>
+        <div>
+          <span class="block text-tertiary uppercase tracking-wide text-[10px] font-semibold">Hasta</span>
+          <span class="text-sm text-secondary">{{ report.viaticoEndDate ? (report.viaticoEndDate | date:'dd/MM/yyyy') : '—' }}</span>
+        </div>
+        <div>
+          <span class="block text-tertiary uppercase tracking-wide text-[10px] font-semibold">Solicitado</span>
+          <span class="text-sm text-secondary">{{ report.createdAt ? (report.createdAt | date:'dd/MM/yyyy') : '—' }}</span>
+        </div>
+      </div>
+
+      @if (report.viaticoObservations) {
+      <div>
+        <span class="block text-tertiary uppercase tracking-wide text-[10px] font-semibold mb-1">Observaciones</span>
+        <p class="text-sm text-secondary whitespace-pre-line break-words">{{ report.viaticoObservations }}</p>
+      </div>
+      }
+
+      <!-- Detalle por categoría -->
+      @if (lines.length > 0) {
+      <div>
+        <p class="text-xs font-semibold text-tertiary uppercase tracking-wider mb-2">Detalle por categoría</p>
+
+        <!-- Móvil: acordeón -->
+        <div class="md:hidden rounded-xl border border-tertiary/15 divide-y divide-tertiary/10 overflow-hidden">
+          @for (ln of lines; track $index) {
+          <div>
+            <button type="button" (click)="toggleLine($index)"
+              class="w-full flex items-center justify-between gap-2 px-3 py-2.5 text-left hover:bg-background transition-colors">
+              <div class="min-w-0">
+                <span class="block text-xs font-medium text-secondary truncate">{{ categoryName(ln) }}</span>
+                @if (ln.detalle) { <span class="block text-xs text-tertiary truncate">{{ ln.detalle }}</span> }
+              </div>
+              <div class="flex items-center gap-2 shrink-0">
+                <span class="text-sm font-bold text-secondary tabular-nums">S/ {{ ln.lineTotal | number:'1.2-2' }}</span>
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"
+                  class="w-3.5 h-3.5 text-tertiary transition-transform duration-200"
+                  [class.-rotate-180]="isLineExpanded($index)">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+                </svg>
+              </div>
+            </button>
+            @if (isLineExpanded($index)) {
+            <div class="px-3 pt-2 pb-2.5 flex flex-wrap gap-x-5 gap-y-1 text-xs text-tertiary">
+              <span>Importe <span class="font-medium text-secondary tabular-nums">S/ {{ ln.importe | number:'1.2-2' }}</span></span>
+              <span>Pers. <span class="font-medium text-secondary tabular-nums">{{ ln.peopleCount }}</span></span>
+              <span>Días <span class="font-medium text-secondary tabular-nums">{{ ln.days }}</span></span>
+            </div>
+            }
+          </div>
+          }
+        </div>
+
+        <!-- Desktop: tabla -->
+        <div class="hidden md:block rounded-xl border border-tertiary/15 overflow-hidden">
+          <table class="min-w-full text-xs">
+            <thead class="bg-background">
+              <tr>
+                <th class="px-3 py-2 text-left font-semibold text-tertiary">Categoría</th>
+                <th class="px-3 py-2 text-right font-semibold text-tertiary">Importe</th>
+                <th class="px-3 py-2 text-right font-semibold text-tertiary">Pers.</th>
+                <th class="px-3 py-2 text-right font-semibold text-tertiary">Días</th>
+                <th class="px-3 py-2 text-right font-semibold text-tertiary">Total</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-tertiary/10">
+              @for (ln of lines; track $index) {
+              <tr>
+                <td class="px-3 py-2 text-secondary">
+                  {{ categoryName(ln) }}
+                  @if (ln.detalle) { <span class="block text-tertiary">{{ ln.detalle }}</span> }
+                </td>
+                <td class="px-3 py-2 text-right text-secondary tabular-nums">S/ {{ ln.importe | number:'1.2-2' }}</td>
+                <td class="px-3 py-2 text-right text-secondary tabular-nums">{{ ln.peopleCount }}</td>
+                <td class="px-3 py-2 text-right text-secondary tabular-nums">{{ ln.days }}</td>
+                <td class="px-3 py-2 text-right font-semibold text-secondary tabular-nums">S/ {{ ln.lineTotal | number:'1.2-2' }}</td>
+              </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </div>
+      }
+
+      <!-- Totales / financiamiento -->
+      <div class="bg-background rounded-xl border border-tertiary/15 p-4 space-y-2.5">
+        <div class="flex justify-between items-center">
+          <span class="text-sm text-tertiary">Monto solicitado</span>
+          <span class="text-lg font-bold text-secondary tabular-nums">S/ {{ viaticoAmount | number:'1.2-2' }}</span>
+        </div>
+        @if (viaticoPaidAmount > 0.01) {
+        <div class="flex justify-between items-center text-sm border-t border-tertiary/10 pt-2.5">
+          <span class="text-tertiary">Financiado / depositado</span>
+          <span class="font-semibold text-secondary tabular-nums">S/ {{ viaticoPaidAmount | number:'1.2-2' }}</span>
+        </div>
+        }
+        @if (pendienteDeposito > 0.01) {
+        <div class="flex justify-between items-center text-sm">
+          <span class="text-amber-600">Pendiente de depósito de Contabilidad</span>
+          <span class="font-semibold text-amber-600 tabular-nums">S/ {{ pendienteDeposito | number:'1.2-2' }}</span>
+        </div>
+        }
+      </div>
+
+      <!-- Datos bancarios -->
+      @if (hasBankData) {
+      <div class="grid grid-cols-2 sm:grid-cols-3 gap-x-6 gap-y-3">
+        @if (report.viaticoBankName) {
+        <div>
+          <span class="block text-tertiary uppercase tracking-wide text-[10px] font-semibold">Banco</span>
+          <span class="text-sm text-secondary break-words">{{ report.viaticoBankName }}</span>
+        </div>
+        }
+        @if (report.viaticoAccountNumber) {
+        <div>
+          <span class="block text-tertiary uppercase tracking-wide text-[10px] font-semibold">Cuenta</span>
+          <span class="text-sm text-secondary break-words">{{ report.viaticoAccountNumber }}</span>
+        </div>
+        }
+        @if (report.viaticoCci) {
+        <div>
+          <span class="block text-tertiary uppercase tracking-wide text-[10px] font-semibold">CCI</span>
+          <span class="text-sm text-secondary break-words">{{ report.viaticoCci }}</span>
+        </div>
+        }
+      </div>
+      }
+
+      <!-- Historial de aprobación -->
+      @if (approvalHistory.length > 0) {
+      <div>
+        <p class="text-xs font-semibold text-tertiary uppercase tracking-wider mb-2">Historial</p>
+        <ul class="space-y-1.5">
+          @for (h of approvalHistory; track $index) {
+          <li class="flex items-center justify-between gap-2 text-xs">
+            <span class="text-secondary">{{ approvalActionLabel(h.action) }} <span class="text-tertiary">· Nivel {{ h.level }}</span></span>
+            <span class="text-tertiary shrink-0">{{ h.date ? (h.date | date:'dd/MM/yyyy HH:mm') : '' }}</span>
+          </li>
+          }
+        </ul>
+      </div>
+      }
+    </div>
+
+    <!-- Footer -->
+    <div class="p-6 pt-2 border-t border-tertiary/10 sticky bottom-0 bg-quaternary">
+      <button (click)="close()"
+        class="w-full h-10 rounded-xl text-sm font-semibold text-white bg-secondary hover:bg-secondary/90 transition-colors">
+        Cerrar
+      </button>
+    </div>
+  </div>
+</div>
+}
