@@ -1886,10 +1886,18 @@ export class RendicionDetailComponent implements OnInit {
       ? startDate.toLocaleString('es-PE', { month: 'long' }).toUpperCase()
       : '';
 
+    // Todas las planillas de movilidad de la rendición son UN solo documento
+    // físico (por eso se consolidan en una sola hoja); se usa un único
+    // número (el de la más antigua) en vez de listar uno por expense.
+    const sharedInternalCode = mobilityExpenses.find(
+      e => typeof e['internalCode'] === 'string' && e['internalCode'],
+    )?.['internalCode'] as string | undefined;
+
     return {
       fileBaseName: 'planilla_movilidad_consolidada',
       collaborator: this.getCollaboratorDisplayName(),
       collaboratorDni: this.collaboratorDniForPdf(),
+      internalCode: sharedInternalCode,
       location: this.report?.location,
       generatedAt: new Date().toLocaleString('es-PE', { dateStyle: 'short', timeStyle: 'short' }),
       periodo,
