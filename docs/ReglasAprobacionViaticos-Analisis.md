@@ -69,14 +69,31 @@ El "centro de costo" es la entidad **Project**. Sus campos actuales son:
 > ❌ **No existe** ningún campo de aprobadores. No hay `approvers`, `aprobadores`, `level`, `nivel`, ni referencia a usuarios. El formulario (`centros-de-costo/form/`) y la carga masiva (`bulk-import/`) tampoco los manejan.
 
 ### 2.2 Asignación de centros de costo a usuarios
-Archivos: `src/app/interfaces/user.interface.ts`, `src/app/modules/admin-users/`
+Archivos: `src/app/interfaces/user.interface.ts`, `src/app/modules/admin-users/user-permissions/`
 
-- El modelo `IUser` / `IUserResponse` **no tiene** ningún campo `projectIds`, `centrosDeCosto`, ni un centro **principal/primario**.
-- El único vínculo tipo "aprobador" en el usuario es **`coordinatorId`**: un **único** coordinador, usado solo para **notificaciones** de la solicitud de viáticos. No es una cadena de niveles.
-- `IUserPermissions` contiene `categoryProfileIds` con el comentario "deriva centros de costo y categorías visibles". **Sin embargo, ese campo está declarado pero no se usa en ninguna parte del frontend** (solo aparece en la declaración de la interfaz). La derivación centro-de-costo↔usuario no está cableada en el cliente.
-- En la práctica, al crear una solicitud (`mis-rendiciones/solicitud-viaticos/`), el colaborador **elige el centro de costo entre TODOS los centros activos de la empresa** (`getProjects(clientId)`), no entre un subconjunto asignado a él.
+> ⚠️ **Aclaración importante — tres entidades que se confunden:**
+> - **Categoría** (`ICategory`): rubro de gasto (Alimentación, Hospedaje…).
+> - **Perfil de categoría** (`ICategoryGroup`): paquete con nombre de varias categorías.
+> - **Centro de costo** (`IProject`): el proyecto; apunta a **un** perfil vía `categoryGroupId`.
+>
+> La relación es `Centro de costo → un perfil de categoría → N categorías`.
 
-> ❌ **No existe** el concepto de "N centros asignados al colaborador" ni de "centro principal".
+**Lo que SÍ se asigna en los permisos del colaborador** (`user-permissions.component.ts`, lo que se construye y persiste en `save()`): `modules`, `canApproveL1`, `canApproveL2`, `canBackdateViaticos` y **`categoryIds`** (categorías, seleccionables en bloque por perfil como atajo). ➡️ **Se asignan categorías/perfiles, NO centros de costo.**
+
+**Sobre la idea de "asignar centros de costo en los permisos":**
+- `IUserPermissions` **sí** declara el campo `categoryProfileIds` con el comentario _"Perfiles de categoría asignados (deriva centros de costo y categorías visibles)"_. Existe, por tanto, una **intención de diseño** de derivar los centros visibles a partir de los perfiles asignados al colaborador.
+- **Pero ese campo NO está cableado:** el UI de permisos ni lo lee ni lo guarda (solo maneja `categoryIds`), y un grep en todo el frontend confirma que `categoryProfileIds` solo aparece en la declaración de la interfaz. La derivación perfil→centro no se ejecuta.
+- En la práctica, al crear una solicitud (`mis-rendiciones/solicitud-viaticos/`), el colaborador **elige el centro de costo entre TODOS los centros activos de la empresa** (`getProjects(clientId)` filtrando solo `isActive`), no entre un subconjunto asignado a él.
+
+**Aun si se activara `categoryProfileIds`, quedarían dos brechas frente a la regla 1:**
+1. Se asignan **perfiles**, no centros; y como varios centros pueden compartir el mismo perfil (`centro → un perfil`), un perfil **no identifica un centro concreto** → la derivación sería ambigua (muchos-a-uno).
+2. No existe en ninguna parte el concepto de **centro principal / primario**.
+
+**Otros datos del modelo de usuario:**
+- `IUser` / `IUserResponse` **no tienen** ningún campo `projectIds` / `centrosDeCosto` ni marca de centro **principal**.
+- El único vínculo tipo "aprobador" en el usuario es **`coordinatorId`**: un **único** coordinador, usado solo para **notificaciones/ruteo** de la solicitud. No es una cadena de niveles ni depende del centro.
+
+> ❌ La regla 1 sigue siendo un **faltante funcional**. Se reutiliza el andamiaje de perfiles↔categorías y el campo reservado `categoryProfileIds`, pero falta: (a) asignar **centros de costo** al colaborador y (b) marcar el **principal**.
 
 ### 2.3 Modelo de niveles de aprobación (actual)
 Archivos: `user.interface.ts`, `user-state.service.ts`, `advance.interface.ts`
@@ -140,7 +157,7 @@ Contabilidad revisa, liquida y cierra  (→ approved → settled → closed)
 
 | # | Regla de negocio | Estado | Detalle |
 |---|---|---|---|
-| 1.1 | Colaborador con N centros de costo, uno principal | ❌ **Falta** | El usuario no tiene centros asignados; hoy elige de todos los activos. No hay "principal". |
+| 1.1 | Colaborador con N centros de costo, uno principal | ❌ **Falta** | En permisos se asignan **categorías/perfiles** (`categoryIds`), no centros de costo. Existe el campo reservado `categoryProfileIds` ("deriva centros…") pero **sin cablear**; hoy el colaborador elige de todos los centros activos y no hay "principal". |
 | 1.2 | Centro de costo con N aprobadores por nivel (N1, N2, N3…) | ❌ **Falta** | `IProject` no tiene aprobadores. Los niveles hoy son flags globales del usuario (solo L1/L2). |
 | 1.3-A | Solicitud (centro asignado): N2 seleccionado → Contabilidad | ⚠️ **Parcial** | Existe una cadena de 2 pasos + Contabilidad, pero el aprobador sale de `coordinatorId`/rol, no del N2 del centro. |
 | 1.3-B | Solicitud (centro no asignado): N2 principal → N2 seleccionado | ❌ **Falta** | No hay noción de "asignado vs no asignado", ni de centro principal, ni ruteo por aprobadores del centro. |
