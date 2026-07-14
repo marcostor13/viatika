@@ -215,6 +215,18 @@ export class RendicionesAdminComponent implements OnInit {
     return this.expandedApproveLineIds().has(index);
   }
 
+  /**
+   * Una rendición/viático se considera cerrada (a efectos del label) cuando su
+   * saldo pendiente ya fue resuelto: trasladado a otra solicitud/anticipo o
+   * devuelto con comprobante. Mismo criterio que mis-rendiciones y el detalle.
+   */
+  private isReportEffectivelyClosed(r: IExpenseReport): boolean {
+    return r.status === 'closed'
+      || !!(r as any).pendingBalanceUsedInRendicionId
+      || !!(r as any).pendingBalanceUsedInAdvanceId
+      || !!(r as any).returnVoucher;
+  }
+
   /** Construye la lista unificada (sin filtrar) a partir de reportes y anticipos huérfanos. */
   private buildItems(): UnifiedRendicionItem[] {
     const reportItems: UnifiedRendicionItem[] = this.allReports.map(r => {
@@ -233,8 +245,8 @@ export class RendicionesAdminComponent implements OnInit {
         projectId: pid ?? '',
         amount: r.viaticoAmount ?? r.budget ?? 0,
         status: r.status,
-        statusLabel: REPORT_STATUS_LABELS[r.status] ?? r.status,
-        statusColor: REPORT_STATUS_COLORS[r.status] ?? 'bg-gray-100 text-gray-700',
+        statusLabel: this.isReportEffectivelyClosed(r) ? 'Cerrada' : (REPORT_STATUS_LABELS[r.status] ?? r.status),
+        statusColor: this.isReportEffectivelyClosed(r) ? 'bg-gray-100 text-gray-500' : (REPORT_STATUS_COLORS[r.status] ?? 'bg-gray-100 text-gray-700'),
         createdAt: r.createdAt,
         canDeleteItem: this.canDeleteReport(r),
         canApproveL1: isViatico && r.status === 'pending_l1' && this.userCanApproveL1,

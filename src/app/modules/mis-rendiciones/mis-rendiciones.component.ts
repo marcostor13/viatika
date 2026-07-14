@@ -404,11 +404,15 @@ export class MisRendicionesComponent implements OnInit {
   // ─── Viático unificado helpers ─────────────────────────────────────────────
 
   viaticoPhaseLabel(report: IExpenseReport): string {
+    // Saldo ya resuelto (trasladado a otra solicitud o devuelto) => Cerrada,
+    // mismo criterio que las rendiciones directas y el detalle.
+    if (this.isReportEffectivelyClosed(report)) return 'Cerrada';
     return this.VIATICO_REPORT_STATUS_LABELS[report.status as keyof typeof VIATICO_REPORT_STATUS_LABELS]
       ?? report.status.toUpperCase();
   }
 
   viaticoPhaseColor(report: IExpenseReport): string {
+    if (this.isReportEffectivelyClosed(report)) return 'bg-gray-100 text-gray-500';
     return this.VIATICO_REPORT_STATUS_COLORS[report.status as keyof typeof VIATICO_REPORT_STATUS_COLORS]
       ?? 'bg-gray-100 text-gray-600';
   }
