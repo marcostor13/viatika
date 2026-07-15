@@ -120,10 +120,10 @@ export class AdminUsersService {
       .pipe(catchError((error: any) => this.handleError(error)));
   }
 
-  bulkImportUsers(formData: FormData): Observable<{ created: number; skipped: string[]; errors: string[]; credentials: { name: string; email: string; temporaryPassword: string }[] }> {
+  bulkImportUsers(formData: FormData): Observable<{ created: number; updated: number; skipped: string[]; errors: string[]; credentials: { name: string; email: string; temporaryPassword: string }[] }> {
     const token = this.userStateService.getToken();
     return this.http
-      .post<{ created: number; skipped: string[]; errors: string[]; credentials: { name: string; email: string; temporaryPassword: string }[] }>(
+      .post<{ created: number; updated: number; skipped: string[]; errors: string[]; credentials: { name: string; email: string; temporaryPassword: string }[] }>(
         `${this.apiUrl}/bulk-import`,
         formData,
         { headers: new HttpHeaders({ Authorization: `Bearer ${token ?? ''}` }) }
@@ -135,6 +135,18 @@ export class AdminUsersService {
     return this.http
       .get<{ file: string; filename: string }>(`${this.apiUrl}/bulk-import/template`, {
         headers: this.getHeaders(),
+      })
+      .pipe(catchError((error: any) => this.handleError(error)));
+  }
+
+  /** Descarga la plantilla precargada con todos los usuarios actuales de la empresa. */
+  exportUsers(): Observable<{ file: string; filename: string }> {
+    const companyId = this.userStateService.getUser()?.companyId || '';
+    const params = new HttpParams().set('clientId', companyId);
+    return this.http
+      .get<{ file: string; filename: string }>(`${this.apiUrl}/bulk-import/export`, {
+        headers: this.getHeaders(),
+        params,
       })
       .pipe(catchError((error: any) => this.handleError(error)));
   }
