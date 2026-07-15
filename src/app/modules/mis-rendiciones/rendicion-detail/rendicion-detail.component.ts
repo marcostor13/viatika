@@ -140,8 +140,9 @@ export class RendicionDetailComponent implements OnInit {
     // primero para no confundirse con la rama de "directa financiada con bolsa" cuando
     // el viático también tiene saldoIds (si no, mostraría solo el saldo, no el total).
     if (this.report?.type === 'viatico') {
-      const viaticoPaid = Number((this.report as any)?.viaticoPaidAmount ?? 0);
-      return viaticoPaid - this.totalGastado;
+      // Incluye ampliaciones pagadas (advances vinculados), no solo el depósito/saldo del
+      // propio reporte — si no, el saldo ignora la ampliación ya desembolsada.
+      return Math.round((this.viaticoFinanciadoTotal - this.totalGastado) * 100) / 100;
     }
     // Rendición directa con depósito de Contabilidad: el saldo a devolver es el
     // depósito menos lo gastado (en vivo), no el monto del settlement almacenado.
@@ -165,7 +166,9 @@ export class RendicionDetailComponent implements OnInit {
   /** Tipo de settlement efectivo para viáticos: calculado en vivo desde viaticoPaidAmount. */
   private get effectiveSettlementType(): string | undefined {
     if (this.report?.type === 'viatico') {
-      const viaticoPaid = Number((this.report as any)?.viaticoPaidAmount ?? 0);
+      // Financiado total = depósito/saldo del reporte + ampliaciones pagadas, para que el
+      // tipo de liquidación (equilibrado/devolución/reembolso) cuadre con el backend.
+      const viaticoPaid = this.viaticoFinanciadoTotal;
       if (viaticoPaid <= 0 && this.totalGastado <= 0) {
         return (this.report as any)?.settlement?.type;
       }
@@ -2175,7 +2178,9 @@ export class RendicionDetailComponent implements OnInit {
    * El "Saldo Disponible" (saldoLibre) sí refleja solo lo ya financiado.
    */
   get viaticoPresupuesto(): number {
-    return Number((this.report as any)?.viaticoAmount ?? this.report?.budget ?? 0);
+    const base = Number((this.report as any)?.viaticoAmount ?? this.report?.budget ?? 0);
+    // Las ampliaciones aprobadas/pagadas son presupuesto adicional del viático.
+    return Math.round((base + this.ampliacionesGrantedTotal) * 100) / 100;
   }
 
   /** Parte del viático ya financiada (saldo heredado/bolsa + depósitos de Contabilidad). */
@@ -2183,9 +2188,33 @@ export class RendicionDetailComponent implements OnInit {
     return Number((this.report as any)?.viaticoPaidAmount ?? 0);
   }
 
+  /**
+   * Ampliaciones del viático: advances vinculados a este reporte. Son financiamiento
+   * ADICIONAL sobre el viático original (mismo criterio de estados que totalAnticipado /
+   * paidAdvances). Solo aplica a reportes type='viatico'.
+   */
+  get ampliaciones(): IAdvance[] {
+    return this.isViatico ? this.paidAdvances : [];
+  }
+
+  /** Monto solicitado/aprobado de las ampliaciones → suma al Presupuesto. */
+  get ampliacionesGrantedTotal(): number {
+    return Math.round(this.ampliaciones.reduce((s, a) => s + Number(a.amount ?? 0), 0) * 100) / 100;
+  }
+
+  /** Monto realmente desembolsado de las ampliaciones → suma a lo financiado/saldo. */
+  get ampliacionesPaidTotal(): number {
+    return Math.round(this.ampliaciones.reduce((s, a) => s + Number(a.paidAmount ?? 0), 0) * 100) / 100;
+  }
+
+  /** Financiado total del viático = depósito/saldo del reporte + ampliaciones pagadas. */
+  get viaticoFinanciadoTotal(): number {
+    return Math.round((this.viaticoFinanciado + this.ampliacionesPaidTotal) * 100) / 100;
+  }
+
   /** Monto que Contabilidad aún debe depositar para completar el presupuesto del viático. */
   get viaticoPendienteDeposito(): number {
-    const pend = Math.round((this.viaticoPresupuesto - this.viaticoFinanciado) * 100) / 100;
+    const pend = Math.round((this.viaticoPresupuesto - this.viaticoFinanciadoTotal) * 100) / 100;
     return pend > 0.01 ? pend : 0;
   }
 
@@ -2267,6 +2296,13 @@ export class RendicionDetailComponent implements OnInit {
     if (deposito > 0.01) {
       rows.push({ label: 'Depósito de Contabilidad', amount: deposito });
     }
+    // Ampliaciones pagadas: cada una es financiamiento adicional del viático.
+    for (const adv of this.ampliaciones) {
+      const paid = Number(adv.paidAmount ?? 0);
+      if (paid > 0.01) {
+        rows.push({ label: `Ampliación · ${adv.place || adv.description || 'viático'}`, amount: paid });
+      }
+    }
     return rows;
   }
 
@@ -2288,6 +2324,9 @@ export class RendicionDetailComponent implements OnInit {
   get canUploadReturnVoucher(): boolean {
     if (this.isAdminView) return false;
     if (this.isSaldoUsadoEnOtraRendicion) return false;
+    // El sobrante de un viático liquidado va a la bolsa del colaborador, no se devuelve
+    // en efectivo → no se pide comprobante de devolución.
+    if ((this.report as any)?.settlement?.toBolsa) return false;
     const status = this.report?.status;
     if (status !== 'approved' && status !== 'closed') return false;
     if (!this.isDevolucionExpected) return false;
@@ -2298,6 +2337,8 @@ export class RendicionDetailComponent implements OnInit {
   get approvedPendingVoucher(): boolean {
     if (!this.isAdminView) return false;
     if (this.isSaldoUsadoEnOtraRendicion) return false;
+    // Sobrante de viático → bolsa, no comprobante de devolución (ver canUploadReturnVoucher).
+    if ((this.report as any)?.settlement?.toBolsa) return false;
     if (this.report?.status !== 'approved') return false;
     return this.isDevolucionExpected && !(this.report as any)?.returnVoucher;
   }
