@@ -50,7 +50,7 @@ export class InicioComponent implements OnInit {
 
   // Coordinador: datos del equipo (scope por personal lo aplica el backend)
   teamReports = signal<IExpenseReport[]>([]);
-  teamAdvances = signal<IAdvance[]>([]); // solicitudes de viáticos legacy del equipo (orphaned)
+  teamAdvances = signal<IAdvance[]>([]); // solicitudes de viáticos del equipo (huérfanas + ampliaciones con expenseReportId)
 
   // Toggles "ver más / expandir" por listado
   showAllViaticos = signal(false);       // Mi actividad: mis solicitudes de viáticos
@@ -333,7 +333,10 @@ export class InicioComponent implements OnInit {
     const userId = (this.userState.getUser() as any)?._id;
     forkJoin({
       team: this.expenseReportsService.findAllByClient(clientId).pipe(catchError(() => of([]))),
-      teamAdvances: this.advanceService.findOrphaned(clientId).pipe(catchError(() => of([]))),
+      // findForViaticosPage trae las solicitudes de viáticos del coordinador (por coordinatorId),
+      // incluidas las AMPLIACIONES (advances con expenseReportId) — que findOrphaned excluía, por lo
+      // que no aparecían en "Solicitudes por aprobar". solicitudesRows filtra a pending_l1/l2.
+      teamAdvances: this.advanceService.findForViaticosPage({}).pipe(catchError(() => of([]))),
       ownReports: this.expenseReportsService.findAllByUser(userId, clientId).pipe(catchError(() => of([]))),
       ownViaticos: this.expenseReportsService.getMyViaticos().pipe(catchError(() => of([]))),
       ownAdvances: this.advanceService.findMy().pipe(catchError(() => of([]))),
@@ -357,7 +360,7 @@ export class InicioComponent implements OnInit {
     if (!clientId) return;
     forkJoin({
       team: this.expenseReportsService.findAllByClient(clientId).pipe(catchError(() => of([]))),
-      teamAdvances: this.advanceService.findOrphaned(clientId).pipe(catchError(() => of([]))),
+      teamAdvances: this.advanceService.findForViaticosPage({}).pipe(catchError(() => of([]))),
     }).subscribe(({ team, teamAdvances }) => {
       this.teamReports.set(team);
       this.teamAdvances.set(teamAdvances);
