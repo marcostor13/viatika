@@ -50,6 +50,16 @@ Aplica tanto a rendiciones de viáticos como a **rendiciones directas**.
   - (según corresponda)
 - Es decir, el aprobador que coincide con el solicitante se **salta** y su lugar lo toma el aprobador del nivel inmediatamente superior de ese centro de costo.
 
+### 1.6 Los niveles son ranuras (slots) EXPLÍCITAS, no posicionales
+- Cada nivel (N1, N2, N3, …) es un **campo específico y nombrado** en el centro de costo. **No** se asume que "el primer aprobador de la lista es N1 y el segundo es N2".
+- Un nivel puede estar **vacío**. Si un centro de costo **no tiene N1**, las aprobaciones que correspondían a N1 **se saltan y pasan directo a N2** (el siguiente nivel que sí exista).
+- ⚠️ **Importante:** que N1 esté vacío **NO** significa que N2 "se convierta en N1". N2 sigue siendo N2; simplemente el paso N1 no existe y se omite. La numeración de niveles es **fija por identidad**, no por posición ni por reordenamiento.
+- Corolario para el motor de ruteo: al construir la cadena (reglas 1.3 y 1.4) se debe **buscar el aprobador del nivel solicitado por su identidad** (N1 del principal, N2 del principal, N2 del seleccionado, etc.). Si ese nivel no está definido en el centro correspondiente, ese paso se **omite** sin desplazar la numeración de los demás.
+
+### 1.7 El flujo de CAJA CHICA también requiere aprobación
+- La aprobación por niveles (según las reglas de rendición 1.4) **aplica también a la rendición de caja chica**.
+- Esto es un **cambio** respecto al comportamiento histórico documentado, donde la caja chica acumulaba gastos **sin aprobación intermedia** (ver sección 2 y el alcance funcional original: _"Sin Aprobación Intermedia … no requieren aprobación individual del coordinador"_).
+
 ---
 
 ## 2. Cómo funciona hoy el sistema (estado actual)
@@ -148,8 +158,17 @@ Contabilidad revisa, liquida y cierra  (→ approved → settled → closed)
 
 > **Aprobación por comprobante:** en la rendición, la aprobación es **por cada gasto/comprobante** (no solo del reporte global), mediante los endpoints `invoice/:id/approve-coord` (Coordinador) y `invoice/:id/approve-cont` (Contabilidad), más los `batch-approve-coord` / `batch-approve-collab`. El reporte guarda `coordinatorApprovedBy/At`, `contabilidadApprovedBy/At` y `rejectedByRole: 'coordinador' | 'contabilidad'`. Las **rendiciones directas** siguen esta misma cadena `open → submitted → pending_accounting → approved` (no usan los estados `pending_l1/pending_l2` de la solicitud).
 
-### 2.6 Regla de auto-aprobación (escalamiento)
-> ❌ **No existe** ninguna lógica de "si el creador es aprobador, escalar N1→N2 / N2→N3". No podría existir porque hoy no hay aprobadores por nivel en el centro de costo.
+### 2.6 Flujo actual — CAJA CHICA
+Archivos: `mis-rendiciones/nueva-caja-chica/`, `rendiciones-caja-chica/`, `interfaces/caja-chica-report.interface.ts`, `interfaces/petty-cash.interface.ts`
+
+- El **reporte de caja chica** tiene solo dos estados: **`draft | finalized`**. **No hay cadena de aprobación**: ni coordinador, ni N1/N2, ni Contabilidad como paso aprobatorio de los gastos.
+- La **caja/fondo** (`petty-cash`) tiene su propio ciclo `pending_funding | active | closed`, que es el **fondeo por Contabilidad**, no la aprobación de los gastos.
+- Coincide con el alcance funcional original: los gastos de caja chica _"se acumulan directamente; **no requieren aprobación individual del coordinador**"_.
+
+> ❌ Hoy la caja chica **no pasa por aprobación**. La regla 1.7 exige añadirle la misma cadena por niveles de la rendición → es un cambio nuevo.
+
+### 2.7 Niveles explícitos y regla de auto-aprobación (escalamiento)
+> ❌ **No existe** ninguna lógica de "si el creador es aprobador, escalar N1→N2 / N2→N3", ni de **niveles como ranuras explícitas** (N1/N2/N3 nombrados, con omisión de niveles vacíos sin renumerar). No podría existir porque hoy no hay aprobadores por nivel en el centro de costo: solo hay dos flags posicionales globales (`canApproveL1`/`canApproveL2`) en el usuario.
 
 ---
 
@@ -164,6 +183,8 @@ Contabilidad revisa, liquida y cierra  (→ approved → settled → closed)
 | 1.4-A | Rendición (centro asignado): N1 ppal → N2 ppal → Contabilidad | ⚠️ **Parcial** | Existe cadena Coordinador → Contabilidad, pero de nuevo por `coordinatorId`/rol, no por N1/N2 del centro principal. |
 | 1.4-B | Rendición (no asignado): N1 ppal → N2 ppal → N2 seleccionado → Contabilidad | ❌ **Falta** | Requiere hasta 4 pasos dinámicos según centro; hoy la cadena es fija. |
 | 1.5 | Escalamiento si el creador es aprobador (N1→N2, N2→N3) | ❌ **Falta** | No existe; depende de tener aprobadores por nivel en el centro. |
+| 1.6 | Niveles como ranuras explícitas; nivel vacío se omite sin renumerar (N1 vacío ⇒ va directo a N2, N2 NO pasa a ser N1) | ❌ **Falta** | Hoy solo hay dos flags posicionales globales (`canApproveL1/L2`); no hay ranuras nombradas por centro ni lógica de omisión sin renumerar. |
+| 1.7 | Caja chica también requiere aprobación por niveles | ❌ **Falta** | La caja chica hoy es `draft → finalized` sin aprobación; hay que añadirle la cadena de la rendición (1.4). |
 
 **Leyenda:** ✅ Implementado · ⚠️ Parcial (existe algo reutilizable) · ❌ Falta
 
@@ -185,15 +206,21 @@ La mayor parte del trabajo real —el motor de enrutamiento de aprobaciones— v
 ## 5. Qué falta implementar (plan de trabajo)
 
 ### 5.1 Backend (fuera de este repo — imprescindible)
-1. **Modelo de aprobadores en el centro de costo:** `Project.approvers: [{ userId, level }]` (permitir N por nivel).
+1. **Modelo de aprobadores en el centro de costo con RANURAS EXPLÍCITAS por nivel** (regla 1.6). Recomendado un mapa nivel→aprobadores en lugar de una lista posicional, p. ej.:
+   ```
+   Project.approvers: { "1": [userId...], "2": [userId...], "3": [userId...] }
+   // o: Project.approvers: [{ level: number, userIds: string[] }]
+   ```
+   Clave: el **nivel es la identidad**; un nivel puede faltar y **no** se renumera.
 2. **Asignación de centros al usuario:** `User.assignedCostCenters: [{ projectId, isPrimary }]` (exactamente uno con `isPrimary = true`).
-3. **Motor de enrutamiento de aprobaciones** que, al crear una solicitud/rendición, construya la cadena de pasos según las reglas 1.3 y 1.4:
+3. **Motor de enrutamiento de aprobaciones** que, al crear una solicitud/rendición/**caja chica**, construya la cadena de pasos según las reglas 1.3, 1.4 y 1.7:
    - determinar asignado vs no asignado,
-   - resolver N1/N2 del principal y N2 del seleccionado,
-   - aplicar el **escalamiento** de la regla 1.5 cuando el creador es aprobador,
+   - resolver los niveles **por identidad** (N1 del principal, N2 del principal, N2 del seleccionado…) **buscándolos como slots**; si el slot no existe, **omitir ese paso sin desplazar la numeración** (regla 1.6),
+   - aplicar el **escalamiento** de la regla 1.5 cuando el creador es aprobador (N1→N2, N2→N3), reutilizando el mismo mecanismo de "buscar el siguiente slot que exista",
    - añadir a Contabilidad donde corresponda.
 4. **Persistir la cadena** en la solicitud (lista ordenada de pasos con nivel, centro, aprobador esperado y estado) en lugar del `requiredLevels` numérico fijo.
 5. **Validación de autorización** en cada endpoint `approve`: solo puede aprobar el usuario esperado en el paso actual.
+6. **Caja chica (regla 1.7):** añadir la cadena de aprobación al reporte de caja chica. Hoy su estado es `draft | finalized`; hay que insertar los estados/pasos de aprobación (N1/N2/Contabilidad) entre el envío y la finalización, reutilizando el mismo motor.
 
 ### 5.2 Frontend (este repositorio)
 1. **Centros de costo** (`centros-de-costo/form/` + `project.interface.ts` + `bulk-import/`):
@@ -202,15 +229,19 @@ La mayor parte del trabajo real —el motor de enrutamiento de aprobaciones— v
 2. **Usuarios** (`admin-users/create-user/`, `user-permissions/` + `user.interface.ts`):
    - UI para asignar **N centros de costo** al colaborador y marcar el **principal**.
    - Extender `IUser`/`IUserResponse` con la lista de centros asignados.
-3. **Modelo de niveles:**
+3. **Centros de costo — ranuras explícitas** (`centros-de-costo/form/`, regla 1.6):
+   - La UI debe permitir dejar un nivel **vacío** (p. ej. definir N2 sin N1) y guardarlo como slot nombrado, no como "primer/segundo aprobador de una lista".
+4. **Modelo de niveles:**
    - Introducir **N3** (y N genérico) donde hoy solo hay L1/L2; idealmente reemplazar los flags booleanos por la noción de "aprobador del paso actual".
-4. **Selección de centro en la solicitud** (`solicitud-viaticos/`, `solicitud-viaticos-modal/`):
+5. **Selección de centro en la solicitud** (`solicitud-viaticos/`, `solicitud-viaticos-modal/`):
    - Ofrecer/priorizar los centros asignados y distinguir visualmente "asignado vs no asignado" (afecta la cadena resultante).
-5. **Visualización de la cadena de aprobación:**
-   - En `viaticos-detail/` y `rendicion-detail/`, mostrar los pasos (N1/N2/N3/Contabilidad), quién aprueba cada uno, el paso actual y el historial.
+6. **Caja chica** (`mis-rendiciones/nueva-caja-chica/`, `rendiciones-caja-chica/`, regla 1.7):
+   - Añadir la vista de aprobación (pasos y acciones aprobar/rechazar) que hoy no existe; el reporte solo maneja `draft | finalized`.
+7. **Visualización de la cadena de aprobación:**
+   - En `viaticos-detail/`, `rendicion-detail/` y el detalle de caja chica, mostrar los pasos (N1/N2/N3/Contabilidad), quién aprueba cada uno, el paso actual y el historial; **indicar los niveles omitidos** por slot vacío (regla 1.6).
    - Reemplazar las comprobaciones `canApproveL1/L2` por "¿es este usuario el aprobador del paso pendiente?".
-6. **Dashboards** (`inicio/`, `dashboard/`, `tesoreria/`):
-   - Ajustar las bandejas de "pendientes por aprobar" para que se basen en la cadena dinámica y no en `coordinatorId` + flags.
+8. **Dashboards** (`inicio/`, `dashboard/`, `tesoreria/`):
+   - Ajustar las bandejas de "pendientes por aprobar" para que se basen en la cadena dinámica y no en `coordinatorId` + flags; incluir también las **cajas chicas** pendientes de aprobación.
 
 ### 5.3 Piezas reutilizables ya existentes
 - Estructura de estados y `approvalHistory` en `IAdvance`/`IExpenseReport` (se puede extender).
@@ -224,11 +255,10 @@ La mayor parte del trabajo real —el motor de enrutamiento de aprobaciones— v
 
 - **Lo que YA existe:** un flujo de aprobación **fijo de 2 niveles** (Coordinador L1 → L2 → Contabilidad) para solicitudes y rendiciones, con el aprobador determinado por el **coordinador único** del colaborador (`coordinatorId`) y **permisos de rol** (`canApproveL1/L2`). Estados, historial, rechazos y notificaciones ya están montados.
 - **Lo que FALTA (el núcleo de las reglas nuevas):**
-  1. Aprobadores **por nivel en el centro de costo** (N1/N2/N3…).
+  1. Aprobadores **por nivel en el centro de costo** (N1/N2/N3…), como **ranuras explícitas**: un nivel puede faltar y se **omite sin renumerar** (regla 1.6).
   2. **Centros de costo asignados al colaborador** con uno **principal**.
-  3. Un **motor de enrutamiento dinámico** que arme la cadena según asignado/no asignado y centro principal (reglas 1.3 y 1.4).
+  3. Un **motor de enrutamiento dinámico** que arme la cadena según asignado/no asignado y centro principal (reglas 1.3 y 1.4), buscando cada nivel por identidad.
   4. La regla de **escalamiento por auto-aprobación** (1.5).
   5. Introducir el **nivel 3** (hoy solo hay L1/L2).
+  6. Extender la aprobación por niveles a la **caja chica** (regla 1.7), que hoy no tiene aprobación (`draft → finalized`).
 - **Factibilidad:** alta a nivel de producto, pero requiere un rediseño del modelo de datos y del motor de aprobación, con el **grueso del esfuerzo en el backend** y una refactorización transversal en el frontend de todas las comprobaciones de nivel.
-</content>
-</invoke>
