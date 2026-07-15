@@ -13,7 +13,7 @@
     </button>
     <div>
       <h1 class="text-2xl font-bold text-secondary">Carga masiva de Colaboradores</h1>
-      <p class="text-sm text-tertiary mt-0.5">Importa usuarios desde un archivo Excel</p>
+      <p class="text-sm text-tertiary mt-0.5">Crea y actualiza usuarios desde un archivo Excel</p>
     </div>
   </div>
 
@@ -51,8 +51,16 @@
           El <span class="font-medium text-secondary">rol</span> admite: Colaborador, Coordinador, Contabilidad o Administrador (por defecto Colaborador).
           La contraseña se genera automáticamente; podrás descargarla al finalizar.
         </p>
+        <p class="text-secondary/90 bg-background rounded-lg px-2.5 py-2">
+          <span class="font-medium">¿Ya tienes usuarios?</span> Descarga la plantilla
+          <span class="font-medium text-secondary">con los usuarios actuales</span>, edítala y vuelve a subirla:
+          las filas con <span class="font-mono bg-quaternary px-1 rounded">id</span> se
+          <span class="font-medium">actualizan</span> y las filas sin <span class="font-mono bg-quaternary px-1 rounded">id</span> se
+          <span class="font-medium">crean</span>. No borres la columna <span class="font-mono bg-quaternary px-1 rounded">id</span>.
+          Una celda vacía no borra el dato de un usuario existente.
+        </p>
       </div>
-      <div class="pl-8">
+      <div class="pl-8 flex flex-wrap gap-2">
         <button
           type="button"
           (click)="downloadTemplate()"
@@ -61,7 +69,18 @@
           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
             <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
           </svg>
-          Descargar plantilla
+          Plantilla vacía
+        </button>
+        <button
+          type="button"
+          (click)="downloadUsers()"
+          [disabled]="exporting"
+          class="inline-flex items-center gap-2 px-4 py-2 text-sm rounded-xl border border-primary/40 bg-primary/5 text-primary hover:bg-primary/10 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
+          </svg>
+          {{ exporting ? 'Generando...' : 'Plantilla con usuarios actuales' }}
         </button>
       </div>
     </div>
@@ -97,12 +116,13 @@
       </div>
       <div class="pl-8">
         <app-button
-          [label]="loading ? 'Importando...' : 'Importar colaboradores'"
+          [label]="previewing ? 'Analizando...' : (loading ? 'Importando...' : 'Importar colaboradores')"
           variant="primary"
           size="md"
-          [disabled]="!file || loading"
+          [disabled]="!file || loading || previewing"
           (clicked)="import()"
         />
+        <p class="text-xs text-tertiary mt-2">Antes de aplicar cambios verás un resumen y podrás elegir si actualizar o no a los usuarios que ya existen.</p>
       </div>
     </div>
 
@@ -111,8 +131,9 @@
       <div class="rounded-xl bg-background border border-tertiary/20 p-4 flex flex-col gap-1.5">
         <p class="text-sm font-semibold text-secondary">Resultado de la importación</p>
         <p class="text-sm text-green-700">Creados: <span class="font-bold">{{ result.created }}</span></p>
+        <p class="text-sm text-blue-700">Actualizados: <span class="font-bold">{{ result.updated }}</span></p>
         @if (result.skipped.length) {
-          <p class="text-sm text-amber-700">Omitidos (ya existen): {{ result.skipped.join(', ') }}</p>
+          <p class="text-sm text-amber-700">Sin cambios (ya existían): {{ result.skipped.join(', ') }}</p>
         }
         @if (result.errors.length) {
           <div class="text-sm text-red-700">
@@ -164,7 +185,7 @@
           </div>
         }
 
-        @if (result.created > 0 && !result.errors.length) {
+        @if ((result.created > 0 || result.updated > 0) && !result.errors.length) {
           <button type="button" (click)="back()" class="mt-2 text-sm text-primary font-medium hover:underline w-fit">
             Volver al listado
           </button>
@@ -175,3 +196,59 @@
   </div>
 
 </div>
+
+<!-- Confirmación antes de aplicar -->
+@if (showConfirm && preview) {
+  <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40" (click)="cancelImport()">
+    <div class="bg-quaternary rounded-2xl shadow-soft border border-tertiary/20 w-full max-w-md p-6 flex flex-col gap-4" (click)="$event.stopPropagation()">
+      <div>
+        <h3 class="text-lg font-bold text-secondary">Confirmar importación</h3>
+        <p class="text-sm text-tertiary mt-0.5">Revisa qué se hará antes de aplicar los cambios.</p>
+      </div>
+
+      <div class="rounded-xl bg-background border border-tertiary/20 p-4 flex flex-col gap-1.5 text-sm">
+        <p class="text-green-700">Usuarios nuevos a crear: <span class="font-bold">{{ preview.created }}</span></p>
+        <p class="text-blue-700">Usuarios existentes que cambian: <span class="font-bold">{{ preview.updated }}</span></p>
+        @if (preview.skipped.length) {
+          <p class="text-amber-700">Existentes sin cambios: <span class="font-bold">{{ preview.skipped.length }}</span></p>
+        }
+        @if (preview.errors.length) {
+          <p class="text-red-700">Filas con error: <span class="font-bold">{{ preview.errors.length }}</span></p>
+        }
+      </div>
+
+      @if (preview.updated > 0) {
+        <p class="text-xs text-tertiary">
+          Hay <span class="font-medium text-secondary">{{ preview.updated }}</span> usuario(s) que ya existen y serían modificados.
+          ¿Deseas actualizarlos, o prefieres crear solo los nuevos y dejarlos intactos?
+        </p>
+        <div class="flex flex-col gap-2">
+          <button type="button" (click)="confirmImport(true)"
+            class="w-full px-4 py-2.5 text-sm font-medium rounded-xl bg-primary text-white hover:bg-primary/90 transition-colors">
+            Crear nuevos y actualizar existentes
+          </button>
+          <button type="button" (click)="confirmImport(false)"
+            class="w-full px-4 py-2.5 text-sm font-medium rounded-xl border border-tertiary/30 text-secondary hover:bg-background transition-colors">
+            Solo crear nuevos (no tocar existentes)
+          </button>
+          <button type="button" (click)="cancelImport()"
+            class="w-full px-4 py-2 text-sm text-tertiary hover:text-secondary transition-colors">
+            Cancelar
+          </button>
+        </div>
+      } @else {
+        <p class="text-xs text-tertiary">No hay usuarios existentes por modificar. Se crearán únicamente los usuarios nuevos.</p>
+        <div class="flex items-center justify-end gap-2">
+          <button type="button" (click)="cancelImport()"
+            class="px-4 py-2 text-sm text-tertiary hover:text-secondary transition-colors">
+            Cancelar
+          </button>
+          <button type="button" (click)="confirmImport(true)"
+            class="px-4 py-2.5 text-sm font-medium rounded-xl bg-primary text-white hover:bg-primary/90 transition-colors">
+            Crear {{ preview.created }} usuario(s)
+          </button>
+        </div>
+      }
+    </div>
+  </div>
+}
