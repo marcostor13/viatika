@@ -20,6 +20,7 @@ export interface IViaticoLinePayload {
 
 export interface ICreateViaticoPayload {
   amount: number;
+  moneda?: string;
   place: string;
   lat?: number;
   lng?: number;
@@ -41,6 +42,7 @@ export interface ICreateViaticoPayload {
 
 export interface IResubmitViaticoPayload {
   amount: number;
+  moneda?: string;
   place: string;
   lat?: number;
   lng?: number;
@@ -145,12 +147,18 @@ export interface IExpenseReport {
   title: string;
   description?: string;
   budget: number;
+  moneda?: string;
+  budgetBase?: number;
+  tipoCambio?: number;
+  tcFecha?: string;
   userId: any; // Ideally IUserResponse or string ID
   clientId: string;
   type?: ExpenseReportType;
   status: IExpenseReportStatus;
   // ─── Viático fields (type='viatico') ──────────────────────────────────────
   viaticoAmount?: number;
+  viaticoAmountBase?: number;
+  viaticoPaidAmountBase?: number;
   viaticoPlace?: string;
   viaticoStartDate?: string;
   viaticoEndDate?: string;
@@ -258,6 +266,7 @@ export interface IExpenseReport {
   pendingBalanceFromCodigo?: string;
   /** Monto heredado desde la rendición directa de origen. */
   pendingBalanceAmount?: number;
+  pendingBalanceAmountBase?: number;
   /** ID de la rendición directa que consumió el saldo de esta. */
   pendingBalanceUsedInRendicionId?: string;
 }

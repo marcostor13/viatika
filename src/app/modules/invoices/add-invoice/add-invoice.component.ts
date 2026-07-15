@@ -34,6 +34,8 @@ import { PlacesAutocompleteDirective, PlaceResult } from '../../../directives/pl
 import { CompanyConfigService } from '../../../services/company-config.service';
 import { CategoryGroupService } from '../../../services/category-group.service';
 import { PERU_LOCATIONS, Departamento } from '../../../constants/peru-locations';
+import { AccountingConfigService } from '../../../services/accounting-config.service';
+import { ICurrencyConfig } from '../../../interfaces/accounting-config.interface';
 
 function findDepartamento(label: string): Departamento | undefined {
   return PERU_LOCATIONS.find(d => d.label === label);
@@ -62,6 +64,10 @@ export default class AddInvoiceComponent implements OnInit {
   private companyConfigService = inject(CompanyConfigService);
   private expenseService = inject(ExpenseService);
   private categoryGroupService = inject(CategoryGroupService);
+  private accountingConfigService = inject(AccountingConfigService);
+
+  /** Monedas soportadas por la empresa (Configuración → Plan de Cuentas y Bancos). Solo aplica a facturas. */
+  currencyOptions = signal<ICurrencyConfig[]>([{ code: 'PEN', symbol: 'S/', contanetCode: '01', decimals: 2, approvalThresholdL1: 500 }]);
 
   form!: FormGroup;
   id: string = this.route.snapshot.params['id'];
@@ -298,6 +304,7 @@ export default class AddInvoiceComponent implements OnInit {
     this.loadCategoryGroups();
     this.loadProjects();
     this.loadClientUsers();
+    this.loadCurrencyOptions();
     // Al cambiar de proyecto, si la categoría elegida no pertenece a su perfil, se limpia.
     this.form.get('proyectId')?.valueChanges.subscribe(() => {
       const allowed = this.allowedCategoryIds();
@@ -367,6 +374,7 @@ export default class AddInvoiceComponent implements OnInit {
               rucEmisor: dataObj.rucEmisor || '',
               serie: dataObj.serie || '',
               correlativo: dataObj.correlativo || '',
+              moneda: (res as any).moneda || dataObj.moneda || 'PEN',
               placaVehiculo: (res as any).placaVehiculo || dataObj.placaVehiculo || '',
             });
           } else if (type === 'otros_gastos') {
@@ -580,6 +588,33 @@ export default class AddInvoiceComponent implements OnInit {
     });
   }
 
+  /** Resuelve el clientId activo con el mismo fallback que el resto de la app (companyId no siempre viene poblado). */
+  private resolveCompanyId(): string {
+    const u = this.userStateService.getUser() as Record<string, unknown> | null;
+    if (!u) return '';
+    return (
+      (u['companyId'] as string) ||
+      ((u['client'] as { _id?: string })?._id ?? '') ||
+      ((u['clientId'] as { _id?: string })?._id ?? '') ||
+      (typeof u['clientId'] === 'string' ? (u['clientId'] as string) : '') ||
+      ''
+    );
+  }
+
+  /** Monedas configuradas por la empresa; si no hay config guardada, se queda con el default PEN. */
+  loadCurrencyOptions() {
+    const clientId = this.resolveCompanyId();
+    if (!clientId) return;
+    this.accountingConfigService.getCurrencies(clientId).subscribe({
+      next: (config) => {
+        if (config?.supportedCurrencies?.length) {
+          this.currencyOptions.set(config.supportedCurrencies);
+        }
+      },
+      error: () => {},
+    });
+  }
+
   /** Usuario actual (quien rinde): id por defecto de cada fila. */
   get currentUserId(): string {
     return String(this.userStateService.getUser()?._id || '');
@@ -707,6 +742,7 @@ export default class AddInvoiceComponent implements OnInit {
       rucEmisor: [''],
       serie: [''],
       correlativo: [''],
+      moneda: ['PEN'],
       comentario: [''],
       placaVehiculo: [''],
       // Otros gastos
@@ -1655,6 +1691,7 @@ export default class AddInvoiceComponent implements OnInit {
       payload.data = JSON.stringify(dataObj);
       payload.fechaEmision = formValue.fechaEmision;
       payload.total = finalTotal;
+      payload.moneda = formValue.moneda || 'PEN';
       payload.placaVehiculo = (formValue.placaVehiculo || '').trim() || undefined;
     } else if (type === 'otros_gastos') {
       const description = (formValue.description || '').trim();
@@ -1848,6 +1885,7 @@ export default class AddInvoiceComponent implements OnInit {
               fechaEmision: this.formatDateForInput(dataObj.fechaEmision),
               serie: dataObj.serie || '',
               correlativo: dataObj.correlativo || '',
+              moneda: dataObj.moneda || 'PEN',
               comentario: dataObj.comentario || '',
               placaVehiculo: dataObj.placaVehiculo || '',
             });
@@ -1911,6 +1949,7 @@ export default class AddInvoiceComponent implements OnInit {
                 fechaEmision: this.formatDateForInput(dataObj.fechaEmision),
                 serie: dataObj.serie || '',
                 correlativo: dataObj.correlativo || '',
+                moneda: dataObj.moneda || 'PEN',
                 comentario: dataObj.comentario || '',
                 placaVehiculo: dataObj.placaVehiculo || '',
               });
@@ -1995,6 +2034,7 @@ export default class AddInvoiceComponent implements OnInit {
       proyectId: this.postOcrBaseInvoice.proyectId,
       categoryId: this.postOcrBaseInvoice.categoryId,
       total: finalTotal,
+      moneda: formValue.moneda || 'PEN',
       data: JSON.stringify(dataObj),
       fechaEmision: dataObj.fechaEmision,
       status: this.postOcrBaseInvoice.status,

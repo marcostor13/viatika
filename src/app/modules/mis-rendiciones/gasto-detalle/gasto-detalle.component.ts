@@ -304,6 +304,34 @@ export class GastoDetalleComponent implements OnInit {
     return Number.isNaN(n) ? 0 : n;
   }
 
+  getMoneda(exp: Record<string, unknown>): string {
+    const m = exp['moneda'];
+    if (typeof m === 'string' && m.trim()) return m.trim();
+    return this.dataText(exp, 'moneda');
+  }
+
+  /** True cuando el comprobante está en una moneda distinta a la base y hay TC congelado. */
+  isForeignCurrency(exp: Record<string, unknown>): boolean {
+    const moneda = exp['moneda'];
+    const tc = exp['tipoCambio'];
+    return typeof moneda === 'string' && moneda !== 'PEN' && typeof tc === 'number' && tc > 0;
+  }
+
+  getMontoBase(exp: Record<string, unknown>): number {
+    const v = exp['montoBase'];
+    return typeof v === 'number' && !Number.isNaN(v) ? v : this.getTotal(exp);
+  }
+
+  getTipoCambio(exp: Record<string, unknown>): number | null {
+    const v = exp['tipoCambio'];
+    return typeof v === 'number' && !Number.isNaN(v) ? v : null;
+  }
+
+  getTcFecha(exp: Record<string, unknown>): string {
+    const v = exp['tcFecha'];
+    return typeof v === 'string' && v ? v : '—';
+  }
+
   getFileUrl(exp: Record<string, unknown>): string | null {
     const f = exp['file'];
     return (typeof f === 'string' && f.trim()) ? f.trim() : null;

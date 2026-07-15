@@ -393,7 +393,13 @@
               }
             </td>
             <td class="px-5 py-3.5 text-tertiary max-w-[160px] truncate">{{ getReportTitle(adv) }}</td>
-            <td class="px-5 py-3.5 text-right font-bold text-secondary">S/ {{ adv.amount | number:'1.2-2' }}</td>
+            <td class="px-5 py-3.5 text-right font-bold text-secondary">
+              @if (isAdvanceForeignCurrency(adv)) {
+              <span [title]="'S/ ' + (advanceMontoBase(adv) | number:'1.2-2') + ' (TC ' + adv.tipoCambio + ')'">{{ advanceMoneda(adv) }} {{ adv.amount | number:'1.2-2' }}</span>
+              } @else {
+              S/ {{ adv.amount | number:'1.2-2' }}
+              }
+            </td>
             <td class="px-5 py-3.5 text-center">
               <span [class]="STATUS_COLORS[adv.status]" class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium">
                 {{ STATUS_LABELS[adv.status] }}
@@ -519,7 +525,12 @@
             }
           </div>
           <div class="text-right shrink-0">
+            @if (isAdvanceForeignCurrency(adv)) {
+            <p class="text-base font-bold text-secondary">{{ advanceMoneda(adv) }} {{ adv.amount | number:'1.2-2' }}</p>
+            <p class="text-xs text-tertiary">S/ {{ advanceMontoBase(adv) | number:'1.2-2' }}</p>
+            } @else {
             <p class="text-base font-bold text-secondary">S/ {{ adv.amount | number:'1.2-2' }}</p>
+            }
             <span [class]="STATUS_COLORS[adv.status]" class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium mt-1">
               {{ STATUS_LABELS[adv.status] }}
             </span>
@@ -582,7 +593,12 @@
       </div>
       <p class="text-sm text-tertiary mb-2">
         <span class="font-semibold text-secondary">{{ getUserName(selectedAdvance) }}</span>
+        @if (isAdvanceForeignCurrency(selectedAdvance)) {
+        &nbsp;·&nbsp;Solicitado {{ advanceMoneda(selectedAdvance) }} {{ selectedAdvance.amount | number:'1.2-2' }}
+        (S/ {{ advanceMontoBase(selectedAdvance) | number:'1.2-2' }}, TC {{ selectedAdvance.tipoCambio }})
+        } @else {
         &nbsp;·&nbsp;Solicitado S/ {{ selectedAdvance.amount | number:'1.2-2' }}
+        }
       </p>
       @if (advancePaid(selectedAdvance) > 0) {
       <div class="mb-4 rounded-xl bg-background/70 border border-tertiary/20 px-3 py-2 text-xs text-tertiary flex items-center justify-between">

@@ -1981,8 +1981,13 @@
       <!-- Resumen común -->
       <section class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
         <div>
-          <p class="text-xs text-gray-400">Monto (S/)</p>
+          <p class="text-xs text-gray-400">Monto</p>
+          @if (isExpenseForeignCurrency(exp)) {
+          <p class="font-semibold text-gray-900 tabular-nums text-base">{{ getExpenseMoneda(exp) }} {{ getExpenseTotal(exp) | number:'1.2-2' }}</p>
+          <p class="text-xs text-gray-500 tabular-nums">S/ {{ getExpenseMontoBase(exp) | number:'1.2-2' }} (TC {{ getExpenseTipoCambio(exp) }})</p>
+          } @else {
           <p class="font-semibold text-gray-900 tabular-nums text-base">S/ {{ getExpenseTotal(exp) | number:'1.2-2' }}</p>
+          }
         </div>
         <div>
           <p class="text-xs text-gray-400">Estado del comprobante</p>
@@ -2146,7 +2151,7 @@
               </div>
               <div>
                 <p class="text-xs text-gray-400">Moneda</p>
-                <p class="font-medium text-gray-900">{{ dataText(exp, 'moneda') }}</p>
+                <p class="font-medium text-gray-900">{{ getExpenseMoneda(exp) }}</p>
               </div>
               <div>
                 <p class="text-xs text-gray-400">Monto total (extraído)</p>
@@ -2676,7 +2681,7 @@
               <div class="min-w-0">
                 <p class="text-sm font-medium text-gray-900">{{ getExpenseDescription(exp) }}</p>
                 <p class="text-xs text-gray-500">
-                  {{ getExpenseDate(exp) }} · {{ getPopulatedName(exp['categoryId']) }} · S/ {{ getExpenseTotal(exp) | number:'1.2-2' }}
+                  {{ getExpenseDate(exp) }} · {{ getPopulatedName(exp['categoryId']) }} · {{ getExpenseMoneda(exp) }} {{ getExpenseTotal(exp) | number:'1.2-2' }}
                 </p>
               </div>
             </label>
