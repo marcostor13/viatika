@@ -526,6 +526,19 @@ export class TesoreriaComponent implements OnInit {
     return Math.max(Number(advance?.amount ?? 0) - this.advancePaid(advance), 0);
   }
 
+  /** True cuando el anticipo está en una moneda distinta a la base y hay TC congelado. */
+  isAdvanceForeignCurrency(advance: IAdvance | null | undefined): boolean {
+    return !!advance && !!advance.moneda && advance.moneda !== 'PEN' && !!advance.tipoCambio && advance.tipoCambio > 0;
+  }
+
+  advanceMoneda(advance: IAdvance | null | undefined): string {
+    return advance?.moneda || 'PEN';
+  }
+
+  advanceMontoBase(advance: IAdvance | null | undefined): number {
+    return Number(advance?.montoBase ?? advance?.amount ?? 0);
+  }
+
   /** Contabilidad puede registrar/seguir registrando pagos mientras no se haya liquidado. */
   canRegisterPayment(advance: IAdvance): boolean {
     return (

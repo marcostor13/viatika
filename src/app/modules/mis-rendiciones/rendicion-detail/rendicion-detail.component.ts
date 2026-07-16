@@ -402,16 +402,16 @@ export class RendicionDetailComponent implements OnInit {
   calculateTotals() {
     if (!this.report) return;
 
-    // TODO: in a real scenario we'd query the Expense objects to sum their 'montos'.
-    // Here we'll map the populated expenseIds if they contain the real amounts,
-    // or simulate if the backend just returns IDs.
     this.totalGastado = 0;
-    
-    // For now, assume expenseIds returns full objects due to mongoose populate
+
+    // Suma en moneda base: montoBase ya trae el TC congelado aplicado
+    // (montoBase === total cuando el comprobante ya está en la moneda base).
     if (this.report.expenseIds && this.report.expenseIds.length > 0) {
-      this.totalGastado = this.report.expenseIds.reduce((sum, exp: any) => sum + (parseFloat(exp.total) || 0), 0);
+      this.totalGastado = this.report.expenseIds.reduce(
+        (sum, exp: any) => sum + (parseFloat(exp.montoBase ?? exp.total) || 0),
+        0
+      );
     }
-    
   }
 
   goBack() {
@@ -1215,6 +1215,32 @@ export class RendicionDetailComponent implements OnInit {
     return Number.isNaN(n) ? 0 : n;
   }
 
+  /** True cuando el comprobante está en una moneda distinta a la base y hay TC congelado. */
+  isExpenseForeignCurrency(exp: unknown): boolean {
+    if (exp == null || typeof exp !== 'object') return false;
+    const moneda = (exp as Record<string, unknown>)['moneda'];
+    const tc = (exp as Record<string, unknown>)['tipoCambio'];
+    return typeof moneda === 'string' && moneda !== 'PEN' && typeof tc === 'number' && tc > 0;
+  }
+
+  getExpenseMoneda(exp: unknown): string {
+    if (exp == null || typeof exp !== 'object') return 'PEN';
+    const m = (exp as Record<string, unknown>)['moneda'];
+    return typeof m === 'string' && m ? m : 'PEN';
+  }
+
+  getExpenseMontoBase(exp: unknown): number {
+    if (exp == null || typeof exp !== 'object') return this.getExpenseTotal(exp);
+    const v = (exp as Record<string, unknown>)['montoBase'];
+    return typeof v === 'number' && !Number.isNaN(v) ? v : this.getExpenseTotal(exp);
+  }
+
+  getExpenseTipoCambio(exp: unknown): number | null {
+    if (exp == null || typeof exp !== 'object') return null;
+    const v = (exp as Record<string, unknown>)['tipoCambio'];
+    return typeof v === 'number' && !Number.isNaN(v) ? v : null;
+  }
+
   mobilityRowTotal(row: Record<string, unknown>): number {
     const t = row['total'];
     if (typeof t === 'number' && !Number.isNaN(t)) return t;
@@ -1889,10 +1915,18 @@ export class RendicionDetailComponent implements OnInit {
       ? startDate.toLocaleString('es-PE', { month: 'long' }).toUpperCase()
       : '';
 
+    // Todas las planillas de movilidad de la rendición son UN solo documento
+    // físico (por eso se consolidan en una sola hoja); se usa un único
+    // número (el de la más antigua) en vez de listar uno por expense.
+    const sharedInternalCode = mobilityExpenses.find(
+      e => typeof e['internalCode'] === 'string' && e['internalCode'],
+    )?.['internalCode'] as string | undefined;
+
     return {
       fileBaseName: 'planilla_movilidad_consolidada',
       collaborator: this.getCollaboratorDisplayName(),
       collaboratorDni: this.collaboratorDniForPdf(),
+      internalCode: sharedInternalCode,
       location: this.report?.location,
       generatedAt: new Date().toLocaleString('es-PE', { dateStyle: 'short', timeStyle: 'short' }),
       periodo,

@@ -62,6 +62,8 @@ export const httpInterceptor: HttpInterceptorFn = (req, next) => {
     '/caja-chica-report',
     '/saldo',
     '/saldo/',
+    '/accounting-config',
+    '/accounting-config/',
     '/accounting-entries',
     '/upload',
     '/upload/',

@@ -64,6 +64,21 @@ export class TesoreriaDetalleComponent implements OnInit {
     return !!a && ['pending_l2', 'approved'].includes(a.status) && this.canPayAndSettle;
   }
 
+  /** True cuando el anticipo está en una moneda distinta a la base y hay TC congelado. */
+  get isForeignCurrency(): boolean {
+    const a = this.advance();
+    return !!a && !!a.moneda && a.moneda !== 'PEN' && !!a.tipoCambio && a.tipoCambio > 0;
+  }
+
+  get advanceMoneda(): string {
+    return this.advance()?.moneda || 'PEN';
+  }
+
+  get advanceMontoBase(): number {
+    const a = this.advance();
+    return Number(a?.montoBase ?? a?.amount ?? 0);
+  }
+
   ngOnInit() {
     this.rejectForm = this.fb.group({
       rejectionReason: ['', [Validators.required, Validators.minLength(10)]],

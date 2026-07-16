@@ -153,6 +153,9 @@ export interface IInvoiceResponse {
   serie?: string;
   montoTotal?: number;
   moneda?: string;
+  montoBase?: number;
+  tipoCambio?: number;
+  tcFecha?: string;
   userId?: string;
   createdBy?: string;
   uploadedBy?: string;

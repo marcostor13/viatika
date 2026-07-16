@@ -130,6 +130,10 @@ export interface IAdvance {
   observations?: string;
   coordinatorNotification?: ICoordinatorNotification;
   amount: number;
+  moneda?: string;
+  montoBase?: number;
+  tipoCambio?: number;
+  tcFecha?: string;
   description: string;
   status: AdvanceStatus;
   approvalLevel: number;
@@ -186,6 +190,7 @@ export interface IAdvanceLinePayload {
 /** Legacy: solo amount + description. Fase 2: lugar, fechas, proyecto, líneas y total coherente. */
 export interface ICreateAdvancePayload {
   amount: number;
+  moneda?: string;
   description: string;
   expenseReportId?: string;
   place?: string;

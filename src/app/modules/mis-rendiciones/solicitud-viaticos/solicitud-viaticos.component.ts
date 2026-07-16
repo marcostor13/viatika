@@ -43,6 +43,8 @@ import {
   optionalViaticoLineNumber,
   validateViaticoLineFields,
 } from '../viatico-line.util';
+import { AccountingConfigService } from '../../../services/accounting-config.service';
+import { ICurrencyConfig } from '../../../interfaces/accounting-config.interface';
 
 @Component({
   selector: 'app-solicitud-viaticos',
@@ -67,9 +69,30 @@ export class SolicitudViaticosComponent implements OnInit {
   private categoriaService = inject(CategoriaService);
   private categoryGroupService = inject(CategoryGroupService);
   private saldoService = inject(SaldoService);
+  private accountingConfigService = inject(AccountingConfigService);
 
   submitting = signal(false);
   useCustomBank = signal(false);
+
+  /** Monedas soportadas por la empresa (Configuración → Plan de Cuentas y Bancos). */
+  currencyOptions = signal<ICurrencyConfig[]>([{ code: 'PEN', symbol: 'S/', contanetCode: '01', decimals: 2, approvalThresholdL1: 500 }]);
+  /** Moneda base del cliente (normalmente PEN) — el saldo de la bolsa solo existe en esta moneda. */
+  monedaBase = signal<string>('PEN');
+  /** Espeja el control `moneda` para alimentar los computeds (mismo patrón que `selectedProjectId`). */
+  selectedMoneda = signal<string>('PEN');
+
+  /** Símbolo de la moneda elegida (S/, $, …), para mostrar en vez de "S/" fijo. */
+  currentCurrencySymbol = computed(() => {
+    const code = this.selectedMoneda();
+    return this.currencyOptions().find(c => c.code === code)?.symbol ?? code;
+  });
+
+  /** True cuando la moneda elegida no es la moneda base del cliente. */
+  isForeignCurrency = computed(() => this.selectedMoneda() !== this.monedaBase());
+  /** True tras cambiar de moneda con montos de línea ya cargados (aviso: no se convierten). */
+  currencyChangedWithAmounts = signal(false);
+  /** Suprime el aviso de cambio de moneda mientras se precarga una solicitud existente. */
+  private suppressCurrencyWarning = true;
 
   // Saldos de viáticos del mismo centro de costo (bolsa).
   saldos = signal<ISaldo[]>([]);
@@ -116,8 +139,14 @@ export class SolicitudViaticosComponent implements OnInit {
     return Math.round(Math.max(0, this.totalGeneral() - this.pendingBalanceAmount()) * 100) / 100;
   }
 
-  /** Solo se ofrece la bolsa de saldos en solicitudes nuevas (no reenvío ni saldo heredado por query). */
+  /**
+   * Solo se ofrece la bolsa de saldos en solicitudes nuevas (no reenvío ni saldo heredado
+   * por query), y solo cuando la moneda elegida es la moneda base: el saldo de la bolsa
+   * siempre está en moneda base y hoy no hay conversión al consumirlo, así que mezclarlo
+   * con una solicitud en moneda extranjera produciría montos incorrectos.
+   */
   get canUseSaldoBag(): boolean {
+    if (this.isForeignCurrency()) return false;
     if (this.hasPendingBalance) return false;
     if (!this.isResubmit) return true;
     // En corrección solo se permite re-seleccionar saldo si el viático no tiene ya
@@ -173,6 +202,7 @@ export class SolicitudViaticosComponent implements OnInit {
     startDate: ['', Validators.required],
     endDate: ['', Validators.required],
     projectId: ['', Validators.required],
+    moneda: ['PEN'],
     observations: [''],
     bankName: [''],
     accountNumber: [''],
@@ -243,11 +273,27 @@ export class SolicitudViaticosComponent implements OnInit {
       this.clearInvalidLineCategories();
       this.loadEligibleSaldos(pid ?? '');
     });
+    // Espeja la moneda elegida; si ya hay montos cargados avisa que no se convierten, y si
+    // deja de ser la moneda base limpia la selección de saldos de la bolsa (ya no aplica).
+    // Suprimido durante la precarga inicial (nueva solicitud o reenvío): el patchValue de
+    // moneda al restaurar una solicitud existente no debe disparar el aviso de "cambio".
+    this.form.get('moneda')?.valueChanges.subscribe((code) => {
+      const next = code || 'PEN';
+      if (!this.suppressCurrencyWarning && this.selectedMoneda() !== next && this.totalGeneral() > 0) {
+        this.currencyChangedWithAmounts.set(true);
+      }
+      this.selectedMoneda.set(next);
+      if (next !== this.monedaBase()) {
+        this.selectedSaldoIds.set(new Set());
+      }
+    });
+    this.loadCurrencyOptions();
 
     const id = this.route.snapshot.paramMap.get('id');
     if (id) {
       this.loadForResubmit(id);
     } else {
+      this.suppressCurrencyWarning = false;
       const qp = this.route.snapshot.queryParamMap;
       const fromReport = qp.get('pendingBalanceFromReportId');
       const amount = parseFloat(qp.get('pendingBalanceAmount') ?? '0');
@@ -279,6 +325,12 @@ export class SolicitudViaticosComponent implements OnInit {
         ctrl?.setValue(pid);
         this.selectedProjectId.set(pid);
         ctrl?.disable({ emitEvent: false });
+        // El saldo heredado no soporta conversión: la moneda queda fija en la base y
+        // bloqueada mientras haya saldo pendiente trasladado.
+        const monedaCtrl = this.form.get('moneda');
+        monedaCtrl?.setValue(this.monedaBase());
+        this.selectedMoneda.set(this.monedaBase());
+        monedaCtrl?.disable({ emitEvent: false });
       },
       error: () => {},
     });
@@ -361,6 +413,23 @@ export class SolicitudViaticosComponent implements OnInit {
     });
   }
 
+  /** Monedas configuradas por la empresa; si no hay config guardada, se queda con el default PEN. */
+  private loadCurrencyOptions(): void {
+    const clientId = this.resolveCompanyId();
+    if (!clientId) return;
+    this.accountingConfigService.getCurrencies(clientId).subscribe({
+      next: (config) => {
+        if (config?.monedaBase) {
+          this.monedaBase.set(config.monedaBase);
+        }
+        if (config?.supportedCurrencies?.length) {
+          this.currencyOptions.set(config.supportedCurrencies);
+        }
+      },
+      error: () => {},
+    });
+  }
+
   private loadCatalogues(): void {
     const clientId = this.resolveCompanyId();
     if (!clientId) return;
@@ -404,6 +473,7 @@ export class SolicitudViaticosComponent implements OnInit {
       place: adv.place ?? '',
       startDate: this.ymdFromDate(adv.startDate),
       endDate: this.ymdFromDate(adv.endDate),
+      moneda: adv.moneda || 'PEN',
       observations: adv.observations ?? '',
     });
     if (adv.requestAccountNumber) {
@@ -414,6 +484,7 @@ export class SolicitudViaticosComponent implements OnInit {
     // de las líneas que acabamos de restaurar.
     this.form.get('projectId')?.setValue(pid, { emitEvent: false });
     this.selectedProjectId.set(pid);
+    this.suppressCurrencyWarning = false;
 
     this.loadCatalogues();
   }
@@ -446,6 +517,7 @@ export class SolicitudViaticosComponent implements OnInit {
       place: report.viaticoPlace ?? '',
       startDate: this.ymdFromDate(report.viaticoStartDate),
       endDate: this.ymdFromDate(report.viaticoEndDate),
+      moneda: report.moneda || 'PEN',
       observations: report.viaticoObservations ?? '',
     });
     if (report.viaticoAccountNumber) {
@@ -469,6 +541,7 @@ export class SolicitudViaticosComponent implements OnInit {
     // Como el projectId se fija sin emitir evento, cargamos los saldos elegibles a
     // mano: en una corrección sin saldo aplicado permite re-seleccionar de la bolsa.
     this.loadEligibleSaldos(pid);
+    this.suppressCurrencyWarning = false;
 
     this.loadCatalogues();
   }
@@ -682,6 +755,7 @@ export class SolicitudViaticosComponent implements OnInit {
         // El costo del viático son sus líneas. El saldo heredado lo prefinancia en el
         // backend (no se suma al anticipo), igual que un saldo de la bolsa.
         amount: linesTotal,
+        moneda: this.selectedMoneda(),
         place,
         ...(this.selectedLat != null && { lat: this.selectedLat }),
         ...(this.selectedLng != null && { lng: this.selectedLng }),
@@ -706,6 +780,7 @@ export class SolicitudViaticosComponent implements OnInit {
       // Resubmit of a legacy Advance (old system)
       const legacyPayload: ICreateAdvancePayload = {
         amount: hasPending ? this.totalAnticipo() : linesTotal,
+        moneda: this.selectedMoneda(),
         description: `Viático: ${place} (${startStr} → ${endStr})`,
         place,
         ...(this.selectedLat != null && { lat: this.selectedLat }),
@@ -734,6 +809,7 @@ export class SolicitudViaticosComponent implements OnInit {
       // El costo del viático son sus líneas; el saldo heredado lo prefinancia en el
       // backend (no se suma al anticipo), igual que un saldo de la bolsa.
       amount: linesTotal,
+      moneda: this.form.value.moneda || 'PEN',
       place,
       ...(this.selectedLat != null && { lat: this.selectedLat }),
       ...(this.selectedLng != null && { lng: this.selectedLng }),

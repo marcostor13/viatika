@@ -12,6 +12,20 @@ export interface IBankAccount {
   activo?: boolean;
 }
 
+export interface ICurrencyConfig {
+  /** Código ISO 4217: 'PEN', 'USD', 'EUR'… */
+  code: string;
+  /** Símbolo de presentación: 'S/', '$', '€'. */
+  symbol: string;
+  /** Código de moneda Contanet (Tabla 3): '01' soles, '02' dólares… */
+  contanetCode: string;
+  decimals: number;
+  /** Umbral de aprobación de anticipos nivel 1, en esta moneda. */
+  approvalThresholdL1: number;
+  /** TC manual moneda→monedaBase. No aplica a monedaBase ni a USD (SUNAT/Decolecta). */
+  manualRate?: number;
+}
+
 export interface IAccountingConfig {
   _id?: string;
   clientId?: string;
@@ -29,6 +43,8 @@ export interface IAccountingConfig {
   monedaOrigen: string;
   monedaRegistro: string;
   identificadorCtrMda: string;
+  monedaBase: string;
+  supportedCurrencies: ICurrencyConfig[];
   conceptoFec: string;
   area?: string;
   centroCosto?: string;
@@ -56,6 +72,11 @@ export const DEFAULT_ACCOUNTING_CONFIG: IAccountingConfig = {
   monedaOrigen: '01',
   monedaRegistro: '01',
   identificadorCtrMda: 'A',
+  monedaBase: 'PEN',
+  supportedCurrencies: [
+    { code: 'PEN', symbol: 'S/', contanetCode: '01', decimals: 2, approvalThresholdL1: 500 },
+    { code: 'USD', symbol: '$', contanetCode: '02', decimals: 2, approvalThresholdL1: 150 },
+  ],
   conceptoFec: '1',
   area: '',
   centroCosto: '',

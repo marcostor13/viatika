@@ -14,6 +14,7 @@ import { AccountingConfigService } from '../../services/accounting-config.servic
 import {
   IAccountingConfig,
   IBankAccount,
+  ICurrencyConfig,
   DEFAULT_ACCOUNTING_CONFIG,
 } from '../../interfaces/accounting-config.interface';
 import { ButtonComponent } from '../../design-system/button/button.component';
@@ -625,6 +626,10 @@ export class ConfiguracionComponent implements OnInit {
       bankAccounts: (this.accountingConfig?.bankAccounts ?? []).map((b) => ({
         ...b,
       })),
+      supportedCurrencies: (this.accountingConfig?.supportedCurrencies?.length
+        ? this.accountingConfig.supportedCurrencies
+        : DEFAULT_ACCOUNTING_CONFIG.supportedCurrencies
+      ).map((c) => ({ ...c })),
     };
     this.showAccountingForm = true;
   }
@@ -658,6 +663,33 @@ export class ConfiguracionComponent implements OnInit {
     this.accountingForm.bankAccounts.splice(index, 1);
   }
 
+  addCurrency() {
+    const currency: ICurrencyConfig = {
+      code: '',
+      symbol: '',
+      contanetCode: '',
+      decimals: 2,
+      approvalThresholdL1: 0,
+    };
+    this.accountingForm.supportedCurrencies.push(currency);
+  }
+
+  removeCurrency(index: number) {
+    if (this.accountingForm.supportedCurrencies[index]?.code === this.accountingForm.monedaBase) {
+      this.notificationService.show(
+        'No puedes eliminar la moneda base. Cambia primero la moneda base.',
+        'error'
+      );
+      return;
+    }
+    this.accountingForm.supportedCurrencies.splice(index, 1);
+  }
+
+  /** USD resuelve su TC vía SUNAT/Decolecta; el resto (salvo la moneda base) requiere TC manual. */
+  currencyNeedsManualRate(currency: ICurrencyConfig): boolean {
+    return currency.code !== this.accountingForm.monedaBase && currency.code !== 'USD';
+  }
+
   /** Convierte el textarea de palabras clave (una por línea) a array. */
   get inafectoKeywordsText(): string {
     return (this.accountingForm.inafectoKeywords ?? []).join('\n');
@@ -686,6 +718,33 @@ export class ConfiguracionComponent implements OnInit {
     ) {
       this.notificationService.show(
         'Las cuentas 42, 79 y 14 son obligatorias',
+        'error'
+      );
+      return;
+    }
+    const currencyCodes = this.accountingForm.supportedCurrencies.map((c) => c.code?.trim().toUpperCase());
+    if (currencyCodes.some((c) => !c)) {
+      this.notificationService.show('Todas las monedas necesitan un código', 'error');
+      return;
+    }
+    if (new Set(currencyCodes).size !== currencyCodes.length) {
+      this.notificationService.show('Hay monedas duplicadas', 'error');
+      return;
+    }
+    if (!currencyCodes.includes(this.accountingForm.monedaBase?.trim().toUpperCase())) {
+      this.notificationService.show(
+        'La moneda base debe estar entre las monedas soportadas',
+        'error'
+      );
+      return;
+    }
+    if (
+      this.accountingForm.supportedCurrencies.some(
+        (c) => this.currencyNeedsManualRate(c) && !(c.manualRate && c.manualRate > 0)
+      )
+    ) {
+      this.notificationService.show(
+        'Las monedas distintas de la base y USD requieren un tipo de cambio manual',
         'error'
       );
       return;
