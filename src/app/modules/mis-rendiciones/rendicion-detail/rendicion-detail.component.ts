@@ -2374,9 +2374,6 @@ export class RendicionDetailComponent implements OnInit {
   get canUploadReturnVoucher(): boolean {
     if (this.isAdminView) return false;
     if (this.isSaldoUsadoEnOtraRendicion) return false;
-    // El sobrante de un viático liquidado va a la bolsa del colaborador, no se devuelve
-    // en efectivo → no se pide comprobante de devolución.
-    if ((this.report as any)?.settlement?.toBolsa) return false;
     const status = this.report?.status;
     if (status !== 'approved' && status !== 'closed') return false;
     if (!this.isDevolucionExpected) return false;
@@ -2387,8 +2384,6 @@ export class RendicionDetailComponent implements OnInit {
   get approvedPendingVoucher(): boolean {
     if (!this.isAdminView) return false;
     if (this.isSaldoUsadoEnOtraRendicion) return false;
-    // Sobrante de viático → bolsa, no comprobante de devolución (ver canUploadReturnVoucher).
-    if ((this.report as any)?.settlement?.toBolsa) return false;
     if (this.report?.status !== 'approved') return false;
     return this.isDevolucionExpected && !(this.report as any)?.returnVoucher;
   }
