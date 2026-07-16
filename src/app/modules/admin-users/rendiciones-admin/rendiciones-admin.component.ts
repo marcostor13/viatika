@@ -2,7 +2,8 @@ import { Component, OnInit, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule, ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { Router, ActivatedRoute, RouterModule } from '@angular/router';
-import { Observable, forkJoin } from 'rxjs';
+import { Observable, forkJoin, of } from 'rxjs';
+import { catchError } from 'rxjs/operators';
 import { ExpenseReportsService } from '../../../services/expense-reports.service';
 import { AdminUsersService } from '../services/admin-users.service';
 import { InvoicesService } from '../../invoices/services/invoices.service';
@@ -158,10 +159,21 @@ export class RendicionesAdminComponent implements OnInit {
     forkJoin({
       reports: this.expenseReportsService.findAllByClient(clientId),
       advances: this.advanceService.findOrphaned(clientId),
+      // Ampliaciones de viáticos = advances con expenseReportId; findOrphaned las excluye
+      // (solo trae huérfanos), así que el coordinador no las veía. Las traemos por separado
+      // y añadimos SOLO las pendientes de aprobación para que se puedan ver/aprobar aquí.
+      linkedPending: this.advanceService.findForViaticosPage({}).pipe(catchError(() => of([]))),
     }).subscribe({
-      next: ({ reports, advances }) => {
+      next: ({ reports, advances, linkedPending }) => {
         this.allReports = reports.filter((r) => !r.isDirecta);
-        this.allOrphanedAdvances = advances;
+        const orphanIds = new Set(advances.map((a) => a._id));
+        const pendingAmpliaciones = (linkedPending ?? []).filter(
+          (a) =>
+            !!a.expenseReportId &&
+            ['pending_l1', 'pending_l2'].includes(a.status) &&
+            !orphanIds.has(a._id)
+        );
+        this.allOrphanedAdvances = [...advances, ...pendingAmpliaciones];
         this.applyFilters();
         this.isLoading = false;
       },
