@@ -145,7 +145,7 @@
         @if (isForeignCurrency) {
         <div class="flex justify-between items-center text-xs">
           <span class="text-tertiary">Equivalente</span>
-          <span class="text-tertiary tabular-nums">S/ {{ viaticoAmountBase | number:'1.2-2' }} (TC {{ report?.tipoCambio }})</span>
+          <span class="text-tertiary tabular-nums">S/ {{ viaticoAmountBase | number:'1.2-2' }} (TC {{ report.tipoCambio }})</span>
         </div>
         }
         @if (viaticoPaidAmount > 0.01) {
