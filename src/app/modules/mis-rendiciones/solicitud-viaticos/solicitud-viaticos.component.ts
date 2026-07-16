@@ -413,21 +413,15 @@ export class SolicitudViaticosComponent implements OnInit {
     });
   }
 
-  /** Monedas configuradas por la empresa; si no hay config guardada, se queda con el default PEN. */
+  /**
+   * Selector de moneda oculto: la solicitud queda fija en soles (PEN). Ignoramos la
+   * moneda base y las monedas soportadas de la config de la empresa para que el
+   * formulario siempre se registre y envíe en soles.
+   */
   private loadCurrencyOptions(): void {
-    const clientId = this.resolveCompanyId();
-    if (!clientId) return;
-    this.accountingConfigService.getCurrencies(clientId).subscribe({
-      next: (config) => {
-        if (config?.monedaBase) {
-          this.monedaBase.set(config.monedaBase);
-        }
-        if (config?.supportedCurrencies?.length) {
-          this.currencyOptions.set(config.supportedCurrencies);
-        }
-      },
-      error: () => {},
-    });
+    this.monedaBase.set('PEN');
+    this.selectedMoneda.set('PEN');
+    this.form.get('moneda')?.setValue('PEN', { emitEvent: false });
   }
 
   private loadCatalogues(): void {
@@ -473,7 +467,7 @@ export class SolicitudViaticosComponent implements OnInit {
       place: adv.place ?? '',
       startDate: this.ymdFromDate(adv.startDate),
       endDate: this.ymdFromDate(adv.endDate),
-      moneda: adv.moneda || 'PEN',
+      moneda: 'PEN',
       observations: adv.observations ?? '',
     });
     if (adv.requestAccountNumber) {
@@ -517,7 +511,7 @@ export class SolicitudViaticosComponent implements OnInit {
       place: report.viaticoPlace ?? '',
       startDate: this.ymdFromDate(report.viaticoStartDate),
       endDate: this.ymdFromDate(report.viaticoEndDate),
-      moneda: report.moneda || 'PEN',
+      moneda: 'PEN',
       observations: report.viaticoObservations ?? '',
     });
     if (report.viaticoAccountNumber) {
