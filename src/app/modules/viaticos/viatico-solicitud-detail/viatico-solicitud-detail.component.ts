@@ -97,6 +97,20 @@ export class ViaticoSolicitudDetailComponent implements OnInit {
     return Number((this.report as any)?.viaticoPaidAmount ?? 0);
   }
 
+  get moneda(): string {
+    return (this.report as any)?.moneda || 'PEN';
+  }
+
+  get isForeignCurrency(): boolean {
+    const r = this.report as any;
+    return !!r && !!r.moneda && r.moneda !== 'PEN' && !!r.tipoCambio && r.tipoCambio > 0;
+  }
+
+  get viaticoAmountBase(): number {
+    const r = this.report as any;
+    return Number(r?.viaticoAmountBase ?? this.viaticoAmount);
+  }
+
   get pendienteDeposito(): number {
     const pend = Math.round((this.viaticoAmount - this.viaticoPaidAmount) * 100) / 100;
     return pend > 0.01 ? pend : 0;

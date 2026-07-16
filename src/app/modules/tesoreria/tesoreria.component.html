@@ -326,9 +326,12 @@
               <td class="px-5 py-3.5 font-medium text-secondary">{{ viaticoUserName(rep) }}</td>
               <td class="px-5 py-3.5 text-tertiary max-w-[160px] truncate">{{ rep.viaticoPlace || rep.title || '—' }}</td>
               <td class="px-5 py-3.5 text-right">
-                <span class="font-bold text-secondary">S/ {{ (rep.viaticoAmount ?? 0) | number:'1.2-2' }}</span>
+                <span class="font-bold text-secondary">{{ viaticoMoneda(rep) }} {{ (rep.viaticoAmount ?? 0) | number:'1.2-2' }}</span>
+                @if (isViaticoForeignCurrency(rep)) {
+                <span class="block text-xs text-tertiary">S/ {{ viaticoMontoBase(rep) | number:'1.2-2' }} (TC {{ rep.tipoCambio }})</span>
+                }
                 @if ((rep.viaticoPaidAmount ?? 0) > 0) {
-                <span class="block text-xs text-tertiary">Pagado: S/ {{ (rep.viaticoPaidAmount ?? 0) | number:'1.2-2' }}</span>
+                <span class="block text-xs text-tertiary">Pagado: {{ viaticoMoneda(rep) }} {{ (rep.viaticoPaidAmount ?? 0) | number:'1.2-2' }}</span>
                 }
               </td>
               <td class="px-5 py-3.5 text-center">
@@ -358,8 +361,11 @@
               <td class="px-5 py-3.5 font-medium text-secondary">{{ viaticoUserName(rep) }}</td>
               <td class="px-5 py-3.5 text-tertiary max-w-[160px] truncate">{{ rep.viaticoPlace || rep.title || '—' }}</td>
               <td class="px-5 py-3.5 text-right">
-                <span class="font-bold text-secondary">S/ {{ (rep.viaticoAmount ?? 0) | number:'1.2-2' }}</span>
-                <span class="block text-xs text-tertiary">Pagado: S/ {{ (rep.viaticoPaidAmount ?? 0) | number:'1.2-2' }}</span>
+                <span class="font-bold text-secondary">{{ viaticoMoneda(rep) }} {{ (rep.viaticoAmount ?? 0) | number:'1.2-2' }}</span>
+                @if (isViaticoForeignCurrency(rep)) {
+                <span class="block text-xs text-tertiary">S/ {{ viaticoMontoBase(rep) | number:'1.2-2' }} (TC {{ rep.tipoCambio }})</span>
+                }
+                <span class="block text-xs text-tertiary">Pagado: {{ viaticoMoneda(rep) }} {{ (rep.viaticoPaidAmount ?? 0) | number:'1.2-2' }}</span>
               </td>
               <td class="px-5 py-3.5 text-center">
                 <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium"
@@ -459,9 +465,12 @@
               <p class="text-xs text-tertiary mt-0.5 truncate">{{ rep.viaticoPlace || rep.title || '—' }}</p>
             </div>
             <div class="text-right shrink-0">
-              <p class="text-base font-bold text-secondary">S/ {{ (rep.viaticoAmount ?? 0) | number:'1.2-2' }}</p>
+              <p class="text-base font-bold text-secondary">{{ viaticoMoneda(rep) }} {{ (rep.viaticoAmount ?? 0) | number:'1.2-2' }}</p>
+              @if (isViaticoForeignCurrency(rep)) {
+              <p class="text-xs text-tertiary">S/ {{ viaticoMontoBase(rep) | number:'1.2-2' }} (TC {{ rep.tipoCambio }})</p>
+              }
               @if ((rep.viaticoPaidAmount ?? 0) > 0) {
-              <p class="text-xs text-tertiary">Pagado: S/ {{ (rep.viaticoPaidAmount ?? 0) | number:'1.2-2' }}</p>
+              <p class="text-xs text-tertiary">Pagado: {{ viaticoMoneda(rep) }} {{ (rep.viaticoPaidAmount ?? 0) | number:'1.2-2' }}</p>
               }
               <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium mt-1"
                 [class]="rep.status === 'partially_paid' ? 'bg-amber-100 text-amber-700' : 'bg-blue-100 text-blue-800'">
@@ -491,8 +500,11 @@
               <p class="text-xs text-tertiary mt-0.5 truncate">{{ rep.viaticoPlace || rep.title || '—' }}</p>
             </div>
             <div class="text-right shrink-0">
-              <p class="text-base font-bold text-secondary">S/ {{ (rep.viaticoAmount ?? 0) | number:'1.2-2' }}</p>
-              <p class="text-xs text-tertiary">Pagado: S/ {{ (rep.viaticoPaidAmount ?? 0) | number:'1.2-2' }}</p>
+              <p class="text-base font-bold text-secondary">{{ viaticoMoneda(rep) }} {{ (rep.viaticoAmount ?? 0) | number:'1.2-2' }}</p>
+              @if (isViaticoForeignCurrency(rep)) {
+              <p class="text-xs text-tertiary">S/ {{ viaticoMontoBase(rep) | number:'1.2-2' }} (TC {{ rep.tipoCambio }})</p>
+              }
+              <p class="text-xs text-tertiary">Pagado: {{ viaticoMoneda(rep) }} {{ (rep.viaticoPaidAmount ?? 0) | number:'1.2-2' }}</p>
               <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium mt-1"
                 [class]="viaticoRemaining(rep) > 0.009 ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700'">
                 {{ viaticoRemaining(rep) > 0.009 ? 'Pago parcial' : 'Pagado' }}
@@ -602,8 +614,8 @@
       </p>
       @if (advancePaid(selectedAdvance) > 0) {
       <div class="mb-4 rounded-xl bg-background/70 border border-tertiary/20 px-3 py-2 text-xs text-tertiary flex items-center justify-between">
-        <span>Pagado: <span class="font-semibold text-secondary">S/ {{ advancePaid(selectedAdvance) | number:'1.2-2' }}</span></span>
-        <span>Falta: <span class="font-semibold" [class.text-error]="advanceRemaining(selectedAdvance) > 0">S/ {{ advanceRemaining(selectedAdvance) | number:'1.2-2' }}</span></span>
+        <span>Pagado: <span class="font-semibold text-secondary">{{ advanceMoneda(selectedAdvance) }} {{ advancePaid(selectedAdvance) | number:'1.2-2' }}</span></span>
+        <span>Falta: <span class="font-semibold" [class.text-error]="advanceRemaining(selectedAdvance) > 0">{{ advanceMoneda(selectedAdvance) }} {{ advanceRemaining(selectedAdvance) | number:'1.2-2' }}</span></span>
       </div>
       }
 
@@ -653,11 +665,11 @@
 
         <!-- Monto de este pago (autocompletado del escaneo, editable) -->
         <div class="flex flex-col gap-1.5">
-          <label class="text-xs font-semibold text-tertiary uppercase tracking-wider">Monto de este pago S/ <span class="text-error">*</span></label>
+          <label class="text-xs font-semibold text-tertiary uppercase tracking-wider">Monto de este pago {{ advanceMoneda(selectedAdvance) }} <span class="text-error">*</span></label>
           <input type="number" formControlName="amount" min="0" step="0.01" placeholder="0.00"
             class="w-full h-[42px] px-3 rounded-xl border border-tertiary/30 text-sm text-secondary bg-quaternary focus:outline-none focus:ring-2 focus:ring-primary/30" />
           @if (paymentScannedAmount !== null) {
-          <p class="text-[11px] text-tertiary">Monto detectado: S/ {{ paymentScannedAmount | number:'1.2-2' }}@if (paymentScannedTitular) { · {{ paymentScannedTitular }} }. Puedes editarlo.</p>
+          <p class="text-[11px] text-tertiary">Monto detectado: {{ advanceMoneda(selectedAdvance) }} {{ paymentScannedAmount | number:'1.2-2' }}@if (paymentScannedTitular) { · {{ paymentScannedTitular }} }. Puedes editarlo.</p>
           }
         </div>
 
@@ -1072,12 +1084,17 @@
       <h3 class="text-lg font-bold text-secondary mb-0.5">Registrar pago de viático</h3>
       <p class="text-sm text-tertiary mb-2">
         <span class="font-semibold text-secondary">{{ viaticoUserName(selectedViaticoReport) }}</span>
+        @if (isViaticoForeignCurrency(selectedViaticoReport)) {
+        &nbsp;·&nbsp;Solicitado {{ viaticoMoneda(selectedViaticoReport) }} {{ (selectedViaticoReport.viaticoAmount ?? 0) | number:'1.2-2' }}
+        (S/ {{ viaticoMontoBase(selectedViaticoReport) | number:'1.2-2' }}, TC {{ selectedViaticoReport.tipoCambio }})
+        } @else {
         &nbsp;·&nbsp;S/ {{ (selectedViaticoReport.viaticoAmount ?? 0) | number:'1.2-2' }}
+        }
       </p>
       @if ((selectedViaticoReport.viaticoPaidAmount ?? 0) > 0) {
       <div class="mb-4 rounded-xl bg-background/70 border border-tertiary/20 px-3 py-2 text-xs text-tertiary flex items-center justify-between">
-        <span>Pagado: <span class="font-semibold text-secondary">S/ {{ (selectedViaticoReport.viaticoPaidAmount ?? 0) | number:'1.2-2' }}</span></span>
-        <span>Falta: <span class="font-semibold text-error">S/ {{ viaticoRemaining(selectedViaticoReport) | number:'1.2-2' }}</span></span>
+        <span>Pagado: <span class="font-semibold text-secondary">{{ viaticoMoneda(selectedViaticoReport) }} {{ (selectedViaticoReport.viaticoPaidAmount ?? 0) | number:'1.2-2' }}</span></span>
+        <span>Falta: <span class="font-semibold text-error">{{ viaticoMoneda(selectedViaticoReport) }} {{ viaticoRemaining(selectedViaticoReport) | number:'1.2-2' }}</span></span>
       </div>
       }
 
@@ -1125,11 +1142,11 @@
         </div>
 
         <div class="flex flex-col gap-1.5">
-          <label class="text-xs font-semibold text-tertiary uppercase tracking-wider">Monto S/ <span class="text-error">*</span></label>
+          <label class="text-xs font-semibold text-tertiary uppercase tracking-wider">Monto {{ viaticoMoneda(selectedViaticoReport) }} <span class="text-error">*</span></label>
           <input type="number" formControlName="amount" min="0" step="0.01" placeholder="0.00"
             class="w-full h-[42px] px-3 rounded-xl border border-tertiary/30 text-sm text-secondary bg-quaternary focus:outline-none focus:ring-2 focus:ring-primary/30" />
           @if (viaticoScannedAmount !== null) {
-          <p class="text-[11px] text-tertiary">Monto detectado: S/ {{ viaticoScannedAmount | number:'1.2-2' }}. Puedes editarlo.</p>
+          <p class="text-[11px] text-tertiary">Monto detectado: {{ viaticoMoneda(selectedViaticoReport) }} {{ viaticoScannedAmount | number:'1.2-2' }}. Puedes editarlo.</p>
           }
         </div>
 

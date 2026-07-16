@@ -28,6 +28,9 @@ type UnifiedSolicitudItem = {
   projectLabel: string;
   dateRange: string;
   amount: number;
+  moneda: string;
+  montoBase: number;
+  tipoCambio?: number;
   pendingBalanceAmount?: number;
   additionalAmount?: number;
   status: string;
@@ -135,6 +138,9 @@ export class ViaticosComponent implements OnInit {
         projectLabel: this.advProjectLabel(a),
         dateRange: this.advDateRange(a),
         amount: a.amount,
+        moneda: a.moneda || 'PEN',
+        montoBase: Number(a.montoBase ?? a.amount ?? 0),
+        tipoCambio: a.tipoCambio,
         pendingBalanceAmount: (a as any).pendingBalanceAmount,
         additionalAmount: (a as any).additionalAmount,
         status: a.status,
@@ -169,6 +175,9 @@ export class ViaticosComponent implements OnInit {
         projectLabel,
         dateRange: this.viaDates(v),
         amount: v.viaticoAmount ?? v.budget ?? 0,
+        moneda: v.moneda || 'PEN',
+        montoBase: Number((v as any).viaticoAmountBase ?? v.viaticoAmount ?? v.budget ?? 0),
+        tipoCambio: v.tipoCambio,
         status: v.status,
         statusLabel,
         statusColor,
@@ -259,6 +268,10 @@ export class ViaticosComponent implements OnInit {
     if (a.startDate) return fmt(a.startDate);
     return '—';
   }
+  isItemForeignCurrency(item: UnifiedSolicitudItem): boolean {
+    return !!item.moneda && item.moneda !== 'PEN' && !!item.tipoCambio && item.tipoCambio > 0;
+  }
+
   private viaDates(v: IExpenseReport): string {
     const fmt = (d: string) => new Date(d).toLocaleDateString('es-PE', { day: 'numeric', month: 'short', year: 'numeric' });
     const s = v.viaticoStartDate;

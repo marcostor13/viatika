@@ -128,7 +128,12 @@
             @if (showUser) {<span class="font-medium text-secondary/70">{{ row.userName }}</span> · }@if (row.project) {{{ row.project }} · }{{ row.createdAt | date:'dd/MM/yyyy' }}
           </p>
         </div>
-        <span class="text-sm font-semibold text-secondary whitespace-nowrap">S/. {{ row.amount | number:'1.2-2' }}</span>
+        <span class="text-sm font-semibold text-secondary whitespace-nowrap text-right">
+          {{ row.moneda }} {{ row.amount | number:'1.2-2' }}
+          @if (isRowForeignCurrency(row)) {
+          <span class="block text-[10px] font-normal text-tertiary">S/ {{ row.montoBase | number:'1.2-2' }}</span>
+          }
+        </span>
         <span class="text-[11px] font-medium px-2 py-0.5 rounded-full whitespace-nowrap" [class]="row.statusColor">{{ row.statusLabel }}</span>
         @if (approveKind && canApproveRow(row, approveKind)) {
         <button (click)="approveRow(row, approveKind, $event)" [disabled]="acting() === row._id"

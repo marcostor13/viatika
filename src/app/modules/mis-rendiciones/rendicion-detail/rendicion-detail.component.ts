@@ -2217,6 +2217,22 @@ export class RendicionDetailComponent implements OnInit {
     return Math.round((base + this.ampliacionesGrantedTotal) * 100) / 100;
   }
 
+  get viaticoMoneda(): string {
+    return (this.report as any)?.moneda || 'PEN';
+  }
+
+  get isViaticoForeignCurrency(): boolean {
+    const r = this.report as any;
+    return !!r && !!r.moneda && r.moneda !== 'PEN' && !!r.tipoCambio && r.tipoCambio > 0;
+  }
+
+  get viaticoPresupuestoBase(): number {
+    const r = this.report as any;
+    if (!this.isViaticoForeignCurrency) return this.viaticoPresupuesto;
+    const tc = Number(r?.tipoCambio ?? 1);
+    return Math.round(this.viaticoPresupuesto * tc * 100) / 100;
+  }
+
   /** Parte del viático ya financiada (saldo heredado/bolsa + depósitos de Contabilidad). */
   get viaticoFinanciado(): number {
     return Number((this.report as any)?.viaticoPaidAmount ?? 0);
