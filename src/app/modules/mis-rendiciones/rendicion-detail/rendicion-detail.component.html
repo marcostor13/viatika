@@ -689,7 +689,7 @@
           </div>
           <p class="text-2xl sm:text-3xl font-bold text-gray-900 tabular-nums">{{ viaticoMoneda }} {{ viaticoPresupuesto | number:'1.2-2' }}</p>
           @if (isViaticoForeignCurrency) {
-          <p class="text-xs text-gray-400 tabular-nums">≈ S/ {{ viaticoPresupuestoBase | number:'1.2-2' }} (TC {{ report?.tipoCambio }})</p>
+          <p class="text-xs text-gray-400 tabular-nums">≈ S/ {{ viaticoPresupuestoBase | number:'1.2-2' }} (TC {{ report.tipoCambio }})</p>
           }
           @if (viaticoFinancingRows.length > 0 || viaticoPendienteDeposito > 0) {
           <div class="mt-3 border-t border-gray-100 pt-2 space-y-1.5">
