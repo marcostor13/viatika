@@ -30,7 +30,9 @@ declare const google: any;
   standalone: true,
 })
 export class PlacesAutocompleteDirective implements AfterViewInit, OnDestroy {
-  @Input() country = 'pe';
+  // Vacío = sin restricción de país (busca direcciones de todo el mundo).
+  // Pasar un código ISO (p. ej. 'pe') para limitar a un solo país.
+  @Input() country = '';
   @Output() placeSelected = new EventEmitter<PlaceResult>();
 
   private el = inject(ElementRef);
@@ -58,7 +60,9 @@ export class PlacesAutocompleteDirective implements AfterViewInit, OnDestroy {
     const input = this.el.nativeElement as HTMLInputElement;
 
     const pac = new (google.maps.places as any).PlaceAutocompleteElement({
-      includedRegionCodes: [this.country],
+      // Solo restringimos por región si se especifica un país; si `country`
+      // está vacío, se buscan direcciones de todos los países.
+      ...(this.country ? { includedRegionCodes: [this.country] } : {}),
       includedPrimaryTypes: ['geocode', 'establishment'],
     }) as HTMLElement;
 
@@ -209,7 +213,8 @@ export class PlacesAutocompleteDirective implements AfterViewInit, OnDestroy {
 
     const autocomplete = new google.maps.places.Autocomplete(input, {
       types: ['geocode', 'establishment'],
-      componentRestrictions: { country: this.country },
+      // Sin `componentRestrictions` cuando no hay país => busca en todo el mundo.
+      ...(this.country ? { componentRestrictions: { country: this.country } } : {}),
       fields: ['name', 'formatted_address', 'geometry', 'address_components', 'types'],
       sessionToken,
     });
