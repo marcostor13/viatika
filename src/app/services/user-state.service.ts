@@ -173,7 +173,10 @@ export class UserStateService {
   }
 
   canApproveL1(): boolean {
-    if (this.isSuperAdmin() || this.isContabilidad() || this.isAdmin()) return true;
+    // Contabilidad NO aprueba nivel 1: ese paso es del coordinador. Antes su rol
+    // devolvía true y podía aprobar anticipadamente el paso del coordinador (confusión).
+    if (this.isContabilidad()) return false;
+    if (this.isSuperAdmin() || this.isAdmin()) return true;
     return this.getPermissions().canApproveL1 === true;
   }
 

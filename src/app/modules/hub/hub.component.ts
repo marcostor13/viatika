@@ -40,6 +40,15 @@ export class HubComponent implements OnInit {
   private _pendingPassword = '';
 
   ngOnInit() {
+    // El botón "volver al hub" del sidebar restaura el hub token antes de venir
+    // aquí, pero el retroceder NATIVO del navegador navega directo a /hub sin
+    // pasar por ahí: queda activo el token scopeado a la empresa (sin isHubToken)
+    // y falla tanto cargar empresas como seleccionar otra ("Token inválido").
+    // Restauramos el hub token al entrar para que /hub siempre opere en modo hub.
+    if (this.userStateService.hasHubState()) {
+      this.userStateService.restoreHubState();
+    }
+
     const nav = history.state as any;
 
     if (nav?.companies?.length) {
