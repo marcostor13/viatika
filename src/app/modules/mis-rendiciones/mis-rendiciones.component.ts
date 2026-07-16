@@ -447,7 +447,10 @@ export class MisRendicionesComponent implements OnInit {
   }
 
   canEditViatico(report: IExpenseReport): boolean {
-    return report.status === 'pending_l1';
+    if (report.status === 'pending_l1') return true;
+    // Un coordinador crea su viático directo en pending_l2 (sin pasar por pending_l1): ese
+    // es su estado pendiente inicial, editable por el dueño igual que un pending_l1.
+    return report.status === 'pending_l2' && this.userStateService.isCoordinador();
   }
 
   canResubmitViatico(report: IExpenseReport): boolean {
@@ -737,8 +740,13 @@ export class MisRendicionesComponent implements OnInit {
     const deletableStatuses = ['solicited', 'open', 'rejected', 'submitted'];
     if (deletableStatuses.includes(report.status)) return true;
 
-    // Viático en solicitud sin comprobantes: el colaborador puede eliminarlo.
-    if (report.status === 'pending_l1' && !(report.expenseIds?.length)) return true;
+    // Viático en solicitud sin comprobantes: el colaborador puede eliminarlo. Un
+    // coordinador crea su viático directo en pending_l2 (su estado pendiente inicial),
+    // así que también puede eliminarlo desde ahí.
+    const viaticoPendienteInicial =
+      report.status === 'pending_l1' ||
+      (report.status === 'pending_l2' && this.userStateService.isCoordinador());
+    if (viaticoPendienteInicial && !(report.expenseIds?.length)) return true;
 
     return false;
   }
