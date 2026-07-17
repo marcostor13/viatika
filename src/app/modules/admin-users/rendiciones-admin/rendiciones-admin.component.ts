@@ -66,6 +66,9 @@ export type UnifiedRendicionItem = {
   projectName: string;
   projectId: string;
   amount: number;
+  moneda: string;
+  montoBase: number;
+  tipoCambio?: number;
   status: string;
   statusLabel: string;
   statusColor: string;
@@ -232,6 +235,10 @@ export class RendicionesAdminComponent implements OnInit {
    * saldo pendiente ya fue resuelto: trasladado a otra solicitud/anticipo o
    * devuelto con comprobante. Mismo criterio que mis-rendiciones y el detalle.
    */
+  isItemForeignCurrency(item: UnifiedRendicionItem): boolean {
+    return !!item.moneda && item.moneda !== 'PEN' && !!item.tipoCambio && item.tipoCambio > 0;
+  }
+
   private isReportEffectivelyClosed(r: IExpenseReport): boolean {
     return r.status === 'closed'
       || !!(r as any).pendingBalanceUsedInRendicionId
@@ -256,6 +263,9 @@ export class RendicionesAdminComponent implements OnInit {
         projectName: this.getProjectName(r),
         projectId: pid ?? '',
         amount: r.viaticoAmount ?? r.budget ?? 0,
+        moneda: r.moneda || 'PEN',
+        montoBase: Number((r as any).viaticoAmountBase ?? (r as any).budgetBase ?? r.viaticoAmount ?? r.budget ?? 0),
+        tipoCambio: r.tipoCambio,
         status: r.status,
         statusLabel: this.isReportEffectivelyClosed(r) ? 'Cerrada' : (REPORT_STATUS_LABELS[r.status] ?? r.status),
         statusColor: this.isReportEffectivelyClosed(r) ? 'bg-gray-100 text-gray-500' : (REPORT_STATUS_COLORS[r.status] ?? 'bg-gray-100 text-gray-700'),
@@ -285,6 +295,9 @@ export class RendicionesAdminComponent implements OnInit {
         projectName,
         projectId: pid,
         amount: a.amount ?? 0,
+        moneda: a.moneda || 'PEN',
+        montoBase: Number(a.montoBase ?? a.amount ?? 0),
+        tipoCambio: a.tipoCambio,
         status: a.status,
         statusLabel: ADVANCE_STATUS_LABELS[a.status] ?? a.status,
         statusColor: ADVANCE_STATUS_COLORS[a.status] ?? 'bg-gray-100 text-gray-700',

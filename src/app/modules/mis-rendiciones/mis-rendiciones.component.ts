@@ -32,6 +32,9 @@ type UnifiedViaticoItem = {
   place: string;
   dateRange: string;
   amount: number;
+  moneda: string;
+  montoBase: number;
+  tipoCambio?: number;
   expensesCount: number;
   canEdit: boolean;
   canResubmit: boolean;
@@ -439,8 +442,15 @@ export class MisRendicionesComponent implements OnInit {
     return report.status === 'open';
   }
 
+  isItemForeignCurrency(item: UnifiedViaticoItem): boolean {
+    return !!item.moneda && item.moneda !== 'PEN' && !!item.tipoCambio && item.tipoCambio > 0;
+  }
+
   canEditViatico(report: IExpenseReport): boolean {
-    return report.status === 'pending_l1';
+    if (report.status === 'pending_l1') return true;
+    // Un coordinador crea su viático directo en pending_l2 (sin pasar por pending_l1): ese
+    // es su estado pendiente inicial, editable por el dueño igual que un pending_l1.
+    return report.status === 'pending_l2' && this.userStateService.isCoordinador();
   }
 
   canResubmitViatico(report: IExpenseReport): boolean {
@@ -730,8 +740,13 @@ export class MisRendicionesComponent implements OnInit {
     const deletableStatuses = ['solicited', 'open', 'rejected', 'submitted'];
     if (deletableStatuses.includes(report.status)) return true;
 
-    // Viático en solicitud sin comprobantes: el colaborador puede eliminarlo.
-    if (report.status === 'pending_l1' && !(report.expenseIds?.length)) return true;
+    // Viático en solicitud sin comprobantes: el colaborador puede eliminarlo. Un
+    // coordinador crea su viático directo en pending_l2 (su estado pendiente inicial),
+    // así que también puede eliminarlo desde ahí.
+    const viaticoPendienteInicial =
+      report.status === 'pending_l1' ||
+      (report.status === 'pending_l2' && this.userStateService.isCoordinador());
+    if (viaticoPendienteInicial && !(report.expenseIds?.length)) return true;
 
     return false;
   }
@@ -907,6 +922,9 @@ export class MisRendicionesComponent implements OnInit {
         place: r.viaticoPlace ?? '—',
         dateRange: this.viaticoDates(r),
         amount: r.viaticoAmount ?? 0,
+        moneda: r.moneda || 'PEN',
+        montoBase: Number((r as any).viaticoAmountBase ?? r.viaticoAmount ?? 0),
+        tipoCambio: r.tipoCambio,
         expensesCount: (r.expenseIds || []).length,
         canEdit: this.canEditViatico(r),
         canResubmit: this.canResubmitViatico(r),
@@ -928,6 +946,9 @@ export class MisRendicionesComponent implements OnInit {
         place: adv.place ?? '—',
         dateRange: this.advanceDateRange(adv),
         amount: adv.amount,
+        moneda: adv.moneda || 'PEN',
+        montoBase: Number(adv.montoBase ?? adv.amount ?? 0),
+        tipoCambio: adv.tipoCambio,
         expensesCount: 0,
         canEdit: adv.status === 'pending_l1',
         canResubmit: adv.status === 'rejected',
@@ -951,6 +972,9 @@ export class MisRendicionesComponent implements OnInit {
         place: r.location ?? '—',
         dateRange: this.reportDateRange(r),
         amount: r.budget,
+        moneda: r.moneda || 'PEN',
+        montoBase: Number((r as any).budgetBase ?? r.budget ?? 0),
+        tipoCambio: r.tipoCambio,
         expensesCount: (r.expenseIds || []).length,
         canEdit: false,
         canResubmit: false,

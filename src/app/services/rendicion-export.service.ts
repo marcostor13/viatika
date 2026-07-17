@@ -177,6 +177,31 @@ export interface SingleExpenseAffidavitData {
   signature?: string;
 }
 
+export interface DeclaracionJuradaExteriorRow {
+  fecha: string;
+  monto: number;
+}
+
+export interface DeclaracionJuradaExteriorData {
+  fileBaseName: string;
+  colaborador: string;
+  colaboradorDni?: string;
+  /** Si se omite, se toma de la configuración de la empresa (comercialName/name). */
+  empresaNombre?: string;
+  /** Si se omite, se toma de `businessId` en la configuración de la empresa. */
+  empresaRuc?: string;
+  ciudadDestino?: string;
+  pais?: string;
+  /** Símbolo de moneda a mostrar en las tablas, ej. 'US$', 'S/'. */
+  moneda: string;
+  alimentacionRows: DeclaracionJuradaExteriorRow[];
+  movilidadRows: DeclaracionJuradaExteriorRow[];
+  ciudadFirma?: string;
+  /** Fecha de firma (se usa para derivar día/mes/año en el párrafo de cierre). */
+  fechaFirma: string;
+  signature?: string;
+}
+
 export interface FacturaPageData {
   tipo: string;
   razonSocial?: string;
@@ -1594,6 +1619,137 @@ export class RendicionExportService {
       if (returnBytes) return new Uint8Array(doc.output('arraybuffer'));
       doc.save(`${data.fileBaseName}.pdf`);
     }
+  }
+
+  /**
+   * Declaración Jurada para sustentar gastos por viajes al exterior (inciso r) art. 37°
+   * TUO LIR / inciso n) art. 21° de su Reglamento). Replica el formato oficial: párrafo
+   * declarativo, tablas I (Alimentación) / II (Movilidad) / III (Resumen), y firma.
+   */
+  async exportDeclaracionJuradaExteriorToPdf(data: DeclaracionJuradaExteriorData): Promise<void> {
+    const signature = await this.resolveSignature(data.signature);
+    const empresaNombre = data.empresaNombre
+      || this.companyConfigService.getCompanyConfig()?.comercialName
+      || this.companyConfigService.getCompanyConfig()?.name
+      || '';
+    const empresaRuc = data.empresaRuc
+      || this.companyConfigService.getCompanyConfig()?.businessId
+      || '';
+
+    const allDates = [...data.alimentacionRows, ...data.movilidadRows]
+      .map(r => r.fecha)
+      .filter(Boolean)
+      .sort();
+    const periodoDesde = this.formatDateDdMmYyyy(allDates[0]);
+    const periodoHasta = this.formatDateDdMmYyyy(allDates[allDates.length - 1]);
+
+    const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+    const lm = 14;
+    const rm = 196;
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(12);
+    doc.text('DECLARACIÓN JURADA PARA SUSTENTAR', 105, 15, { align: 'center' });
+    doc.text('GASTOS POR VIAJES AL EXTERIOR (*)', 105, 21, { align: 'center' });
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(8);
+    doc.text('(Base Legal: Inciso r) del artículo 37º del TUO de Ley del Impuesto a la Renta y el', 105, 27, { align: 'center' });
+    doc.text('inciso n) del artículo 21º de su Reglamento)', 105, 31, { align: 'center' });
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(10);
+    const intro = `${data.colaborador}, identificado con D.N.I Nº ${data.colaboradorDni || '—'}, trabajador de la empresa ${empresaNombre} con número de RUC Nº ${empresaRuc}, declaro bajo juramento haber realizado el viaje al exterior a la ciudad de ${data.ciudadDestino || '—'} en el país de ${data.pais || '—'} durante el período comprendido desde el ${periodoDesde} al ${periodoHasta} incurriendo en los gastos que se detallan a continuación, los cuales no han podido ser sustentados con documentos emitidos por el prestador del servicio:`;
+    const introLines = doc.splitTextToSize(intro, rm - lm);
+    doc.text(introLines, lm, 40);
+    let y = 40 + introLines.length * 5 + 6;
+
+    const totalAlimentacion = data.alimentacionRows.reduce((s, r) => s + (r.monto || 0), 0);
+    const totalMovilidad = data.movilidadRows.reduce((s, r) => s + (r.monto || 0), 0);
+
+    const renderSeccionTable = (titulo: string, totalLabel: string, rows: DeclaracionJuradaExteriorRow[], total: number) => {
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(9);
+      doc.text(titulo, lm, y);
+      y += 3;
+      autoTable(doc, {
+        startY: y,
+        head: [['Fecha (dd/mm/aa)', `Monto del gasto incurrido diariamente (${data.moneda})`]],
+        body: [
+          ...rows.map(r => [this.formatDateDdMmYyyy(r.fecha), r.monto.toFixed(2)]),
+          [{ content: totalLabel, styles: { fontStyle: 'bold' } }, { content: total.toFixed(2), styles: { fontStyle: 'bold' } }],
+        ],
+        theme: 'grid',
+        styles: { fontSize: 8, lineColor: [0, 0, 0], lineWidth: 0.1 },
+        headStyles: { fillColor: [255, 255, 255], textColor: [0, 0, 0], fontStyle: 'bold', lineColor: [0, 0, 0], lineWidth: 0.1 },
+        columnStyles: { 1: { halign: 'right' } },
+        margin: { left: lm, right: lm },
+      });
+      y = afterTable(doc) + 8;
+    };
+
+    renderSeccionTable('I. Gastos de Alimentación (**)', 'Total Gastos de Alimentación', data.alimentacionRows, totalAlimentacion);
+    renderSeccionTable('II. Gastos de Movilidad (**)', 'Total Gasto de Movilidad', data.movilidadRows, totalMovilidad);
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(9);
+    doc.text('III. Resumen', lm, y);
+    y += 3;
+    autoTable(doc, {
+      startY: y,
+      head: [['Gastos incurridos', `Total de gastos incurridos (${data.moneda})`]],
+      body: [
+        ['Alimentación', totalAlimentacion.toFixed(2)],
+        ['Movilidad', totalMovilidad.toFixed(2)],
+        [
+          { content: 'Total Gasto Incurrido', styles: { fontStyle: 'bold' } },
+          { content: (totalAlimentacion + totalMovilidad).toFixed(2), styles: { fontStyle: 'bold' } },
+        ],
+      ],
+      theme: 'grid',
+      styles: { fontSize: 8, lineColor: [0, 0, 0], lineWidth: 0.1 },
+      headStyles: { fillColor: [255, 255, 255], textColor: [0, 0, 0], fontStyle: 'bold', lineColor: [0, 0, 0], lineWidth: 0.1 },
+      columnStyles: { 1: { halign: 'right' } },
+      margin: { left: lm, right: lm },
+    });
+    y = afterTable(doc) + 8;
+
+    const firmaDate = (() => {
+      let d: Date;
+      if (/^\d{4}-\d{2}-\d{2}/.test(data.fechaFirma)) {
+        const [yy, mm, dd] = data.fechaFirma.slice(0, 10).split('-').map(Number);
+        d = new Date(yy, mm - 1, dd);
+      } else {
+        d = new Date(data.fechaFirma);
+      }
+      return isNaN(d.getTime()) ? new Date() : d;
+    })();
+    const meses = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+    const cierre = `Los desembolsos anteriormente señalados han sido necesarios para la realización de la labor encomendada a mi persona. Me afirmo y me ratifico en lo expresado, en señal de lo cual firmo el presente documento en la ciudad de ${data.ciudadFirma || '—'}, a los ${String(firmaDate.getDate()).padStart(2, '0')} días del mes de ${meses[firmaDate.getMonth()]} de ${firmaDate.getFullYear()}.`;
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(10);
+    const cierreLines = doc.splitTextToSize(cierre, rm - lm);
+    doc.text(cierreLines, lm, y);
+    y += cierreLines.length * 5 + 20;
+
+    const center = 105;
+    if (signature) {
+      doc.addImage(signature, 'PNG', center - 30, y - 18, 60, 18);
+    }
+    doc.line(center - 40, y, center + 40, y);
+    y += 4;
+    doc.setFontSize(9);
+    doc.text(data.colaborador, center, y, { align: 'center' });
+    y += 4;
+    doc.text(`D.N.I Nº ${data.colaboradorDni || '—'}`, center, y, { align: 'center' });
+
+    y += 10;
+    doc.setFontSize(7);
+    doc.text('(*) Comprende únicamente los gastos de viáticos por alimentación y movilidad.', lm, y);
+    y += 4;
+    const notaLines = doc.splitTextToSize('(**) La falta de alguno de los datos señalados en los rubros I y II sólo inhabilita la sustentación del gasto por movilidad o alimentación, según corresponda.', rm - lm);
+    doc.text(notaLines, lm, y);
+
+    doc.save(`${data.fileBaseName}.pdf`);
   }
 
   private async _renderFacturaContent(doc: jsPDF, data: FacturaPageData): Promise<void> {

@@ -207,6 +207,11 @@ describe('InvoicesService', () => {
     httpMock.expectOne(`${EXP}/other-expense`).flush({});
   });
 
+  it('createDeclaracionJurada sends POST to /declaracion-jurada', () => {
+    service.createDeclaracionJurada({ proyectId: 'p1', moneda: 'USD' } as any).subscribe();
+    httpMock.expectOne(`${EXP}/declaracion-jurada`).flush({});
+  });
+
   it('createCashReceipt sends POST to /cash-receipt', () => {
     service.createCashReceipt({ amount: 50 } as any).subscribe();
     httpMock.expectOne(`${EXP}/cash-receipt`).flush({});

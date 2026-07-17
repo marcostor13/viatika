@@ -19,6 +19,9 @@ export interface DashRow {
   userName: string;
   project: string;
   amount: number;
+  moneda: string;
+  montoBase: number;
+  tipoCambio?: number;
   status: string;
   statusLabel: string;
   statusColor: string;
@@ -410,6 +413,10 @@ export class InicioComponent implements OnInit {
     });
   }
 
+  isRowForeignCurrency(row: DashRow): boolean {
+    return !!row.moneda && row.moneda !== 'PEN' && !!row.tipoCambio && row.tipoCambio > 0;
+  }
+
   // ─── Mapeo a filas ────────────────────────────────────────────────
   private reportRow(r: IExpenseReport): DashRow {
     return {
@@ -419,6 +426,9 @@ export class InicioComponent implements OnInit {
       userName: this.resolveUserName(r.userId),
       project: this.resolveProject((r as any).projectId),
       amount: (r as any).viaticoAmount ?? r.budget ?? 0,
+      moneda: (r as any).moneda || 'PEN',
+      montoBase: Number((r as any).viaticoAmountBase ?? (r as any).budgetBase ?? (r as any).viaticoAmount ?? r.budget ?? 0),
+      tipoCambio: (r as any).tipoCambio,
       status: r.status,
       statusLabel: this.REPORT_STATUS_LABELS[r.status] ?? r.status,
       statusColor: this.REPORT_STATUS_COLORS[r.status] ?? 'bg-gray-100 text-gray-600',
@@ -434,6 +444,9 @@ export class InicioComponent implements OnInit {
       userName: this.resolveUserName(a.userId),
       project: this.resolveProject((a as any).projectId),
       amount: (a as any).amount ?? 0,
+      moneda: (a as any).moneda || 'PEN',
+      montoBase: Number((a as any).montoBase ?? (a as any).amount ?? 0),
+      tipoCambio: (a as any).tipoCambio,
       status: a.status,
       statusLabel: this.STATUS_LABELS[a.status] ?? a.status,
       statusColor: this.STATUS_COLORS[a.status] ?? 'bg-gray-100 text-gray-600',

@@ -261,6 +261,19 @@ export class TesoreriaComponent implements OnInit {
     return Math.max(Number(report.viaticoAmount ?? 0) - Number(report.viaticoPaidAmount ?? 0), 0);
   }
 
+  viaticoMoneda(report: IExpenseReport | null | undefined): string {
+    return report?.moneda || 'PEN';
+  }
+
+  viaticoMontoBase(report: IExpenseReport | null | undefined): number {
+    return Number(report?.viaticoAmountBase ?? report?.viaticoAmount ?? 0);
+  }
+
+  /** True cuando el viático está en una moneda distinta a la base y hay TC congelado. */
+  isViaticoForeignCurrency(report: IExpenseReport | null | undefined): boolean {
+    return !!report && !!report.moneda && report.moneda !== 'PEN' && !!report.tipoCambio && report.tipoCambio > 0;
+  }
+
   /** Nombre del centro de costo (projectId poblado) para el popup de detalle. */
   viaticoProjectName(report: IExpenseReport): string {
     const p = report.projectId as any;

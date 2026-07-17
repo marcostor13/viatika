@@ -454,6 +454,14 @@ export class RendicionDetailComponent implements OnInit {
     return String(ownerId ?? '') === String(uid);
   }
 
+  /** El dueño de la rendición es Coordinador: su rendición salta la aprobación de
+   *  coordinador (va directo a Contabilidad), así que la columna "Est. Coord." no aplica. */
+  get ownerIsCoordinador(): boolean {
+    const owner = this.report?.userId as any;
+    const roleName = owner?.roleId?.name ?? owner?.role?.name ?? owner?.role;
+    return roleName === 'Coordinador';
+  }
+
   get isAdminView(): boolean {
     // Sobre su propia rendición, cualquier rol (incl. coordinador) actúa como
     // colaborador: agrega/envía sus gastos y no puede auto-aprobarse.
@@ -2217,6 +2225,22 @@ export class RendicionDetailComponent implements OnInit {
     return Math.round((base + this.ampliacionesGrantedTotal) * 100) / 100;
   }
 
+  get viaticoMoneda(): string {
+    return (this.report as any)?.moneda || 'PEN';
+  }
+
+  get isViaticoForeignCurrency(): boolean {
+    const r = this.report as any;
+    return !!r && !!r.moneda && r.moneda !== 'PEN' && !!r.tipoCambio && r.tipoCambio > 0;
+  }
+
+  get viaticoPresupuestoBase(): number {
+    const r = this.report as any;
+    if (!this.isViaticoForeignCurrency) return this.viaticoPresupuesto;
+    const tc = Number(r?.tipoCambio ?? 1);
+    return Math.round(this.viaticoPresupuesto * tc * 100) / 100;
+  }
+
   /** Parte del viático ya financiada (saldo heredado/bolsa + depósitos de Contabilidad). */
   get viaticoFinanciado(): number {
     return Number((this.report as any)?.viaticoPaidAmount ?? 0);
@@ -2358,9 +2382,6 @@ export class RendicionDetailComponent implements OnInit {
   get canUploadReturnVoucher(): boolean {
     if (this.isAdminView) return false;
     if (this.isSaldoUsadoEnOtraRendicion) return false;
-    // El sobrante de un viático liquidado va a la bolsa del colaborador, no se devuelve
-    // en efectivo → no se pide comprobante de devolución.
-    if ((this.report as any)?.settlement?.toBolsa) return false;
     const status = this.report?.status;
     if (status !== 'approved' && status !== 'closed') return false;
     if (!this.isDevolucionExpected) return false;
@@ -2371,8 +2392,6 @@ export class RendicionDetailComponent implements OnInit {
   get approvedPendingVoucher(): boolean {
     if (!this.isAdminView) return false;
     if (this.isSaldoUsadoEnOtraRendicion) return false;
-    // Sobrante de viático → bolsa, no comprobante de devolución (ver canUploadReturnVoucher).
-    if ((this.report as any)?.settlement?.toBolsa) return false;
     if (this.report?.status !== 'approved') return false;
     return this.isDevolucionExpected && !(this.report as any)?.returnVoucher;
   }
@@ -3129,6 +3148,49 @@ export class RendicionDetailComponent implements OnInit {
       signature: this.getCollaboratorSignature(),
     };
     await this.rendicionExportService.exportSingleExpenseAffidavitToPdf(data);
+    this.notificationService.show('Declaración jurada descargada', 'success');
+  }
+
+  /** Declaración Jurada (viaje al exterior) con filas manuales de Alimentación/Movilidad. */
+  isDeclaracionJuradaExteriorExpense(expense: Record<string, unknown>): boolean {
+    return this.getExpenseTypeKey(expense) === 'otros_gastos'
+      && expense['subTipo'] === 'DJ'
+      && Array.isArray(expense['declaracionJuradaRows']);
+  }
+
+  /** Gastos (Alimentación + Movilidad) vinculados a la misma Declaración Jurada firmada. */
+  private declaracionJuradaGroupExpenses(expense: Record<string, unknown>): Record<string, unknown>[] {
+    const groupId = expense['declaracionJuradaGroupId'];
+    if (!groupId) return [expense];
+    const all = ((this.report as any)?.expenseIds as Record<string, unknown>[]) || [];
+    return all.filter(e => e && e['declaracionJuradaGroupId'] === groupId);
+  }
+
+  async exportDeclaracionJuradaExterior(expense: Record<string, unknown>): Promise<void> {
+    if (!this.isDeclaracionJuradaExteriorExpense(expense)) return;
+    const group = this.declaracionJuradaGroupExpenses(expense);
+    const alimentacionExp = group.find(e => this.getExpenseDataObject(e)['rubro'] === 'alimentacion');
+    const movilidadExp = group.find(e => this.getExpenseDataObject(e)['rubro'] === 'movilidad');
+    const primary = alimentacionExp || movilidadExp || expense;
+    const toRows = (e?: Record<string, unknown>) =>
+      ((e?.['declaracionJuradaRows'] as Array<{ fecha: string; monto: number }>) || [])
+        .map(r => ({ fecha: String(r.fecha), monto: Number(r.monto) || 0 }));
+
+    await this.rendicionExportService.exportDeclaracionJuradaExteriorToPdf({
+      fileBaseName: `declaracion_jurada_exterior_${String(primary['declaracionJuradaGroupId'] || primary['_id'])}`,
+      colaborador: String(primary['declaracionJuradaFirmante'] || this.getCollaboratorDisplayName()),
+      colaboradorDni: this.collaboratorDniForPdf(),
+      empresaNombre: this.companyConfigService.getCompanyConfig()?.businessName,
+      empresaRuc: this.companyConfigService.getCompanyConfig()?.businessId,
+      ciudadDestino: primary['declaracionJuradaDestino'] as string | undefined,
+      pais: primary['declaracionJuradaPais'] as string | undefined,
+      moneda: (primary['declaracionJuradaMoneda'] as string) || 'US$',
+      alimentacionRows: toRows(alimentacionExp),
+      movilidadRows: toRows(movilidadExp),
+      ciudadFirma: primary['declaracionJuradaLugarFirma'] as string | undefined,
+      fechaFirma: String(primary['createdAt'] || new Date().toISOString()),
+      signature: this.getCollaboratorSignature(),
+    });
     this.notificationService.show('Declaración jurada descargada', 'success');
   }
 

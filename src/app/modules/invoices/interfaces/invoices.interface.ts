@@ -54,6 +54,33 @@ export interface ICreateOtherExpensePayload {
   imageUrl?: string;
 }
 
+export interface IDeclaracionJuradaRow {
+  fecha: string;
+  monto: number;
+}
+
+export interface IDeclaracionJuradaSeccion {
+  categoryId: string;
+  rows: IDeclaracionJuradaRow[];
+}
+
+export interface ICreateDeclaracionJuradaPayload {
+  proyectId: string;
+  expenseReportId?: string;
+  moneda: string;
+  destino?: string;
+  pais?: string;
+  lugarFirma?: string;
+  imageUrl?: string;
+  alimentacion?: IDeclaracionJuradaSeccion;
+  movilidad?: IDeclaracionJuradaSeccion;
+}
+
+export interface IDeclaracionJuradaResponse {
+  groupId: string;
+  expenses: IInvoiceResponse[];
+}
+
 export interface ICreateCashReceiptPayload {
   proyectId: string;
   categoryId: string;

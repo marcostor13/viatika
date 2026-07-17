@@ -9,6 +9,8 @@ import { ICategory } from '../../invoices/interfaces/category.interface';
 import { ICategoryGroup } from '../interfaces/category-group.interface';
 import { HttpErrorResponse } from '@angular/common/http';
 
+type DjType = 'alimentacion' | 'movilidad' | null;
+
 interface CategoryForm {
   name: string;
   description: string;
@@ -16,6 +18,7 @@ interface CategoryForm {
   cuentaDestino6x: string;
   observaciones: string;
   limit: number | null;
+  djType: DjType;
 }
 
 @Component({
@@ -35,7 +38,7 @@ export class CategoriaFormComponent implements OnInit {
   loading = signal(false);
   saving = signal(false);
 
-  form: CategoryForm = { name: '', description: '', cuenta: '', cuentaDestino6x: '', observaciones: '', limit: null };
+  form: CategoryForm = { name: '', description: '', cuenta: '', cuentaDestino6x: '', observaciones: '', limit: null, djType: null };
 
   perfiles: ICategoryGroup[] = [];
   selectedPerfiles = new Set<string>();
@@ -80,6 +83,14 @@ export class CategoriaFormComponent implements OnInit {
     else this.selectedPerfiles.delete(id);
   }
 
+  /**
+   * Flags de Declaración Jurada: "Alimentación DJ" y "Movilidad DJ" son mutuamente
+   * excluyentes. Marcar uno desmarca el otro; desmarcar el activo deja `null`.
+   */
+  toggleDjType(type: 'alimentacion' | 'movilidad', checked: boolean) {
+    this.form.djType = checked ? type : null;
+  }
+
   loadCategory(id: string) {
     this.loading.set(true);
     this.categoriaService.getOne(id).subscribe({
@@ -91,6 +102,7 @@ export class CategoriaFormComponent implements OnInit {
           cuentaDestino6x: cat.cuentaDestino6x ?? '',
           observaciones: cat.observaciones ?? '',
           limit: cat.limit ?? null,
+          djType: cat.djType ?? null,
         };
         this.loading.set(false);
       },
@@ -114,6 +126,8 @@ export class CategoriaFormComponent implements OnInit {
       cuentaDestino6x: this.form.cuentaDestino6x.trim() || undefined,
       observaciones: this.form.observaciones.trim() || undefined,
       limit: this.form.limit,
+      // null limpia el flag DJ en el back (PartialType + findOneAndUpdate).
+      djType: this.form.djType,
       perfilIds: Array.from(this.selectedPerfiles),
     };
     this.saving.set(true);

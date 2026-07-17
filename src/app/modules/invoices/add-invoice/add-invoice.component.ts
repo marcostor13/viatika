@@ -1,4 +1,4 @@
-import { Component, inject, signal, computed, OnInit } from '@angular/core';
+import { Component, inject, signal, computed, OnInit, EnvironmentInjector, runInInjectionContext } from '@angular/core';
 import { Router, ActivatedRoute } from '@angular/router';
 import { Subscription } from 'rxjs';
 import {
@@ -26,7 +26,10 @@ import {
   InvoiceStatus,
   SunatValidationInfo,
   ExpenseType,
+  ICreateDeclaracionJuradaPayload,
+  IDeclaracionJuradaResponse,
 } from '../interfaces/invoices.interface';
+import type { RendicionExportService } from '../../../services/rendicion-export.service';
 import { ButtonComponent } from '../../../design-system/button/button.component';
 import { ProjectSelectComponent } from '../../../design-system/project-select/project-select.component';
 import { WorkerSelectComponent, WorkerOption } from '../../../design-system/worker-select/worker-select.component';
@@ -64,6 +67,7 @@ export default class AddInvoiceComponent implements OnInit {
   private companyConfigService = inject(CompanyConfigService);
   private expenseService = inject(ExpenseService);
   private categoryGroupService = inject(CategoryGroupService);
+  private envInjector = inject(EnvironmentInjector);
   private accountingConfigService = inject(AccountingConfigService);
 
   /** Monedas soportadas por la empresa (Configuración → Plan de Cuentas y Bancos). Solo aplica a facturas. */
@@ -312,6 +316,8 @@ export default class AddInvoiceComponent implements OnInit {
       if (allowed && selected && !allowed.has(String(selected))) {
         this.form.get('categoryId')?.setValue('');
       }
+      // Reevalúa la categoría DJ autoseleccionada según el perfil del nuevo proyecto.
+      this.autoSelectDjCategories();
     });
     this.route.queryParamMap.subscribe(params => {
       this.rendicionId = params.get('rendicionId');
@@ -552,6 +558,7 @@ export default class AddInvoiceComponent implements OnInit {
     this.invoiceService.getCategories().subscribe({
       next: (categories) => {
         this.categories = categories;
+        this.autoSelectDjCategories();
       },
       error: (error) => {},
     });
@@ -561,6 +568,7 @@ export default class AddInvoiceComponent implements OnInit {
     this.categoryGroupService.getAll().subscribe({
       next: (groups) => {
         this.categoryGroups = groups ?? [];
+        this.autoSelectDjCategories();
       },
       error: () => {},
     });
@@ -570,6 +578,7 @@ export default class AddInvoiceComponent implements OnInit {
     this.invoiceService.getProjects().subscribe({
       next: (projects) => {
         this.proyects = projects;
+        this.autoSelectDjCategories();
       },
     });
   }
@@ -750,6 +759,15 @@ export default class AddInvoiceComponent implements OnInit {
       description: [''],
       declaracionJurada: [false],
       declaracionJuradaFirmante: [''],
+      // Declaración Jurada — viaje al exterior + filas manuales
+      djDestino: [''],
+      djPais: [''],
+      djLugarFirma: [''],
+      djMoneda: ['US$'],
+      djAlimentacionCategoryId: [''],
+      djMovilidadCategoryId: [''],
+      djAlimentacionRows: this.fb.array([]),
+      djMovilidadRows: this.fb.array([]),
       // Recibo de caja
       receiptRazonSocial: [''],
       receiptRuc: [''],
@@ -770,6 +788,96 @@ export default class AddInvoiceComponent implements OnInit {
 
   get mobilityRowsArray(): FormArray {
     return this.form.get('mobilityRows') as FormArray;
+  }
+
+  // --- Declaración Jurada: filas manuales de Alimentación / Movilidad ---
+  savedDeclaracionJurada = signal<IDeclaracionJuradaResponse | null>(null);
+
+  /**
+   * Categorías DJ autoseleccionadas según el perfil del proyecto. Cuando hay una
+   * categoría marcada (`djType`) el selector manual se oculta y se muestra en modo
+   * lectura; cuando no la hay, se deja el selector como respaldo.
+   */
+  djAlimentacionAuto = signal<ICategory | null>(null);
+  djMovilidadAuto = signal<ICategory | null>(null);
+
+  /**
+   * DJ (viaje al exterior): autoselecciona las categorías de Alimentación y Movilidad
+   * a partir de las categorías del perfil del proyecto marcadas con `djType`.
+   * El match se hace con el proyecto (proyecto → perfil → categorías). Idempotente:
+   * se puede invocar tras cada carga de datos o cambio de proyecto/sub-tipo.
+   */
+  private autoSelectDjCategories(): void {
+    if (this.expenseType() !== 'otros_gastos' || this.otrosSubTipo() !== 'DJ') return;
+    const allowed = this.allowedCategoryIds();
+    // Match ESTRICTO por perfil del centro de costo (proyecto): se busca solo entre las
+    // categorías del perfil, nunca en todo el cliente. Cada perfil (COM/PROY/ADM) tiene
+    // su propia categoría DJ; sin perfil no se autoselecciona.
+    const scoped = allowed
+      ? this.categories.filter((c) => allowed.has(String(c._id)))
+      : [];
+    // Autoselecciona solo si el perfil tiene EXACTAMENTE una categoría del rubro; con 0
+    // (no configurada) o 2+ (ambigua) se deja el selector manual del perfil.
+    const uniquePick = (rubro: 'alimentacion' | 'movilidad'): ICategory | null => {
+      const matches = scoped.filter((c) => c.djType === rubro);
+      return matches.length === 1 ? matches[0] : null;
+    };
+    const alimentacion = uniquePick('alimentacion');
+    const movilidad = uniquePick('movilidad');
+
+    this.djAlimentacionAuto.set(alimentacion);
+    this.djMovilidadAuto.set(movilidad);
+
+    // Fija la categoría marcada del proyecto; si el perfil no tiene una, limpia el
+    // control para que el selector de respaldo arranque en blanco (sin arrastrar el
+    // valor de un proyecto anterior).
+    const aliValue = alimentacion?._id ?? '';
+    const aliCtrl = this.form.get('djAlimentacionCategoryId');
+    if (aliCtrl && aliCtrl.value !== aliValue) aliCtrl.setValue(aliValue);
+
+    const movValue = movilidad?._id ?? '';
+    const movCtrl = this.form.get('djMovilidadCategoryId');
+    if (movCtrl && movCtrl.value !== movValue) movCtrl.setValue(movValue);
+  }
+
+  /** Cambia el sub-tipo de "Otros gastos" y reevalúa la autoselección DJ. */
+  selectOtrosSubTipo(code: string): void {
+    this.otrosSubTipo.set(code);
+    this.autoSelectDjCategories();
+  }
+
+  get djAlimentacionRowsArray(): FormArray {
+    return this.form.get('djAlimentacionRows') as FormArray;
+  }
+
+  get djMovilidadRowsArray(): FormArray {
+    return this.form.get('djMovilidadRows') as FormArray;
+  }
+
+  private djRowsArray(rubro: 'alimentacion' | 'movilidad'): FormArray {
+    return rubro === 'alimentacion' ? this.djAlimentacionRowsArray : this.djMovilidadRowsArray;
+  }
+
+  addDjRow(rubro: 'alimentacion' | 'movilidad'): void {
+    this.djRowsArray(rubro).push(this.fb.group({
+      fecha: ['', Validators.required],
+      monto: [null, [Validators.required, Validators.min(0.01)]],
+    }));
+  }
+
+  removeDjRow(rubro: 'alimentacion' | 'movilidad', index: number): void {
+    this.djRowsArray(rubro).removeAt(index);
+  }
+
+  getDjRowsTotal(rubro: 'alimentacion' | 'movilidad'): number {
+    return this.djRowsArray(rubro).controls.reduce(
+      (sum, ctrl) => sum + (ctrl.get('monto')?.value || 0),
+      0
+    );
+  }
+
+  get djTotal(): number {
+    return this.getDjRowsTotal('alimentacion') + this.getDjRowsTotal('movilidad');
   }
 
   setExpenseType(type: ExpenseType) {
@@ -798,6 +906,14 @@ export default class AddInvoiceComponent implements OnInit {
 
   isDirectaPlanilla(): boolean {
     return this.isDirectaContext() && this.expenseType() === 'planilla_movilidad';
+  }
+
+  /**
+   * Declaración Jurada (otros gastos, sub-tipo DJ): la categoría no se elige a mano,
+   * se autoasigna por proyecto, por lo que el selector superior de categoría se oculta.
+   */
+  isDj(): boolean {
+    return this.expenseType() === 'otros_gastos' && this.otrosSubTipo() === 'DJ';
   }
 
   /**
@@ -1187,6 +1303,23 @@ export default class AddInvoiceComponent implements OnInit {
       case 'otros_gastos': {
         const sub = this.otrosSubTipo();
         const isDJ = sub === 'DJ';
+        if (isDJ) {
+          if (!!this.id) return true;
+          const alimentacionRows = this.djAlimentacionRowsArray;
+          const movilidadRows = this.djMovilidadRowsArray;
+          const hasRows = alimentacionRows.length > 0 || movilidadRows.length > 0;
+          const alimentacionOk = alimentacionRows.length === 0
+            || (alimentacionRows.valid && !!this.form.get('djAlimentacionCategoryId')?.value);
+          const movilidadOk = movilidadRows.length === 0
+            || (movilidadRows.valid && !!this.form.get('djMovilidadCategoryId')?.value);
+          return (
+            proyectOk &&
+            !!this.form.get('declaracionJurada')?.value &&
+            hasRows &&
+            alimentacionOk &&
+            movilidadOk
+          );
+        }
         const isBV = sub === 'BV';
         const rucEmisorOk = !!(this.form.get('rucEmisor')?.value || '').toString().trim();
         const bvDocOk = !isBV || (
@@ -1199,10 +1332,8 @@ export default class AddInvoiceComponent implements OnInit {
         return (
           proyectOk &&
           this.form.get('categoryId')?.valid === true &&
-          // DJ requiere checkbox; otros sub-tipos no
-          (!!this.id || !isDJ || !!this.form.get('declaracionJurada')?.value) &&
           (this.form.get('totalOtros')?.value > 0) &&
-          // El adjunto es obligatorio al crear (todos los sub-tipos)
+          // El adjunto es obligatorio al crear (todos los sub-tipos, salvo DJ)
           (!!this.id || !!this.selectedFile) &&
           bvDocOk &&
           rucOk
@@ -1515,11 +1646,9 @@ export default class AddInvoiceComponent implements OnInit {
   }
 
   saveOtherExpense() {
-    const declaracionJurada = this.form.get('declaracionJurada')?.value;
     const total = this.form.get('totalOtros')?.value;
     const description = this.form.get('description')?.value;
     const subTipo = this.otrosSubTipo();
-    const isDJ = subTipo === 'DJ';
 
     const proyectCtrl = this.form.get('proyectId');
     const proyectOk = !!(proyectCtrl?.disabled || proyectCtrl?.valid);
@@ -1527,30 +1656,13 @@ export default class AddInvoiceComponent implements OnInit {
       this.notificationService.show('Completa los campos requeridos', 'error');
       return;
     }
-    const currentUser = this.userStateService.getUser();
 
-    // Solo DJ requiere firma y DJ checkbox
-    if (isDJ) {
-      if (!currentUser?.signature) {
-        this.notificationService.show(
-          'Debes registrar tu firma digital antes de enviar una Declaracion Jurada. Ve a Mi Firma en el menu.',
-          'error'
-        );
-        return;
-      }
-      if (!declaracionJurada) {
-        this.notificationService.show('Debes aceptar y firmar la declaración jurada', 'error');
-        return;
-      }
-    }
-
-    const firmante = isDJ ? (currentUser?.name || '').trim() : '';
     if (!total || total <= 0) {
       this.notificationService.show('Ingresa un monto válido', 'error');
       return;
     }
 
-    // El adjunto es obligatorio para todos los sub-tipos de otros gastos
+    // El adjunto es obligatorio para todos los sub-tipos de otros gastos (salvo DJ, que tiene su propio flujo)
     if (!this.selectedFile) {
       this.notificationService.show('Debes adjuntar el comprobante', 'error');
       return;
@@ -1577,8 +1689,6 @@ export default class AddInvoiceComponent implements OnInit {
         total,
         data: description,
         subTipo,
-        declaracionJurada: isDJ ? true : false,
-        declaracionJuradaFirmante: isDJ ? firmante : undefined,
         imageUrl,
         ...(serie ? { serie } : {}),
         ...(correlativo ? { correlativo } : {}),
@@ -1615,6 +1725,125 @@ export default class AddInvoiceComponent implements OnInit {
     }
   }
 
+  /** Declaración Jurada: adjunto opcional, filas manuales de Alimentación/Movilidad. */
+  saveDeclaracionJurada(): void {
+    const proyectId = this.form.get('proyectId')?.value;
+    if (!proyectId) {
+      this.notificationService.show('Completa los campos requeridos', 'error');
+      return;
+    }
+    const currentUser = this.userStateService.getUser();
+    if (!currentUser?.signature) {
+      this.notificationService.show(
+        'Debes registrar tu firma digital antes de enviar una Declaracion Jurada. Ve a Mi Firma en el menu.',
+        'error'
+      );
+      return;
+    }
+    if (!this.form.get('declaracionJurada')?.value) {
+      this.notificationService.show('Debes aceptar y firmar la declaración jurada', 'error');
+      return;
+    }
+
+    const alimentacionRows = this.djAlimentacionRowsArray.getRawValue();
+    const movilidadRows = this.djMovilidadRowsArray.getRawValue();
+    if (alimentacionRows.length === 0 && movilidadRows.length === 0) {
+      this.notificationService.show('Ingresa al menos un gasto de Alimentación o Movilidad', 'error');
+      return;
+    }
+    if (alimentacionRows.length > 0 && !this.form.get('djAlimentacionCategoryId')?.value) {
+      this.notificationService.show('Selecciona la categoría de Alimentación', 'error');
+      return;
+    }
+    if (movilidadRows.length > 0 && !this.form.get('djMovilidadCategoryId')?.value) {
+      this.notificationService.show('Selecciona la categoría de Movilidad', 'error');
+      return;
+    }
+    if (!this.djAlimentacionRowsArray.valid || !this.djMovilidadRowsArray.valid) {
+      this.notificationService.show('Completa fecha y monto en todas las filas', 'error');
+      return;
+    }
+
+    this.isLoading.set(true);
+
+    const proceed = (imageUrl?: string) => {
+      const payload: ICreateDeclaracionJuradaPayload = {
+        proyectId,
+        expenseReportId: this.rendicionId || undefined,
+        moneda: this.form.get('djMoneda')?.value || 'US$',
+        destino: (this.form.get('djDestino')?.value || '').trim() || undefined,
+        pais: (this.form.get('djPais')?.value || '').trim() || undefined,
+        lugarFirma: (this.form.get('djLugarFirma')?.value || '').trim() || undefined,
+        imageUrl,
+        ...(alimentacionRows.length > 0 && {
+          alimentacion: {
+            categoryId: this.form.get('djAlimentacionCategoryId')?.value,
+            rows: alimentacionRows,
+          },
+        }),
+        ...(movilidadRows.length > 0 && {
+          movilidad: {
+            categoryId: this.form.get('djMovilidadCategoryId')?.value,
+            rows: movilidadRows,
+          },
+        }),
+      };
+      this.invoiceService.createDeclaracionJurada(payload).subscribe({
+        next: (res) => {
+          this.isLoading.set(false);
+          this.savedDeclaracionJurada.set(res);
+          this.notificationService.show(
+            'Declaración jurada guardada correctamente. Ya puedes descargar el PDF.',
+            'success'
+          );
+        },
+        error: (error) => {
+          this.isLoading.set(false);
+          this.notificationService.show(
+            'Error al guardar la declaración jurada: ' + (error.error?.message || error.message),
+            'error'
+          );
+        },
+      });
+    };
+
+    if (this.selectedFile) {
+      const { downloadUrl$ } = this.uploadService.uploadFile(this.selectedFile, environment.storagePath);
+      downloadUrl$.subscribe({
+        next: (url) => proceed(url),
+        error: (err) => {
+          this.isLoading.set(false);
+          this.notificationService.show('Error al subir el adjunto: ' + err.message, 'error');
+        },
+      });
+    } else {
+      proceed();
+    }
+  }
+
+  async downloadDeclaracionJuradaPdf(): Promise<void> {
+    try {
+      const currentUser = this.userStateService.getUser();
+      const { RendicionExportService } = await import('../../../services/rendicion-export.service');
+      const exportService = runInInjectionContext(this.envInjector, () => inject(RendicionExportService));
+      await exportService.exportDeclaracionJuradaExteriorToPdf({
+        fileBaseName: `declaracion-jurada-${Date.now()}`,
+        colaborador: currentUser?.name || '',
+        colaboradorDni: (currentUser as any)?.dni,
+        ciudadDestino: this.form.get('djDestino')?.value || undefined,
+        pais: this.form.get('djPais')?.value || undefined,
+        moneda: this.form.get('djMoneda')?.value || 'US$',
+        alimentacionRows: this.djAlimentacionRowsArray.getRawValue(),
+        movilidadRows: this.djMovilidadRowsArray.getRawValue(),
+        ciudadFirma: this.form.get('djLugarFirma')?.value || undefined,
+        fechaFirma: new Date().toISOString(),
+        signature: currentUser?.signature,
+      });
+    } catch (err: any) {
+      this.notificationService.show('Error al generar el PDF: ' + err.message, 'error');
+    }
+  }
+
   saveOrUpdate() {
     if (this.id) {
       this.update();
@@ -1625,7 +1854,11 @@ export default class AddInvoiceComponent implements OnInit {
         this.saveMobilitySheet();
         break;
       case 'otros_gastos':
-        this.saveOtherExpense();
+        if (this.otrosSubTipo() === 'DJ') {
+          this.saveDeclaracionJurada();
+        } else {
+          this.saveOtherExpense();
+        }
         break;
       case 'recibo_caja':
         this.saveCashReceipt();

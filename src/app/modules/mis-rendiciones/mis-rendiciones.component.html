@@ -215,7 +215,10 @@
 
         <!-- Monto -->
         <ng-container *appColumn="'monto'; header: 'Monto'; align: 'right'; cellClass: 'font-bold text-gray-900 whitespace-nowrap tabular-nums'; let item">
-          S/ {{ item.amount | number:'1.2-2' }}
+          {{ item.moneda }} {{ item.amount | number:'1.2-2' }}
+          @if (isItemForeignCurrency(item)) {
+          <span class="block text-xs font-normal text-gray-500">S/ {{ item.montoBase | number:'1.2-2' }}</span>
+          }
         </ng-container>
 
         <!-- Comprobantes -->
