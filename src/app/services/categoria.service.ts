@@ -45,8 +45,10 @@ export class CategoriaService {
     name: string;
     description?: string;
     cuenta?: string;
+    cuentaDestino6x?: string;
     observaciones?: string;
     limit?: number | null;
+    djType?: 'alimentacion' | 'movilidad' | null;
     perfilIds?: string[];
   }): Observable<ICategory> {
     return this.http.post<ICategory>(this.baseUrl, {
@@ -59,9 +61,11 @@ export class CategoriaService {
     name?: string;
     description?: string;
     cuenta?: string;
+    cuentaDestino6x?: string;
     observaciones?: string;
     isActive?: boolean;
     limit?: number | null;
+    djType?: 'alimentacion' | 'movilidad' | null;
     perfilIds?: string[];
   }): Observable<ICategory> {
     return this.http.patch<ICategory>(`${this.baseUrl}/${id}/${this.companyId}`, dto);

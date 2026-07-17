@@ -9,6 +9,8 @@ export interface ICategory {
   observaciones?: string;
   isActive?: boolean;
   limit?: number | null;
+  /** Rubro DJ (viaje al exterior) al que se autoasigna la categoría. */
+  djType?: 'alimentacion' | 'movilidad' | null;
   createdAt?: Date;
   updatedAt?: Date;
   companyId?: string;
