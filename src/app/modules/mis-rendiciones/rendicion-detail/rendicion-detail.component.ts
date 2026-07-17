@@ -3151,6 +3151,49 @@ export class RendicionDetailComponent implements OnInit {
     this.notificationService.show('Declaración jurada descargada', 'success');
   }
 
+  /** Declaración Jurada (viaje al exterior) con filas manuales de Alimentación/Movilidad. */
+  isDeclaracionJuradaExteriorExpense(expense: Record<string, unknown>): boolean {
+    return this.getExpenseTypeKey(expense) === 'otros_gastos'
+      && expense['subTipo'] === 'DJ'
+      && Array.isArray(expense['declaracionJuradaRows']);
+  }
+
+  /** Gastos (Alimentación + Movilidad) vinculados a la misma Declaración Jurada firmada. */
+  private declaracionJuradaGroupExpenses(expense: Record<string, unknown>): Record<string, unknown>[] {
+    const groupId = expense['declaracionJuradaGroupId'];
+    if (!groupId) return [expense];
+    const all = ((this.report as any)?.expenseIds as Record<string, unknown>[]) || [];
+    return all.filter(e => e && e['declaracionJuradaGroupId'] === groupId);
+  }
+
+  async exportDeclaracionJuradaExterior(expense: Record<string, unknown>): Promise<void> {
+    if (!this.isDeclaracionJuradaExteriorExpense(expense)) return;
+    const group = this.declaracionJuradaGroupExpenses(expense);
+    const alimentacionExp = group.find(e => this.getExpenseDataObject(e)['rubro'] === 'alimentacion');
+    const movilidadExp = group.find(e => this.getExpenseDataObject(e)['rubro'] === 'movilidad');
+    const primary = alimentacionExp || movilidadExp || expense;
+    const toRows = (e?: Record<string, unknown>) =>
+      ((e?.['declaracionJuradaRows'] as Array<{ fecha: string; monto: number }>) || [])
+        .map(r => ({ fecha: String(r.fecha), monto: Number(r.monto) || 0 }));
+
+    await this.rendicionExportService.exportDeclaracionJuradaExteriorToPdf({
+      fileBaseName: `declaracion_jurada_exterior_${String(primary['declaracionJuradaGroupId'] || primary['_id'])}`,
+      colaborador: String(primary['declaracionJuradaFirmante'] || this.getCollaboratorDisplayName()),
+      colaboradorDni: this.collaboratorDniForPdf(),
+      empresaNombre: this.companyConfigService.getCompanyConfig()?.businessName,
+      empresaRuc: this.companyConfigService.getCompanyConfig()?.businessId,
+      ciudadDestino: primary['declaracionJuradaDestino'] as string | undefined,
+      pais: primary['declaracionJuradaPais'] as string | undefined,
+      moneda: (primary['declaracionJuradaMoneda'] as string) || 'US$',
+      alimentacionRows: toRows(alimentacionExp),
+      movilidadRows: toRows(movilidadExp),
+      ciudadFirma: primary['declaracionJuradaLugarFirma'] as string | undefined,
+      fechaFirma: String(primary['createdAt'] || new Date().toISOString()),
+      signature: this.getCollaboratorSignature(),
+    });
+    this.notificationService.show('Declaración jurada descargada', 'success');
+  }
+
   // ─── Nueva solicitud con saldo (bifurca según tipo de rendición) ─────────────
 
   showNuevaDirectaConSaldoModal = signal(false);

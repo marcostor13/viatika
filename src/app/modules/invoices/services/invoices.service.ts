@@ -7,6 +7,8 @@ import {
   SunatValidationInfo,
   ICreateMobilitySheetPayload,
   ICreateOtherExpensePayload,
+  ICreateDeclaracionJuradaPayload,
+  IDeclaracionJuradaResponse,
   ICreateCashReceiptPayload,
   ICreateCashVoucherPayload,
   ICashVoucherScanResult,
@@ -206,6 +208,10 @@ export class InvoicesService {
 
   createOtherExpense(payload: ICreateOtherExpensePayload): Observable<IInvoiceResponse> {
     return this.http.post<IInvoiceResponse>(`${this.url}/other-expense`, payload);
+  }
+
+  createDeclaracionJurada(payload: ICreateDeclaracionJuradaPayload): Observable<IDeclaracionJuradaResponse> {
+    return this.http.post<IDeclaracionJuradaResponse>(`${this.url}/declaracion-jurada`, payload);
   }
 
   createCashReceipt(payload: ICreateCashReceiptPayload): Observable<IInvoiceResponse> {
