@@ -1317,7 +1317,7 @@
                     }
                   }
                 </div>
-                @if (!report.isDirecta) {
+                @if (!report.isDirecta && !ownerIsCoordinador) {
                 <div class="flex items-center gap-1">
                   <span class="text-xs text-gray-400 font-medium">Coord.</span>
                   @switch (getExpenseApprovalCoord(expense).status) {
@@ -1397,8 +1397,8 @@
                     }
                   </button>
                 }
-                <!-- Approval actions (mobile, oculto en rendicion directa) -->
-                @if (!report.isDirecta && canApproveExpenseAsCoord && getExpenseApprovalCoord(expense).status !== 'approved') {
+                <!-- Approval actions (mobile, oculto en rendicion directa y solicitudes de coordinador) -->
+                @if (!report.isDirecta && !ownerIsCoordinador && canApproveExpenseAsCoord && getExpenseApprovalCoord(expense).status !== 'approved') {
                   <button type="button"
                     [disabled]="approvingExpenseRoleId() === 'coord:' + expense._id"
                     (click)="approveExpenseByRole(expense._id, 'coord')"
@@ -1491,7 +1491,7 @@
                   @if (!report.isCajaChica) {
                   <th class="px-3 py-3 text-center whitespace-nowrap text-teal-600">{{ report.isDirecta ? 'Revisado Cont.' : 'Est. Cont.' }}</th>
                   }
-                  @if (!report.isDirecta && !report.isCajaChica) {
+                  @if (!report.isDirecta && !report.isCajaChica && !ownerIsCoordinador) {
                   <th class="px-3 py-3 text-center whitespace-nowrap text-indigo-600">Est. Coord.</th>
                   }
                   <th class="px-3 py-3 text-center whitespace-nowrap">Opciones</th>
@@ -1617,8 +1617,8 @@
                     </div>
                   </td>
                   }
-                  <!-- Estado Coordinador (oculto en rendicion directa y caja chica) -->
-                  @if (!report.isDirecta && !report.isCajaChica) {
+                  <!-- Estado Coordinador (oculto en directa, caja chica y solicitudes de coordinador) -->
+                  @if (!report.isDirecta && !report.isCajaChica && !ownerIsCoordinador) {
                   <td class="px-3 py-3 text-center">
                     <div class="flex flex-col items-center gap-1">
                       @switch (getExpenseApprovalCoord(expense).status) {

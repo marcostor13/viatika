@@ -454,6 +454,14 @@ export class RendicionDetailComponent implements OnInit {
     return String(ownerId ?? '') === String(uid);
   }
 
+  /** El dueño de la rendición es Coordinador: su rendición salta la aprobación de
+   *  coordinador (va directo a Contabilidad), así que la columna "Est. Coord." no aplica. */
+  get ownerIsCoordinador(): boolean {
+    const owner = this.report?.userId as any;
+    const roleName = owner?.roleId?.name ?? owner?.role?.name ?? owner?.role;
+    return roleName === 'Coordinador';
+  }
+
   get isAdminView(): boolean {
     // Sobre su propia rendición, cualquier rol (incl. coordinador) actúa como
     // colaborador: agrega/envía sus gastos y no puede auto-aprobarse.
