@@ -316,6 +316,8 @@ export default class AddInvoiceComponent implements OnInit {
       if (allowed && selected && !allowed.has(String(selected))) {
         this.form.get('categoryId')?.setValue('');
       }
+      // Reevalúa la categoría DJ autoseleccionada según el perfil del nuevo proyecto.
+      this.autoSelectDjCategories();
     });
     this.route.queryParamMap.subscribe(params => {
       this.rendicionId = params.get('rendicionId');
@@ -556,6 +558,7 @@ export default class AddInvoiceComponent implements OnInit {
     this.invoiceService.getCategories().subscribe({
       next: (categories) => {
         this.categories = categories;
+        this.autoSelectDjCategories();
       },
       error: (error) => {},
     });
@@ -565,6 +568,7 @@ export default class AddInvoiceComponent implements OnInit {
     this.categoryGroupService.getAll().subscribe({
       next: (groups) => {
         this.categoryGroups = groups ?? [];
+        this.autoSelectDjCategories();
       },
       error: () => {},
     });
@@ -574,6 +578,7 @@ export default class AddInvoiceComponent implements OnInit {
     this.invoiceService.getProjects().subscribe({
       next: (projects) => {
         this.proyects = projects;
+        this.autoSelectDjCategories();
       },
     });
   }
@@ -788,6 +793,59 @@ export default class AddInvoiceComponent implements OnInit {
   // --- Declaración Jurada: filas manuales de Alimentación / Movilidad ---
   savedDeclaracionJurada = signal<IDeclaracionJuradaResponse | null>(null);
 
+  /**
+   * Categorías DJ autoseleccionadas según el perfil del proyecto. Cuando hay una
+   * categoría marcada (`djType`) el selector manual se oculta y se muestra en modo
+   * lectura; cuando no la hay, se deja el selector como respaldo.
+   */
+  djAlimentacionAuto = signal<ICategory | null>(null);
+  djMovilidadAuto = signal<ICategory | null>(null);
+
+  /**
+   * DJ (viaje al exterior): autoselecciona las categorías de Alimentación y Movilidad
+   * a partir de las categorías del perfil del proyecto marcadas con `djType`.
+   * El match se hace con el proyecto (proyecto → perfil → categorías). Idempotente:
+   * se puede invocar tras cada carga de datos o cambio de proyecto/sub-tipo.
+   */
+  private autoSelectDjCategories(): void {
+    if (this.expenseType() !== 'otros_gastos' || this.otrosSubTipo() !== 'DJ') return;
+    const allowed = this.allowedCategoryIds();
+    // Match ESTRICTO por perfil del centro de costo (proyecto): se busca solo entre las
+    // categorías del perfil, nunca en todo el cliente. Cada perfil (COM/PROY/ADM) tiene
+    // su propia categoría DJ; sin perfil no se autoselecciona.
+    const scoped = allowed
+      ? this.categories.filter((c) => allowed.has(String(c._id)))
+      : [];
+    // Autoselecciona solo si el perfil tiene EXACTAMENTE una categoría del rubro; con 0
+    // (no configurada) o 2+ (ambigua) se deja el selector manual del perfil.
+    const uniquePick = (rubro: 'alimentacion' | 'movilidad'): ICategory | null => {
+      const matches = scoped.filter((c) => c.djType === rubro);
+      return matches.length === 1 ? matches[0] : null;
+    };
+    const alimentacion = uniquePick('alimentacion');
+    const movilidad = uniquePick('movilidad');
+
+    this.djAlimentacionAuto.set(alimentacion);
+    this.djMovilidadAuto.set(movilidad);
+
+    // Fija la categoría marcada del proyecto; si el perfil no tiene una, limpia el
+    // control para que el selector de respaldo arranque en blanco (sin arrastrar el
+    // valor de un proyecto anterior).
+    const aliValue = alimentacion?._id ?? '';
+    const aliCtrl = this.form.get('djAlimentacionCategoryId');
+    if (aliCtrl && aliCtrl.value !== aliValue) aliCtrl.setValue(aliValue);
+
+    const movValue = movilidad?._id ?? '';
+    const movCtrl = this.form.get('djMovilidadCategoryId');
+    if (movCtrl && movCtrl.value !== movValue) movCtrl.setValue(movValue);
+  }
+
+  /** Cambia el sub-tipo de "Otros gastos" y reevalúa la autoselección DJ. */
+  selectOtrosSubTipo(code: string): void {
+    this.otrosSubTipo.set(code);
+    this.autoSelectDjCategories();
+  }
+
   get djAlimentacionRowsArray(): FormArray {
     return this.form.get('djAlimentacionRows') as FormArray;
   }
@@ -848,6 +906,14 @@ export default class AddInvoiceComponent implements OnInit {
 
   isDirectaPlanilla(): boolean {
     return this.isDirectaContext() && this.expenseType() === 'planilla_movilidad';
+  }
+
+  /**
+   * Declaración Jurada (otros gastos, sub-tipo DJ): la categoría no se elige a mano,
+   * se autoasigna por proyecto, por lo que el selector superior de categoría se oculta.
+   */
+  isDj(): boolean {
+    return this.expenseType() === 'otros_gastos' && this.otrosSubTipo() === 'DJ';
   }
 
   /**
