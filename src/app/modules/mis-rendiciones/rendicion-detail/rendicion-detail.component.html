@@ -2116,6 +2116,12 @@
               <p class="font-medium text-gray-900">{{ exp['declaracionJuradaFirmante'] || '—' }}</p>
             </div>
           </div>
+          @if (isDeclaracionJuradaExteriorExpense(exp)) {
+          <button type="button" (click)="exportDeclaracionJuradaExterior(exp)"
+            class="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-white font-semibold text-sm hover:opacity-90">
+            Descargar declaración jurada (PDF)
+          </button>
+          }
         </section>
         }
         @default {
