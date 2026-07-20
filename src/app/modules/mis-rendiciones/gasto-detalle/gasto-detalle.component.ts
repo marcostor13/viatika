@@ -185,7 +185,8 @@ export class GastoDetalleComponent implements OnInit {
       const sub = (exp['subTipo'] as string) ?? (this.getData(exp)['subTipo'] as string);
       if (sub === 'TK') return 'TK';
       if (sub === 'BV') return 'BV';
-      if (sub === 'RC') return 'RC';
+      // El sub-tipo se guarda como 'RC', pero se muestra 'RD' (Recibos Diversos).
+      if (sub === 'RC') return 'RD';
       if (sub === 'DJ') return 'DJ';
       if (sub === 'OT') return 'OT';
       return 'SC';
@@ -205,7 +206,7 @@ export class GastoDetalleComponent implements OnInit {
     if (code === 'SC' || code === 'OT') return 'bg-gray-100 text-gray-600';
     if (code === 'DJ') return 'bg-amber-100 text-amber-800';
     if (code === 'TK') return 'bg-teal-100 text-teal-700';
-    if (code === 'RC') return 'bg-indigo-100 text-indigo-700';
+    if (code === 'RD') return 'bg-indigo-100 text-indigo-700';
     return 'bg-blue-100 text-blue-700';
   }
 
