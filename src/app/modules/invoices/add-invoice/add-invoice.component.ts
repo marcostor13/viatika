@@ -175,6 +175,14 @@ export default class AddInvoiceComponent implements OnInit {
 
   /** Tras crear/actualizar gasto: vuelve según el contexto y rol. */
   private navigateAfterExpenseSave(): void {
+    // Si el gasto pertenece a una rendición, se vuelve a esa rendición sea cual
+    // sea el rol. `fromContabilidad` se activa por el solo hecho de tener el rol
+    // Contabilidad, así que antes cortaba aquí y mandaba siempre a Rendiciones
+    // Directas, perdiendo el contexto de lo que se estaba editando.
+    if (this.rendicionId && !this.isDirectaMode) {
+      this.router.navigate(['/mis-rendiciones', this.rendicionId, 'detalle']);
+      return;
+    }
     if (this.fromContabilidad) {
       this.router.navigate(['/rendiciones'], { queryParams: { tab: 'directas' } });
       return;
