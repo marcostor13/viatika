@@ -1182,7 +1182,8 @@
               [value]="expFilterSearch()"
               (input)="expFilterSearch.set($any($event.target).value)"
               (keyup.enter)="applyExpenseFilters()"
-              placeholder="Buscar concepto..."
+              placeholder="Buscar RUC..."
+              inputmode="numeric"
               class="h-8 rounded-lg border border-gray-200 bg-white px-3 text-xs text-gray-700 focus:outline-none focus:ring-2 focus:ring-primary/30 min-w-[140px]"
             />
             <button
