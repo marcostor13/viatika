@@ -3522,9 +3522,52 @@ export class RendicionDetailComponent implements OnInit {
   canRevalidateSunat(
     expense: Record<string, unknown> & { createdBy?: string; status?: string },
   ): boolean {
-    if (expense.status === 'sunat_valid') return false;
+    // El estado del gasto guarda el veredicto crudo de SUNAT
+    // ('VALIDO_ACEPTADO'); 'sunat_valid' es el nombre del tipo y aparece en
+    // datos de otros flujos. Se contemplan ambos.
+    const st = String(expense.status ?? '').toUpperCase();
+    if (st === 'VALIDO_ACEPTADO' || st === 'SUNAT_VALID') return false;
     if (!this.canMutateExpense(expense)) return false;
     return this.sunatQueryData(expense) !== null;
+  }
+
+  /** Veredictos que devuelve el backend en `status` al validar con SUNAT. */
+  private sunatResultMessage(
+    status: string | undefined,
+    result: any,
+  ): { message: string; type: 'success' | 'error' } {
+    switch (status) {
+      case 'VALIDO_ACEPTADO':
+        return { message: 'Comprobante válido y emitido a la empresa', type: 'success' };
+      case 'VALIDO_NO_PERTENECE':
+        return {
+          message: 'El comprobante es válido, pero no fue emitido a esta empresa. Verifica el RUC emisor.',
+          type: 'error',
+        };
+      case 'NO_ENCONTRADO':
+        return { message: 'Comprobante no encontrado en SUNAT', type: 'error' };
+      case 'ERROR_SUNAT':
+        return { message: 'Error en el servicio de SUNAT', type: 'error' };
+      case 'SUNAT_CONFIG_NOT_FOUND':
+        return {
+          message: 'No se encontró configuración SUNAT para esta empresa',
+          type: 'error',
+        };
+      case 'PENDING':
+        return {
+          message: 'No se pudo consultar a SUNAT: faltan datos del comprobante o la configuración de la empresa.',
+          type: 'error',
+        };
+      default: {
+        const detalle = result?.details?.message ?? result?.details;
+        return {
+          message:
+            'Resultado de validación SUNAT: ' +
+            (typeof detalle === 'string' && detalle.trim() ? detalle : 'estado desconocido'),
+          type: 'error',
+        };
+      }
+    }
   }
 
   revalidateSunat(expense: Record<string, unknown> & { _id?: string }): void {
@@ -3543,21 +3586,11 @@ export class RendicionDetailComponent implements OnInit {
       .subscribe({
         next: (result) => {
           this.revalidatingSunatId.set(null);
-          const estado = result?.sunatValidation?.status ?? result?.status;
-          if (estado === 'valid' || estado === 'sunat_valid') {
-            this.notificationService.show(
-              'Comprobante válido según SUNAT',
-              'success',
-            );
-          } else {
-            const msg = result?.sunatValidation?.message ?? result?.message;
-            this.notificationService.show(
-              typeof msg === 'string' && msg.trim()
-                ? msg
-                : 'SUNAT no reconoce el comprobante',
-              'error',
-            );
-          }
+          // `result.status` trae el veredicto de SUNAT (VALIDO_ACEPTADO, etc.),
+          // no el estado del gasto. `result.message` es siempre genérico
+          // ("Validación SUNAT completada"), así que no sirve para el aviso.
+          const { message, type } = this.sunatResultMessage(result?.status, result);
+          this.notificationService.show(message, type);
           this.loadExpensesPage(this.expensesPage()?.page ?? 1);
         },
         error: (e) => {
