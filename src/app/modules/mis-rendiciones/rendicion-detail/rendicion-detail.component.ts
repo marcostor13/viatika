@@ -3546,8 +3546,18 @@ export class RendicionDetailComponent implements OnInit {
         };
       case 'NO_ENCONTRADO':
         return { message: 'Comprobante no encontrado en SUNAT', type: 'error' };
-      case 'ERROR_SUNAT':
-        return { message: 'Error en el servicio de SUNAT', type: 'error' };
+      case 'ERROR_SUNAT': {
+        // `details` trae el motivo crudo (p. ej. "Request failed with status
+        // code 422" cuando SUNAT rechaza los parámetros). Sin él, el aviso
+        // parece una caída del servicio aunque el problema sea el dato.
+        const detalle = typeof result?.details === 'string' ? result.details.trim() : '';
+        return {
+          message: detalle
+            ? `SUNAT rechazó la consulta (${detalle}). Revisa RUC, serie, número y fecha.`
+            : 'Error en el servicio de SUNAT',
+          type: 'error',
+        };
+      }
       case 'SUNAT_CONFIG_NOT_FOUND':
         return {
           message: 'No se encontró configuración SUNAT para esta empresa',
@@ -3570,18 +3580,42 @@ export class RendicionDetailComponent implements OnInit {
     }
   }
 
+  /**
+   * El backend traduce este texto a `codComp` y solo entiende 'Factura' y
+   * 'Boleta' (cualquier otra cosa cae en 01=Factura). Los gastos de tipo
+   * "otros" no guardan `tipoComprobante`, así que se deriva del sub-tipo para
+   * no consultar una boleta como si fuera factura.
+   */
+  private sunatTipoComprobante(expense: Record<string, unknown>): string | undefined {
+    const data = this.getExpenseDataObject(expense);
+    const explicito = String(data['tipoComprobante'] ?? '').trim();
+    if (explicito === '01') return 'Factura';
+    if (explicito === '03') return 'Boleta';
+    if (explicito) return explicito;
+    const sub = String(expense['subTipo'] ?? data['subTipo'] ?? '').toUpperCase();
+    if (sub === 'BV') return 'Boleta';
+    return undefined;
+  }
+
   revalidateSunat(expense: Record<string, unknown> & { _id?: string }): void {
     const id = expense._id;
     const query = this.sunatQueryData(expense);
     if (!id || !query) return;
+    // SUNAT rechaza la consulta con 422 si el RUC no tiene 11 dígitos; se avisa
+    // acá para no devolver un "error del servicio" que despista.
+    if (!/^\d{11}$/.test(query.rucEmisor)) {
+      this.notificationService.show(
+        'El RUC del emisor no es válido (debe tener 11 dígitos). Corrígelo en el gasto antes de revalidar.',
+        'error',
+      );
+      return;
+    }
     this.revalidatingSunatId.set(id);
     this.invoicesService
       .validateWithSunatData(id, {
         ...query,
         montoTotal: Number(expense['total']) || undefined,
-        tipoComprobante: String(
-          this.getExpenseDataObject(expense)['tipoComprobante'] ?? '',
-        ) || undefined,
+        tipoComprobante: this.sunatTipoComprobante(expense),
       })
       .subscribe({
         next: (result) => {
