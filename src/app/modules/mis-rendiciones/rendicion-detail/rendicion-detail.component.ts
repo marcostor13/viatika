@@ -686,6 +686,7 @@ export class RendicionDetailComponent implements OnInit {
   showSubmitModal = false;
   isSubmitting = signal(false);
   deletingExpenseId = signal<string | null>(null);
+  revalidatingSunatId = signal<string | null>(null);
   isExportingExcel = signal(false);
   isExportingPdf = signal(false);
   isExportingFullPdf = signal(false);
@@ -3479,5 +3480,85 @@ export class RendicionDetailComponent implements OnInit {
         this.deletingExpenseId.set(null);
       },
     });
+  }
+
+  /**
+   * Datos que SUNAT exige para consultar un comprobante. Se resuelven desde la
+   * raíz del gasto o desde el JSON `data`, según cómo se haya cargado.
+   */
+  private sunatQueryData(expense: Record<string, unknown>): {
+    rucEmisor: string;
+    serie: string;
+    correlativo: string;
+    fechaEmision: string;
+  } | null {
+    const data = this.getExpenseDataObject(expense);
+    const pick = (key: string): string => {
+      const root = expense[key];
+      if (typeof root === 'string' && root.trim()) return root.trim();
+      const nested = data[key];
+      return typeof nested === 'string' ? nested.trim() : '';
+    };
+    const rucEmisor = pick('rucEmisor') || pick('ruc');
+    const serie = pick('serie');
+    const correlativo = pick('correlativo');
+    const fechaEmision = formatFechaEmisionDdMmYyyy(
+      resolveExpenseFechaEmision(expense),
+    );
+    if (!rucEmisor || !serie || !correlativo || fechaEmision === '-') {
+      return null;
+    }
+    return { rucEmisor, serie, correlativo, fechaEmision };
+  }
+
+  /** Solo los comprobantes con los cuatro datos que SUNAT necesita. */
+  canRevalidateSunat(expense: Record<string, unknown>): boolean {
+    return this.sunatQueryData(expense) !== null;
+  }
+
+  revalidateSunat(expense: Record<string, unknown> & { _id?: string }): void {
+    const id = expense._id;
+    const query = this.sunatQueryData(expense);
+    if (!id || !query) return;
+    this.revalidatingSunatId.set(id);
+    this.invoicesService
+      .validateWithSunatData(id, {
+        ...query,
+        montoTotal: Number(expense['total']) || undefined,
+        tipoComprobante: String(
+          this.getExpenseDataObject(expense)['tipoComprobante'] ?? '',
+        ) || undefined,
+      })
+      .subscribe({
+        next: (result) => {
+          this.revalidatingSunatId.set(null);
+          const estado = result?.sunatValidation?.status ?? result?.status;
+          if (estado === 'valid' || estado === 'sunat_valid') {
+            this.notificationService.show(
+              'Comprobante válido según SUNAT',
+              'success',
+            );
+          } else {
+            const msg = result?.sunatValidation?.message ?? result?.message;
+            this.notificationService.show(
+              typeof msg === 'string' && msg.trim()
+                ? msg
+                : 'SUNAT no reconoce el comprobante',
+              'error',
+            );
+          }
+          this.loadExpensesPage(this.expensesPage()?.page ?? 1);
+        },
+        error: (e) => {
+          this.revalidatingSunatId.set(null);
+          const msg = e?.error?.message;
+          this.notificationService.show(
+            typeof msg === 'string' && msg.trim()
+              ? msg
+              : 'Error al consultar el servicio de SUNAT',
+            'error',
+          );
+        },
+      });
   }
 }

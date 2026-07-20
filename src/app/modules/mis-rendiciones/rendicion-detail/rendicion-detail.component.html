@@ -1706,6 +1706,24 @@
                         <div class="absolute bottom-full right-0 mb-1 px-2 py-1 bg-gray-800 text-white text-[11px] rounded whitespace-nowrap opacity-0 group-hover/del:opacity-100 pointer-events-none transition-opacity z-10">Eliminar</div>
                       </div>
                       }
+                      <!-- Revalidar con SUNAT -->
+                      @if (canRevalidateSunat(expense)) {
+                      <div class="relative group/sunat">
+                        <button type="button"
+                          [disabled]="revalidatingSunatId() === expense._id"
+                          (click)="revalidateSunat(expense)"
+                          class="inline-flex items-center justify-center w-8 h-8 rounded-lg text-blue-600 hover:bg-blue-50 disabled:opacity-50 transition-colors">
+                          @if (revalidatingSunatId() === expense._id) {
+                            <span class="inline-block w-4 h-4 border-2 border-blue-200 border-t-blue-600 rounded-full animate-spin"></span>
+                          } @else {
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
+                              <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" />
+                            </svg>
+                          }
+                        </button>
+                        <div class="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 px-2 py-1 bg-gray-800 text-white text-[11px] rounded whitespace-nowrap opacity-0 group-hover/sunat:opacity-100 pointer-events-none transition-opacity z-10">Revalidar con SUNAT</div>
+                      </div>
+                      }
                       <!-- Adjunto -->
                       @if (hasExpenseFile(expense)) {
                       <div class="relative group/attach">
