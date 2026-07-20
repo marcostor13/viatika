@@ -3511,8 +3511,19 @@ export class RendicionDetailComponent implements OnInit {
     return { rucEmisor, serie, correlativo, fechaEmision };
   }
 
-  /** Solo los comprobantes con los cuatro datos que SUNAT necesita. */
-  canRevalidateSunat(expense: Record<string, unknown>): boolean {
+  /**
+   * Se muestra solo cuando la revalidación puede prosperar:
+   * - el backend la trata como una mutación (persiste `status`), así que exige
+   *   los mismos permisos que editar: se reusa `canMutateExpense` para no
+   *   ofrecer un botón que responderá 403;
+   * - el comprobante debe tener los cuatro datos que SUNAT pide;
+   * - si ya está validado como conforme, no hay nada que reintentar.
+   */
+  canRevalidateSunat(
+    expense: Record<string, unknown> & { createdBy?: string; status?: string },
+  ): boolean {
+    if (expense.status === 'sunat_valid') return false;
+    if (!this.canMutateExpense(expense)) return false;
     return this.sunatQueryData(expense) !== null;
   }
 
