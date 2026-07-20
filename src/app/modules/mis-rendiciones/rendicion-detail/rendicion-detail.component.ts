@@ -1197,6 +1197,11 @@ export class RendicionDetailComponent implements OnInit {
   }
 
   sunatBlock(exp: Record<string, unknown>): Record<string, unknown> | null {
+    // La raíz guarda la última consulta (la revalidación la actualiza); el JSON
+    // `data` conserva la del registro inicial. Se prefiere la raíz para no
+    // mostrar un resultado viejo que contradiga al estado del comprobante.
+    const root = exp['sunatValidation'];
+    if (root && typeof root === 'object') return root as Record<string, unknown>;
     const d = this.getExpenseDataObject(exp);
     const s = d['sunatValidation'];
     if (s && typeof s === 'object') return s as Record<string, unknown>;

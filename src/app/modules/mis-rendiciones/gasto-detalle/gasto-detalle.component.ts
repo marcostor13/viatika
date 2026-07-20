@@ -282,6 +282,9 @@ export class GastoDetalleComponent implements OnInit {
 
   sunatBlock(exp: Record<string, unknown>): Record<string, unknown> | null {
     const d = this.getData(exp);
+    // La raíz guarda la última consulta; el JSON `data`, la del registro inicial.
+    const root = exp['sunatValidation'];
+    if (root && typeof root === 'object') return root as Record<string, unknown>;
     const s = d['sunatValidation'];
     return (s && typeof s === 'object') ? s as Record<string, unknown> : null;
   }
