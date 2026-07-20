@@ -1290,7 +1290,7 @@
                 }
               </div>
               <!-- Row 3: concepto -->
-              <p class="text-xs text-gray-600 mt-1 leading-snug line-clamp-2">{{ getExpenseConcepto(expense) }}</p>
+              <p class="text-xs text-gray-600 mt-1 leading-snug line-clamp-2">{{ getExpenseConceptoDisplay(expense) }}</p>
               <!-- Row 4: estado cont (+ coord en flujo normal) -->
               @if (!report.isCajaChica) {
               <div class="mt-2 flex flex-wrap gap-x-3 gap-y-1">
@@ -1530,7 +1530,7 @@
                   </td>
                   <!-- Concepto -->
                   <td class="px-3 py-3 text-gray-700 max-w-[200px]">
-                    <span class="block truncate" [title]="getExpenseConcepto(expense)">{{ getExpenseConcepto(expense) }}</span>
+                    <span class="block truncate" [title]="getExpenseConceptoDisplay(expense)">{{ getExpenseConceptoDisplay(expense) }}</span>
                   </td>
                   <!-- Proyecto -->
                   <td class="px-3 py-3 text-gray-700 max-w-[140px]">

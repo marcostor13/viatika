@@ -1007,6 +1007,17 @@ export class RendicionDetailComponent implements OnInit {
     } catch { return 'N/A'; }
   }
 
+  /**
+   * Concepto mostrado en la columna "Concepto" de la tabla de comprobantes.
+   * Prioriza el comentario del gasto (mismo criterio que el reporte PDF/Excel,
+   * que imprime `comentario || descripcion`); la razón social ya va en Proveedor.
+   */
+  getExpenseConceptoDisplay(expense: any): string {
+    const comentario = this.getExpenseComentario(expense as Record<string, unknown>);
+    if (comentario) return comentario;
+    return this.getExpenseConcepto(expense);
+  }
+
   /** Lista de conceptos para la tabla Comprobantes Asociados (1 entrada por fila de planilla). */
   getExpenseDescriptionLines(expense: any): string[] {
     const type = expense?.expenseType;
