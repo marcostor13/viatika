@@ -1986,11 +1986,13 @@ export default class AddInvoiceComponent implements OnInit {
       payload.description = description;
       payload.total = Number(formValue.totalOtros) || 0;
       const muestraDoc = this.otrosSubTipoMuestraDocumento();
+      const subTipo = this.otrosSubTipo();
       const fechaEmision = this.formatDateForBackend(formValue.fechaEmision || '');
       const { serie: _s, correlativo: _c, rucEmisor: _r, ...prevWithoutDoc } = previousData || {};
       const dataObj = {
         ...prevWithoutDoc,
         description,
+        subTipo,
         ...(fechaEmision ? { fechaEmision } : {}),
         ...(muestraDoc ? {
           serie: (formValue.serie || '').trim() || undefined,
@@ -1999,6 +2001,9 @@ export default class AddInvoiceComponent implements OnInit {
         } : {}),
       };
       payload.data = JSON.stringify(dataObj);
+      // El sub-tipo se persiste en la raíz del gasto (es de donde lo lee la
+      // tabla y el PDF); sin esto el cambio de tipo de documento se perdía.
+      payload.subTipo = subTipo;
       if (fechaEmision) payload.fechaEmision = fechaEmision;
     } else if (type === 'recibo_caja') {
       const dataObj = {
