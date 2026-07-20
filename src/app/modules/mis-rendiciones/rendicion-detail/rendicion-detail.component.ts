@@ -3602,8 +3602,11 @@ export class RendicionDetailComponent implements OnInit {
     const query = this.sunatQueryData(expense);
     if (!id || !query) return;
     // SUNAT rechaza la consulta con 422 si el RUC no tiene 11 dígitos; se avisa
-    // acá para no devolver un "error del servicio" que despista.
-    if (!/^\d{11}$/.test(query.rucEmisor)) {
+    // acá para no devolver un "error del servicio" que despista. Se comparan
+    // solo los dígitos, porque el dato puede venir del OCR con espacios o
+    // guiones ("20-503000001"): mismo criterio que el lookup de razón social.
+    const rucDigitos = query.rucEmisor.replace(/\D/g, '');
+    if (rucDigitos.length !== 11) {
       this.notificationService.show(
         'El RUC del emisor no es válido (debe tener 11 dígitos). Corrígelo en el gasto antes de revalidar.',
         'error',
@@ -3614,6 +3617,7 @@ export class RendicionDetailComponent implements OnInit {
     this.invoicesService
       .validateWithSunatData(id, {
         ...query,
+        rucEmisor: rucDigitos,
         montoTotal: Number(expense['total']) || undefined,
         tipoComprobante: this.sunatTipoComprobante(expense),
       })
