@@ -341,6 +341,7 @@ export default class AddInvoiceComponent implements OnInit {
       this.invoiceService.getInvoiceById(this.id).subscribe({
         next: (res) => {
           this.originalInvoice = res;
+          this.reloadCategoriesForExpenseOwner(res);
           const type = ((res as any).expenseType as ExpenseType) || 'factura';
           this.expenseType.set(type);
           this.form.get('file')?.clearValidators();
@@ -557,14 +558,36 @@ export default class AddInvoiceComponent implements OnInit {
     });
   }
 
-  loadCategories() {
-    this.invoiceService.getCategories().subscribe({
+  /**
+   * En edición hay dos cargas en vuelo (la de ngOnInit y la del dueño del gasto,
+   * que sale al resolverse el gasto): el contador descarta la respuesta de una
+   * petición vieja para que no pise a la última.
+   */
+  private categoriesRequestId = 0;
+
+  loadCategories(forUserId?: string) {
+    const requestId = ++this.categoriesRequestId;
+    this.invoiceService.getCategories(undefined, forUserId).subscribe({
       next: (categories) => {
+        if (requestId !== this.categoriesRequestId) return;
         this.categories = categories;
         this.autoSelectDjCategories();
       },
       error: (error) => {},
     });
+  }
+
+  /**
+   * Al editar el gasto de otro usuario (Contabilidad/Admin revisando una rendición
+   * ajena), el listado de categorías debe ser el del dueño del gasto: si no, sale
+   * filtrado por la asignación del revisor y puede quedar vacío.
+   */
+  private reloadCategoriesForExpenseOwner(expense: any): void {
+    const owner = expense?.createdBy;
+    if (!owner || typeof owner !== 'string') return;
+    const currentUserId = this.userStateService.getUser()?._id;
+    if (!currentUserId || String(owner) === String(currentUserId)) return;
+    this.loadCategories(owner);
   }
 
   loadCategoryGroups() {
