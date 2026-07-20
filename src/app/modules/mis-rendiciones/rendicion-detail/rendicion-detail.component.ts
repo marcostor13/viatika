@@ -958,7 +958,10 @@ export class RendicionDetailComponent implements OnInit {
       return this.formatEmissionDate([...dates].sort()[0]);
     }
     if (type === 'otros_gastos') {
-      return this.formatEmissionDate(expense?.createdAt);
+      // La fecha de emisión ahora se declara en el formulario; los gastos
+      // registrados antes no la tienen y siguen mostrando la fecha de registro.
+      const declarada = resolveExpenseFechaEmision(expense);
+      return this.formatEmissionDate(declarada ?? expense?.createdAt);
     }
     return this.emissionDateText(expense);
   }

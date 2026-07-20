@@ -416,6 +416,9 @@ export default class AddInvoiceComponent implements OnInit {
               description,
               totalOtros: res.total ?? 0,
               declaracionJurada: true,
+              // Los gastos antiguos no llevaban fecha de emisión: se cae a la
+              // fecha de registro para no mostrar el campo vacío.
+              fechaEmision: fecha || this.formatDateForInput((res as any).createdAt),
               rucEmisor: dataObj.rucEmisor || '',
               serie: dataObj.serie || '',
               correlativo: dataObj.correlativo || '',
@@ -881,6 +884,7 @@ export default class AddInvoiceComponent implements OnInit {
   }
 
   setExpenseType(type: ExpenseType) {
+    const previous = this.expenseType();
     this.expenseType.set(type);
     // Limpiar archivo al cambiar de tipo para evitar adjuntos cruzados
     this.selectedFile = undefined as any;
@@ -891,6 +895,17 @@ export default class AddInvoiceComponent implements OnInit {
       this.form.get('file')?.clearValidators();
     }
     this.form.get('file')?.updateValueAndValidity();
+    // "Otros gastos" declara la fecha del documento a mano (no hay OCR que la
+    // extraiga). Se propone hoy para no cambiar el comportamiento previo, pero
+    // el usuario puede corregirla — p. ej. al registrar un no deducible viejo.
+    // Solo al cambiar de tipo, para no pisar la fecha que trae el OCR de factura.
+    if (!this.id && previous !== type) {
+      if (type === 'otros_gastos') {
+        this.form.get('fechaEmision')?.setValue(this.todayIso);
+      } else if (previous === 'otros_gastos') {
+        this.form.get('fechaEmision')?.setValue('');
+      }
+    }
     this.syncTopValidators();
   }
 
@@ -1675,6 +1690,14 @@ export default class AddInvoiceComponent implements OnInit {
       return;
     }
 
+    const fechaEmision = this.formatDateForBackend(
+      (this.form.get('fechaEmision')?.value || '').toString()
+    );
+    if (!fechaEmision) {
+      this.notificationService.show('Debes indicar la fecha de emisión', 'error');
+      return;
+    }
+
     this.isLoading.set(true);
 
     const serie = muestraDoc ? (this.form.get('serie')?.value || '').toString().trim() : '';
@@ -1690,6 +1713,7 @@ export default class AddInvoiceComponent implements OnInit {
         data: description,
         subTipo,
         imageUrl,
+        fechaEmision,
         ...(serie ? { serie } : {}),
         ...(correlativo ? { correlativo } : {}),
         ...(rucEmisor ? { rucEmisor } : {}),
@@ -1931,10 +1955,12 @@ export default class AddInvoiceComponent implements OnInit {
       payload.description = description;
       payload.total = Number(formValue.totalOtros) || 0;
       const muestraDoc = this.otrosSubTipoMuestraDocumento();
+      const fechaEmision = this.formatDateForBackend(formValue.fechaEmision || '');
       const { serie: _s, correlativo: _c, rucEmisor: _r, ...prevWithoutDoc } = previousData || {};
       const dataObj = {
         ...prevWithoutDoc,
         description,
+        ...(fechaEmision ? { fechaEmision } : {}),
         ...(muestraDoc ? {
           serie: (formValue.serie || '').trim() || undefined,
           correlativo: (formValue.correlativo || '').trim() || undefined,
@@ -1942,6 +1968,7 @@ export default class AddInvoiceComponent implements OnInit {
         } : {}),
       };
       payload.data = JSON.stringify(dataObj);
+      if (fechaEmision) payload.fechaEmision = fechaEmision;
     } else if (type === 'recibo_caja') {
       const dataObj = {
         ...previousData,

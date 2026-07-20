@@ -257,7 +257,11 @@ export class GastoDetalleComponent implements OnInit {
       const dates = rows.map((r: any) => r.fecha).filter(Boolean);
       return dates.length ? formatFechaEmisionDdMmYyyy([...dates].sort()[0]) : '-';
     }
-    if (type === 'otros_gastos') return formatFechaEmisionDdMmYyyy(exp['createdAt'] as any);
+    if (type === 'otros_gastos') {
+      // Fecha declarada en el formulario; los gastos previos caen a la de registro.
+      const declarada = resolveExpenseFechaEmision(exp as any);
+      return formatFechaEmisionDdMmYyyy((declarada ?? exp['createdAt']) as any);
+    }
     return this.emissionDateText(exp);
   }
 
