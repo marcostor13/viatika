@@ -5,6 +5,7 @@ import { InvoicesService } from '../services/invoices.service';
 import { IInvoiceResponse } from '../interfaces/invoices.interface';
 import { ButtonComponent } from '../../../design-system/button/button.component';
 import { UserStateService } from '../../../services/user-state.service';
+import { PlatformFileService } from '../../../services/platform-file.service';
 
 @Component({
   selector: 'app-invoice-detail',
@@ -18,6 +19,7 @@ export class InvoiceDetailComponent implements OnInit {
   private router = inject(Router);
   private invoicesService = inject(InvoicesService);
   private userStateService = inject(UserStateService);
+  private platformFile = inject(PlatformFileService);
 
   id: string = this.route.snapshot.params['id'];
   invoice: IInvoiceResponse | null = null;
@@ -64,7 +66,7 @@ export class InvoiceDetailComponent implements OnInit {
 
   downloadFile() {
     if (this.invoice?.file) {
-      window.open(this.invoice.file, '_blank');
+      void this.platformFile.openUrl(this.invoice.file);
     }
   }
 

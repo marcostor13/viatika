@@ -2,6 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { environment } from '../../environments/environment';
+import { PlatformFileService } from './platform-file.service';
 
 export type AsientoTipo =
   | 'solicitud'
@@ -47,6 +48,7 @@ export interface IAccountingEntryStatus {
 @Injectable({ providedIn: 'root' })
 export class AccountingEntriesService {
   private http = inject(HttpClient);
+  private platformFile = inject(PlatformFileService);
   private url = `${environment.api}/accounting-entries`;
 
   /** Estado actual de los asientos (no dispara generación). Usar para pintar la UI y para polling. */
@@ -85,13 +87,7 @@ export class AccountingEntriesService {
    * de pop-ups, incluso si la URL se obtuvo justo antes vía una llamada async.
    */
   private triggerDownload(url: string, filename?: string): void {
-    const a = document.createElement('a');
-    a.href = url;
-    if (filename) a.download = filename;
-    a.rel = 'noopener';
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
+    void this.platformFile.saveFromUrl(url, filename);
   }
 
   /**

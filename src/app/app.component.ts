@@ -9,6 +9,7 @@ import { ConfirmationComponent } from './components/confirmation/confirmation.co
 import { LoaderComponent } from './components/loader/loader.component';
 import { AsyncPipe } from '@angular/common';
 import { ShowComponent } from './components/show/show.component';
+import { NativeInitService } from './services/native-init.service';
 
 @Component({
   selector: 'app-root',
@@ -26,6 +27,7 @@ import { ShowComponent } from './components/show/show.component';
 })
 export class AppComponent {
   isConfirmationVisible = inject(ConfirmationService);
+  private nativeInit = inject(NativeInitService);
 
   title = 'Gastos';
   isNotificationVisible!: Observable<Boolean>;
@@ -39,5 +41,6 @@ export class AppComponent {
   ngOnInit() {
     this.isNotificationVisible = this.notificationService.isVisible();
     this.isShow = this.showService.show$;
+    void this.nativeInit.init();
   }
 }

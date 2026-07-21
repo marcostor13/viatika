@@ -13,6 +13,7 @@ import { ButtonComponent } from '../../design-system/button/button.component';
 import { PaginatorComponent } from '../../design-system/paginator/paginator.component';
 import { HttpErrorResponse } from '@angular/common/http';
 import * as ExcelJS from 'exceljs';
+import { PlatformFileService } from '../../services/platform-file.service';
 
 interface GroupForm {
   name: string;
@@ -34,6 +35,7 @@ export class CategoriasComponent implements OnInit {
   private notificationService = inject(NotificationService);
   private confirmationService = inject(ConfirmationService);
   private router = inject(Router);
+  private platformFile = inject(PlatformFileService);
 
   activeTab = signal<'categorias' | 'grupos'>('categorias');
 
@@ -227,12 +229,7 @@ export class CategoriasComponent implements OnInit {
 
     const buffer = await workbook.xlsx.writeBuffer();
     const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'plantilla_categorias.xlsx';
-    a.click();
-    URL.revokeObjectURL(url);
+    void this.platformFile.saveBlob(blob, 'plantilla_categorias.xlsx');
   }
 
   // ==================== GRUPOS ====================

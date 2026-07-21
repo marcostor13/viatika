@@ -3,6 +3,7 @@ import { FileDownloadComponent } from '../../components/file-download/file-downl
 import { InvoicesService } from './services/invoices.service';
 import { Router } from '@angular/router';
 import { NotificationService } from '../../services/notification.service';
+import { PlatformFileService } from '../../services/platform-file.service';
 import { ConfirmationService } from '../../services/confirmation.service';
 import {
   IInvoiceResponse,
@@ -31,6 +32,7 @@ export default class InvoicesComponent implements OnInit {
   private agentService = inject(InvoicesService);
   private router = inject(Router);
   private notificationService = inject(NotificationService);
+  private platformFile = inject(PlatformFileService);
   private confirmationService = inject(ConfirmationService);
   private userStateService = inject(UserStateService);
   private expenseReportsService = inject(ExpenseReportsService);
@@ -134,7 +136,7 @@ export default class InvoicesComponent implements OnInit {
   downloadInvoice(_id: string) {
     const url = this.invoices.find((invoice) => invoice._id === _id)?.file;
     if (url) {
-      window.open(url, '_blank');
+      void this.platformFile.openUrl(url);
     } else {
       this.notificationService.show('No se pudo descargar la factura', 'error');
     }

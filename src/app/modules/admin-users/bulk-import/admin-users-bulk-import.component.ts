@@ -5,6 +5,7 @@ import { NotificationService } from '../../../services/notification.service';
 import { AdminUsersService } from '../services/admin-users.service';
 import { UserStateService } from '../../../services/user-state.service';
 import { ButtonComponent } from '../../../design-system/button/button.component';
+import { PlatformFileService } from '../../../services/platform-file.service';
 
 @Component({
   selector: 'app-admin-users-bulk-import',
@@ -17,6 +18,7 @@ export class AdminUsersBulkImportComponent {
   private notification = inject(NotificationService);
   private adminUsersService = inject(AdminUsersService);
   private userStateService = inject(UserStateService);
+  private platformFile = inject(PlatformFileService);
 
   file: File | null = null;
   loading = false;
@@ -50,10 +52,7 @@ export class AdminUsersBulkImportComponent {
   private saveXlsx(res: { file: string; filename: string }) {
     const bytes = Uint8Array.from(atob(res.file), c => c.charCodeAt(0));
     const blob = new Blob([bytes], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url; a.download = res.filename; a.click();
-    URL.revokeObjectURL(url);
+    void this.platformFile.saveBlob(blob, res.filename);
   }
 
   downloadTemplate() {
@@ -148,11 +147,6 @@ export class AdminUsersBulkImportComponent {
     );
     const csv = '﻿' + [header, ...rows].join('\r\n');
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'credenciales_colaboradores.csv';
-    a.click();
-    URL.revokeObjectURL(url);
+    void this.platformFile.saveBlob(blob, 'credenciales_colaboradores.csv');
   }
 }

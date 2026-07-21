@@ -11,6 +11,7 @@ import {
 } from '@angular/forms';
 import { NotificationService } from '../../../services/notification.service';
 import { InvoicesService } from '../services/invoices.service';
+import { PlatformFileService } from '../../../services/platform-file.service';
 import { ExpenseReportsService } from '../../../services/expense-reports.service';
 import { AdvanceService } from '../../../services/advance.service';
 import { UserStateService } from '../../../services/user-state.service';
@@ -58,6 +59,7 @@ export default class AddInvoiceComponent implements OnInit {
   private router = inject(Router);
   private fb = inject(FormBuilder);
   private notificationService = inject(NotificationService);
+  private platformFile = inject(PlatformFileService);
   private expenseReportsService = inject(ExpenseReportsService);
   private advanceService = inject(AdvanceService);
   private userStateService = inject(UserStateService);
@@ -2235,7 +2237,7 @@ export default class AddInvoiceComponent implements OnInit {
 
   openInvoice() {
     if (this.previewImage) {
-      window.open(this.previewImage as string, '_blank');
+      void this.platformFile.openUrl(this.previewImage as string);
     }
   }
 

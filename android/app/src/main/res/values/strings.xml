@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Viatika</string>
+    <string name="title_activity_main">Viatika</string>
+    <string name="package_name">com.datalia.viatika</string>
+    <string name="custom_url_scheme">com.datalia.viatika</string>
+</resources>

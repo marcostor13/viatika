@@ -5,6 +5,7 @@ import { NotificationService } from '../../../services/notification.service';
 import { InvoicesService } from '../../invoices/services/invoices.service';
 import { UserStateService } from '../../../services/user-state.service';
 import { ButtonComponent } from '../../../design-system/button/button.component';
+import { PlatformFileService } from '../../../services/platform-file.service';
 
 @Component({
   selector: 'app-centros-de-costo-bulk-import',
@@ -17,6 +18,7 @@ export class CentrosDeCostoBulkImportComponent {
   private notification = inject(NotificationService);
   private invoicesService = inject(InvoicesService);
   private userStateService = inject(UserStateService);
+  private platformFile = inject(PlatformFileService);
 
   file: File | null = null;
   loading = false;
@@ -37,10 +39,7 @@ export class CentrosDeCostoBulkImportComponent {
       next: (res) => {
         const bytes = Uint8Array.from(atob(res.file), c => c.charCodeAt(0));
         const blob = new Blob([bytes], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url; a.download = res.filename; a.click();
-        URL.revokeObjectURL(url);
+        void this.platformFile.saveBlob(blob, res.filename);
       },
       error: () => this.notification.show('Error al descargar plantilla', 'error'),
     });

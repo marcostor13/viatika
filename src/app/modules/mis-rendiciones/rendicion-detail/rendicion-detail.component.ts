@@ -5,6 +5,7 @@ import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { ExpenseReportsService } from '../../../services/expense-reports.service';
 import { AdvanceService } from '../../../services/advance.service';
 import { NotificationService } from '../../../services/notification.service';
+import { PlatformFileService } from '../../../services/platform-file.service';
 import { UserStateService } from '../../../services/user-state.service';
 import { CompanyConfigService } from '../../../services/company-config.service';
 import { ConfirmationService } from '../../../services/confirmation.service';
@@ -55,6 +56,7 @@ export class RendicionDetailComponent implements OnInit {
   private expenseReportsService = inject(ExpenseReportsService);
   private advanceService = inject(AdvanceService);
   private notificationService = inject(NotificationService);
+  private platformFile = inject(PlatformFileService);
   private userStateService = inject(UserStateService);
   private confirmationService = inject(ConfirmationService);
   private invoicesService = inject(InvoicesService);
@@ -1085,7 +1087,7 @@ export class RendicionDetailComponent implements OnInit {
   openExpenseFile(expense: Record<string, unknown>): void {
     const url = this.getExpenseFileUrl(expense);
     if (url) {
-      window.open(url, '_blank', 'noopener,noreferrer');
+      void this.platformFile.openUrl(url);
     } else {
       this.notificationService.show('No hay documento adjunto', 'warning');
     }

@@ -5,6 +5,7 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { ExpenseService } from '../../../services/expense.service';
 import { UserStateService } from '../../../services/user-state.service';
 import { NotificationService } from '../../../services/notification.service';
+import { PlatformFileService } from '../../../services/platform-file.service';
 import {
   formatFechaEmisionDdMmYyyy,
   resolveExpenseFechaEmision,
@@ -25,6 +26,7 @@ export class GastoDetalleComponent implements OnInit {
   private expenseService = inject(ExpenseService);
   private userState = inject(UserStateService);
   private notifications = inject(NotificationService);
+  private platformFile = inject(PlatformFileService);
 
   id = this.route.snapshot.paramMap.get('id') ?? '';
   expense = signal<Record<string, unknown> | null>(null);
@@ -346,7 +348,7 @@ export class GastoDetalleComponent implements OnInit {
 
   openFile(exp: Record<string, unknown>): void {
     const url = this.getFileUrl(exp);
-    url ? window.open(url, '_blank', 'noopener,noreferrer') : this.notifications.show('Sin documento adjunto', 'warning');
+    url ? void this.platformFile.openUrl(url) : this.notifications.show('Sin documento adjunto', 'warning');
   }
 
   getPopulatedName(field: unknown): string {

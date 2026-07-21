@@ -2,6 +2,7 @@ import { Component, inject, signal, OnInit, computed } from '@angular/core';
 import { Router } from '@angular/router';
 import { FileDownloadComponent } from '../../components/file-download/file-download.component';
 import { NotificationService } from '../../services/notification.service';
+import { PlatformFileService } from '../../services/platform-file.service';
 import { ConfirmationService } from '../../services/confirmation.service';
 import { IHeaderList } from '../../interfaces/header-list.interface';
 import { InvoicesService } from '../invoices/services/invoices.service';
@@ -73,6 +74,7 @@ export class InvoiceApprovalComponent implements OnInit {
   private agentService = inject(InvoicesService);
   readonly router = inject(Router);
   private notificationService = inject(NotificationService);
+  private platformFile = inject(PlatformFileService);
   private confirmationService = inject(ConfirmationService);
   private userStateService = inject(UserStateService);
   private adminUsersService = inject(AdminUsersService);
@@ -425,7 +427,7 @@ export class InvoiceApprovalComponent implements OnInit {
   downloadInvoice(id: string) {
     const url = this.invoices.find((invoice) => invoice._id === id)?.file;
     if (url) {
-      window.open(url, '_blank');
+      void this.platformFile.openUrl(url);
     } else {
       this.notificationService.show('No se pudo descargar la factura', 'error');
     }
