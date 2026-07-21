@@ -28,6 +28,7 @@ import {
   ExpenseType,
   ICreateDeclaracionJuradaPayload,
   IDeclaracionJuradaResponse,
+  IInvoicePreview,
 } from '../interfaces/invoices.interface';
 import type { RendicionExportService } from '../../../services/rendicion-export.service';
 import { ButtonComponent } from '../../../design-system/button/button.component';
@@ -116,7 +117,9 @@ export default class AddInvoiceComponent implements OnInit {
   isLoading = signal(false);
   readonly todayIso = new Date().toISOString().split('T')[0];
   showPostOcrReview = signal(false);
-  postOcrInvoiceId = signal<string | null>(null);
+  /** URL del archivo ya subido durante el análisis; se asocia al gasto al confirmar. */
+  private postOcrFileUrl = signal<string>('');
+  /** Extracción OCR mostrada en la revisión (aún sin gasto creado): `{ data }`. */
   private postOcrBaseInvoice: any = null;
   ocrTotalAmount = signal<number>(0);
   isEditingOcrAmount = signal(false);
@@ -2169,196 +2172,125 @@ export default class AddInvoiceComponent implements OnInit {
 
     this.percentage.set(10);
     this.invoiceService.analyzePdf(formData).subscribe({
-      next: (res) => {
-        this.isLoading.set(false);
-        if (res && res._id) {
-          let dataObj: any = {};
-          if (res.data) {
-            try {
-              dataObj = typeof res.data === 'string' ? JSON.parse(res.data) : res.data;
-            } catch {}
-          }
-          if (dataObj?.rucEmisor || dataObj?.fechaEmision || dataObj?.serie || dataObj?.correlativo || dataObj?.comentario) {
-            this.form.patchValue({
-              rucEmisor: dataObj.rucEmisor || '',
-              fechaEmision: this.formatDateForInput(dataObj.fechaEmision),
-              serie: dataObj.serie || '',
-              correlativo: dataObj.correlativo || '',
-              moneda: dataObj.moneda || 'PEN',
-              comentario: dataObj.comentario || '',
-              placaVehiculo: dataObj.placaVehiculo || '',
-            });
-            this.postOcrInvoiceId.set(res._id);
-            this.postOcrBaseInvoice = res;
-            this.ocrTotalAmount.set(parseFloat(String(res.total)) || 0);
-            this.isEditingOcrAmount.set(false);
-            this.editedOcrTotal.set(null);
-            this.showPostOcrReview.set(true);
-            this.notificationService.show(
-              'Revisa y confirma los datos extraidos por OCR antes de guardar.',
-              'warning'
-            );
-          } else {
-            this.notificationService.show('Factura PDF analizada correctamente', 'success');
-            this.navigateAfterExpenseSave();
-          }
-        } else {
-          this.notificationService.show('Factura PDF analizada correctamente', 'success');
-          this.navigateAfterExpenseSave();
-        }
-      },
-      error: (error) => {
-        this.isLoading.set(false);
-      },
+      next: (preview) => this.enterPostOcrReview(preview),
+      error: () => this.isLoading.set(false),
     });
   }
 
   save() {
-    if (this.form.valid) {
-      const payload = {
-        categoryId: this.form.get('categoryId')?.value,
-        proyectId: this.form.get('proyectId')?.value,
-        imageUrl: this.form.get('file')?.value,
-        status: 'pending' as InvoiceStatus,
-        expenseReportId: this.rendicionId
-      };
-
-      this.invoiceService.analyzeInvoice(payload).subscribe({
-        next: (res) => {
-          if (res && res._id) {
-            let dataObj: any = {};
-            if (res.data) {
-              try {
-                dataObj =
-                  typeof res.data === 'string'
-                    ? JSON.parse(res.data)
-                    : res.data;
-              } catch {}
-            }
-
-            if (
-              dataObj?.rucEmisor ||
-              dataObj?.fechaEmision ||
-              dataObj?.serie ||
-              dataObj?.correlativo ||
-              dataObj?.comentario
-            ) {
-              this.form.patchValue({
-                rucEmisor: dataObj.rucEmisor || '',
-                fechaEmision: this.formatDateForInput(dataObj.fechaEmision),
-                serie: dataObj.serie || '',
-                correlativo: dataObj.correlativo || '',
-                moneda: dataObj.moneda || 'PEN',
-                comentario: dataObj.comentario || '',
-                placaVehiculo: dataObj.placaVehiculo || '',
-              });
-              this.postOcrInvoiceId.set(res._id);
-              this.postOcrBaseInvoice = res;
-              this.ocrTotalAmount.set(parseFloat(String(res.total)) || 0);
-              this.isEditingOcrAmount.set(false);
-              this.editedOcrTotal.set(null);
-              this.showPostOcrReview.set(true);
-              this.isLoading.set(false);
-              this.notificationService.show(
-                'Revisa y confirma los datos extraidos por OCR antes de guardar.',
-                'warning'
-              );
-            } else {
-              this.isLoading.set(false);
-              this.notificationService.show(
-                'Factura subida correctamente',
-                'success'
-              );
-              this.notifyCategoryLimitWarning(res);
-              this.navigateAfterExpenseSave();
-            }
-          } else {
-            this.isLoading.set(false);
-            this.notificationService.show(
-              'Factura subida correctamente',
-              'success'
-            );
-            this.notifyCategoryLimitWarning(res);
-            this.navigateAfterExpenseSave();
-          }
-        },
-        error: (error) => {
-          this.isLoading.set(false);
-        },
-      });
-    } else {
+    if (!this.form.valid) {
       this.isLoading.set(false);
       this.notificationService.show(
         'Por favor complete todos los campos requeridos',
         'error'
       );
+      return;
     }
+    const payload = {
+      categoryId: this.form.get('categoryId')?.value,
+      proyectId: this.form.get('proyectId')?.value,
+      imageUrl: this.form.get('file')?.value,
+      status: 'pending' as InvoiceStatus,
+      expenseReportId: this.rendicionId,
+    };
+    this.invoiceService.analyzeInvoice(payload).subscribe({
+      next: (preview) => this.enterPostOcrReview(preview),
+      error: () => this.isLoading.set(false),
+    });
+  }
+
+  /**
+   * Muestra la pantalla de revisión con los datos extraídos por OCR. En este
+   * punto el gasto AÚN NO está creado: `analyze*` solo devuelve la extracción y
+   * la URL del archivo. El gasto se crea recién en `confirmPostOcrReview`.
+   */
+  private enterPostOcrReview(preview: IInvoicePreview): void {
+    this.isLoading.set(false);
+    let dataObj: any = {};
+    if (preview?.data) {
+      try {
+        dataObj =
+          typeof preview.data === 'string'
+            ? JSON.parse(preview.data)
+            : preview.data;
+      } catch {}
+    }
+    this.form.patchValue({
+      rucEmisor: dataObj.rucEmisor || '',
+      fechaEmision: this.formatDateForInput(dataObj.fechaEmision),
+      serie: dataObj.serie || '',
+      correlativo: dataObj.correlativo || '',
+      moneda: dataObj.moneda || 'PEN',
+      comentario: dataObj.comentario || '',
+      placaVehiculo: dataObj.placaVehiculo || '',
+    });
+    this.postOcrBaseInvoice = { data: dataObj };
+    this.postOcrFileUrl.set(preview.fileUrl || '');
+    this.ocrTotalAmount.set(Number(preview.total) || 0);
+    this.isEditingOcrAmount.set(false);
+    this.editedOcrTotal.set(null);
+    this.showPostOcrReview.set(true);
+    this.notificationService.show(
+      'Revisa y confirma los datos extraidos por OCR antes de guardar.',
+      'warning'
+    );
   }
 
   confirmPostOcrReview() {
-    const invoiceId = this.postOcrInvoiceId();
-    if (!invoiceId || !this.postOcrBaseInvoice) return;
+    if (!this.postOcrBaseInvoice) return;
     const comentario = (this.form.get('comentario')?.value || '').trim();
     if (!comentario) {
       this.notificationService.show('El campo Comentario es obligatorio.', 'error');
       return;
     }
     const formValue = this.form.value;
-    let baseData: any = {};
-    try {
-      baseData =
-        typeof this.postOcrBaseInvoice.data === 'string'
-          ? JSON.parse(this.postOcrBaseInvoice.data || '{}')
-          : this.postOcrBaseInvoice.data || {};
-    } catch {
-      baseData = {};
-    }
+    const baseData = this.postOcrBaseInvoice.data || {};
     const fetched = this.fetchedRazonSocial();
     const razonSocialOcr = fetched !== null ? fetched : (this.rucNotFound() ? 'No Reconocida' : undefined);
     const finalTotal = this.ocrAmountWasEdited
       ? this.editedOcrTotal()!
-      : (parseFloat(String(this.postOcrBaseInvoice.total)) || 0);
+      : (this.ocrTotalAmount() || 0);
     const dataObj = {
       ...baseData,
       rucEmisor: formValue.rucEmisor || '',
       fechaEmision: this.formatDateForBackend(formValue.fechaEmision || ''),
       serie: formValue.serie || '',
       correlativo: formValue.correlativo || '',
+      montoTotal: finalTotal,
       comentario,
       placaVehiculo: (formValue.placaVehiculo || '').trim() || undefined,
       ...(razonSocialOcr !== undefined ? { razonSocial: razonSocialOcr } : {}),
       ...(this.ocrAmountWasEdited ? { amountEdited: true, originalOcrTotal: this.ocrTotalAmount() } : {}),
     };
-    const updatePayload = {
-      proyectId: this.postOcrBaseInvoice.proyectId,
-      categoryId: this.postOcrBaseInvoice.categoryId,
+    // El gasto se crea AQUÍ, no al escanear. El backend valida duplicado + SUNAT
+    // y persiste; si algo falla, no queda ningún comprobante a medias.
+    const payload = {
+      proyectId: this.form.get('proyectId')?.value,
+      categoryId: this.form.get('categoryId')?.value,
+      clientId: this.resolveCompanyId(),
+      expenseReportId: this.rendicionId || undefined,
+      imageUrl: this.postOcrFileUrl(),
       total: finalTotal,
       moneda: formValue.moneda || 'PEN',
       data: JSON.stringify(dataObj),
       fechaEmision: dataObj.fechaEmision,
-      status: this.postOcrBaseInvoice.status,
       comentario,
       placaVehiculo: dataObj.placaVehiculo,
+      expenseType: 'factura',
     };
 
     this.isLoading.set(true);
-    this.invoiceService.updateInvoice(invoiceId, updatePayload).subscribe({
-      next: () => {
-        if (this.shouldValidateWithSunat(formValue)) {
-          this.id = invoiceId;
-          this.originalInvoice = this.postOcrBaseInvoice;
-          this.validateWithSunatData(formValue);
-        } else {
-          this.isLoading.set(false);
-          this.notificationService.show('Factura guardada correctamente', 'success');
-          this.notifyCategoryLimitWarning(this.postOcrBaseInvoice);
-          this.navigateAfterExpenseSave();
-        }
+    this.invoiceService.confirmInvoice(payload).subscribe({
+      next: (created) => {
+        this.isLoading.set(false);
+        this.notificationService.show('Factura guardada correctamente', 'success');
+        this.notifyCategoryLimitWarning(created);
+        this.navigateAfterExpenseSave();
       },
       error: (error) => {
         this.isLoading.set(false);
         this.notificationService.show(
-          'Error al guardar datos OCR: ' + (error.error?.message || error.message),
+          'Error al guardar la factura: ' + (error.error?.message || error.message),
           'error'
         );
       },
