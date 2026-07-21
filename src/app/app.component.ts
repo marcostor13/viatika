@@ -10,6 +10,8 @@ import { LoaderComponent } from './components/loader/loader.component';
 import { AsyncPipe } from '@angular/common';
 import { ShowComponent } from './components/show/show.component';
 import { NativeInitService } from './services/native-init.service';
+import { OfflineBannerComponent } from './components/offline-banner/offline-banner.component';
+import { OfflineSyncService } from './services/offline-sync.service';
 
 @Component({
   selector: 'app-root',
@@ -21,6 +23,7 @@ import { NativeInitService } from './services/native-init.service';
     LoaderComponent,
     AsyncPipe,
     ShowComponent,
+    OfflineBannerComponent,
   ],
   templateUrl: './app.component.html',
   styleUrl: './app.component.scss',
@@ -28,6 +31,8 @@ import { NativeInitService } from './services/native-init.service';
 export class AppComponent {
   isConfirmationVisible = inject(ConfirmationService);
   private nativeInit = inject(NativeInitService);
+  // Instanciado en el arranque: activa el drenado automático de la cola offline.
+  private offlineSync = inject(OfflineSyncService);
 
   title = 'Gastos';
   isNotificationVisible!: Observable<Boolean>;
