@@ -868,12 +868,14 @@
     <div>
       <label class="block text-sm font-medium text-secondary mb-3">Tipo de documento <span class="text-error">*</span></label>
       <div class="grid grid-cols-2 sm:grid-cols-5 gap-2">
+        <!-- `code` es el valor que se guarda; `display` es la sigla visible.
+             RC se muestra como RD (Recibos Diversos) sin migrar el dato. -->
         @for (opt of [
-          {code:'TK', label:'Ticket'},
-          {code:'BV', label:'Boleta'},
-          {code:'RC', label:'Recibos diversos'},
-          {code:'DJ', label:'Declaración Jurada'},
-          {code:'OT', label:'Otros'}
+          {code:'TK', display:'TK', label:'Ticket'},
+          {code:'BV', display:'BV', label:'Boleta de venta'},
+          {code:'RC', display:'RD', label:'Recibos diversos'},
+          {code:'DJ', display:'DJ', label:'Declaración Jurada'},
+          {code:'OT', display:'OT', label:'Otros'}
         ]; track opt.code) {
         <button type="button"
           (click)="selectOtrosSubTipo(opt.code)"
@@ -885,7 +887,7 @@
           [class.bg-white]="otrosSubTipo() !== opt.code"
           [class.text-secondary]="otrosSubTipo() !== opt.code"
         >
-          <span class="text-xs font-bold tabular-nums">{{ opt.code }}</span>
+          <span class="text-xs font-bold tabular-nums">{{ opt.display }}</span>
           <span class="text-xs leading-tight">{{ opt.label }}</span>
         </button>
         }
@@ -930,6 +932,13 @@
     }
 
     @if (otrosSubTipo() !== 'DJ') {
+    <div class="flex flex-col gap-2">
+      <label for="otrosFechaEmision" class="text-sm font-medium text-secondary">
+        Fecha de Emisión <span class="text-error">*</span>
+      </label>
+      <input id="otrosFechaEmision" type="date" [max]="todayIso" formControlName="fechaEmision"
+        class="w-full h-[42px] px-4 rounded-lg border border-gray-200 bg-background focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-sm" />
+    </div>
     <div class="flex flex-col gap-2">
       <label class="text-sm font-medium text-secondary">Descripción del gasto</label>
       <input type="text" formControlName="description" placeholder="Ej: Refrigerio de trabajo, útiles de escritorio..."
