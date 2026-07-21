@@ -287,6 +287,19 @@
         />
       </div>
       <div class="flex flex-col gap-1">
+        <label for="tipoComprobanteOcr" class="text-xs font-medium text-secondary">Tipo de comprobante</label>
+        <select
+          id="tipoComprobanteOcr"
+          formControlName="tipoComprobante"
+          class="w-full h-[40px] px-3 rounded-lg border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-primary/20"
+        >
+          @for (t of tipoComprobanteOptions; track t) {
+          <option [value]="t">{{ t }}</option>
+          }
+        </select>
+        <span class="text-[11px] text-tertiary">Detectado por la IA. Si la serie identifica el tipo (F/E = Factura, B = Boleta), esa manda.</span>
+      </div>
+      <div class="flex flex-col gap-1">
         <label for="placaVehiculoOcr" class="text-xs font-medium text-secondary">Placa de Vehículo <span class="text-tertiary font-normal">(si aplica)</span></label>
         <input
           id="placaVehiculoOcr"

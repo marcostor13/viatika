@@ -2217,6 +2217,7 @@ export default class AddInvoiceComponent implements OnInit {
     }
     this.form.patchValue({
       rucEmisor: dataObj.rucEmisor || '',
+      tipoComprobante: this.normalizeTipoComprobante(dataObj.tipoComprobante, dataObj.serie),
       fechaEmision: this.formatDateForInput(dataObj.fechaEmision),
       serie: dataObj.serie || '',
       correlativo: dataObj.correlativo || '',
@@ -2253,6 +2254,7 @@ export default class AddInvoiceComponent implements OnInit {
     const dataObj = {
       ...baseData,
       rucEmisor: formValue.rucEmisor || '',
+      tipoComprobante: this.normalizeTipoComprobante(formValue.tipoComprobante, formValue.serie),
       fechaEmision: this.formatDateForBackend(formValue.fechaEmision || ''),
       serie: formValue.serie || '',
       correlativo: formValue.correlativo || '',
@@ -2434,12 +2436,19 @@ export default class AddInvoiceComponent implements OnInit {
   readonly tipoComprobanteOptions = ['Factura', 'Boleta', 'Ticket'];
 
   /**
-   * `data.tipoComprobante` guarda unas veces el código SUNAT ('01') y otras la
-   * palabra ("Factura Electrónica"), según de dónde salió el dato, así que se
-   * contemplan ambos formatos para que el select siempre tenga una opción que
-   * coincida.
+   * Etiqueta legible del tipo de comprobante. `data.tipoComprobante` guarda unas
+   * veces el código SUNAT ('01') y otras la palabra ("Factura Electrónica"),
+   * según de dónde salió el dato, así que se contemplan ambos formatos.
+   *
+   * Si la serie identifica el tipo, manda sobre la etiqueta — mismo criterio que
+   * el backend. Así el select muestra el tipo con el que realmente se guardará y
+   * no uno que la serie va a corregir por detrás.
    */
-  private normalizeTipoComprobante(raw: unknown): string {
+  private normalizeTipoComprobante(raw: unknown, serie?: unknown): string {
+    const s = String(serie ?? '').trim().toUpperCase();
+    if (s.startsWith('EB') || s.startsWith('B')) return 'Boleta';
+    if (s.startsWith('F') || s.startsWith('E')) return 'Factura';
+
     const value = String(raw ?? '').trim();
     if (!value) return 'Factura';
     if (value === '01') return 'Factura';
