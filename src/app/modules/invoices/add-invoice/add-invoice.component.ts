@@ -2170,7 +2170,8 @@ export default class AddInvoiceComponent implements OnInit {
       formData.append('expenseReportId', this.rendicionId);
     }
 
-    this.percentage.set(10);
+    // Sin barra de progreso: el análisis OCR no reporta avance, así que una
+    // barra fija en 10% engaña. El spinner del botón cubre el estado de carga.
     this.invoiceService.analyzePdf(formData).subscribe({
       next: (preview) => this.enterPostOcrReview(preview),
       error: () => this.isLoading.set(false),
@@ -2206,6 +2207,9 @@ export default class AddInvoiceComponent implements OnInit {
    */
   private enterPostOcrReview(preview: IInvoicePreview): void {
     this.isLoading.set(false);
+    // La barra de progreso del PDF queda en 10% tras el análisis; se limpia para
+    // que no aparezca "cargando" junto a la revisión ya lista.
+    this.percentage.set(0);
     let dataObj: any = {};
     if (preview?.data) {
       try {
@@ -2235,6 +2239,44 @@ export default class AddInvoiceComponent implements OnInit {
       'Revisa y confirma los datos extraidos por OCR antes de guardar.',
       'warning'
     );
+  }
+
+  /**
+   * Tipo de comprobante que la serie determina de forma inequívoca (regla SUNAT
+   * peruana): F/E = Factura, B/EB = Boleta. Devuelve null cuando la serie no lo
+   * identifica (tickets, series no estándar), y ahí el usuario sí lo elige.
+   * Es el mismo criterio que usa el backend, así que lo que se muestra es lo
+   * que se guardará.
+   */
+  tipoDeterminadoPorSerie(): string | null {
+    const s = String(this.form.get('serie')?.value ?? '').trim().toUpperCase();
+    if (!s) return null;
+    if (s.startsWith('EB') || s.startsWith('B')) return 'Boleta';
+    if (s.startsWith('F') || s.startsWith('E')) return 'Factura';
+    return null;
+  }
+
+  /**
+   * Descarta la revisión OCR y vuelve al inicio para escanear otro archivo. El
+   * gasto aún no existe (se crea al confirmar), así que no hay nada que borrar
+   * en la base; solo se limpia el estado local.
+   */
+  discardOcrReview(): void {
+    this.showPostOcrReview.set(false);
+    this.postOcrBaseInvoice = null;
+    this.postOcrFileUrl.set('');
+    this.selectedFile = undefined as any;
+    this.previewImage = null;
+    this.percentage.set(0);
+    this.ocrTotalAmount.set(0);
+    this.editedOcrTotal.set(null);
+    this.isEditingOcrAmount.set(false);
+    this.form.patchValue({
+      file: '', rucEmisor: '', serie: '', correlativo: '',
+      tipoComprobante: 'Factura', fechaEmision: '', comentario: '', placaVehiculo: '',
+    });
+    this.fetchedRazonSocial.set(null);
+    this.rucNotFound.set(false);
   }
 
   confirmPostOcrReview() {
@@ -2336,7 +2378,10 @@ export default class AddInvoiceComponent implements OnInit {
       // El formulario edita cualquier tipo de gasto, no solo facturas.
       return 'Actualizar';
     }
-    if (this.isLoading()) return 'Guardando...';
+    if (this.isLoading()) {
+      // Una factura nueva primero se analiza (OCR); recién al confirmar se guarda.
+      return this.expenseType() === 'factura' ? 'Analizando comprobante...' : 'Guardando...';
+    }
     switch (this.expenseType()) {
       case 'planilla_movilidad': return 'Guardar Planilla';
       case 'otros_gastos': return 'Guardar Gasto';
