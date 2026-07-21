@@ -175,6 +175,14 @@ export default class AddInvoiceComponent implements OnInit {
 
   /** Tras crear/actualizar gasto: vuelve según el contexto y rol. */
   private navigateAfterExpenseSave(): void {
+    // Si el gasto pertenece a una rendición, se vuelve a esa rendición sea cual
+    // sea el rol. `fromContabilidad` se activa por el solo hecho de tener el rol
+    // Contabilidad, así que antes cortaba aquí y mandaba siempre a Rendiciones
+    // Directas, perdiendo el contexto de lo que se estaba editando.
+    if (this.rendicionId && !this.isDirectaMode) {
+      this.router.navigate(['/mis-rendiciones', this.rendicionId, 'detalle']);
+      return;
+    }
     if (this.fromContabilidad) {
       this.router.navigate(['/rendiciones'], { queryParams: { tab: 'directas' } });
       return;
@@ -341,6 +349,7 @@ export default class AddInvoiceComponent implements OnInit {
       this.invoiceService.getInvoiceById(this.id).subscribe({
         next: (res) => {
           this.originalInvoice = res;
+          this.reloadCategoriesForExpenseOwner(res);
           const type = ((res as any).expenseType as ExpenseType) || 'factura';
           this.expenseType.set(type);
           this.form.get('file')?.clearValidators();
@@ -416,6 +425,9 @@ export default class AddInvoiceComponent implements OnInit {
               description,
               totalOtros: res.total ?? 0,
               declaracionJurada: true,
+              // Los gastos antiguos no llevaban fecha de emisión: se cae a la
+              // fecha de registro para no mostrar el campo vacío.
+              fechaEmision: fecha || this.formatDateForInput((res as any).createdAt),
               rucEmisor: dataObj.rucEmisor || '',
               serie: dataObj.serie || '',
               correlativo: dataObj.correlativo || '',
@@ -554,14 +566,36 @@ export default class AddInvoiceComponent implements OnInit {
     });
   }
 
-  loadCategories() {
-    this.invoiceService.getCategories().subscribe({
+  /**
+   * En edición hay dos cargas en vuelo (la de ngOnInit y la del dueño del gasto,
+   * que sale al resolverse el gasto): el contador descarta la respuesta de una
+   * petición vieja para que no pise a la última.
+   */
+  private categoriesRequestId = 0;
+
+  loadCategories(forUserId?: string) {
+    const requestId = ++this.categoriesRequestId;
+    this.invoiceService.getCategories(undefined, forUserId).subscribe({
       next: (categories) => {
+        if (requestId !== this.categoriesRequestId) return;
         this.categories = categories;
         this.autoSelectDjCategories();
       },
       error: (error) => {},
     });
+  }
+
+  /**
+   * Al editar el gasto de otro usuario (Contabilidad/Admin revisando una rendición
+   * ajena), el listado de categorías debe ser el del dueño del gasto: si no, sale
+   * filtrado por la asignación del revisor y puede quedar vacío.
+   */
+  private reloadCategoriesForExpenseOwner(expense: any): void {
+    const owner = expense?.createdBy;
+    if (!owner || typeof owner !== 'string') return;
+    const currentUserId = this.userStateService.getUser()?._id;
+    if (!currentUserId || String(owner) === String(currentUserId)) return;
+    this.loadCategories(owner);
   }
 
   loadCategoryGroups() {
@@ -881,6 +915,7 @@ export default class AddInvoiceComponent implements OnInit {
   }
 
   setExpenseType(type: ExpenseType) {
+    const previous = this.expenseType();
     this.expenseType.set(type);
     // Limpiar archivo al cambiar de tipo para evitar adjuntos cruzados
     this.selectedFile = undefined as any;
@@ -891,6 +926,17 @@ export default class AddInvoiceComponent implements OnInit {
       this.form.get('file')?.clearValidators();
     }
     this.form.get('file')?.updateValueAndValidity();
+    // "Otros gastos" declara la fecha del documento a mano (no hay OCR que la
+    // extraiga). Se propone hoy para no cambiar el comportamiento previo, pero
+    // el usuario puede corregirla — p. ej. al registrar un no deducible viejo.
+    // Solo al cambiar de tipo, para no pisar la fecha que trae el OCR de factura.
+    if (!this.id && previous !== type) {
+      if (type === 'otros_gastos') {
+        this.form.get('fechaEmision')?.setValue(this.todayIso);
+      } else if (previous === 'otros_gastos') {
+        this.form.get('fechaEmision')?.setValue('');
+      }
+    }
     this.syncTopValidators();
   }
 
@@ -1675,6 +1721,14 @@ export default class AddInvoiceComponent implements OnInit {
       return;
     }
 
+    const fechaEmision = this.formatDateForBackend(
+      (this.form.get('fechaEmision')?.value || '').toString()
+    );
+    if (!fechaEmision) {
+      this.notificationService.show('Debes indicar la fecha de emisión', 'error');
+      return;
+    }
+
     this.isLoading.set(true);
 
     const serie = muestraDoc ? (this.form.get('serie')?.value || '').toString().trim() : '';
@@ -1690,6 +1744,7 @@ export default class AddInvoiceComponent implements OnInit {
         data: description,
         subTipo,
         imageUrl,
+        fechaEmision,
         ...(serie ? { serie } : {}),
         ...(correlativo ? { correlativo } : {}),
         ...(rucEmisor ? { rucEmisor } : {}),
@@ -1931,10 +1986,14 @@ export default class AddInvoiceComponent implements OnInit {
       payload.description = description;
       payload.total = Number(formValue.totalOtros) || 0;
       const muestraDoc = this.otrosSubTipoMuestraDocumento();
+      const subTipo = this.otrosSubTipo();
+      const fechaEmision = this.formatDateForBackend(formValue.fechaEmision || '');
       const { serie: _s, correlativo: _c, rucEmisor: _r, ...prevWithoutDoc } = previousData || {};
       const dataObj = {
         ...prevWithoutDoc,
         description,
+        subTipo,
+        ...(fechaEmision ? { fechaEmision } : {}),
         ...(muestraDoc ? {
           serie: (formValue.serie || '').trim() || undefined,
           correlativo: (formValue.correlativo || '').trim() || undefined,
@@ -1942,6 +2001,10 @@ export default class AddInvoiceComponent implements OnInit {
         } : {}),
       };
       payload.data = JSON.stringify(dataObj);
+      // El sub-tipo se persiste en la raíz del gasto (es de donde lo lee la
+      // tabla y el PDF); sin esto el cambio de tipo de documento se perdía.
+      payload.subTipo = subTipo;
+      if (fechaEmision) payload.fechaEmision = fechaEmision;
     } else if (type === 'recibo_caja') {
       const dataObj = {
         ...previousData,
@@ -2333,7 +2396,8 @@ export default class AddInvoiceComponent implements OnInit {
     if (this.id) {
       if (this.isSunatValidating()) return 'Validando con SUNAT...';
       if (this.isLoading()) return 'Actualizando...';
-      return 'Actualizar factura';
+      // El formulario edita cualquier tipo de gasto, no solo facturas.
+      return 'Actualizar';
     }
     if (this.isLoading()) return 'Guardando...';
     switch (this.expenseType()) {
