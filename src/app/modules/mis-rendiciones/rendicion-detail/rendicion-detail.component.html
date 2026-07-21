@@ -2160,26 +2160,7 @@
               </div>
               <div>
                 <p class="text-xs text-gray-400">Tipo comprobante</p>
-                @if (canEditTipoComprobante(exp)) {
-                <div class="mt-1 flex flex-wrap items-center gap-2">
-                  <select [ngModel]="editedTipoComprobante()" (ngModelChange)="editedTipoComprobante.set($event)"
-                    class="rounded-lg border border-gray-300 px-2 py-1 text-sm font-medium text-gray-900 focus:border-red-500 focus:ring-1 focus:ring-red-500">
-                    @for (t of tipoComprobanteOptions; track t) {
-                    <option [value]="t">{{ t }}</option>
-                    }
-                  </select>
-                  @if (editedTipoComprobante() !== tipoComprobanteLabel(exp)) {
-                  <button type="button" (click)="saveTipoComprobante(exp)"
-                    [disabled]="revalidatingSunatId() === exp['_id']"
-                    class="rounded-lg bg-red-600 px-3 py-1 text-xs font-semibold text-white hover:bg-red-700 disabled:opacity-50">
-                    Guardar y revalidar
-                  </button>
-                  }
-                </div>
-                <p class="mt-1 text-xs text-gray-400">Al guardar se vuelve a consultar a SUNAT con el tipo corregido.</p>
-                } @else {
                 <p class="font-medium text-gray-900">{{ tipoComprobanteLabel(exp) || dataText(exp, 'tipoComprobante') }}</p>
-                }
               </div>
               <div class="sm:col-span-2">
                 <p class="text-xs text-gray-400">Dirección</p>

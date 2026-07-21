@@ -430,6 +430,19 @@
       }
     </div>
     <div class="flex flex-col gap-2">
+      <label for="tipoComprobante" class="text-sm font-medium text-secondary">Tipo de comprobante</label>
+      <select
+        id="tipoComprobante"
+        formControlName="tipoComprobante"
+        class="w-full h-[42px] px-4 rounded-lg border border-gray-200 bg-background focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-sm"
+      >
+        @for (t of tipoComprobanteOptions; track t) {
+        <option [value]="t">{{ t }}</option>
+        }
+      </select>
+      <span class="text-xs text-gray-400">Corrígelo si la IA lo detectó mal: se usa para consultar a SUNAT.</span>
+    </div>
+    <div class="flex flex-col gap-2">
       <label for="serie" class="text-sm font-medium text-secondary">Serie</label>
       <input
         id="serie"

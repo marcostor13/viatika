@@ -387,6 +387,7 @@ export default class AddInvoiceComponent implements OnInit {
               ...baseValues,
               fechaEmision: fecha,
               rucEmisor: dataObj.rucEmisor || '',
+              tipoComprobante: this.normalizeTipoComprobante(dataObj.tipoComprobante),
               serie: dataObj.serie || '',
               correlativo: dataObj.correlativo || '',
               moneda: (res as any).moneda || dataObj.moneda || 'PEN',
@@ -783,6 +784,7 @@ export default class AddInvoiceComponent implements OnInit {
       file: [''],
       fechaEmision: [''],
       rucEmisor: [''],
+      tipoComprobante: ['Factura'],
       serie: [''],
       correlativo: [''],
       moneda: ['PEN'],
@@ -1970,6 +1972,7 @@ export default class AddInvoiceComponent implements OnInit {
       const dataObj = {
         ...previousData,
         rucEmisor: formValue.rucEmisor,
+        tipoComprobante: this.normalizeTipoComprobante(formValue.tipoComprobante),
         serie: formValue.serie,
         correlativo: formValue.correlativo,
         fechaEmision: this.formatDateForBackend(formValue.fechaEmision),
@@ -2495,14 +2498,42 @@ export default class AddInvoiceComponent implements OnInit {
     this.notificationService.show(message, type);
   }
 
+  /** Tipos de comprobante corregibles a mano cuando la IA detectó mal el documento. */
+  readonly tipoComprobanteOptions = ['Factura', 'Boleta', 'Ticket'];
+
+  /**
+   * `data.tipoComprobante` guarda unas veces el código SUNAT ('01') y otras la
+   * palabra ("Factura Electrónica"), según de dónde salió el dato, así que se
+   * contemplan ambos formatos para que el select siempre tenga una opción que
+   * coincida.
+   */
+  private normalizeTipoComprobante(raw: unknown): string {
+    const value = String(raw ?? '').trim();
+    if (!value) return 'Factura';
+    if (value === '01') return 'Factura';
+    if (value === '03') return 'Boleta';
+    if (value === '12') return 'Ticket';
+    const t = value.toLowerCase();
+    if (t.includes('bolet')) return 'Boleta';
+    if (t.includes('ticket') || t.includes('tique')) return 'Ticket';
+    return 'Factura';
+  }
+
+  /**
+   * Se prefiere el valor del formulario: `originalInvoice` es el snapshot previo
+   * a la edición y no se refresca tras el PATCH, así que leerlo revalidaría
+   * contra SUNAT con el tipo viejo justo después de haberlo corregido.
+   */
   private getTipoComprobanteFromData(): string {
+    const fromForm = this.form?.get('tipoComprobante')?.value;
+    if (fromForm) return this.normalizeTipoComprobante(fromForm);
     if (this.originalInvoice?.data) {
       try {
         const dataObj =
           typeof this.originalInvoice.data === 'string'
             ? JSON.parse(this.originalInvoice.data)
             : this.originalInvoice.data;
-        return dataObj.tipoComprobante || 'Factura';
+        return this.normalizeTipoComprobante(dataObj.tipoComprobante);
       } catch {
         return 'Factura';
       }

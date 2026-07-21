@@ -1096,13 +1096,8 @@ export class RendicionDetailComponent implements OnInit {
   showExpenseDetailModal = signal(false);
   selectedExpense = signal<Record<string, unknown> | null>(null);
 
-  /** Tipos que se pueden corregir a mano cuando la IA detectó mal el comprobante. */
-  readonly tipoComprobanteOptions = ['Factura', 'Boleta', 'Ticket'];
-  editedTipoComprobante = signal<string>('');
-
   openExpenseDetail(expense: Record<string, unknown>): void {
     this.selectedExpense.set(expense);
-    this.editedTipoComprobante.set(this.tipoComprobanteLabel(expense) || 'Factura');
     this.showExpenseDetailModal.set(true);
   }
 
@@ -1124,28 +1119,6 @@ export class RendicionDetailComponent implements OnInit {
     if (t.includes('ticket') || t.includes('tique')) return 'Ticket';
     if (t.includes('factura')) return 'Factura';
     return raw;
-  }
-
-  /**
-   * El tipo solo se corrige en gastos subidos como factura. El guardado viaja
-   * por la revalidación SUNAT (es la que persiste el tipo en los dos lugares
-   * donde vive), así que se exige también que el comprobante tenga los datos
-   * que esa consulta necesita: sin ellos el cambio no se podría guardar.
-   */
-  canEditTipoComprobante(expense: Record<string, unknown>): boolean {
-    if (expense?.['expenseType'] !== 'factura') return false;
-    if (!this.canMutateExpense(expense as any)) return false;
-    return this.sunatQueryData(expense) !== null;
-  }
-
-  /** Persiste el tipo corregido y vuelve a consultar a SUNAT con el código correcto. */
-  saveTipoComprobante(
-    expense: Record<string, unknown> & { _id?: string },
-  ): void {
-    const tipo = this.editedTipoComprobante().trim();
-    if (!tipo || tipo === this.tipoComprobanteLabel(expense)) return;
-    this.revalidateSunat(expense, tipo);
-    this.closeExpenseDetail();
   }
 
   closeExpenseDetail(): void {
@@ -3644,10 +3617,10 @@ export class RendicionDetailComponent implements OnInit {
   }
 
   /**
-   * El backend traduce este texto a `codComp` y solo entiende 'Factura' y
-   * 'Boleta' (cualquier otra cosa cae en 01=Factura). Los gastos de tipo
-   * "otros" no guardan `tipoComprobante`, así que se deriva del sub-tipo para
-   * no consultar una boleta como si fuera factura.
+   * El backend traduce este texto a `codComp` (Factura=01, Boleta=03,
+   * Ticket=12) tolerando mayúsculas y variantes. Los gastos de tipo "otros" no
+   * guardan `tipoComprobante`, así que se deriva del sub-tipo para no consultar
+   * una boleta como si fuera factura.
    */
   private sunatTipoComprobante(expense: Record<string, unknown>): string | undefined {
     const data = this.getExpenseDataObject(expense);
@@ -3660,14 +3633,7 @@ export class RendicionDetailComponent implements OnInit {
     return undefined;
   }
 
-  /**
-   * @param tipoOverride tipo corregido a mano; el backend lo persiste y consulta
-   * con ese código en vez del que había detectado la IA.
-   */
-  revalidateSunat(
-    expense: Record<string, unknown> & { _id?: string },
-    tipoOverride?: string,
-  ): void {
+  revalidateSunat(expense: Record<string, unknown> & { _id?: string }): void {
     const id = expense._id;
     const query = this.sunatQueryData(expense);
     if (!id || !query) return;
@@ -3689,7 +3655,7 @@ export class RendicionDetailComponent implements OnInit {
         ...query,
         rucEmisor: rucDigitos,
         montoTotal: Number(expense['total']) || undefined,
-        tipoComprobante: tipoOverride ?? this.sunatTipoComprobante(expense),
+        tipoComprobante: this.sunatTipoComprobante(expense),
       })
       .subscribe({
         next: (result) => {
