@@ -179,8 +179,11 @@
       <div
         class="flex items-center gap-3 mt-2 overflow-x-auto py-2 no-scrollbar"
       >
-        @for (option of header.options; track option) { @if (option ===
-        'edit') {
+        <!-- Una factura guardada no se edita: sus datos quedan fijados al
+             validarse contra SUNAT. Las filas de otros módulos no traen
+             expenseType, así que no se ven afectadas. -->
+        @for (option of header.options; track option) { @if (option === 'edit'
+        && item.expenseType !== 'factura') {
         <button
           (click)="clickOptions('edit', item._id)"
           class="flex-1 min-w-[100px] flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-blue-50 text-blue-600 font-medium text-sm hover:bg-blue-100 transition-colors"

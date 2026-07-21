@@ -226,9 +226,6 @@ export default class InvoicesComponent implements OnInit {
     }
   }
 
-  editInvoice(id: string) {
-    this.router.navigate(['/invoices/edit', id]);
-  }
 
   gotToAddInvoice() {
     if (!this.hasRendiciones) {
@@ -247,9 +244,21 @@ export default class InvoicesComponent implements OnInit {
       case 'view':
         this.router.navigate(['/invoices', _id, 'details']);
         break;
-      case 'edit':
+      case 'edit': {
+        // La tabla ya oculta el botón en facturas; esto cubre el caso de que
+        // la fila llegue sin `expenseType` y evita mandar al usuario a un
+        // formulario que el backend rechazará con 403.
+        const fila = this.invoices.find((i) => i._id === _id) as any;
+        if (fila?.expenseType === 'factura') {
+          this.notificationService.show(
+            'Una factura no se puede editar una vez guardada. Si los datos son incorrectos, elimínala y vuelve a cargarla.',
+            'error',
+          );
+          break;
+        }
         this.router.navigate(['/invoices/edit', _id]);
         break;
+      }
       case 'delete':
         this.confirmationService.show('¿Desea eliminar esta factura?', () => {
           this.deleteInvoice(_id);
