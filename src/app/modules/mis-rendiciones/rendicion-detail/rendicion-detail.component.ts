@@ -1360,6 +1360,17 @@ export class RendicionDetailComponent implements OnInit {
     return st !== 'approved' && st !== 'rejected';
   }
 
+  /**
+   * Editar es más restrictivo que el resto de acciones: una factura guardada no
+   * se edita por ningún rol. Sus datos salen del comprobante y quedan fijados al
+   * validarse contra SUNAT; si están mal, se elimina o se rechaza y se vuelve a
+   * cargar. Eliminar y revalidar contra SUNAT siguen disponibles.
+   */
+  canEditExpense(expense: Record<string, unknown>): boolean {
+    if (expense?.['expenseType'] === 'factura') return false;
+    return this.canMutateExpense(expense as any);
+  }
+
   goEditExpense(expenseId: string): void {
     this.router.navigate(['/invoices/edit', expenseId], {
       queryParams: { rendicionId: this.id },

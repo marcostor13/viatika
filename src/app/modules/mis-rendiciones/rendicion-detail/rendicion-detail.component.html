@@ -1381,7 +1381,7 @@
                     PDF
                   </button>
                 }
-                @if (canMutateExpense(expense)) {
+                @if (canEditExpense(expense)) {
                   <button type="button" (click)="goEditExpense(expense._id)"
                     class="inline-flex items-center justify-center gap-1.5 min-h-[36px] px-3 rounded-lg text-xs font-semibold border border-gray-200 bg-white text-gray-800 hover:bg-gray-50 active:scale-[0.98] transition-all touch-manipulation">
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
@@ -1389,6 +1389,8 @@
                     </svg>
                     Editar
                   </button>
+                }
+                @if (canMutateExpense(expense)) {
                   <button type="button" [disabled]="deletingExpenseId() === expense._id" (click)="confirmDeleteExpense(expense)"
                     class="inline-flex items-center justify-center gap-1.5 min-h-[36px] px-3 rounded-lg text-xs font-semibold border border-red-200 bg-red-50 text-red-800 hover:bg-red-100 disabled:opacity-50 active:scale-[0.98] transition-all touch-manipulation">
                     @if (deletingExpenseId() === expense._id) {
@@ -1680,8 +1682,8 @@
                         </button>
                         <div class="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 px-2 py-1 bg-gray-800 text-white text-[11px] rounded whitespace-nowrap opacity-0 group-hover/det:opacity-100 pointer-events-none transition-opacity z-10">Detalle</div>
                       </div>
-                      <!-- Editar -->
-                      @if (canMutateExpense(expense)) {
+                      <!-- Editar (no disponible en facturas: ver canEditExpense) -->
+                      @if (canEditExpense(expense)) {
                       <div class="relative group/edit">
                         <button type="button" (click)="goEditExpense(expense._id)"
                           class="inline-flex items-center justify-center w-8 h-8 rounded-lg text-gray-500 hover:bg-gray-100 hover:text-gray-900 transition-colors">

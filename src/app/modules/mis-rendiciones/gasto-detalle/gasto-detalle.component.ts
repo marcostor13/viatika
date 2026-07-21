@@ -452,4 +452,14 @@ export class GastoDetalleComponent implements OnInit {
     // bloqueado cuando ya está aprobado.
     return st !== 'approved';
   }
+
+  /**
+   * Editar es más restrictivo que eliminar: una factura guardada no se edita por
+   * ningún rol. Sus datos salen del comprobante y quedan fijados al validarse
+   * contra SUNAT; si están mal, se elimina y se vuelve a cargar.
+   */
+  canEditExpense(exp: Record<string, unknown>): boolean {
+    if (exp?.['expenseType'] === 'factura') return false;
+    return this.canEdit(exp);
+  }
 }
