@@ -1285,6 +1285,10 @@
               <!-- Row 2: N° doc + proveedor -->
               <div class="mt-1.5 flex items-center gap-2 text-xs text-gray-500">
                 <span class="font-medium text-gray-700">{{ getExpenseDocumentNumber(expense) }}</span>
+                @if (getExpenseRuc(expense); as ruc) {
+                  <span class="text-gray-400">·</span>
+                  <span class="shrink-0 font-mono">{{ ruc }}</span>
+                }
                 @if (getExpenseProveedor(expense) !== '-') {
                   <span class="text-gray-400">·</span>
                   <span class="truncate">{{ getExpenseProveedor(expense) }}</span>
@@ -1484,9 +1488,9 @@
                   <th class="px-3 py-3 whitespace-nowrap">Fecha Emisión</th>
                   <th class="px-3 py-3 whitespace-nowrap">Tipo</th>
                   <th class="px-3 py-3 whitespace-nowrap">N° Documento</th>
+                  <th class="px-3 py-3 whitespace-nowrap">RUC</th>
                   <th class="px-3 py-3 whitespace-nowrap">Proveedor</th>
                   <th class="px-3 py-3">Concepto</th>
-                  <th class="px-3 py-3 whitespace-nowrap">Proyecto</th>
                   <th class="px-3 py-3 whitespace-nowrap">Categoria</th>
                   <th class="px-3 py-3 text-right whitespace-nowrap">Monto</th>
                   @if (!report.isCajaChica) {
@@ -1525,17 +1529,15 @@
                   </td>
                   <!-- N° Documento -->
                   <td class="px-3 py-3 text-gray-700 whitespace-nowrap font-mono text-xs">{{ getExpenseDocumentNumber(expense) }}</td>
+                  <!-- RUC -->
+                  <td class="px-3 py-3 whitespace-nowrap font-mono text-xs text-gray-700">{{ getExpenseRuc(expense) || '—' }}</td>
                   <!-- Proveedor -->
-                  <td class="px-3 py-3 text-gray-700 max-w-[160px]">
+                  <td class="px-3 py-3 text-gray-700 max-w-[200px]">
                     <span class="block truncate" [title]="getExpenseProveedor(expense)">{{ getExpenseProveedor(expense) }}</span>
                   </td>
                   <!-- Concepto -->
                   <td class="px-3 py-3 text-gray-700 max-w-[200px]">
                     <span class="block truncate" [title]="getExpenseConceptoDisplay(expense)">{{ getExpenseConceptoDisplay(expense) }}</span>
-                  </td>
-                  <!-- Proyecto -->
-                  <td class="px-3 py-3 text-gray-700 max-w-[140px]">
-                    <span class="block truncate text-xs" [title]="getExpenseProjectName(expense)">{{ getExpenseProjectName(expense) || '—' }}</span>
                   </td>
                   <!-- Categoria -->
                   <td class="px-3 py-3 text-gray-700 max-w-[120px]">

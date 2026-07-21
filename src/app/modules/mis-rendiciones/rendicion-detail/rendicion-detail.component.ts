@@ -925,6 +925,17 @@ export class RendicionDetailComponent implements OnInit {
     return '-';
   }
 
+  /** RUC del emisor. Cadena vacía si el comprobante no tiene emisor (movilidad, caja, otros). */
+  getExpenseRuc(expense: any): string {
+    const type = expense?.expenseType;
+    if (type === 'planilla_movilidad' || type === 'otros_gastos' || type === 'comprobante_caja') return '';
+    const d = this.getExpenseDataObject(expense);
+    const raw = d['rucEmisor'] ?? d['ruc'];
+    if (typeof raw === 'string' && raw.trim()) return raw.trim();
+    if (typeof raw === 'number' && Number.isFinite(raw)) return String(raw);
+    return '';
+  }
+
   formatShortDate(raw: string | null | undefined): string {
     if (!raw) return '-';
     let d: Date;
