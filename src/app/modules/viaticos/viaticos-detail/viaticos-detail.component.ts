@@ -8,6 +8,7 @@ import ExcelJS from 'exceljs';
 import { AdvanceService } from '../../../services/advance.service';
 import { UserStateService } from '../../../services/user-state.service';
 import { NotificationService } from '../../../services/notification.service';
+import { PlatformFileService } from '../../../services/platform-file.service';
 import {
   IAdvance,
   IAdvanceLine,
@@ -30,6 +31,7 @@ export class ViaticosDetailComponent implements OnInit {
   private userState = inject(UserStateService);
   private notifications = inject(NotificationService);
   private fb = inject(FormBuilder);
+  private platformFile = inject(PlatformFileService);
 
   readonly STATUS_LABELS = ADVANCE_STATUS_LABELS;
   readonly STATUS_COLORS = ADVANCE_STATUS_COLORS;
@@ -487,7 +489,7 @@ export class ViaticosDetailComponent implements OnInit {
         },
       });
 
-      doc.save(this.filename('pdf'));
+      await this.platformFile.saveBlob(doc.output('blob'), this.filename('pdf'));
     } finally {
       this.isDownloading.set(false);
     }
@@ -663,12 +665,7 @@ export class ViaticosDetailComponent implements OnInit {
       const blob = new Blob([buffer], {
         type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
       });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = this.filename('xlsx');
-      link.click();
-      URL.revokeObjectURL(url);
+      await this.platformFile.saveBlob(blob, this.filename('xlsx'));
     } finally {
       this.isDownloading.set(false);
     }

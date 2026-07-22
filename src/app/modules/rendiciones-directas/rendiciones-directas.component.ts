@@ -8,6 +8,7 @@ import { ExpenseReportsService } from '../../services/expense-reports.service';
 import { UserStateService } from '../../services/user-state.service';
 import { InvoicesService } from '../invoices/services/invoices.service';
 import { NotificationService } from '../../services/notification.service';
+import { PlatformFileService } from '../../services/platform-file.service';
 import { AdminUsersService } from '../admin-users/services/admin-users.service';
 import { IUserResponse } from '../../interfaces/user.interface';
 import { IProject } from '../invoices/interfaces/project.interface';
@@ -36,6 +37,7 @@ export class RendicionesDirectasComponent implements OnInit {
   private invoicesService = inject(InvoicesService);
   private notifications = inject(NotificationService);
   private exportService = inject(RendicionExportService);
+  private platformFile = inject(PlatformFileService);
   private router = inject(Router);
   private adminUsersService = inject(AdminUsersService);
 
@@ -540,7 +542,7 @@ export class RendicionesDirectasComponent implements OnInit {
 
   getFileUrl(e: any): string | null { const f = e?.file; return (typeof f === 'string' && f.trim()) ? f.trim() : null; }
   hasFile(e: any): boolean { return this.getFileUrl(e) !== null; }
-  openFile(e: any, event: Event): void { event.stopPropagation(); const url = this.getFileUrl(e); url ? window.open(url, '_blank', 'noopener,noreferrer') : this.notifications.show('Sin documento adjunto', 'warning'); }
+  openFile(e: any, event: Event): void { event.stopPropagation(); const url = this.getFileUrl(e); url ? void this.platformFile.openUrl(url) : this.notifications.show('Sin documento adjunto', 'warning'); }
 
   getEstadoCont(e: any): string { return e.approvalCont?.status === 'approved' ? 'Revisado' : 'Pendiente'; }
   getEstadoContClass(e: any): string { return e.approvalCont?.status === 'approved' ? 'bg-teal-100 text-teal-700' : 'bg-yellow-100 text-yellow-700'; }

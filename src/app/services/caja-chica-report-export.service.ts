@@ -3,6 +3,7 @@ import ExcelJS from 'exceljs';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { CompanyConfigService } from './company-config.service';
+import { PlatformFileService } from './platform-file.service';
 import { ICajaChicaReport } from '../interfaces/caja-chica-report.interface';
 
 type JsPdfWithAutoTable = jsPDF & { lastAutoTable?: { finalY: number } };
@@ -25,6 +26,12 @@ export interface CajaChicaExportRow {
 @Injectable({ providedIn: 'root' })
 export class CajaChicaReportExportService {
   private companyConfigService = inject(CompanyConfigService);
+  private platformFile = inject(PlatformFileService);
+
+  /** Guarda un documento jsPDF. En nativo doc.save() no descarga; se usa el blob. */
+  private savePdf(doc: jsPDF, filename: string): void {
+    void this.platformFile.saveBlob(doc.output('blob'), filename);
+  }
 
   private get companyName(): string {
     return this.companyConfigService.getCompanyConfig()?.name || 'Empresa';
@@ -177,7 +184,7 @@ export class CajaChicaReportExportService {
       doc.setTextColor(0, 0, 0);
     }
 
-    doc.save(`CC-${report.codigo}-${report.title.replace(/\s+/g, '_')}.pdf`);
+    this.savePdf(doc, `CC-${report.codigo}-${report.title.replace(/\s+/g, '_')}.pdf`);
   }
 
   async exportExcel(report: ICajaChicaReport, rows: CajaChicaExportRow[]): Promise<void> {
@@ -341,11 +348,6 @@ export class CajaChicaReportExportService {
 
     const buf = await wb.xlsx.writeBuffer();
     const blob = new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `CC-${report.codigo}-${report.title.replace(/\s+/g, '_')}.xlsx`;
-    a.click();
-    URL.revokeObjectURL(url);
+    void this.platformFile.saveBlob(blob, `CC-${report.codigo}-${report.title.replace(/\s+/g, '_')}.xlsx`);
   }
 }

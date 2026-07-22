@@ -22,7 +22,21 @@
   --shadow-sm: 0 2px 4px rgba(0,0,0,0.05);
 
   --color-background: #F5F7FA;
+
+  /* Safe areas para build nativo (Capacitor). Con StatusBar overlay:false los
+     insets top/bottom suelen ser 0 en Android portrait; se respetan en
+     dispositivos con notch y en landscape. */
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
 }
+
+/* Utilidades de safe-area (aplicadas en el layout principal y el sidebar). */
+.pt-safe { padding-top: var(--safe-top); }
+.pb-safe { padding-bottom: var(--safe-bottom); }
+.pl-safe { padding-left: var(--safe-left); }
+.pr-safe { padding-right: var(--safe-right); }
 
 body {
   font-family: var(--font-body);
@@ -144,6 +158,20 @@ gmp-placeautocomplete::part(input)::placeholder {
 
   gmp-placeautocomplete::part(input)::placeholder {
     color: rgb(156 163 175) !important;
+  }
+}
+
+/* Fallback responsive para tablas sin wrapper de scroll en móvil.
+   El contenedor de contenido es overflow-x-hidden, así que una tabla ancha sin
+   wrapper se recortaría. En <640px se hace la tabla scrollable en horizontal.
+   Las tablas del design-system (data-table) usan vista de tarjetas en <sm y su
+   <table> está oculto en este rango, por lo que no se ven afectadas. */
+@media (max-width: 639px) {
+  table {
+    display: block;
+    max-width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
   }
 }
 

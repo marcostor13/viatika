@@ -3,6 +3,7 @@ import ExcelJS from 'exceljs';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { CompanyConfigService } from './company-config.service';
+import { PlatformFileService } from './platform-file.service';
 import { parseFechaEmisionInput } from '../utils/fecha-emision.util';
 
 type JsPdfWithAutoTable = jsPDF & { lastAutoTable?: { finalY: number } };
@@ -232,6 +233,7 @@ const YELLOW_CELL = 'FFFFFF00'; // Yellow for summary cell
 @Injectable({ providedIn: 'root' })
 export class RendicionExportService {
   private companyConfigService = inject(CompanyConfigService);
+  private platformFile = inject(PlatformFileService);
 
   private formatDateDdMmYyyy(raw: string | null | undefined): string {
     if (!raw) return '';
@@ -861,7 +863,7 @@ export class RendicionExportService {
 
     if (!inDoc) {
       if (returnBytes) return new Uint8Array(doc.output('arraybuffer'));
-      doc.save(`${data.fileBaseName}.pdf`);
+      this.savePdf(doc, `${data.fileBaseName}.pdf`);
     }
   }
 
@@ -902,7 +904,7 @@ export class RendicionExportService {
       doc.text(data.colaborador.toUpperCase(), 105, y + 49, { align: 'center' });
     }
 
-    doc.save(`${data.fileBaseName}.pdf`);
+    this.savePdf(doc, `${data.fileBaseName}.pdf`);
   }
 
   async exportMobilitySheetToPdf(data: MobilitySheetExportData, inDoc?: jsPDF, returnBytes?: boolean): Promise<Uint8Array | void> {
@@ -1142,7 +1144,7 @@ export class RendicionExportService {
 
     if (isNew) {
       if (returnBytes) return new Uint8Array(doc.output('arraybuffer'));
-      doc.save(`${data.fileBaseName}.pdf`);
+      this.savePdf(doc, `${data.fileBaseName}.pdf`);
     }
   }
 
@@ -1266,7 +1268,7 @@ export class RendicionExportService {
 
     if (isNew) {
       if (returnBytes) return new Uint8Array(doc.output('arraybuffer'));
-      doc.save(`${data.fileBaseName}.pdf`);
+      this.savePdf(doc, `${data.fileBaseName}.pdf`);
     }
   }
 
@@ -1314,7 +1316,7 @@ export class RendicionExportService {
 
     if (isNew) {
       if (returnBytes) return new Uint8Array(doc.output('arraybuffer'));
-      doc.save(`${data.fileBaseName}.pdf`);
+      this.savePdf(doc, `${data.fileBaseName}.pdf`);
     }
   }
 
@@ -1617,7 +1619,7 @@ export class RendicionExportService {
 
     if (isNew) {
       if (returnBytes) return new Uint8Array(doc.output('arraybuffer'));
-      doc.save(`${data.fileBaseName}.pdf`);
+      this.savePdf(doc, `${data.fileBaseName}.pdf`);
     }
   }
 
@@ -1749,7 +1751,7 @@ export class RendicionExportService {
     const notaLines = doc.splitTextToSize('(**) La falta de alguno de los datos señalados en los rubros I y II sólo inhabilita la sustentación del gasto por movilidad o alimentación, según corresponda.', rm - lm);
     doc.text(notaLines, lm, y);
 
-    doc.save(`${data.fileBaseName}.pdf`);
+    this.savePdf(doc, `${data.fileBaseName}.pdf`);
   }
 
   private async _renderFacturaContent(doc: jsPDF, data: FacturaPageData): Promise<void> {
@@ -1913,12 +1915,12 @@ export class RendicionExportService {
   }
 
   private triggerDownload(blob: Blob, filename: string): void {
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = filename;
-    a.click();
-    URL.revokeObjectURL(url);
+    void this.platformFile.saveBlob(blob, filename);
+  }
+
+  /** Guarda un documento jsPDF. En nativo doc.save() no descarga; se usa el blob. */
+  private savePdf(doc: jsPDF, filename: string): void {
+    void this.platformFile.saveBlob(doc.output('blob'), filename);
   }
 }
 

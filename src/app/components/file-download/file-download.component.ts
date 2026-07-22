@@ -1,5 +1,6 @@
 import { Component, Input, OnInit, ElementRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { PlatformFileService } from '../../services/platform-file.service';
 
 @Component({
   selector: 'app-file-download',
@@ -14,7 +15,10 @@ export class FileDownloadComponent implements OnInit {
   @Input() fileType: 'excel' | 'pdf' | 'csv' = 'excel';
   @Input() columns: { header: string; field: string }[] = [];
 
-  constructor(private el: ElementRef) {}
+  constructor(
+    private el: ElementRef,
+    private platformFile: PlatformFileService,
+  ) {}
 
   ngOnInit(): void {
     const element = this.el.nativeElement;
@@ -51,20 +55,18 @@ export class FileDownloadComponent implements OnInit {
     });
 
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = window.URL.createObjectURL(blob);
-
-    const link = document.createElement('a');
-    link.setAttribute('href', url);
-    link.setAttribute('download', `${this.fileName}.csv`);
-    link.style.visibility = 'hidden';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    window.URL.revokeObjectURL(url);
+    void this.platformFile.saveBlob(blob, `${this.fileName}.csv`);
   }
 
   private downloadPrintablePDF(): void {
     if (!this.data || this.data.length === 0) {
+      return;
+    }
+
+    // En nativo la impresión por iframe no genera archivo: se arma un PDF real.
+    // jsPDF se carga de forma diferida para no engordar el bundle inicial.
+    if (this.platformFile.isNative) {
+      void this.buildNativePdf();
       return;
     }
 
@@ -151,6 +153,23 @@ export class FileDownloadComponent implements OnInit {
     iframe.src = 'about:blank';
   }
 
+  private async buildNativePdf(): Promise<void> {
+    const { jsPDF } = await import('jspdf');
+    const { default: autoTable } = await import('jspdf-autotable');
+    const doc = new jsPDF();
+    doc.setFontSize(14);
+    doc.text(this.fileName, 14, 16);
+    autoTable(doc, {
+      startY: 22,
+      head: [this.columns.map((c) => c.header)],
+      body: this.data.map((item) =>
+        this.columns.map((c) => `${item[c.field] ?? ''}`)
+      ),
+      styles: { fontSize: 8 },
+    });
+    await this.platformFile.saveBlob(doc.output('blob'), `${this.fileName}.pdf`);
+  }
+
   private downloadHTMLAsFile(): void {
     const style = `
       <style>
@@ -198,15 +217,6 @@ export class FileDownloadComponent implements OnInit {
     `;
 
     const blob = new Blob([htmlContent], { type: 'text/html;charset=utf-8;' });
-    const url = window.URL.createObjectURL(blob);
-
-    const link = document.createElement('a');
-    link.setAttribute('href', url);
-    link.setAttribute('download', `${this.fileName}.html`);
-    link.style.visibility = 'hidden';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    window.URL.revokeObjectURL(url);
+    void this.platformFile.saveBlob(blob, `${this.fileName}.html`);
   }
 }
