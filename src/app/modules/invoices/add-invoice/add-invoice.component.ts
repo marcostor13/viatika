@@ -2284,6 +2284,28 @@ export default class AddInvoiceComponent implements OnInit {
     this.rucNotFound.set(false);
   }
 
+  /**
+   * Valida el formato de los identificadores del comprobante en el front, con
+   * los mismos criterios que el backend (`assertComprobanteFormat`): el
+   * colaborador ve el error al instante y sabe qué campo corregir, en vez de
+   * que SUNAT rechace la petición y aparezca "servicio no disponible".
+   */
+  private validarFormatoComprobante(formValue: any): string | null {
+    const ruc = (formValue.rucEmisor || '').trim();
+    if (!/^\d{11}$/.test(ruc)) {
+      return 'El RUC del emisor debe tener exactamente 11 dígitos. Revisa el campo "RUC Emisor".';
+    }
+    const serie = (formValue.serie || '').trim();
+    if (!/^[A-Za-z][A-Za-z0-9]{3}$/.test(serie)) {
+      return 'La serie debe tener 4 caracteres y empezar con una letra (por ejemplo F001 o B001). Revisa el campo "Serie".';
+    }
+    const correlativo = (formValue.correlativo || '').trim();
+    if (!/^\d+$/.test(correlativo)) {
+      return 'El correlativo debe contener solo números. Revisa el campo "Correlativo".';
+    }
+    return null;
+  }
+
   confirmPostOcrReview() {
     if (!this.postOcrBaseInvoice) return;
     const comentario = (this.form.get('comentario')?.value || '').trim();
@@ -2292,6 +2314,16 @@ export default class AddInvoiceComponent implements OnInit {
       return;
     }
     const formValue = this.form.value;
+
+    // Formato de RUC/serie/correlativo antes de llamar al backend: feedback
+    // inmediato y mensaje que apunta al campo, en vez de esperar el round-trip
+    // y ver el genérico de "servicio no disponible" de SUNAT.
+    const formatoError = this.validarFormatoComprobante(formValue);
+    if (formatoError) {
+      this.notificationService.show(formatoError, 'error');
+      return;
+    }
+
     const baseData = this.postOcrBaseInvoice.data || {};
     const fetched = this.fetchedRazonSocial();
     const razonSocialOcr = fetched !== null ? fetched : (this.rucNotFound() ? 'No Reconocida' : undefined);
@@ -2303,8 +2335,8 @@ export default class AddInvoiceComponent implements OnInit {
       rucEmisor: formValue.rucEmisor || '',
       tipoComprobante: this.normalizeTipoComprobante(formValue.tipoComprobante, formValue.serie),
       fechaEmision: this.formatDateForBackend(formValue.fechaEmision || ''),
-      serie: formValue.serie || '',
-      correlativo: formValue.correlativo || '',
+      serie: (formValue.serie || '').toUpperCase().trim(),
+      correlativo: (formValue.correlativo || '').trim(),
       montoTotal: finalTotal,
       comentario,
       placaVehiculo: (formValue.placaVehiculo || '').trim() || undefined,
