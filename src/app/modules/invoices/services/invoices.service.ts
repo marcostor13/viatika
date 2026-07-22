@@ -12,6 +12,7 @@ import {
   ICreateCashReceiptPayload,
   ICreateCashVoucherPayload,
   ICashVoucherScanResult,
+  IInvoicePreview,
 } from '../interfaces/invoices.interface';
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
@@ -38,17 +39,27 @@ export class InvoicesService {
 
   private http = inject(HttpClient);
 
-  analyzeInvoice(invoice: InvoicePayload): Observable<IInvoiceResponse> {
-    return this.http.post<IInvoiceResponse>(
+  // Los endpoints de análisis ya no crean el gasto: devuelven solo los datos
+  // extraídos por OCR (sin _id). El gasto se crea al confirmar la revisión.
+  analyzeInvoice(invoice: InvoicePayload): Observable<IInvoicePreview> {
+    return this.http.post<IInvoicePreview>(
       `${this.url}/analyze-image`,
       invoice
     );
   }
 
-  analyzePdf(formData: FormData): Observable<IInvoiceResponse> {
-    return this.http.post<IInvoiceResponse>(
+  analyzePdf(formData: FormData): Observable<IInvoicePreview> {
+    return this.http.post<IInvoicePreview>(
       `${this.url}/analize-pdf`,
       formData
+    );
+  }
+
+  /** Crea el gasto de tipo factura con los datos ya revisados. */
+  confirmInvoice(payload: Record<string, unknown>): Observable<IInvoiceResponse> {
+    return this.http.post<IInvoiceResponse>(
+      `${this.url}/invoice/confirm`,
+      payload
     );
   }
 

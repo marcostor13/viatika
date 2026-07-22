@@ -286,9 +286,6 @@ export class RendicionesDirectasComponent implements OnInit {
     this.router.navigate(['/mis-rendiciones/gasto', String(e._id)]);
   }
 
-  editExpense(e: any): void {
-    this.router.navigate(['/invoices/edit', String(e._id)], { queryParams: { mode: 'directa' } });
-  }
 
   // ─── Aprobación ──────────────────────────────────────────────────────────────
 

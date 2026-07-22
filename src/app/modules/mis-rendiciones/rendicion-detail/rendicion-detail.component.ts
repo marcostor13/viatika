@@ -925,6 +925,17 @@ export class RendicionDetailComponent implements OnInit {
     return '-';
   }
 
+  /** RUC del emisor. Cadena vacía si el comprobante no tiene emisor (movilidad, caja, otros). */
+  getExpenseRuc(expense: any): string {
+    const type = expense?.expenseType;
+    if (type === 'planilla_movilidad' || type === 'otros_gastos' || type === 'comprobante_caja') return '';
+    const d = this.getExpenseDataObject(expense);
+    const raw = d['rucEmisor'] ?? d['ruc'];
+    if (typeof raw === 'string' && raw.trim()) return raw.trim();
+    if (typeof raw === 'number' && Number.isFinite(raw)) return String(raw);
+    return '';
+  }
+
   formatShortDate(raw: string | null | undefined): string {
     if (!raw) return '-';
     let d: Date;
@@ -1088,6 +1099,26 @@ export class RendicionDetailComponent implements OnInit {
   openExpenseDetail(expense: Record<string, unknown>): void {
     this.selectedExpense.set(expense);
     this.showExpenseDetailModal.set(true);
+  }
+
+  /**
+   * Etiqueta legible del tipo. `data.tipoComprobante` guarda unas veces el
+   * código SUNAT ('01') y otras la palabra ("Factura"), según de dónde salió el
+   * dato, así que se contemplan ambos formatos.
+   */
+  tipoComprobanteLabel(expense: Record<string, unknown>): string {
+    const raw = String(
+      this.getExpenseDataObject(expense)['tipoComprobante'] ?? '',
+    ).trim();
+    if (!raw) return '';
+    if (raw === '01') return 'Factura';
+    if (raw === '03') return 'Boleta';
+    if (raw === '12') return 'Ticket';
+    const t = raw.toLowerCase();
+    if (t.includes('bolet')) return 'Boleta';
+    if (t.includes('ticket') || t.includes('tique')) return 'Ticket';
+    if (t.includes('factura')) return 'Factura';
+    return raw;
   }
 
   closeExpenseDetail(): void {
@@ -1327,6 +1358,17 @@ export class RendicionDetailComponent implements OnInit {
     if (!reportStatus || ['approved', 'paid', 'settled', 'closed', 'cancelled'].includes(reportStatus)) return false;
     const st = expense.status ?? 'pending';
     return st !== 'approved' && st !== 'rejected';
+  }
+
+  /**
+   * Editar es más restrictivo que el resto de acciones: una factura guardada no
+   * se edita por ningún rol. Sus datos salen del comprobante y quedan fijados al
+   * validarse contra SUNAT; si están mal, se elimina o se rechaza y se vuelve a
+   * cargar. Eliminar y revalidar contra SUNAT siguen disponibles.
+   */
+  canEditExpense(expense: Record<string, unknown>): boolean {
+    if (expense?.['expenseType'] === 'factura') return false;
+    return this.canMutateExpense(expense as any);
   }
 
   goEditExpense(expenseId: string): void {
@@ -3586,10 +3628,10 @@ export class RendicionDetailComponent implements OnInit {
   }
 
   /**
-   * El backend traduce este texto a `codComp` y solo entiende 'Factura' y
-   * 'Boleta' (cualquier otra cosa cae en 01=Factura). Los gastos de tipo
-   * "otros" no guardan `tipoComprobante`, así que se deriva del sub-tipo para
-   * no consultar una boleta como si fuera factura.
+   * El backend traduce este texto a `codComp` (Factura=01, Boleta=03,
+   * Ticket=12) tolerando mayúsculas y variantes. Los gastos de tipo "otros" no
+   * guardan `tipoComprobante`, así que se deriva del sub-tipo para no consultar
+   * una boleta como si fuera factura.
    */
   private sunatTipoComprobante(expense: Record<string, unknown>): string | undefined {
     const data = this.getExpenseDataObject(expense);
