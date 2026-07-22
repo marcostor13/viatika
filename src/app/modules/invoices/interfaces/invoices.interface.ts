@@ -111,6 +111,16 @@ export interface ICashVoucherScanResult {
   monto: number;
 }
 
+/**
+ * Respuesta del análisis OCR de una factura: datos extraídos + URL del archivo
+ * ya subido, sin gasto creado. El gasto se crea al confirmar la revisión.
+ */
+export interface IInvoicePreview {
+  data: Record<string, unknown> | string;
+  total: number;
+  fileUrl: string;
+}
+
 export interface IInvoice {
   proyect: string;
   category: string;
