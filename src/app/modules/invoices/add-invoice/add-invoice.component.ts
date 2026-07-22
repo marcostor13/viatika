@@ -83,6 +83,8 @@ export default class AddInvoiceComponent implements OnInit {
   /** Trabajadores del cliente, para el selector de colaborador por fila de la planilla. */
   workers: WorkerOption[] = [];
   previewImage: SafeUrl | null = null;
+  /** URL real del preview (blob) para abrir en otra pestaña: window.open no acepta un SafeUrl. */
+  previewRawUrl: string | null = null;
   selectedFile!: File;
   originalInvoice: any = null;
   sunatValidation: SunatValidationInfo | null = null;
@@ -2123,11 +2125,12 @@ export default class AddInvoiceComponent implements OnInit {
       this.selectedFile = input.files[0];
       const isImage = this.selectedFile.type.startsWith('image/');
       if (isImage) {
-        this.previewImage = this.sanitizer.bypassSecurityTrustUrl(
-          URL.createObjectURL(this.selectedFile)
-        );
+        const rawUrl = URL.createObjectURL(this.selectedFile);
+        this.previewRawUrl = rawUrl;
+        this.previewImage = this.sanitizer.bypassSecurityTrustUrl(rawUrl);
       } else {
         this.previewImage = null;
+        this.previewRawUrl = null;
       }
       this.form.patchValue({ file: this.selectedFile });
     }
@@ -2266,7 +2269,9 @@ export default class AddInvoiceComponent implements OnInit {
     this.postOcrBaseInvoice = null;
     this.postOcrFileUrl.set('');
     this.selectedFile = undefined as any;
+    if (this.previewRawUrl) URL.revokeObjectURL(this.previewRawUrl);
     this.previewImage = null;
+    this.previewRawUrl = null;
     this.percentage.set(0);
     this.ocrTotalAmount.set(0);
     this.editedOcrTotal.set(null);
@@ -2342,8 +2347,12 @@ export default class AddInvoiceComponent implements OnInit {
   }
 
   openInvoice() {
-    if (this.previewImage) {
-      window.open(this.previewImage as string, '_blank');
+    // window.open necesita una URL real (string), no el SafeUrl del binding: al
+    // pasar el objeto se abría una ruta basura que sacaba al usuario al login.
+    // Se prefiere el archivo ya en storage; si aún no se subió, el blob local.
+    const url = this.postOcrFileUrl() || this.previewRawUrl;
+    if (url) {
+      window.open(url, '_blank');
     }
   }
 
