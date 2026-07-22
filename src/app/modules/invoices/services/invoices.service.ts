@@ -12,6 +12,7 @@ import {
   ICreateCashReceiptPayload,
   ICreateCashVoucherPayload,
   ICashVoucherScanResult,
+  IInvoicePreview,
 } from '../interfaces/invoices.interface';
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
@@ -38,17 +39,27 @@ export class InvoicesService {
 
   private http = inject(HttpClient);
 
-  analyzeInvoice(invoice: InvoicePayload): Observable<IInvoiceResponse> {
-    return this.http.post<IInvoiceResponse>(
+  // Los endpoints de análisis ya no crean el gasto: devuelven solo los datos
+  // extraídos por OCR (sin _id). El gasto se crea al confirmar la revisión.
+  analyzeInvoice(invoice: InvoicePayload): Observable<IInvoicePreview> {
+    return this.http.post<IInvoicePreview>(
       `${this.url}/analyze-image`,
       invoice
     );
   }
 
-  analyzePdf(formData: FormData): Observable<IInvoiceResponse> {
-    return this.http.post<IInvoiceResponse>(
+  analyzePdf(formData: FormData): Observable<IInvoicePreview> {
+    return this.http.post<IInvoicePreview>(
       `${this.url}/analize-pdf`,
       formData
+    );
+  }
+
+  /** Crea el gasto de tipo factura con los datos ya revisados. */
+  confirmInvoice(payload: Record<string, unknown>): Observable<IInvoiceResponse> {
+    return this.http.post<IInvoiceResponse>(
+      `${this.url}/invoice/confirm`,
+      payload
     );
   }
 
@@ -133,11 +144,18 @@ export class InvoicesService {
     return this.http.patch(`${this.url}/invoice/${id}/reject-cont`, { reason });
   }
 
-  getCategories(companyId?: string): Observable<ICategory[]> {
+  /**
+   * `forUserId` pide las categorías asignadas a ese usuario en lugar de las
+   * propias — lo usa Admin/Contabilidad al editar el gasto de un colaborador,
+   * para ver el mismo listado que vería él. El backend lo ignora si el rol no
+   * está autorizado.
+   */
+  getCategories(companyId?: string, forUserId?: string): Observable<ICategory[]> {
     const url = companyId
       ? `${this.categoryUrl}/${companyId}/flat`
       : `${this.categoryUrl}/flat`;
-    return this.http.get<ICategory[]>(url);
+    const options = forUserId ? { params: { forUserId } } : {};
+    return this.http.get<ICategory[]>(url, options);
   }
 
   getCategoryById(id: string): Observable<ICategory> {

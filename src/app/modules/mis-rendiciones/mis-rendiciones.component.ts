@@ -264,7 +264,8 @@ export class MisRendicionesComponent implements OnInit {
       const sub = e?.subTipo ?? this.getData(e)['subTipo'];
       if (sub === 'TK') return 'TK';
       if (sub === 'BV') return 'BV';
-      if (sub === 'RC') return 'RC';
+      // El sub-tipo se guarda como 'RC', pero se muestra 'RD' (Recibos Diversos).
+      if (sub === 'RC') return 'RD';
       if (sub === 'DJ') return 'DJ';
       if (sub === 'OT') return 'OT';
       return 'SC';
@@ -284,7 +285,7 @@ export class MisRendicionesComponent implements OnInit {
     if (code === 'SC' || code === 'OT') return 'bg-gray-100 text-gray-600';
     if (code === 'DJ') return 'bg-amber-100 text-amber-800';
     if (code === 'TK') return 'bg-teal-100 text-teal-700';
-    if (code === 'RC') return 'bg-indigo-100 text-indigo-700';
+    if (code === 'RD') return 'bg-indigo-100 text-indigo-700';
     return 'bg-blue-100 text-blue-700';
   }
 
@@ -447,7 +448,10 @@ export class MisRendicionesComponent implements OnInit {
   }
 
   canEditViatico(report: IExpenseReport): boolean {
-    return report.status === 'pending_l1';
+    if (report.status === 'pending_l1') return true;
+    // Un coordinador crea su viático directo en pending_l2 (sin pasar por pending_l1): ese
+    // es su estado pendiente inicial, editable por el dueño igual que un pending_l1.
+    return report.status === 'pending_l2' && this.userStateService.isCoordinador();
   }
 
   canResubmitViatico(report: IExpenseReport): boolean {
@@ -737,8 +741,13 @@ export class MisRendicionesComponent implements OnInit {
     const deletableStatuses = ['solicited', 'open', 'rejected', 'submitted'];
     if (deletableStatuses.includes(report.status)) return true;
 
-    // Viático en solicitud sin comprobantes: el colaborador puede eliminarlo.
-    if (report.status === 'pending_l1' && !(report.expenseIds?.length)) return true;
+    // Viático en solicitud sin comprobantes: el colaborador puede eliminarlo. Un
+    // coordinador crea su viático directo en pending_l2 (su estado pendiente inicial),
+    // así que también puede eliminarlo desde ahí.
+    const viaticoPendienteInicial =
+      report.status === 'pending_l1' ||
+      (report.status === 'pending_l2' && this.userStateService.isCoordinador());
+    if (viaticoPendienteInicial && !(report.expenseIds?.length)) return true;
 
     return false;
   }

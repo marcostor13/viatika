@@ -355,9 +355,6 @@ export class ConsolidatedInvoicesComponent implements OnInit {
     return text.charAt(0).toUpperCase() + text.slice(1).toLowerCase();
   }
 
-  editInvoice(id: string) {
-    this.router.navigate(['/invoices/edit', id]);
-  }
 
   gotToAddInvoice() {
     this.router.navigate(['/invoices/add']);

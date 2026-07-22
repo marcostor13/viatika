@@ -187,7 +187,8 @@ export class GastoDetalleComponent implements OnInit {
       const sub = (exp['subTipo'] as string) ?? (this.getData(exp)['subTipo'] as string);
       if (sub === 'TK') return 'TK';
       if (sub === 'BV') return 'BV';
-      if (sub === 'RC') return 'RC';
+      // El sub-tipo se guarda como 'RC', pero se muestra 'RD' (Recibos Diversos).
+      if (sub === 'RC') return 'RD';
       if (sub === 'DJ') return 'DJ';
       if (sub === 'OT') return 'OT';
       return 'SC';
@@ -207,7 +208,7 @@ export class GastoDetalleComponent implements OnInit {
     if (code === 'SC' || code === 'OT') return 'bg-gray-100 text-gray-600';
     if (code === 'DJ') return 'bg-amber-100 text-amber-800';
     if (code === 'TK') return 'bg-teal-100 text-teal-700';
-    if (code === 'RC') return 'bg-indigo-100 text-indigo-700';
+    if (code === 'RD') return 'bg-indigo-100 text-indigo-700';
     return 'bg-blue-100 text-blue-700';
   }
 
@@ -259,7 +260,11 @@ export class GastoDetalleComponent implements OnInit {
       const dates = rows.map((r: any) => r.fecha).filter(Boolean);
       return dates.length ? formatFechaEmisionDdMmYyyy([...dates].sort()[0]) : '-';
     }
-    if (type === 'otros_gastos') return formatFechaEmisionDdMmYyyy(exp['createdAt'] as any);
+    if (type === 'otros_gastos') {
+      // Fecha declarada en el formulario; los gastos previos caen a la de registro.
+      const declarada = resolveExpenseFechaEmision(exp as any);
+      return formatFechaEmisionDdMmYyyy((declarada ?? exp['createdAt']) as any);
+    }
     return this.emissionDateText(exp);
   }
 
@@ -279,6 +284,9 @@ export class GastoDetalleComponent implements OnInit {
 
   sunatBlock(exp: Record<string, unknown>): Record<string, unknown> | null {
     const d = this.getData(exp);
+    // La raíz guarda la última consulta; el JSON `data`, la del registro inicial.
+    const root = exp['sunatValidation'];
+    if (root && typeof root === 'object') return root as Record<string, unknown>;
     const s = d['sunatValidation'];
     return (s && typeof s === 'object') ? s as Record<string, unknown> : null;
   }
@@ -445,5 +453,15 @@ export class GastoDetalleComponent implements OnInit {
     // Un comprobante rechazado puede corregirlo el colaborador; solo queda
     // bloqueado cuando ya está aprobado.
     return st !== 'approved';
+  }
+
+  /**
+   * Editar es más restrictivo que eliminar: una factura guardada no se edita por
+   * ningún rol. Sus datos salen del comprobante y quedan fijados al validarse
+   * contra SUNAT; si están mal, se elimina y se vuelve a cargar.
+   */
+  canEditExpense(exp: Record<string, unknown>): boolean {
+    if (exp?.['expenseType'] === 'factura') return false;
+    return this.canEdit(exp);
   }
 }

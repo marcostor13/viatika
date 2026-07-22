@@ -1182,7 +1182,8 @@
               [value]="expFilterSearch()"
               (input)="expFilterSearch.set($any($event.target).value)"
               (keyup.enter)="applyExpenseFilters()"
-              placeholder="Buscar concepto..."
+              placeholder="Buscar RUC..."
+              inputmode="numeric"
               class="h-8 rounded-lg border border-gray-200 bg-white px-3 text-xs text-gray-700 focus:outline-none focus:ring-2 focus:ring-primary/30 min-w-[140px]"
             />
             <button
@@ -1284,13 +1285,17 @@
               <!-- Row 2: N° doc + proveedor -->
               <div class="mt-1.5 flex items-center gap-2 text-xs text-gray-500">
                 <span class="font-medium text-gray-700">{{ getExpenseDocumentNumber(expense) }}</span>
+                @if (getExpenseRuc(expense); as ruc) {
+                  <span class="text-gray-400">·</span>
+                  <span class="shrink-0 font-mono">{{ ruc }}</span>
+                }
                 @if (getExpenseProveedor(expense) !== '-') {
                   <span class="text-gray-400">·</span>
                   <span class="truncate">{{ getExpenseProveedor(expense) }}</span>
                 }
               </div>
               <!-- Row 3: concepto -->
-              <p class="text-xs text-gray-600 mt-1 leading-snug line-clamp-2">{{ getExpenseConcepto(expense) }}</p>
+              <p class="text-xs text-gray-600 mt-1 leading-snug line-clamp-2">{{ getExpenseConceptoDisplay(expense) }}</p>
               <!-- Row 4: estado cont (+ coord en flujo normal) -->
               @if (!report.isCajaChica) {
               <div class="mt-2 flex flex-wrap gap-x-3 gap-y-1">
@@ -1317,7 +1322,7 @@
                     }
                   }
                 </div>
-                @if (!report.isDirecta) {
+                @if (!report.isDirecta && !ownerIsCoordinador) {
                 <div class="flex items-center gap-1">
                   <span class="text-xs text-gray-400 font-medium">Coord.</span>
                   @switch (getExpenseApprovalCoord(expense).status) {
@@ -1376,7 +1381,7 @@
                     PDF
                   </button>
                 }
-                @if (canMutateExpense(expense)) {
+                @if (canEditExpense(expense)) {
                   <button type="button" (click)="goEditExpense(expense._id)"
                     class="inline-flex items-center justify-center gap-1.5 min-h-[36px] px-3 rounded-lg text-xs font-semibold border border-gray-200 bg-white text-gray-800 hover:bg-gray-50 active:scale-[0.98] transition-all touch-manipulation">
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
@@ -1384,6 +1389,8 @@
                     </svg>
                     Editar
                   </button>
+                }
+                @if (canMutateExpense(expense)) {
                   <button type="button" [disabled]="deletingExpenseId() === expense._id" (click)="confirmDeleteExpense(expense)"
                     class="inline-flex items-center justify-center gap-1.5 min-h-[36px] px-3 rounded-lg text-xs font-semibold border border-red-200 bg-red-50 text-red-800 hover:bg-red-100 disabled:opacity-50 active:scale-[0.98] transition-all touch-manipulation">
                     @if (deletingExpenseId() === expense._id) {
@@ -1397,8 +1404,8 @@
                     }
                   </button>
                 }
-                <!-- Approval actions (mobile, oculto en rendicion directa) -->
-                @if (!report.isDirecta && canApproveExpenseAsCoord && getExpenseApprovalCoord(expense).status !== 'approved') {
+                <!-- Approval actions (mobile, oculto en rendicion directa y solicitudes de coordinador) -->
+                @if (!report.isDirecta && !ownerIsCoordinador && canApproveExpenseAsCoord && getExpenseApprovalCoord(expense).status !== 'approved') {
                   <button type="button"
                     [disabled]="approvingExpenseRoleId() === 'coord:' + expense._id"
                     (click)="approveExpenseByRole(expense._id, 'coord')"
@@ -1483,18 +1490,18 @@
                   <th class="px-3 py-3 whitespace-nowrap">Fecha Emisión</th>
                   <th class="px-3 py-3 whitespace-nowrap">Tipo</th>
                   <th class="px-3 py-3 whitespace-nowrap">N° Documento</th>
+                  <th class="px-3 py-3 whitespace-nowrap">RUC</th>
                   <th class="px-3 py-3 whitespace-nowrap">Proveedor</th>
                   <th class="px-3 py-3">Concepto</th>
-                  <th class="px-3 py-3 whitespace-nowrap">Proyecto</th>
                   <th class="px-3 py-3 whitespace-nowrap">Categoria</th>
                   <th class="px-3 py-3 text-right whitespace-nowrap">Monto</th>
                   @if (!report.isCajaChica) {
                   <th class="px-3 py-3 text-center whitespace-nowrap text-teal-600">{{ report.isDirecta ? 'Revisado Cont.' : 'Est. Cont.' }}</th>
                   }
-                  @if (!report.isDirecta && !report.isCajaChica) {
+                  @if (!report.isDirecta && !report.isCajaChica && !ownerIsCoordinador) {
                   <th class="px-3 py-3 text-center whitespace-nowrap text-indigo-600">Est. Coord.</th>
                   }
-                  <th class="px-3 py-3 text-center whitespace-nowrap">Opciones</th>
+                  <th class="px-3 py-3 whitespace-nowrap">Opciones</th>
                 </tr>
               </thead>
               <tbody class="divide-y divide-gray-100 bg-white">
@@ -1524,17 +1531,15 @@
                   </td>
                   <!-- N° Documento -->
                   <td class="px-3 py-3 text-gray-700 whitespace-nowrap font-mono text-xs">{{ getExpenseDocumentNumber(expense) }}</td>
+                  <!-- RUC -->
+                  <td class="px-3 py-3 whitespace-nowrap font-mono text-xs text-gray-700">{{ getExpenseRuc(expense) || '—' }}</td>
                   <!-- Proveedor -->
-                  <td class="px-3 py-3 text-gray-700 max-w-[160px]">
+                  <td class="px-3 py-3 text-gray-700 max-w-[200px]">
                     <span class="block truncate" [title]="getExpenseProveedor(expense)">{{ getExpenseProveedor(expense) }}</span>
                   </td>
                   <!-- Concepto -->
                   <td class="px-3 py-3 text-gray-700 max-w-[200px]">
-                    <span class="block truncate" [title]="getExpenseConcepto(expense)">{{ getExpenseConcepto(expense) }}</span>
-                  </td>
-                  <!-- Proyecto -->
-                  <td class="px-3 py-3 text-gray-700 max-w-[140px]">
-                    <span class="block truncate text-xs" [title]="getExpenseProjectName(expense)">{{ getExpenseProjectName(expense) || '—' }}</span>
+                    <span class="block truncate" [title]="getExpenseConceptoDisplay(expense)">{{ getExpenseConceptoDisplay(expense) }}</span>
                   </td>
                   <!-- Categoria -->
                   <td class="px-3 py-3 text-gray-700 max-w-[120px]">
@@ -1617,8 +1622,8 @@
                     </div>
                   </td>
                   }
-                  <!-- Estado Coordinador (oculto en rendicion directa y caja chica) -->
-                  @if (!report.isDirecta && !report.isCajaChica) {
+                  <!-- Estado Coordinador (oculto en directa, caja chica y solicitudes de coordinador) -->
+                  @if (!report.isDirecta && !report.isCajaChica && !ownerIsCoordinador) {
                   <td class="px-3 py-3 text-center">
                     <div class="flex flex-col items-center gap-1">
                       @switch (getExpenseApprovalCoord(expense).status) {
@@ -1663,9 +1668,11 @@
                     </div>
                   </td>
                   }
-                  <!-- Opciones -->
+                  <!-- Opciones. Cada acción ocupa un espacio fijo (y deja un
+                       hueco vacío cuando no aplica) para que los iconos queden
+                       en la misma posición en todas las filas. -->
                   <td class="px-3 py-3">
-                    <div class="flex items-center justify-center gap-0.5">
+                    <div class="flex items-center justify-start gap-0.5">
                       <!-- Detalle -->
                       <div class="relative group/det">
                         <button type="button" (click)="openExpenseDetail(expense)"
@@ -1677,8 +1684,8 @@
                         </button>
                         <div class="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 px-2 py-1 bg-gray-800 text-white text-[11px] rounded whitespace-nowrap opacity-0 group-hover/det:opacity-100 pointer-events-none transition-opacity z-10">Detalle</div>
                       </div>
-                      <!-- Editar -->
-                      @if (canMutateExpense(expense)) {
+                      <!-- Editar (no disponible en facturas: ver canEditExpense) -->
+                      @if (canEditExpense(expense)) {
                       <div class="relative group/edit">
                         <button type="button" (click)="goEditExpense(expense._id)"
                           class="inline-flex items-center justify-center w-8 h-8 rounded-lg text-gray-500 hover:bg-gray-100 hover:text-gray-900 transition-colors">
@@ -1688,7 +1695,11 @@
                         </button>
                         <div class="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 px-2 py-1 bg-gray-800 text-white text-[11px] rounded whitespace-nowrap opacity-0 group-hover/edit:opacity-100 pointer-events-none transition-opacity z-10">Editar</div>
                       </div>
+                      } @else {
+                      <span class="w-8 h-8 shrink-0"></span>
+                      }
                       <!-- Eliminar -->
+                      @if (canMutateExpense(expense)) {
                       <div class="relative group/del">
                         <button type="button"
                           [disabled]="deletingExpenseId() === expense._id"
@@ -1704,6 +1715,28 @@
                         </button>
                         <div class="absolute bottom-full right-0 mb-1 px-2 py-1 bg-gray-800 text-white text-[11px] rounded whitespace-nowrap opacity-0 group-hover/del:opacity-100 pointer-events-none transition-opacity z-10">Eliminar</div>
                       </div>
+                      } @else {
+                      <span class="w-8 h-8 shrink-0"></span>
+                      }
+                      <!-- Revalidar con SUNAT -->
+                      @if (canRevalidateSunat(expense)) {
+                      <div class="relative group/sunat">
+                        <button type="button"
+                          [disabled]="revalidatingSunatId() === expense._id"
+                          (click)="revalidateSunat(expense)"
+                          class="inline-flex items-center justify-center w-8 h-8 rounded-lg text-blue-600 hover:bg-blue-50 disabled:opacity-50 transition-colors">
+                          @if (revalidatingSunatId() === expense._id) {
+                            <span class="inline-block w-4 h-4 border-2 border-blue-200 border-t-blue-600 rounded-full animate-spin"></span>
+                          } @else {
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
+                              <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" />
+                            </svg>
+                          }
+                        </button>
+                        <div class="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 px-2 py-1 bg-gray-800 text-white text-[11px] rounded whitespace-nowrap opacity-0 group-hover/sunat:opacity-100 pointer-events-none transition-opacity z-10">Revalidar con SUNAT</div>
+                      </div>
+                      } @else {
+                      <span class="w-8 h-8 shrink-0"></span>
                       }
                       <!-- Adjunto -->
                       @if (hasExpenseFile(expense)) {
@@ -1716,6 +1749,8 @@
                         </button>
                         <div class="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 px-2 py-1 bg-gray-800 text-white text-[11px] rounded whitespace-nowrap opacity-0 group-hover/attach:opacity-100 pointer-events-none transition-opacity z-10">Ver adjunto</div>
                       </div>
+                      } @else {
+                      <span class="w-8 h-8 shrink-0"></span>
                       }
                       <!-- PDF: planilla de movilidad -->
                       @if (expense['expenseType'] === 'planilla_movilidad') {
@@ -2139,7 +2174,7 @@
               </div>
               <div>
                 <p class="text-xs text-gray-400">Tipo comprobante</p>
-                <p class="font-medium text-gray-900">{{ dataText(exp, 'tipoComprobante') }}</p>
+                <p class="font-medium text-gray-900">{{ tipoComprobanteLabel(exp) || dataText(exp, 'tipoComprobante') }}</p>
               </div>
               <div class="sm:col-span-2">
                 <p class="text-xs text-gray-400">Dirección</p>

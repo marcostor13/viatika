@@ -21,11 +21,13 @@
       </div>
       @if (expense(); as exp) {
         <div class="flex items-center gap-2 shrink-0">
-          @if (canEdit(exp)) {
+          @if (canEditExpense(exp)) {
           <button type="button" (click)="editExpense()"
             class="px-3 py-1.5 border border-primary text-primary text-xs font-semibold rounded-lg hover:bg-primary/5 transition-colors">
             Editar
           </button>
+          }
+          @if (canEdit(exp)) {
           <button type="button" (click)="confirmDelete()"
             class="px-3 py-1.5 border border-red-300 text-red-600 text-xs font-semibold rounded-lg hover:bg-red-50 transition-colors">
             Eliminar

@@ -456,6 +456,14 @@ export class RendicionDetailComponent implements OnInit {
     return String(ownerId ?? '') === String(uid);
   }
 
+  /** El dueño de la rendición es Coordinador: su rendición salta la aprobación de
+   *  coordinador (va directo a Contabilidad), así que la columna "Est. Coord." no aplica. */
+  get ownerIsCoordinador(): boolean {
+    const owner = this.report?.userId as any;
+    const roleName = owner?.roleId?.name ?? owner?.role?.name ?? owner?.role;
+    return roleName === 'Coordinador';
+  }
+
   get isAdminView(): boolean {
     // Sobre su propia rendición, cualquier rol (incl. coordinador) actúa como
     // colaborador: agrega/envía sus gastos y no puede auto-aprobarse.
@@ -680,6 +688,7 @@ export class RendicionDetailComponent implements OnInit {
   showSubmitModal = false;
   isSubmitting = signal(false);
   deletingExpenseId = signal<string | null>(null);
+  revalidatingSunatId = signal<string | null>(null);
   isExportingExcel = signal(false);
   isExportingPdf = signal(false);
   isExportingFullPdf = signal(false);
@@ -854,7 +863,8 @@ export class RendicionDetailComponent implements OnInit {
       const sub = expense?.subTipo ?? this.getExpenseDataObject(expense)['subTipo'];
       if (sub === 'TK') return 'TK';
       if (sub === 'BV') return 'BV';
-      if (sub === 'RC') return 'RC';
+      // El sub-tipo se guarda como 'RC', pero se muestra 'RD' (Recibos Diversos).
+      if (sub === 'RC') return 'RD';
       if (sub === 'DJ') return 'DJ';
       if (sub === 'OT') return 'OT';
       return 'SC';
@@ -876,7 +886,7 @@ export class RendicionDetailComponent implements OnInit {
     if (code === 'SC' || code === 'OT') return 'bg-gray-100 text-gray-600';
     if (code === 'DJ') return 'bg-amber-100 text-amber-800';
     if (code === 'TK') return 'bg-teal-100 text-teal-700';
-    if (code === 'RC') return 'bg-indigo-100 text-indigo-700';
+    if (code === 'RD') return 'bg-indigo-100 text-indigo-700';
     return 'bg-blue-100 text-blue-700';
   }
 
@@ -917,6 +927,17 @@ export class RendicionDetailComponent implements OnInit {
     return '-';
   }
 
+  /** RUC del emisor. Cadena vacía si el comprobante no tiene emisor (movilidad, caja, otros). */
+  getExpenseRuc(expense: any): string {
+    const type = expense?.expenseType;
+    if (type === 'planilla_movilidad' || type === 'otros_gastos' || type === 'comprobante_caja') return '';
+    const d = this.getExpenseDataObject(expense);
+    const raw = d['rucEmisor'] ?? d['ruc'];
+    if (typeof raw === 'string' && raw.trim()) return raw.trim();
+    if (typeof raw === 'number' && Number.isFinite(raw)) return String(raw);
+    return '';
+  }
+
   formatShortDate(raw: string | null | undefined): string {
     if (!raw) return '-';
     let d: Date;
@@ -952,7 +973,10 @@ export class RendicionDetailComponent implements OnInit {
       return this.formatEmissionDate([...dates].sort()[0]);
     }
     if (type === 'otros_gastos') {
-      return this.formatEmissionDate(expense?.createdAt);
+      // La fecha de emisión ahora se declara en el formulario; los gastos
+      // registrados antes no la tienen y siguen mostrando la fecha de registro.
+      const declarada = resolveExpenseFechaEmision(expense);
+      return this.formatEmissionDate(declarada ?? expense?.createdAt);
     }
     return this.emissionDateText(expense);
   }
@@ -999,6 +1023,17 @@ export class RendicionDetailComponent implements OnInit {
       const data = typeof expense?.data === 'string' ? JSON.parse(expense.data) : expense?.data || {};
       return data.razonSocial || 'N/A';
     } catch { return 'N/A'; }
+  }
+
+  /**
+   * Concepto mostrado en la columna "Concepto" de la tabla de comprobantes.
+   * Prioriza el comentario del gasto (mismo criterio que el reporte PDF/Excel,
+   * que imprime `comentario || descripcion`); la razón social ya va en Proveedor.
+   */
+  getExpenseConceptoDisplay(expense: any): string {
+    const comentario = this.getExpenseComentario(expense as Record<string, unknown>);
+    if (comentario) return comentario;
+    return this.getExpenseConcepto(expense);
   }
 
   /** Lista de conceptos para la tabla Comprobantes Asociados (1 entrada por fila de planilla). */
@@ -1066,6 +1101,26 @@ export class RendicionDetailComponent implements OnInit {
   openExpenseDetail(expense: Record<string, unknown>): void {
     this.selectedExpense.set(expense);
     this.showExpenseDetailModal.set(true);
+  }
+
+  /**
+   * Etiqueta legible del tipo. `data.tipoComprobante` guarda unas veces el
+   * código SUNAT ('01') y otras la palabra ("Factura"), según de dónde salió el
+   * dato, así que se contemplan ambos formatos.
+   */
+  tipoComprobanteLabel(expense: Record<string, unknown>): string {
+    const raw = String(
+      this.getExpenseDataObject(expense)['tipoComprobante'] ?? '',
+    ).trim();
+    if (!raw) return '';
+    if (raw === '01') return 'Factura';
+    if (raw === '03') return 'Boleta';
+    if (raw === '12') return 'Ticket';
+    const t = raw.toLowerCase();
+    if (t.includes('bolet')) return 'Boleta';
+    if (t.includes('ticket') || t.includes('tique')) return 'Ticket';
+    if (t.includes('factura')) return 'Factura';
+    return raw;
   }
 
   closeExpenseDetail(): void {
@@ -1175,6 +1230,11 @@ export class RendicionDetailComponent implements OnInit {
   }
 
   sunatBlock(exp: Record<string, unknown>): Record<string, unknown> | null {
+    // La raíz guarda la última consulta (la revalidación la actualiza); el JSON
+    // `data` conserva la del registro inicial. Se prefiere la raíz para no
+    // mostrar un resultado viejo que contradiga al estado del comprobante.
+    const root = exp['sunatValidation'];
+    if (root && typeof root === 'object') return root as Record<string, unknown>;
     const d = this.getExpenseDataObject(exp);
     const s = d['sunatValidation'];
     if (s && typeof s === 'object') return s as Record<string, unknown>;
@@ -1300,6 +1360,17 @@ export class RendicionDetailComponent implements OnInit {
     if (!reportStatus || ['approved', 'paid', 'settled', 'closed', 'cancelled'].includes(reportStatus)) return false;
     const st = expense.status ?? 'pending';
     return st !== 'approved' && st !== 'rejected';
+  }
+
+  /**
+   * Editar es más restrictivo que el resto de acciones: una factura guardada no
+   * se edita por ningún rol. Sus datos salen del comprobante y quedan fijados al
+   * validarse contra SUNAT; si están mal, se elimina o se rechaza y se vuelve a
+   * cargar. Eliminar y revalidar contra SUNAT siguen disponibles.
+   */
+  canEditExpense(expense: Record<string, unknown>): boolean {
+    if (expense?.['expenseType'] === 'factura') return false;
+    return this.canMutateExpense(expense as any);
   }
 
   goEditExpense(expenseId: string): void {
@@ -3458,5 +3529,167 @@ export class RendicionDetailComponent implements OnInit {
         this.deletingExpenseId.set(null);
       },
     });
+  }
+
+  /**
+   * Datos que SUNAT exige para consultar un comprobante. Se resuelven desde la
+   * raíz del gasto o desde el JSON `data`, según cómo se haya cargado.
+   */
+  private sunatQueryData(expense: Record<string, unknown>): {
+    rucEmisor: string;
+    serie: string;
+    correlativo: string;
+    fechaEmision: string;
+  } | null {
+    const data = this.getExpenseDataObject(expense);
+    const pick = (key: string): string => {
+      const root = expense[key];
+      if (typeof root === 'string' && root.trim()) return root.trim();
+      const nested = data[key];
+      return typeof nested === 'string' ? nested.trim() : '';
+    };
+    const rucEmisor = pick('rucEmisor') || pick('ruc');
+    const serie = pick('serie');
+    const correlativo = pick('correlativo');
+    const fechaEmision = formatFechaEmisionDdMmYyyy(
+      resolveExpenseFechaEmision(expense),
+    );
+    if (!rucEmisor || !serie || !correlativo || fechaEmision === '-') {
+      return null;
+    }
+    return { rucEmisor, serie, correlativo, fechaEmision };
+  }
+
+  /**
+   * Se muestra solo cuando la revalidación puede prosperar:
+   * - el backend la trata como una mutación (persiste `status`), así que exige
+   *   los mismos permisos que editar: se reusa `canMutateExpense` para no
+   *   ofrecer un botón que responderá 403;
+   * - el comprobante debe tener los cuatro datos que SUNAT pide;
+   * - si ya está validado como conforme, no hay nada que reintentar.
+   */
+  canRevalidateSunat(
+    expense: Record<string, unknown> & { createdBy?: string; status?: string },
+  ): boolean {
+    // El estado del gasto guarda el veredicto crudo de SUNAT
+    // ('VALIDO_ACEPTADO'); 'sunat_valid' es el nombre del tipo y aparece en
+    // datos de otros flujos. Se contemplan ambos.
+    const st = String(expense.status ?? '').toUpperCase();
+    if (st === 'VALIDO_ACEPTADO' || st === 'SUNAT_VALID') return false;
+    if (!this.canMutateExpense(expense)) return false;
+    return this.sunatQueryData(expense) !== null;
+  }
+
+  /** Veredictos que devuelve el backend en `status` al validar con SUNAT. */
+  private sunatResultMessage(
+    status: string | undefined,
+    result: any,
+  ): { message: string; type: 'success' | 'error' } {
+    switch (status) {
+      case 'VALIDO_ACEPTADO':
+        return { message: 'Comprobante válido y emitido a la empresa', type: 'success' };
+      case 'VALIDO_NO_PERTENECE':
+        return {
+          message: 'El comprobante es válido, pero no fue emitido a esta empresa. Verifica el RUC emisor.',
+          type: 'error',
+        };
+      case 'NO_ENCONTRADO':
+        return { message: 'Comprobante no encontrado en SUNAT', type: 'error' };
+      case 'ERROR_SUNAT': {
+        // `details` trae el motivo crudo (p. ej. "Request failed with status
+        // code 422" cuando SUNAT rechaza los parámetros). Sin él, el aviso
+        // parece una caída del servicio aunque el problema sea el dato.
+        const detalle = typeof result?.details === 'string' ? result.details.trim() : '';
+        return {
+          message: detalle
+            ? `SUNAT rechazó la consulta (${detalle}). Revisa RUC, serie, número y fecha.`
+            : 'Error en el servicio de SUNAT',
+          type: 'error',
+        };
+      }
+      case 'SUNAT_CONFIG_NOT_FOUND':
+        return {
+          message: 'No se encontró configuración SUNAT para esta empresa',
+          type: 'error',
+        };
+      case 'PENDING':
+        return {
+          message: 'No se pudo consultar a SUNAT: faltan datos del comprobante o la configuración de la empresa.',
+          type: 'error',
+        };
+      default: {
+        const detalle = result?.details?.message ?? result?.details;
+        return {
+          message:
+            'Resultado de validación SUNAT: ' +
+            (typeof detalle === 'string' && detalle.trim() ? detalle : 'estado desconocido'),
+          type: 'error',
+        };
+      }
+    }
+  }
+
+  /**
+   * El backend traduce este texto a `codComp` (Factura=01, Boleta=03,
+   * Ticket=12) tolerando mayúsculas y variantes. Los gastos de tipo "otros" no
+   * guardan `tipoComprobante`, así que se deriva del sub-tipo para no consultar
+   * una boleta como si fuera factura.
+   */
+  private sunatTipoComprobante(expense: Record<string, unknown>): string | undefined {
+    const data = this.getExpenseDataObject(expense);
+    const explicito = String(data['tipoComprobante'] ?? '').trim();
+    if (explicito === '01') return 'Factura';
+    if (explicito === '03') return 'Boleta';
+    if (explicito) return explicito;
+    const sub = String(expense['subTipo'] ?? data['subTipo'] ?? '').toUpperCase();
+    if (sub === 'BV') return 'Boleta';
+    return undefined;
+  }
+
+  revalidateSunat(expense: Record<string, unknown> & { _id?: string }): void {
+    const id = expense._id;
+    const query = this.sunatQueryData(expense);
+    if (!id || !query) return;
+    // SUNAT rechaza la consulta con 422 si el RUC no tiene 11 dígitos; se avisa
+    // acá para no devolver un "error del servicio" que despista. Se comparan
+    // solo los dígitos, porque el dato puede venir del OCR con espacios o
+    // guiones ("20-503000001"): mismo criterio que el lookup de razón social.
+    const rucDigitos = query.rucEmisor.replace(/\D/g, '');
+    if (rucDigitos.length !== 11) {
+      this.notificationService.show(
+        'El RUC del emisor no es válido (debe tener 11 dígitos). Corrígelo en el gasto antes de revalidar.',
+        'error',
+      );
+      return;
+    }
+    this.revalidatingSunatId.set(id);
+    this.invoicesService
+      .validateWithSunatData(id, {
+        ...query,
+        rucEmisor: rucDigitos,
+        montoTotal: Number(expense['total']) || undefined,
+        tipoComprobante: this.sunatTipoComprobante(expense),
+      })
+      .subscribe({
+        next: (result) => {
+          this.revalidatingSunatId.set(null);
+          // `result.status` trae el veredicto de SUNAT (VALIDO_ACEPTADO, etc.),
+          // no el estado del gasto. `result.message` es siempre genérico
+          // ("Validación SUNAT completada"), así que no sirve para el aviso.
+          const { message, type } = this.sunatResultMessage(result?.status, result);
+          this.notificationService.show(message, type);
+          this.loadExpensesPage(this.expensesPage()?.page ?? 1);
+        },
+        error: (e) => {
+          this.revalidatingSunatId.set(null);
+          const msg = e?.error?.message;
+          this.notificationService.show(
+            typeof msg === 'string' && msg.trim()
+              ? msg
+              : 'Error al consultar el servicio de SUNAT',
+            'error',
+          );
+        },
+      });
   }
 }

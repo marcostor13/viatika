@@ -125,6 +125,8 @@
       }
     </div>
 
+    <!-- En Declaración Jurada la categoría se autoasigna por proyecto: se oculta el selector. -->
+    @if (!isDj()) {
     <div class="flex flex-col gap-2">
       <label for="categoryId" class="text-sm font-medium text-secondary">
         Categoría <span class="text-error">*</span>
@@ -151,10 +153,14 @@
       <span class="text-sm text-error">La categoría es requerida</span>
       }
     </div>
+    }
   </div>
   }
 
-  @if(!id && expenseType() === 'factura') {
+  <!-- Se oculta durante la revisión OCR: cambiar el archivo ahí no re-escanea y
+       no tendría efecto (el confirm usa el archivo del primer análisis). Para
+       cambiarlo se usa "Descartar y escanear otro". -->
+  @if(!id && expenseType() === 'factura' && !showPostOcrReview()) {
   <div class="bg-quaternary rounded-xl shadow-soft border border-gray-100 p-3 sm:p-6">
     <div class="flex flex-col gap-2">
       <label for="file" class="text-sm font-medium text-secondary">
@@ -243,6 +249,8 @@
         <input
           id="rucEmisorOcr"
           type="text"
+          inputmode="numeric"
+          maxlength="11"
           formControlName="rucEmisor"
           (blur)="lookupRazonSocial($any($event.target).value)"
           class="w-full h-[40px] px-3 rounded-lg border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-primary/20"
@@ -270,8 +278,9 @@
         <input
           id="serieOcr"
           type="text"
+          maxlength="4"
           formControlName="serie"
-          class="w-full h-[40px] px-3 rounded-lg border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-primary/20"
+          class="w-full h-[40px] px-3 rounded-lg border border-gray-200 bg-white uppercase focus:outline-none focus:ring-2 focus:ring-primary/20"
         />
       </div>
       <div class="flex flex-col gap-1">
@@ -282,6 +291,30 @@
           formControlName="correlativo"
           class="w-full h-[40px] px-3 rounded-lg border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-primary/20"
         />
+      </div>
+      <div class="flex flex-col gap-1">
+        <label for="tipoComprobanteOcr" class="text-xs font-medium text-secondary">Tipo de comprobante</label>
+        @if (tipoDeterminadoPorSerie(); as tipoSerie) {
+        <!-- La serie determina el tipo (regla SUNAT): no editable, para no
+             ofrecer una elección que se descartaría. Si el tipo no es correcto,
+             lo que está mal es la serie. -->
+        <div class="w-full h-[40px] px-3 flex items-center justify-between rounded-lg border border-gray-200 bg-gray-50 text-sm font-medium text-secondary">
+          <span>{{ tipoSerie }}</span>
+          <span class="text-[11px] font-normal text-tertiary">según la serie {{ form.get('serie')?.value }}</span>
+        </div>
+        <span class="text-[11px] text-tertiary">La serie determina el tipo. Si no es correcto, corrige la <strong>Serie</strong> arriba.</span>
+        } @else {
+        <select
+          id="tipoComprobanteOcr"
+          formControlName="tipoComprobante"
+          class="w-full h-[40px] px-3 rounded-lg border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-primary/20"
+        >
+          @for (t of tipoComprobanteOptions; track t) {
+          <option [value]="t">{{ t }}</option>
+          }
+        </select>
+        <span class="text-[11px] text-tertiary">La serie no identifica el tipo; selecciónalo.</span>
+        }
       </div>
       <div class="flex flex-col gap-1">
         <label for="placaVehiculoOcr" class="text-xs font-medium text-secondary">Placa de Vehículo <span class="text-tertiary font-normal">(si aplica)</span></label>
@@ -342,18 +375,8 @@
         </div>
         }
       </div>
-      <div class="flex flex-col gap-1">
-        <label for="monedaOcr" class="text-xs font-medium text-secondary">Moneda</label>
-        <select
-          id="monedaOcr"
-          formControlName="moneda"
-          class="w-full h-[40px] px-3 rounded-lg border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-primary/20"
-        >
-          @for (c of currencyOptions(); track c.code) {
-          <option [value]="c.code">{{ c.code }} ({{ c.symbol }})</option>
-          }
-        </select>
-      </div>
+      <!-- Moneda oculta: la plataforma es PEN-only; el control se mantiene en el
+           form con su valor por defecto para no alterar el payload. -->
     </div>
     <div class="flex flex-col gap-1">
       <label for="comentarioOcr" class="text-xs font-medium text-secondary">
@@ -372,14 +395,27 @@
       <span class="text-xs text-error">El comentario es obligatorio</span>
       }
     </div>
-    <div class="flex justify-end">
+    <div class="flex items-center justify-between gap-3">
+      <button
+        type="button"
+        (click)="discardOcrReview()"
+        [disabled]="isLoading()"
+        class="px-3 py-2 rounded-lg border border-gray-200 text-secondary text-sm font-medium hover:bg-gray-50 disabled:opacity-50"
+      >
+        Descartar y escanear otro
+      </button>
       <button
         type="button"
         (click)="confirmPostOcrReview()"
-        [disabled]="isLoading() || isSunatValidating() || !form.get('comentario')?.value?.trim()"
-        class="px-4 py-2 rounded-lg bg-primary text-white text-sm font-semibold hover:bg-primary/90 disabled:opacity-50"
+        [disabled]="isLoading() || !form.get('comentario')?.value?.trim()"
+        class="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-white text-sm font-semibold hover:bg-primary/90 disabled:opacity-50"
       >
+        @if (isLoading()) {
+        <span class="inline-block w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin"></span>
+        Validando con SUNAT...
+        } @else {
         Confirmar y guardar factura
+        }
       </button>
     </div>
   </div>
@@ -425,6 +461,19 @@
       } @else if (rucNotFound()) {
         <span class="text-xs text-red-600 font-medium">RUC inválido o no encontrado</span>
       }
+    </div>
+    <div class="flex flex-col gap-2">
+      <label for="tipoComprobante" class="text-sm font-medium text-secondary">Tipo de comprobante</label>
+      <select
+        id="tipoComprobante"
+        formControlName="tipoComprobante"
+        class="w-full h-[42px] px-4 rounded-lg border border-gray-200 bg-background focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-sm"
+      >
+        @for (t of tipoComprobanteOptions; track t) {
+        <option [value]="t">{{ t }}</option>
+        }
+      </select>
+      <span class="text-xs text-gray-400">Corrígelo si la IA lo detectó mal: se usa para consultar a SUNAT.</span>
     </div>
     <div class="flex flex-col gap-2">
       <label for="serie" class="text-sm font-medium text-secondary">Serie</label>
@@ -865,15 +914,17 @@
     <div>
       <label class="block text-sm font-medium text-secondary mb-3">Tipo de documento <span class="text-error">*</span></label>
       <div class="grid grid-cols-2 sm:grid-cols-5 gap-2">
+        <!-- `code` es el valor que se guarda; `display` es la sigla visible.
+             RC se muestra como RD (Recibos Diversos) sin migrar el dato. -->
         @for (opt of [
-          {code:'TK', label:'Ticket'},
-          {code:'BV', label:'Boleta'},
-          {code:'RC', label:'Recibos diversos'},
-          {code:'DJ', label:'Declaración Jurada'},
-          {code:'OT', label:'Otros'}
+          {code:'TK', display:'TK', label:'Ticket'},
+          {code:'BV', display:'BV', label:'Boleta de venta'},
+          {code:'RC', display:'RD', label:'Recibos diversos'},
+          {code:'DJ', display:'DJ', label:'Declaración Jurada'},
+          {code:'OT', display:'OT', label:'Otros'}
         ]; track opt.code) {
         <button type="button"
-          (click)="otrosSubTipo.set(opt.code)"
+          (click)="selectOtrosSubTipo(opt.code)"
           class="flex flex-col items-center justify-center gap-1 p-3 rounded-xl border-2 transition-all text-center"
           [class.border-primary]="otrosSubTipo() === opt.code"
           [class.bg-primary]="otrosSubTipo() === opt.code"
@@ -882,7 +933,7 @@
           [class.bg-white]="otrosSubTipo() !== opt.code"
           [class.text-secondary]="otrosSubTipo() !== opt.code"
         >
-          <span class="text-xs font-bold tabular-nums">{{ opt.code }}</span>
+          <span class="text-xs font-bold tabular-nums">{{ opt.display }}</span>
           <span class="text-xs leading-tight">{{ opt.label }}</span>
         </button>
         }
@@ -927,6 +978,13 @@
     }
 
     @if (otrosSubTipo() !== 'DJ') {
+    <div class="flex flex-col gap-2">
+      <label for="otrosFechaEmision" class="text-sm font-medium text-secondary">
+        Fecha de Emisión <span class="text-error">*</span>
+      </label>
+      <input id="otrosFechaEmision" type="date" [max]="todayIso" formControlName="fechaEmision"
+        class="w-full h-[42px] px-4 rounded-lg border border-gray-200 bg-background focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-sm" />
+    </div>
     <div class="flex flex-col gap-2">
       <label class="text-sm font-medium text-secondary">Descripción del gasto</label>
       <input type="text" formControlName="description" placeholder="Ej: Refrigerio de trabajo, útiles de escritorio..."
@@ -982,8 +1040,8 @@
       </div>
       <div class="flex flex-col gap-2">
         <label class="text-sm font-medium text-secondary">Moneda</label>
-        <input type="text" formControlName="djMoneda" placeholder="US$"
-          class="w-full h-[42px] px-4 rounded-lg border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-sm" />
+        <input type="text" formControlName="djMoneda" placeholder="US$" readonly
+          class="w-full h-[42px] px-4 rounded-lg border border-gray-200 bg-gray-50 text-tertiary cursor-not-allowed focus:outline-none transition-all text-sm" />
       </div>
     </div>
 
@@ -994,7 +1052,10 @@
         <button type="button" (click)="addDjRow('alimentacion')"
           class="text-xs font-semibold text-primary hover:underline">+ Agregar fila</button>
       </div>
-      @if (djAlimentacionRowsArray.length > 0) {
+      <!-- Categoría autoasignada por proyecto (flag "Alimentación DJ"). Respaldo manual si el perfil no la define. -->
+      @if (djAlimentacionAuto()) {
+      <p class="text-xs text-tertiary">Categoría: <span class="font-semibold text-secondary">{{ djAlimentacionAuto()?.name }}</span></p>
+      } @else if (djAlimentacionRowsArray.length > 0) {
       <div class="flex flex-col gap-2">
         <label class="text-xs font-medium text-secondary">Categoría <span class="text-error">*</span></label>
         <select formControlName="djAlimentacionCategoryId"
@@ -1040,7 +1101,10 @@
         <button type="button" (click)="addDjRow('movilidad')"
           class="text-xs font-semibold text-primary hover:underline">+ Agregar fila</button>
       </div>
-      @if (djMovilidadRowsArray.length > 0) {
+      <!-- Categoría autoasignada por proyecto (flag "Movilidad DJ"). Respaldo manual si el perfil no la define. -->
+      @if (djMovilidadAuto()) {
+      <p class="text-xs text-tertiary">Categoría: <span class="font-semibold text-secondary">{{ djMovilidadAuto()?.name }}</span></p>
+      } @else if (djMovilidadRowsArray.length > 0) {
       <div class="flex flex-col gap-2">
         <label class="text-xs font-medium text-secondary">Categoría <span class="text-error">*</span></label>
         <select formControlName="djMovilidadCategoryId"

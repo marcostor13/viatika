@@ -100,8 +100,9 @@
         </div>
         <div class="px-5 py-5 grid grid-cols-1 md:grid-cols-2 gap-5">
 
-          <!-- Moneda (primero: condiciona el resto del formulario) -->
-          <div class="md:col-span-2 flex flex-col gap-1.5">
+          <!-- Moneda (oculta): la solicitud queda fija en soles (PEN). Se mantiene el
+               control en el DOM para no romper el formulario, pero no se muestra. -->
+          <div class="hidden md:col-span-2 flex flex-col gap-1.5">
             <label class="text-sm font-medium text-gray-700">
               Moneda de la solicitud <span class="text-red-500">*</span>
             </label>
