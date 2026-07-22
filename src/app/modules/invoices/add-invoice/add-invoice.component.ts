@@ -2338,9 +2338,12 @@ export default class AddInvoiceComponent implements OnInit {
       },
       error: (error) => {
         this.isLoading.set(false);
+        // El mensaje de SUNAT es largo y el usuario necesita leerlo para saber
+        // qué corregir, por eso este toast dura más que los 5s por defecto.
         this.notificationService.show(
           'Error al guardar la factura: ' + (error.error?.message || error.message),
-          'error'
+          'error',
+          12000
         );
       },
     });
