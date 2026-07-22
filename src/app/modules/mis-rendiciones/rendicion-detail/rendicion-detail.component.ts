@@ -1920,26 +1920,47 @@ export class RendicionDetailComponent implements OnInit {
     return `${d.getFullYear()}-${m}-${day}`;
   }
 
-  private buildConsolidatedMobilityPageData(
+  /**
+   * Suma los montos reales de todas las filas de movilidad de la rendición en un
+   * solo total y lo reparte en tramos de S/40 (tope legal de movilidad), uno por
+   * día empezando en la fecha de solicitud del viático/rendición. Cada tramo es
+   * una planilla física completa con una única fila: se muestra con los datos
+   * (clienteProveedor/origen/destino/gestión) de la última gestión real que aporta
+   * a ese tramo. Cada planilla lleva además un código correlativo único.
+   */
+  private buildMobilityPagesByDailyCap(
     mobilityExpenses: Record<string, unknown>[],
-  ): MobilitySheetExportData | null {
-    if (!mobilityExpenses.length) return null;
+  ): MobilitySheetExportData[] {
+    if (!mobilityExpenses.length) return [];
 
-    const totalAmount = Math.round(
-      mobilityExpenses.reduce(
-        (sum, exp) => sum + this.mobilityRows(exp).reduce((s, r) => s + this.mobilityRowTotal(r), 0),
-        0,
-      ) * 100,
-    ) / 100;
+    const sourceRows: MobilitySheetExportData['rows'] = [];
+    for (const exp of mobilityExpenses) {
+      for (const r of this.mobilityRows(exp)) {
+        sourceRows.push({
+          fecha: String(r['fecha'] || ''),
+          clienteProveedor: String(r['clienteProveedor'] || ''),
+          origen: String(r['origen'] || ''),
+          destino: String(r['destino'] || ''),
+          gestion: String(r['gestion'] || ''),
+          total: this.mobilityRowTotal(r),
+          proyecto: this.resolveRowProjectLabel(r['proyectId']),
+          colaborador: String(r['colaboradorNombre'] || this.getCollaboratorDisplayName() || ''),
+        });
+      }
+    }
+    if (!sourceRows.length) return [];
+    // Orden cronológico según la fecha que el usuario ingresó en cada fila, para
+    // que el reparto en tramos de S/40 consuma las gestiones en ese mismo orden.
+    sourceRows.sort((a, b) => a.fecha.localeCompare(b.fecha));
 
-    if (totalAmount <= 0) return null;
+    const totalAmount = Math.round(sourceRows.reduce((s, r) => s + r.total, 0) * 100) / 100;
+    if (totalAmount <= 0) return [];
 
     const DAILY_RATE = 40;
-    const rows: MobilitySheetExportData['rows'] = [];
+    const nPages = Math.ceil((totalAmount - 1e-6) / DAILY_RATE);
 
-    // Las rendiciones de anticipo guardan las fechas en startDate/endDate, pero las
-    // de viatico unificado las guardan en viaticoStartDate/viaticoEndDate. Sin este
-    // fallback el viatico cae al else y no separa el total en tramos de S/40 por dia.
+    // Las rendiciones de anticipo guardan la fecha de solicitud en startDate, pero
+    // las de viatico unificado la guardan en viaticoStartDate.
     const startDate = this.parseDateSafe(
       (this.report?.startDate ?? this.report?.viaticoStartDate) as string ?? '',
     );
@@ -1947,67 +1968,63 @@ export class RendicionDetailComponent implements OnInit {
       (this.report?.endDate ?? this.report?.viaticoEndDate) as string ?? '',
     );
 
+    let cur: Date;
     if (startDate && endDate) {
       const day2 = new Date(startDate);
       day2.setDate(day2.getDate() + 1);
-
       const msPerDay = 24 * 60 * 60 * 1000;
       const daysFromDay2 = Math.max(0, Math.round((endDate.getTime() - day2.getTime()) / msPerDay) + 1);
-      const rowsNeeded = Math.ceil(totalAmount / DAILY_RATE);
-
-      const cur = rowsNeeded <= daysFromDay2 ? new Date(day2) : new Date(startDate);
-
-      let remaining = totalAmount;
-      while (remaining > 0.005) {
-        const dayAmount = Math.min(DAILY_RATE, Math.round(remaining * 100) / 100);
-        rows.push({
-          fecha: this.dateToYmd(cur),
-          clienteProveedor: '',
-          origen: '',
-          destino: '',
-          gestion: '',
-          total: dayAmount,
-          colaborador: this.getCollaboratorDisplayName(),
-        });
-        remaining = Math.round((remaining - dayAmount) * 100) / 100;
-        cur.setDate(cur.getDate() + 1);
-      }
+      cur = nPages <= daysFromDay2 ? day2 : new Date(startDate);
     } else {
-      rows.push({
-        fecha: '',
-        clienteProveedor: '',
-        origen: '',
-        destino: '',
-        gestion: '',
-        total: totalAmount,
-        colaborador: this.getCollaboratorDisplayName(),
+      cur = startDate ?? this.parseDateSafe(sourceRows[0].fecha) ?? new Date();
+    }
+
+    // Base del código correlativo: el número de la planilla física más antigua
+    // (o "PM" si ninguna lo tiene), sufijado con un correlativo por página.
+    const codeBase = (mobilityExpenses.find(
+      e => typeof e['internalCode'] === 'string' && e['internalCode'],
+    )?.['internalCode'] as string | undefined) || 'PM';
+
+    // Puntero que recorre las filas reales en orden; cada tramo de S/40 avanza el
+    // puntero y se queda con los datos de la última gestión que le aportó monto.
+    let rowIdx = 0;
+    let rowRemaining = sourceRows[0].total;
+
+    const pages: MobilitySheetExportData[] = [];
+    for (let i = 0; i < nPages; i++) {
+      const total = Math.round(Math.min(DAILY_RATE, totalAmount - i * DAILY_RATE) * 100) / 100;
+      let remainingToConsume = total;
+      let representative = sourceRows[rowIdx];
+      while (remainingToConsume > 0.005) {
+        const take = Math.round(Math.min(rowRemaining, remainingToConsume) * 100) / 100;
+        rowRemaining = Math.round((rowRemaining - take) * 100) / 100;
+        remainingToConsume = Math.round((remainingToConsume - take) * 100) / 100;
+        representative = sourceRows[rowIdx];
+        if (rowRemaining <= 0.005 && rowIdx < sourceRows.length - 1) {
+          rowIdx++;
+          rowRemaining = sourceRows[rowIdx].total;
+        }
+      }
+
+      const pageDate = new Date(cur);
+      pageDate.setDate(pageDate.getDate() + i);
+
+      pages.push({
+        fileBaseName: `planilla_movilidad_${this.dateToYmd(pageDate)}`,
+        collaborator: this.getCollaboratorDisplayName(),
+        collaboratorDni: this.collaboratorDniForPdf(),
+        internalCode: `${codeBase}-${String(i + 1).padStart(2, '0')}`,
+        location: this.report?.location,
+        generatedAt: new Date().toLocaleString('es-PE', { dateStyle: 'short', timeStyle: 'short' }),
+        periodo: pageDate.toLocaleString('es-PE', { month: 'long' }).toUpperCase(),
+        proyecto: this.getProjectName(),
+        rows: [{ ...representative, fecha: this.dateToYmd(pageDate), total }],
+        total,
+        signature: this.getCollaboratorSignature(),
       });
     }
 
-    const periodo = startDate
-      ? startDate.toLocaleString('es-PE', { month: 'long' }).toUpperCase()
-      : '';
-
-    // Todas las planillas de movilidad de la rendición son UN solo documento
-    // físico (por eso se consolidan en una sola hoja); se usa un único
-    // número (el de la más antigua) en vez de listar uno por expense.
-    const sharedInternalCode = mobilityExpenses.find(
-      e => typeof e['internalCode'] === 'string' && e['internalCode'],
-    )?.['internalCode'] as string | undefined;
-
-    return {
-      fileBaseName: 'planilla_movilidad_consolidada',
-      collaborator: this.getCollaboratorDisplayName(),
-      collaboratorDni: this.collaboratorDniForPdf(),
-      internalCode: sharedInternalCode,
-      location: this.report?.location,
-      generatedAt: new Date().toLocaleString('es-PE', { dateStyle: 'short', timeStyle: 'short' }),
-      periodo,
-      proyecto: this.getProjectName(),
-      rows,
-      total: totalAmount,
-      signature: this.getCollaboratorSignature(),
-    };
+    return pages;
   }
 
   async exportRendicionFullPdf(): Promise<void> {
@@ -2021,17 +2038,19 @@ export class RendicionDetailComponent implements OnInit {
     let facturaIndex = 0;
 
     const mobilityExpenses = expenses.filter(e => this.getExpenseTypeKey(e) === 'planilla_movilidad');
-    let mobilityPageAdded = false;
+    let mobilityPagesAdded = false;
 
     for (const exp of expenses) {
       const typeKey = this.getExpenseTypeKey(exp);
       const expType = exp['expenseType'] as string;
 
       if (typeKey === 'planilla_movilidad') {
-        if (!mobilityPageAdded) {
-          const consolidated = this.buildConsolidatedMobilityPageData(mobilityExpenses);
-          if (consolidated) pages.push({ type: 'mobility', data: consolidated });
-          mobilityPageAdded = true;
+        if (!mobilityPagesAdded) {
+          const mobilityPages = this.buildMobilityPagesByDailyCap(mobilityExpenses);
+          for (const data of mobilityPages) {
+            pages.push({ type: 'mobility', data });
+          }
+          mobilityPagesAdded = true;
         }
       } else if (typeKey === 'comprobante_caja') {
         pages.push({ type: 'cash_voucher', data: this.buildCashVoucherPageData(exp) });
