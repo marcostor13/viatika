@@ -11,12 +11,16 @@ import {
 } from '@angular/forms';
 import { NotificationService } from '../../../services/notification.service';
 import { InvoicesService } from '../services/invoices.service';
+import { PlatformFileService } from '../../../services/platform-file.service';
 import { ExpenseReportsService } from '../../../services/expense-reports.service';
 import { AdvanceService } from '../../../services/advance.service';
 import { UserStateService } from '../../../services/user-state.service';
 import { ExpenseService } from '../../../services/expense.service';
 import { DomSanitizer, SafeUrl } from '@angular/platform-browser';
 import { UploadService } from '../../../services/upload.service';
+import { ConnectivityService } from '../../../services/connectivity.service';
+import { OfflineSyncService } from '../../../services/offline-sync.service';
+import { OfflineDocType } from '../../../services/offline-queue.service';
 import { environment } from '../../../../environments/environment';
 import { CommonModule } from '@angular/common';
 import { IProject } from '../interfaces/project.interface';
@@ -59,12 +63,15 @@ export default class AddInvoiceComponent implements OnInit {
   private router = inject(Router);
   private fb = inject(FormBuilder);
   private notificationService = inject(NotificationService);
+  private platformFile = inject(PlatformFileService);
   private expenseReportsService = inject(ExpenseReportsService);
   private advanceService = inject(AdvanceService);
   private userStateService = inject(UserStateService);
   private route = inject(ActivatedRoute);
   private sanitizer = inject(DomSanitizer);
   private uploadService = inject(UploadService);
+  private connectivity = inject(ConnectivityService);
+  private offlineSync = inject(OfflineSyncService);
   private companyConfigService = inject(CompanyConfigService);
   private expenseService = inject(ExpenseService);
   private categoryGroupService = inject(CategoryGroupService);
@@ -366,7 +373,7 @@ export default class AddInvoiceComponent implements OnInit {
             try {
               dataObj =
                 typeof res.data === 'string' ? JSON.parse(res.data) : res.data;
-            } catch {}
+            } catch { }
           }
 
           let fecha = '';
@@ -506,7 +513,7 @@ export default class AddInvoiceComponent implements OnInit {
           console.error('Error al cargar la factura:', error);
           this.notificationService.show(
             'Error al cargar la factura: ' +
-              (error.message || 'Intente nuevamente'),
+            (error.message || 'Intente nuevamente'),
             'error'
           );
         },
@@ -587,7 +594,7 @@ export default class AddInvoiceComponent implements OnInit {
         this.categories = categories;
         this.autoSelectDjCategories();
       },
-      error: (error) => {},
+      error: (error) => { },
     });
   }
 
@@ -610,7 +617,7 @@ export default class AddInvoiceComponent implements OnInit {
         this.categoryGroups = groups ?? [];
         this.autoSelectDjCategories();
       },
-      error: () => {},
+      error: () => { },
     });
   }
 
@@ -633,7 +640,7 @@ export default class AddInvoiceComponent implements OnInit {
           dni: u.dni,
         }));
       },
-      error: () => {},
+      error: () => { },
     });
   }
 
@@ -660,7 +667,7 @@ export default class AddInvoiceComponent implements OnInit {
           this.currencyOptions.set(config.supportedCurrencies);
         }
       },
-      error: () => {},
+      error: () => { },
     });
   }
 
@@ -1414,6 +1421,38 @@ export default class AddInvoiceComponent implements OnInit {
     }
   }
 
+  /**
+   * Si no hay conexión, guarda el documento en la cola offline (se subirá al
+   * reconectar) y navega de vuelta. Devuelve true si se encoló. El `payload` NO
+   * debe incluir `imageUrl`: la URL se genera al subir el adjunto durante la
+   * sincronización.
+   */
+  private enqueueOfflineDocument(
+    type: OfflineDocType,
+    payload: any,
+    file: File | null
+  ): boolean {
+    if (this.connectivity.isOnline()) return false;
+    this.offlineSync
+      .enqueue({ type, payload, file: file || undefined })
+      .then(() => {
+        this.isLoading.set(false);
+        this.notificationService.show(
+          'Sin conexion: el documento se guardo y se subira automaticamente al reconectar.',
+          'warning'
+        );
+        this.navigateAfterExpenseSave();
+      })
+      .catch((e) => {
+        this.isLoading.set(false);
+        this.notificationService.show(
+          'No se pudo guardar sin conexion: ' + (e?.message || e),
+          'error'
+        );
+      });
+    return true;
+  }
+
   saveCashReceipt() {
     const fecha = this.form.get('receiptFecha')?.value;
     const concepto = (this.form.get('receiptConcepto')?.value || '').trim();
@@ -1428,6 +1467,30 @@ export default class AddInvoiceComponent implements OnInit {
     }
 
     this.isLoading.set(true);
+
+    const receiptData = JSON.stringify({
+      razonSocial: this.form.get('receiptRazonSocial')?.value || '',
+      ruc: this.form.get('receiptRuc')?.value || '',
+      numeroDocumento: this.form.get('receiptNumeroDocumento')?.value || '',
+      concepto,
+    });
+    if (
+      this.enqueueOfflineDocument(
+        'cash_receipt',
+        {
+          proyectId: this.form.get('proyectId')?.value,
+          categoryId: this.form.get('categoryId')?.value,
+          expenseReportId: this.rendicionId || undefined,
+          total: monto,
+          fechaEmision: fecha,
+          data: receiptData,
+        },
+        this.selectedFile
+      )
+    ) {
+      return;
+    }
+
     const { downloadUrl$ } = this.uploadService.uploadFile(this.selectedFile, environment.storagePath);
     downloadUrl$.subscribe({
       next: (url) => {
@@ -1438,12 +1501,7 @@ export default class AddInvoiceComponent implements OnInit {
           total: monto,
           fechaEmision: fecha,
           imageUrl: url,
-          data: JSON.stringify({
-            razonSocial: this.form.get('receiptRazonSocial')?.value || '',
-            ruc: this.form.get('receiptRuc')?.value || '',
-            numeroDocumento: this.form.get('receiptNumeroDocumento')?.value || '',
-            concepto,
-          }),
+          data: receiptData,
         };
         this.invoiceService.createCashReceipt(payload).subscribe({
           next: (res) => {
@@ -1481,6 +1539,17 @@ export default class AddInvoiceComponent implements OnInit {
     this.cashVoucherFileName = file.name;
     this.cashVoucherMimeType = file.type;
 
+    // Sin conexion no se puede subir ni escanear: el adjunto se guarda con el
+    // documento en cola y se sube al reconectar. El usuario completa a mano.
+    if (this.connectivity.isOffline()) {
+      this.cashVoucherFileUrl = null;
+      this.notificationService.show(
+        'Sin conexion: el archivo se adjuntara al reconectar. Completa los campos manualmente.',
+        'warning'
+      );
+      return;
+    }
+
     this.isScanningVoucher.set(true);
     const { downloadUrl$ } = this.uploadService.uploadFile(file, environment.storagePath);
     downloadUrl$.subscribe({
@@ -1502,7 +1571,7 @@ export default class AddInvoiceComponent implements OnInit {
               this.isScanningVoucher.set(false);
               this.notificationService.show(
                 'No se pudieron extraer los datos automaticamente. Completa los campos manualmente. ' +
-                  (error.error?.message || error.message || ''),
+                (error.error?.message || error.message || ''),
                 'warning'
               );
             },
@@ -1560,6 +1629,33 @@ export default class AddInvoiceComponent implements OnInit {
     }
 
     this.isLoading.set(true);
+    const voucherData = JSON.stringify({
+      entregadoA,
+      direccion,
+      concepto,
+      monto,
+    });
+
+    // Offline (o adjunto aun no subido): encolar con el archivo local.
+    if (this.connectivity.isOffline() && this.selectedFile) {
+      if (
+        this.enqueueOfflineDocument(
+          'cash_voucher',
+          {
+            proyectId: this.form.get('proyectId')?.value,
+            categoryId: this.form.get('categoryId')?.value,
+            expenseReportId: this.rendicionId || undefined,
+            total: monto,
+            fechaEmision: fecha || undefined,
+            data: voucherData,
+          },
+          this.selectedFile
+        )
+      ) {
+        return;
+      }
+    }
+
     const payload = {
       proyectId: this.form.get('proyectId')?.value,
       categoryId: this.form.get('categoryId')?.value,
@@ -1567,12 +1663,7 @@ export default class AddInvoiceComponent implements OnInit {
       total: monto,
       fechaEmision: fecha || undefined,
       imageUrl: this.cashVoucherFileUrl || undefined,
-      data: JSON.stringify({
-        entregadoA,
-        direccion,
-        concepto,
-        monto,
-      }),
+      data: voucherData,
     };
     this.invoiceService.createCashVoucher(payload).subscribe({
       next: (res) => {
@@ -1667,6 +1758,9 @@ export default class AddInvoiceComponent implements OnInit {
         mobilityRows: rows,
         imageUrl,
       };
+      if (this.enqueueOfflineDocument('mobility_sheet', payload, this.selectedFile)) {
+        return;
+      }
       this.invoiceService.createMobilitySheet(payload).subscribe({
         next: (res) => {
           this.isLoading.set(false);
@@ -1683,6 +1777,12 @@ export default class AddInvoiceComponent implements OnInit {
         },
       });
     };
+
+    // Offline: construir el payload sin subir el adjunto y encolar.
+    if (this.connectivity.isOffline()) {
+      doSave();
+      return;
+    }
 
     if (this.selectedFile) {
       const { downloadUrl$ } = this.uploadService.uploadFile(this.selectedFile, environment.storagePath);
@@ -1756,6 +1856,9 @@ export default class AddInvoiceComponent implements OnInit {
         ...(correlativo ? { correlativo } : {}),
         ...(rucEmisor ? { rucEmisor } : {}),
       };
+      if (this.enqueueOfflineDocument('other_expense', payload, this.selectedFile)) {
+        return;
+      }
       this.invoiceService.createOtherExpense(payload).subscribe({
         next: (res) => {
           this.isLoading.set(false);
@@ -1772,6 +1875,11 @@ export default class AddInvoiceComponent implements OnInit {
         },
       });
     };
+
+    if (this.connectivity.isOffline()) {
+      proceed();
+      return;
+    }
 
     if (this.selectedFile) {
       const { downloadUrl$ } = this.uploadService.uploadFile(this.selectedFile, environment.storagePath);
@@ -1850,6 +1958,9 @@ export default class AddInvoiceComponent implements OnInit {
           },
         }),
       };
+      if (this.enqueueOfflineDocument('declaracion_jurada', payload, this.selectedFile)) {
+        return;
+      }
       this.invoiceService.createDeclaracionJurada(payload).subscribe({
         next: (res) => {
           this.isLoading.set(false);
@@ -1868,6 +1979,11 @@ export default class AddInvoiceComponent implements OnInit {
         },
       });
     };
+
+    if (this.connectivity.isOffline()) {
+      proceed();
+      return;
+    }
 
     if (this.selectedFile) {
       const { downloadUrl$ } = this.uploadService.uploadFile(this.selectedFile, environment.storagePath);
@@ -1935,6 +2051,20 @@ export default class AddInvoiceComponent implements OnInit {
         }
         this.isLoading.set(true);
         const isPdf = this.isPdfFile(this.selectedFile);
+        if (this.connectivity.isOffline()) {
+          const offlinePayload = {
+            categoryId: this.form.get('categoryId')?.value,
+            proyectId: this.form.get('proyectId')?.value,
+            status: 'pending',
+            expenseReportId: this.rendicionId || undefined,
+          };
+          this.enqueueOfflineDocument(
+            isPdf ? 'factura_pdf' : 'factura',
+            offlinePayload,
+            this.selectedFile
+          );
+          return;
+        }
         if (isPdf) {
           this.uploadPdfDirectly();
         } else {
@@ -1959,7 +2089,7 @@ export default class AddInvoiceComponent implements OnInit {
       try {
         previousData =
           typeof currentData === 'string' ? JSON.parse(currentData) : currentData;
-      } catch {}
+      } catch { }
     }
 
     const payload: any = {
@@ -2220,7 +2350,7 @@ export default class AddInvoiceComponent implements OnInit {
           typeof preview.data === 'string'
             ? JSON.parse(preview.data)
             : preview.data;
-      } catch {}
+      } catch { }
     }
     this.form.patchValue({
       rucEmisor: dataObj.rucEmisor || '',
