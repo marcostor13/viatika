@@ -6,6 +6,7 @@ import { PaginatorComponent } from '../../design-system/paginator/paginator.comp
 import { IPaginatedResult } from '../../interfaces/paginated-result.interface';
 
 const ACTION_LABELS: Record<string, string> = {
+  export_pdf_attachment_failed: 'Error: adjunto no incluido en PDF completo',
   login: 'Inicio de sesión',
   create_invoice: 'Subió factura',
   approve_invoice: 'Aprobó factura',
@@ -90,7 +91,7 @@ export class AuditLogComponent implements OnInit {
   }
 
   getActionColor(action: string): string {
-    if (action.startsWith('delete') || action.includes('reject')) return 'bg-red-100 text-red-700';
+    if (action.startsWith('delete') || action.includes('reject') || action.includes('failed')) return 'bg-red-100 text-red-700';
     if (action.startsWith('approve') || action.includes('settle') || action.includes('pay')) return 'bg-green-100 text-green-700';
     if (action.includes('update') || action.includes('change')) return 'bg-yellow-100 text-yellow-700';
     return 'bg-blue-100 text-blue-700';
