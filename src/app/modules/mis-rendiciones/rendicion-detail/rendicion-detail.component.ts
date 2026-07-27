@@ -2000,6 +2000,9 @@ export class RendicionDetailComponent implements OnInit {
       let representative = sourceRows[rowIdx];
       while (remainingToConsume > 0.005) {
         const take = Math.round(Math.min(rowRemaining, remainingToConsume) * 100) / 100;
+        // Si el tramo deja de consumir (última fila agotada o con importe no
+        // positivo) el bucle no avanzaría nunca y colgaría la pestaña.
+        if (take <= 0 && rowIdx >= sourceRows.length - 1) break;
         rowRemaining = Math.round((rowRemaining - take) * 100) / 100;
         remainingToConsume = Math.round((remainingToConsume - take) * 100) / 100;
         representative = sourceRows[rowIdx];
@@ -2128,9 +2131,15 @@ export class RendicionDetailComponent implements OnInit {
 
     this.isExportingFullPdf.set(true);
     try {
-      const { skipped, failures } = await this.rendicionExportService.exportFullRendicionPdf(summaryData, pages);
+      const { skipped, failures, summaryFailed } =
+        await this.rendicionExportService.exportFullRendicionPdf(summaryData, pages);
       if (failures.length) this.logExportFailures(failures);
-      if (skipped > 0) {
+      if (summaryFailed) {
+        this.notificationService.show(
+          'El PDF se descargó con los comprobantes, pero la hoja de resumen no se pudo generar. Avisa a soporte.',
+          'warning',
+        );
+      } else if (skipped > 0) {
         this.notificationService.show(
           `PDF completo descargado, pero no se pudo descargar el archivo de ${skipped} ${skipped === 1 ? 'comprobante: va' : 'comprobantes: van'} solo con sus datos. Vuelve a intentarlo o revisa que el adjunto se abra desde el comprobante.`,
           'warning',
