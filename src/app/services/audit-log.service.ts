@@ -29,4 +29,21 @@ export class AuditLogService {
     if (opts.search) params = params.set('search', opts.search);
     return this.http.get<IPaginatedResult<IAuditLog>>(`${this.apiUrl}/audit-log`, { params });
   }
+
+  /**
+   * Deja constancia de los adjuntos que el "PDF completo" no pudo incrustar.
+   * Es diagnóstico: los fallos suelen depender del navegador del colaborador y
+   * no se reproducen desde otro equipo, así que el motivo debe quedar guardado
+   * en el momento en que ocurre.
+   */
+  reportExportFailure(payload: {
+    reportId: string;
+    reportCode?: string;
+    attachments: { label: string; url: string; reason: string }[];
+  }): Observable<{ registered: number }> {
+    return this.http.post<{ registered: number }>(
+      `${this.apiUrl}/audit-log/export-failure`,
+      payload,
+    );
+  }
 }
