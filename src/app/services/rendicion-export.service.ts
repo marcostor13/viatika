@@ -318,6 +318,29 @@ export class RendicionExportService {
     }
   }
 
+  /**
+   * Dibuja una imagen (logo o firma) sin que un formato inesperado tumbe el
+   * documento entero: jsPDF lanza si el dato no es un PNG/JPEG que sepa leer
+   * —un logo subido como SVG, una firma con base64 truncado— y esa excepción
+   * llegaba a abortar toda la exportación. Si no se puede dibujar, el documento
+   * sale sin esa imagen, que es preferible a no salir.
+   */
+  private safeAddImage(
+    doc: jsPDF,
+    image: string,
+    format: string,
+    x: number,
+    y: number,
+    w: number,
+    h: number,
+  ): void {
+    try {
+      doc.addImage(image, format, x, y, w, h);
+    } catch {
+      // Documento sin logo/firma antes que exportación fallida.
+    }
+  }
+
   async exportToExcel(data: RendicionExportData): Promise<void> {
     data = { ...data, signature: await this.resolveSignature(data.signature) };
     const wb = new ExcelJS.Workbook();
@@ -641,7 +664,7 @@ export class RendicionExportService {
 
     const logoB64 = await this.getLogoBase64();
     if (logoB64) {
-      doc.addImage(logoB64, 'PNG', 14, 10, 45, 12);
+      this.safeAddImage(doc, logoB64, 'PNG', 14, 10, 45, 12);
     }
 
     doc.setFont("helvetica", "bold");
@@ -863,7 +886,7 @@ export class RendicionExportService {
 
     const centerPage = doc.internal.pageSize.getWidth() / 2;
     if (data.signature) {
-      doc.addImage(data.signature, 'PNG', centerPage - 25, y - 25, 50, 25);
+      this.safeAddImage(doc, data.signature, 'PNG', centerPage - 25, y - 25, 50, 25);
     }
     const lineY = y;
     doc.setLineWidth(0.5);
@@ -912,7 +935,7 @@ export class RendicionExportService {
     doc.text(`Fecha de generacion: ${data.fechaGeneracion}`, 14, y + 8);
 
     if (data.signature) {
-      doc.addImage(data.signature, 'PNG', 74, y + 16, 60, 24);
+      this.safeAddImage(doc, data.signature, 'PNG', 74, y + 16, 60, 24);
       doc.line(60, y + 44, 150, y + 44);
       doc.text(data.colaborador.toUpperCase(), 105, y + 49, { align: 'center' });
     }
@@ -945,7 +968,7 @@ export class RendicionExportService {
 
     // Logo top right
     if (logoB64) {
-      doc.addImage(logoB64, 'PNG', 153, 6, 40, 24);
+      this.safeAddImage(doc, logoB64, 'PNG', 153, 6, 40, 24);
     }
 
     // Company info left
@@ -1120,7 +1143,7 @@ export class RendicionExportService {
 
     const sigCX = pageW / 2;
     if (data.signature) {
-      doc.addImage(data.signature, 'PNG', sigCX - 25, y + 2, 50, 16);
+      this.safeAddImage(doc, data.signature, 'PNG', sigCX - 25, y + 2, 50, 16);
     }
     y += 20;
     doc.setFont('helvetica', 'bold');
@@ -1180,7 +1203,7 @@ export class RendicionExportService {
     const logoB64 = await this.getLogoBase64();
     const headerY = 19;
     if (logoB64) {
-      doc.addImage(logoB64, 'PNG', lm, headerY - 5, 14, 8);
+      this.safeAddImage(doc, logoB64, 'PNG', lm, headerY - 5, 14, 8);
     }
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(8);
@@ -1255,7 +1278,7 @@ export class RendicionExportService {
     const sigX2 = rm;
     const sigCX = (sigX1 + sigX2) / 2;
     if (data.signature) {
-      doc.addImage(data.signature, 'PNG', sigCX - 16, y - 10, 32, 10);
+      this.safeAddImage(doc, data.signature, 'PNG', sigCX - 16, y - 10, 32, 10);
     }
     doc.line(sigX1, y, sigX2, y);
     doc.setFontSize(7);
@@ -1318,7 +1341,7 @@ export class RendicionExportService {
 
     const sigY = afterTable(doc) + 24;
     if (data.signature) {
-      doc.addImage(data.signature, 'PNG', 74, sigY - 20, 60, 20);
+      this.safeAddImage(doc, data.signature, 'PNG', 74, sigY - 20, 60, 20);
     }
     doc.line(60, sigY + 6, 150, sigY + 6);
     doc.setFontSize(9);
@@ -1619,7 +1642,7 @@ export class RendicionExportService {
     y += 20;
     const center = 105;
     if (data.signature) {
-      doc.addImage(data.signature, 'PNG', center - 30, y - 18, 60, 18);
+      this.safeAddImage(doc, data.signature, 'PNG', center - 30, y - 18, 60, 18);
     }
     doc.line(center - 40, y, center + 40, y);
     y += 4;
@@ -1748,7 +1771,7 @@ export class RendicionExportService {
 
     const center = 105;
     if (signature) {
-      doc.addImage(signature, 'PNG', center - 30, y - 18, 60, 18);
+      this.safeAddImage(doc, signature, 'PNG', center - 30, y - 18, 60, 18);
     }
     doc.line(center - 40, y, center + 40, y);
     y += 4;
@@ -1774,7 +1797,7 @@ export class RendicionExportService {
 
     const logoB64 = await this.getLogoBase64();
     if (logoB64) {
-      doc.addImage(logoB64, 'PNG', rm - 40, 6, 40, 12);
+      this.safeAddImage(doc, logoB64, 'PNG', rm - 40, 6, 40, 12);
     }
 
     doc.setFont('helvetica', 'bold');
@@ -1822,14 +1845,27 @@ export class RendicionExportService {
   async exportFullRendicionPdf(
     summaryData: RendicionExportData,
     pages: ComprobantePage[],
-  ): Promise<{ skipped: number; failures: AttachmentFailure[] }> {
+  ): Promise<{
+    skipped: number;
+    failures: AttachmentFailure[];
+    summaryFailed: boolean;
+  }> {
     const { PDFDocument } = await import('pdf-lib');
     const sections: Uint8Array[] = [];
     const failures: AttachmentFailure[] = [];
     let skipped = 0;
 
-    const summaryBytes = await this.exportToPdf(summaryData, undefined, true);
-    if (summaryBytes) sections.push(summaryBytes);
+    // El resumen se genera aparte de las secciones, así que un fallo suyo
+    // dejaba la exportación entera sin PDF. Si falla, se sigue con los
+    // comprobantes y se avisa: un legajo sin carátula sirve más que nada.
+    let summaryFailed = false;
+    try {
+      const summaryBytes = await this.exportToPdf(summaryData, undefined, true);
+      if (summaryBytes) sections.push(summaryBytes);
+      else summaryFailed = true;
+    } catch {
+      summaryFailed = true;
+    }
 
     for (const page of pages) {
       try {
@@ -1905,7 +1941,7 @@ export class RendicionExportService {
       new Blob([mergedBytes], { type: 'application/pdf' }),
       `${summaryData.fileBaseName}_completo.pdf`,
     );
-    return { skipped, failures };
+    return { skipped, failures, summaryFailed };
   }
 
   /**
