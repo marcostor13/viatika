@@ -30,7 +30,9 @@ import {
   SingleExpenseAffidavitData,
   ComprobantePage,
   FacturaPageData,
+  AttachmentFailure,
 } from '../../../services/rendicion-export.service';
+import { AuditLogService } from '../../../services/audit-log.service';
 import { SolicitudViaticosModalComponent } from '../solicitud-viaticos-modal/solicitud-viaticos-modal.component';
 import {
   formatFechaEmisionDdMmYyyy,
@@ -61,6 +63,7 @@ export class RendicionDetailComponent implements OnInit {
   private confirmationService = inject(ConfirmationService);
   private invoicesService = inject(InvoicesService);
   private rendicionExportService = inject(RendicionExportService);
+  private auditLogService = inject(AuditLogService);
   private companyConfigService = inject(CompanyConfigService);
   private uploadService = inject(UploadService);
   private accountingEntriesService = inject(AccountingEntriesService);
@@ -1997,6 +2000,9 @@ export class RendicionDetailComponent implements OnInit {
       let representative = sourceRows[rowIdx];
       while (remainingToConsume > 0.005) {
         const take = Math.round(Math.min(rowRemaining, remainingToConsume) * 100) / 100;
+        // Si el tramo deja de consumir (última fila agotada o con importe no
+        // positivo) el bucle no avanzaría nunca y colgaría la pestaña.
+        if (take <= 0 && rowIdx >= sourceRows.length - 1) break;
         rowRemaining = Math.round((rowRemaining - take) * 100) / 100;
         remainingToConsume = Math.round((remainingToConsume - take) * 100) / 100;
         representative = sourceRows[rowIdx];
@@ -2025,6 +2031,36 @@ export class RendicionDetailComponent implements OnInit {
     }
 
     return pages;
+  }
+
+  /**
+   * ¿El gasto de "otros gastos" es una Declaración Jurada? Los registros legacy
+   * no guardan `subTipo` y en su momento todos eran DJ, así que la ausencia del
+   * sub-tipo se trata como DJ. Los demás (BV, TK, RC, OT) son comprobantes
+   * físicos con adjunto obligatorio.
+   */
+  private isDeclaracionJurada(expense: Record<string, unknown>): boolean {
+    const sub = String(
+      expense['subTipo'] ?? this.getExpenseDataObject(expense)['subTipo'] ?? '',
+    ).trim().toUpperCase();
+    return !sub || sub === 'DJ';
+  }
+
+  /**
+   * Página del PDF completo con el archivo adjunto del comprobante. Lleva
+   * además la ficha de datos como respaldo, que el export usa si no consigue
+   * descargar el archivo.
+   */
+  private buildAttachmentPage(
+    expense: Record<string, unknown>,
+    fileUrl: string,
+    index: number,
+  ): ComprobantePage {
+    const label = this.getExpenseTypeCode(expense) || 'Comprobante';
+    const fallback = this.buildFacturaPageData(expense, index);
+    return /\.(jpe?g|png|gif|webp)(\?|#|$)/i.test(fileUrl)
+      ? { type: 'factura_image', url: fileUrl, label, fallback }
+      : { type: 'factura_pdf', url: fileUrl, label, fallback };
   }
 
   async exportRendicionFullPdf(): Promise<void> {
@@ -2057,27 +2093,37 @@ export class RendicionDetailComponent implements OnInit {
       } else if (expType === 'recibo_caja') {
         pages.push({ type: 'receipt', data: this.buildReceiptPageData(exp) });
       } else if (typeKey === 'otros_gastos') {
-        pages.push({
-          type: 'affidavit',
-          data: this.buildAffidavitPageData(
-            exp,
-            'OTROS GASTOS',
-            undefined,
-            undefined,
-            String(exp['description'] || '—'),
-          ),
-        });
-      } else {
+        // Dentro de "otros gastos" solo la Declaración Jurada (y los registros
+        // legacy sin sub-tipo, que siempre fueron DJ) se sustentan con la hoja
+        // firmada. Los demás sub-tipos (BV, TK, RC, OT) son comprobantes físicos
+        // con adjunto obligatorio: lo que debe ir al PDF es ese adjunto.
         const fileUrl = this.getExpenseFileUrl(exp);
-        if (fileUrl) {
-          const label = String(exp['expenseType'] || 'Factura');
-          if (/\.(jpe?g|png|gif|webp)(\?|#|$)/i.test(fileUrl)) {
-            pages.push({ type: 'factura_image', url: fileUrl, label });
-          } else {
-            pages.push({ type: 'factura_pdf', url: fileUrl, label });
-          }
+        if (this.isDeclaracionJurada(exp)) {
+          pages.push({
+            type: 'affidavit',
+            data: this.buildAffidavitPageData(
+              exp,
+              'OTROS GASTOS',
+              undefined,
+              undefined,
+              String(exp['description'] || '—'),
+            ),
+          });
+          // Una DJ no lleva adjunto en el flujo actual, pero si un registro
+          // antiguo lo tiene se anexa igual para no perderlo.
+          if (fileUrl) pages.push(this.buildAttachmentPage(exp, fileUrl, ++facturaIndex));
+        } else if (fileUrl) {
+          pages.push(this.buildAttachmentPage(exp, fileUrl, ++facturaIndex));
         } else {
           facturaIndex++;
+          pages.push({ type: 'factura', data: this.buildFacturaPageData(exp, facturaIndex) });
+        }
+      } else {
+        const fileUrl = this.getExpenseFileUrl(exp);
+        facturaIndex++;
+        if (fileUrl) {
+          pages.push(this.buildAttachmentPage(exp, fileUrl, facturaIndex));
+        } else {
           pages.push({ type: 'factura', data: this.buildFacturaPageData(exp, facturaIndex) });
         }
       }
@@ -2085,13 +2131,48 @@ export class RendicionDetailComponent implements OnInit {
 
     this.isExportingFullPdf.set(true);
     try {
-      await this.rendicionExportService.exportFullRendicionPdf(summaryData, pages);
-      this.notificationService.show('PDF completo descargado', 'success');
+      const { skipped, failures, summaryFailed } =
+        await this.rendicionExportService.exportFullRendicionPdf(summaryData, pages);
+      if (failures.length) this.logExportFailures(failures);
+      if (summaryFailed) {
+        this.notificationService.show(
+          'El PDF se descargó con los comprobantes, pero la hoja de resumen no se pudo generar. Avisa a soporte.',
+          'warning',
+        );
+      } else if (skipped > 0) {
+        this.notificationService.show(
+          `PDF completo descargado, pero no se pudo descargar el archivo de ${skipped} ${skipped === 1 ? 'comprobante: va' : 'comprobantes: van'} solo con sus datos. Vuelve a intentarlo o revisa que el adjunto se abra desde el comprobante.`,
+          'warning',
+        );
+      } else {
+        this.notificationService.show('PDF completo descargado', 'success');
+      }
     } catch {
       this.notificationService.show('No se pudo generar el PDF completo', 'error');
     } finally {
       this.isExportingFullPdf.set(false);
     }
+  }
+
+  /**
+   * Deja los adjuntos fallidos en el registro de auditoría de la plataforma.
+   * Estos fallos dependen del equipo del colaborador y no se reproducen desde
+   * otro navegador, así que el motivo hay que capturarlo donde ocurre. Es
+   * diagnóstico: si el registro falla, no se molesta al usuario.
+   */
+  private logExportFailures(failures: AttachmentFailure[]): void {
+    if (!this.report?._id) return;
+    this.auditLogService
+      .reportExportFailure({
+        reportId: String(this.report._id),
+        reportCode: this.report.codigo || undefined,
+        attachments: failures.map(f => ({
+          label: f.label,
+          url: f.url.slice(0, 500),
+          reason: f.reason.slice(0, 300),
+        })),
+      })
+      .subscribe({ next: () => undefined, error: () => undefined });
   }
 
   affidavitCandidates(): Array<Record<string, unknown> & { _id: string }> {

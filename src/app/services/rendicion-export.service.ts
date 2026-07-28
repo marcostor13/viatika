@@ -220,12 +220,22 @@ export interface FacturaPageData {
 
 export type ComprobantePage =
   | { type: 'factura'; data: FacturaPageData }
-  | { type: 'factura_image'; url: string; label: string }
-  | { type: 'factura_pdf'; url: string; label: string }
+  // `fallback`: ficha con los datos del comprobante, para emitirla en su lugar
+  // si el adjunto no se puede descargar. Así el comprobante nunca desaparece
+  // del PDF completo por un problema de red o de CORS del navegador.
+  | { type: 'factura_image'; url: string; label: string; fallback?: FacturaPageData }
+  | { type: 'factura_pdf'; url: string; label: string; fallback?: FacturaPageData }
   | { type: 'mobility'; data: MobilitySheetExportData }
   | { type: 'cash_voucher'; data: CashVoucherExportData }
   | { type: 'receipt'; data: ReceiptExportData }
   | { type: 'affidavit'; data: SingleExpenseAffidavitData };
+
+/** Adjunto que no se pudo incrustar en el PDF completo, con el motivo técnico. */
+export interface AttachmentFailure {
+  label: string;
+  url: string;
+  reason: string;
+}
 
 const RED_HEADER = 'FF912f2c'; // Dark red for headers
 const YELLOW_CELL = 'FFFFFF00'; // Yellow for summary cell
@@ -263,9 +273,8 @@ export class RendicionExportService {
     if (trimmed.startsWith('data:')) return trimmed;
     if (!/^https?:\/\//i.test(trimmed)) return undefined;
     try {
-      const response = await fetch(trimmed);
-      if (!response.ok) return undefined;
-      const blob = await response.blob();
+      const blob = await this.platformFile.fetchBinary(trimmed);
+      if (!blob) return undefined;
       return await new Promise<string>((resolve, reject) => {
         const reader = new FileReader();
         reader.onloadend = () => resolve(reader.result as string);
@@ -281,8 +290,12 @@ export class RendicionExportService {
     const logoUrl = this.companyConfigService.getCompanyConfig()?.logo;
     const url = logoUrl || '/logo_header.png';
     try {
-      const response = await fetch(url);
-      const blob = await response.blob();
+      // El logo del cliente vive en S3: en la app nativa hay que bajarlo sin
+      // pasar por el CORS del WebView (ver PlatformFileService.fetchBinary).
+      const blob = /^https?:\/\//i.test(url)
+        ? await this.platformFile.fetchBinary(url)
+        : await (await fetch(url)).blob();
+      if (!blob) throw new Error('logo no disponible');
       return new Promise((resolve) => {
         const reader = new FileReader();
         reader.onloadend = () => resolve(reader.result as string);
@@ -302,6 +315,29 @@ export class RendicionExportService {
         } catch { return null; }
       }
       return null;
+    }
+  }
+
+  /**
+   * Dibuja una imagen (logo o firma) sin que un formato inesperado tumbe el
+   * documento entero: jsPDF lanza si el dato no es un PNG/JPEG que sepa leer
+   * —un logo subido como SVG, una firma con base64 truncado— y esa excepción
+   * llegaba a abortar toda la exportación. Si no se puede dibujar, el documento
+   * sale sin esa imagen, que es preferible a no salir.
+   */
+  private safeAddImage(
+    doc: jsPDF,
+    image: string,
+    format: string,
+    x: number,
+    y: number,
+    w: number,
+    h: number,
+  ): void {
+    try {
+      doc.addImage(image, format, x, y, w, h);
+    } catch {
+      // Documento sin logo/firma antes que exportación fallida.
     }
   }
 
@@ -628,7 +664,7 @@ export class RendicionExportService {
 
     const logoB64 = await this.getLogoBase64();
     if (logoB64) {
-      doc.addImage(logoB64, 'PNG', 14, 10, 45, 12);
+      this.safeAddImage(doc, logoB64, 'PNG', 14, 10, 45, 12);
     }
 
     doc.setFont("helvetica", "bold");
@@ -850,7 +886,7 @@ export class RendicionExportService {
 
     const centerPage = doc.internal.pageSize.getWidth() / 2;
     if (data.signature) {
-      doc.addImage(data.signature, 'PNG', centerPage - 25, y - 25, 50, 25);
+      this.safeAddImage(doc, data.signature, 'PNG', centerPage - 25, y - 25, 50, 25);
     }
     const lineY = y;
     doc.setLineWidth(0.5);
@@ -899,7 +935,7 @@ export class RendicionExportService {
     doc.text(`Fecha de generacion: ${data.fechaGeneracion}`, 14, y + 8);
 
     if (data.signature) {
-      doc.addImage(data.signature, 'PNG', 74, y + 16, 60, 24);
+      this.safeAddImage(doc, data.signature, 'PNG', 74, y + 16, 60, 24);
       doc.line(60, y + 44, 150, y + 44);
       doc.text(data.colaborador.toUpperCase(), 105, y + 49, { align: 'center' });
     }
@@ -932,7 +968,7 @@ export class RendicionExportService {
 
     // Logo top right
     if (logoB64) {
-      doc.addImage(logoB64, 'PNG', 153, 6, 40, 24);
+      this.safeAddImage(doc, logoB64, 'PNG', 153, 6, 40, 24);
     }
 
     // Company info left
@@ -1107,7 +1143,7 @@ export class RendicionExportService {
 
     const sigCX = pageW / 2;
     if (data.signature) {
-      doc.addImage(data.signature, 'PNG', sigCX - 25, y + 2, 50, 16);
+      this.safeAddImage(doc, data.signature, 'PNG', sigCX - 25, y + 2, 50, 16);
     }
     y += 20;
     doc.setFont('helvetica', 'bold');
@@ -1167,7 +1203,7 @@ export class RendicionExportService {
     const logoB64 = await this.getLogoBase64();
     const headerY = 19;
     if (logoB64) {
-      doc.addImage(logoB64, 'PNG', lm, headerY - 5, 14, 8);
+      this.safeAddImage(doc, logoB64, 'PNG', lm, headerY - 5, 14, 8);
     }
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(8);
@@ -1242,7 +1278,7 @@ export class RendicionExportService {
     const sigX2 = rm;
     const sigCX = (sigX1 + sigX2) / 2;
     if (data.signature) {
-      doc.addImage(data.signature, 'PNG', sigCX - 16, y - 10, 32, 10);
+      this.safeAddImage(doc, data.signature, 'PNG', sigCX - 16, y - 10, 32, 10);
     }
     doc.line(sigX1, y, sigX2, y);
     doc.setFontSize(7);
@@ -1305,7 +1341,7 @@ export class RendicionExportService {
 
     const sigY = afterTable(doc) + 24;
     if (data.signature) {
-      doc.addImage(data.signature, 'PNG', 74, sigY - 20, 60, 20);
+      this.safeAddImage(doc, data.signature, 'PNG', 74, sigY - 20, 60, 20);
     }
     doc.line(60, sigY + 6, 150, sigY + 6);
     doc.setFontSize(9);
@@ -1606,7 +1642,7 @@ export class RendicionExportService {
     y += 20;
     const center = 105;
     if (data.signature) {
-      doc.addImage(data.signature, 'PNG', center - 30, y - 18, 60, 18);
+      this.safeAddImage(doc, data.signature, 'PNG', center - 30, y - 18, 60, 18);
     }
     doc.line(center - 40, y, center + 40, y);
     y += 4;
@@ -1735,7 +1771,7 @@ export class RendicionExportService {
 
     const center = 105;
     if (signature) {
-      doc.addImage(signature, 'PNG', center - 30, y - 18, 60, 18);
+      this.safeAddImage(doc, signature, 'PNG', center - 30, y - 18, 60, 18);
     }
     doc.line(center - 40, y, center + 40, y);
     y += 4;
@@ -1761,7 +1797,7 @@ export class RendicionExportService {
 
     const logoB64 = await this.getLogoBase64();
     if (logoB64) {
-      doc.addImage(logoB64, 'PNG', rm - 40, 6, 40, 12);
+      this.safeAddImage(doc, logoB64, 'PNG', rm - 40, 6, 40, 12);
     }
 
     doc.setFont('helvetica', 'bold');
@@ -1800,15 +1836,36 @@ export class RendicionExportService {
     row('Descripción', data.descripcion || undefined);
   }
 
+  /**
+   * Une el resumen de la rendición con una página por comprobante. Devuelve
+   * cuántas secciones no se pudieron incluir (adjunto inaccesible o archivo que
+   * no es un PDF/imagen válida) para que la vista lo avise: antes se
+   * descartaban en silencio y el comprobante desaparecía del PDF sin rastro.
+   */
   async exportFullRendicionPdf(
     summaryData: RendicionExportData,
     pages: ComprobantePage[],
-  ): Promise<void> {
+  ): Promise<{
+    skipped: number;
+    failures: AttachmentFailure[];
+    summaryFailed: boolean;
+  }> {
     const { PDFDocument } = await import('pdf-lib');
     const sections: Uint8Array[] = [];
+    const failures: AttachmentFailure[] = [];
+    let skipped = 0;
 
-    const summaryBytes = await this.exportToPdf(summaryData, undefined, true);
-    if (summaryBytes) sections.push(summaryBytes);
+    // El resumen se genera aparte de las secciones, así que un fallo suyo
+    // dejaba la exportación entera sin PDF. Si falla, se sigue con los
+    // comprobantes y se avisa: un legajo sin carátula sirve más que nada.
+    let summaryFailed = false;
+    try {
+      const summaryBytes = await this.exportToPdf(summaryData, undefined, true);
+      if (summaryBytes) sections.push(summaryBytes);
+      else summaryFailed = true;
+    } catch {
+      summaryFailed = true;
+    }
 
     for (const page of pages) {
       try {
@@ -1833,15 +1890,38 @@ export class RendicionExportService {
             break;
           }
           case 'factura_image':
-            bytes = await this._buildImageSectionBytes(page.url);
+          case 'factura_pdf': {
+            const attachment = await this._buildAttachmentSectionBytes(page.url);
+            bytes = attachment.bytes;
+            if (!bytes) {
+              skipped++;
+              failures.push({
+                label: page.label,
+                url: page.url,
+                reason: attachment.reason ?? 'desconocido',
+              });
+              // Se emite la ficha con los datos del comprobante para que no
+              // desaparezca del PDF aunque su archivo no se haya podido traer.
+              if (page.fallback) {
+                const fichaDoc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+                await this._renderFacturaContent(fichaDoc, page.fallback);
+                bytes = new Uint8Array(fichaDoc.output('arraybuffer'));
+              }
+            }
             break;
-          case 'factura_pdf':
-            bytes = await this._fetchBytes(page.url);
-            break;
+          }
         }
         if (bytes) sections.push(bytes);
-      } catch {
-        // skip failed section
+        else if (page.type !== 'factura_image' && page.type !== 'factura_pdf') skipped++;
+      } catch (err) {
+        skipped++;
+        if (page.type === 'factura_image' || page.type === 'factura_pdf') {
+          failures.push({
+            label: page.label,
+            url: page.url,
+            reason: this.describeError(err),
+          });
+        }
       }
     }
 
@@ -1852,7 +1932,7 @@ export class RendicionExportService {
         const copied = await merged.copyPages(src, src.getPageIndices());
         copied.forEach(p => merged.addPage(p));
       } catch {
-        // skip invalid section
+        skipped++;
       }
     }
 
@@ -1861,13 +1941,47 @@ export class RendicionExportService {
       new Blob([mergedBytes], { type: 'application/pdf' }),
       `${summaryData.fileBaseName}_completo.pdf`,
     );
+    return { skipped, failures, summaryFailed };
   }
 
-  private async _buildImageSectionBytes(url: string): Promise<Uint8Array | null> {
+  /**
+   * Descarga el adjunto de un comprobante y lo devuelve como sección PDF. El
+   * tipo se decide por el contenido real (cabecera `%PDF` o mime), no por la
+   * extensión de la URL: hay comprobantes subidos como `.jfif` (JPEG) que al
+   * tratarse como PDF reventaban al mezclar y desaparecían del PDF completo.
+   */
+  private async _buildAttachmentSectionBytes(
+    url: string,
+  ): Promise<{ bytes: Uint8Array | null; reason?: string }> {
+    let blob: Blob | null;
     try {
-      const response = await fetch(url);
-      if (!response.ok) return null;
-      const blob = await response.blob();
+      blob = await this.platformFile.fetchBinary(url);
+    } catch (err) {
+      return { bytes: null, reason: `descarga: ${this.describeError(err)}` };
+    }
+    if (!blob) return { bytes: null, reason: 'descarga bloqueada o sin respuesta' };
+    try {
+      const head = new Uint8Array(await blob.slice(0, 5).arrayBuffer());
+      const isPdf =
+        String.fromCharCode(...head) === '%PDF-' || blob.type.includes('pdf');
+      if (isPdf) return { bytes: new Uint8Array(await blob.arrayBuffer()) };
+      const bytes = await this._buildImageSectionBytes(blob);
+      return bytes
+        ? { bytes }
+        : { bytes: null, reason: `imagen ilegible (${blob.type || 'sin tipo'}, ${blob.size} bytes)` };
+    } catch (err) {
+      return { bytes: null, reason: `procesado: ${this.describeError(err)}` };
+    }
+  }
+
+  /** Texto corto y estable del error, para dejarlo en el registro de auditoría. */
+  private describeError(err: unknown): string {
+    if (err instanceof Error) return `${err.name}: ${err.message}`.slice(0, 200);
+    return String(err).slice(0, 200);
+  }
+
+  private async _buildImageSectionBytes(blob: Blob): Promise<Uint8Array | null> {
+    try {
       const base64 = await new Promise<string>((resolve, reject) => {
         const reader = new FileReader();
         reader.onloadend = () => resolve(reader.result as string);
@@ -1899,16 +2013,6 @@ export class RendicionExportService {
       const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
       doc.addImage(base64, format, x, y, drawW, drawH);
       return new Uint8Array(doc.output('arraybuffer'));
-    } catch {
-      return null;
-    }
-  }
-
-  private async _fetchBytes(url: string): Promise<Uint8Array | null> {
-    try {
-      const response = await fetch(url);
-      if (!response.ok) return null;
-      return new Uint8Array(await response.arrayBuffer());
     } catch {
       return null;
     }

@@ -202,7 +202,7 @@ export class SolicitudViaticosComponent implements OnInit {
     startDate: ['', Validators.required],
     endDate: ['', Validators.required],
     projectId: ['', Validators.required],
-    moneda: ['PEN'],
+    moneda: ['PEN', Validators.required],
     observations: [''],
     bankName: [''],
     accountNumber: [''],
@@ -413,15 +413,19 @@ export class SolicitudViaticosComponent implements OnInit {
     });
   }
 
-  /**
-   * Selector de moneda oculto: la solicitud queda fija en soles (PEN). Ignoramos la
-   * moneda base y las monedas soportadas de la config de la empresa para que el
-   * formulario siempre se registre y envíe en soles.
-   */
+  /** Monedas configuradas por la empresa (Configuración → Plan de Cuentas y Bancos). */
   private loadCurrencyOptions(): void {
-    this.monedaBase.set('PEN');
-    this.selectedMoneda.set('PEN');
-    this.form.get('moneda')?.setValue('PEN', { emitEvent: false });
+    const clientId = this.resolveCompanyId();
+    if (!clientId) return;
+    this.accountingConfigService.getCurrencies(clientId).subscribe({
+      next: (config) => {
+        if (config?.monedaBase) this.monedaBase.set(config.monedaBase);
+        if (config?.supportedCurrencies?.length) {
+          this.currencyOptions.set(config.supportedCurrencies);
+        }
+      },
+      error: () => { },
+    });
   }
 
   private loadCatalogues(): void {
@@ -467,7 +471,7 @@ export class SolicitudViaticosComponent implements OnInit {
       place: adv.place ?? '',
       startDate: this.ymdFromDate(adv.startDate),
       endDate: this.ymdFromDate(adv.endDate),
-      moneda: 'PEN',
+      moneda: adv.moneda || 'PEN',
       observations: adv.observations ?? '',
     });
     if (adv.requestAccountNumber) {
@@ -511,7 +515,7 @@ export class SolicitudViaticosComponent implements OnInit {
       place: report.viaticoPlace ?? '',
       startDate: this.ymdFromDate(report.viaticoStartDate),
       endDate: this.ymdFromDate(report.viaticoEndDate),
-      moneda: 'PEN',
+      moneda: report.moneda || 'PEN',
       observations: report.viaticoObservations ?? '',
     });
     if (report.viaticoAccountNumber) {

@@ -41,8 +41,12 @@ export class CajaChicaReportExportService {
     const logoUrl = this.companyConfigService.getCompanyConfig()?.logo;
     const url = logoUrl || '/logo_header.png';
     try {
-      const response = await fetch(url);
-      const blob = await response.blob();
+      // Mismo motivo que en RendicionExportService: en nativo el WebView no
+      // puede hacer fetch al bucket de S3 por CORS.
+      const blob = /^https?:\/\//i.test(url)
+        ? await this.platformFile.fetchBinary(url)
+        : await (await fetch(url)).blob();
+      if (!blob) throw new Error('logo no disponible');
       return new Promise((resolve) => {
         const reader = new FileReader();
         reader.onloadend = () => resolve(reader.result as string);

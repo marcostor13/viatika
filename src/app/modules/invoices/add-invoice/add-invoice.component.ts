@@ -81,6 +81,12 @@ export default class AddInvoiceComponent implements OnInit {
   /** Monedas soportadas por la empresa (Configuración → Plan de Cuentas y Bancos). Solo aplica a facturas. */
   currencyOptions = signal<ICurrencyConfig[]>([{ code: 'PEN', symbol: 'S/', contanetCode: '01', decimals: 2, approvalThresholdL1: 500 }]);
 
+  /** Símbolo de la moneda dada (S/, US$, …); cae al código si no está en `currencyOptions`. */
+  currencySymbolFor(code: string | null | undefined): string {
+    const c = (code || 'PEN').trim();
+    return this.currencyOptions().find(o => o.code === c)?.symbol ?? c;
+  }
+
   form!: FormGroup;
   id: string = this.route.snapshot.params['id'];
   categories: ICategory[] = [];

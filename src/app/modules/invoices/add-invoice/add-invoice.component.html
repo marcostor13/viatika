@@ -329,7 +329,7 @@
       <!-- Monto extraído por OCR -->
       <div class="flex flex-col gap-1 sm:col-span-2">
         <label class="text-xs font-medium text-secondary">
-          Monto S/.
+          Monto {{ currencySymbolFor(form.get('moneda')?.value) }}
           <span class="text-tertiary font-normal">(extraído por OCR)</span>
         </label>
         <div class="flex items-center gap-2">
@@ -341,7 +341,7 @@
             [class.border-amber-300]="ocrAmountWasEdited"
             [class.bg-amber-50]="ocrAmountWasEdited"
             [class.text-amber-900]="ocrAmountWasEdited">
-            S/ {{ (ocrAmountWasEdited ? editedOcrTotal()! : ocrTotalAmount()) | number:'1.2-2' }}
+            {{ currencySymbolFor(form.get('moneda')?.value) }} {{ (ocrAmountWasEdited ? editedOcrTotal()! : ocrTotalAmount()) | number:'1.2-2' }}
             @if (ocrAmountWasEdited) {
               <span class="ml-2 text-xs font-normal text-amber-600">(editado)</span>
             }
@@ -371,12 +371,14 @@
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-3.5 h-3.5 shrink-0">
             <path fill-rule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495ZM10 5a.75.75 0 0 1 .75.75v3.5a.75.75 0 0 1-1.5 0v-3.5A.75.75 0 0 1 10 5Zm0 9a1 1 0 1 0 0-2 1 1 0 0 0 0 2Z" clip-rule="evenodd" />
           </svg>
-          Monto editado. OCR extrajo: S/ {{ ocrTotalAmount() | number:'1.2-2' }}.
+          Monto editado. OCR extrajo: {{ currencySymbolFor(form.get('moneda')?.value) }} {{ ocrTotalAmount() | number:'1.2-2' }}.
         </div>
         }
       </div>
-      <!-- Moneda oculta: la plataforma es PEN-only; el control se mantiene en el
-           form con su valor por defecto para no alterar el payload. -->
+      <!-- El control `moneda` (sin selector aquí) ya viene precargado con lo detectado
+           por OCR (`dataObj.moneda`); el símbolo de arriba refleja ese valor. Para
+           corregirla manualmente, se edita la factura ya guardada (selector de moneda
+           disponible en esa pantalla). -->
     </div>
     <div class="flex flex-col gap-1">
       <label for="comentarioOcr" class="text-xs font-medium text-secondary">
