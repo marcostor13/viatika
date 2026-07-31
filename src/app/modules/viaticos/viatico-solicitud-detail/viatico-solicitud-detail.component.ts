@@ -3,9 +3,9 @@ import { CommonModule } from '@angular/common';
 import { CategoriaService } from '../../../services/categoria.service';
 import { NotificationService } from '../../../services/notification.service';
 import {
-  RendicionExportData,
-  RendicionExportService,
-} from '../../../services/rendicion-export.service';
+  IViaticoSolicitudExportData,
+  ViaticoSolicitudExportService,
+} from '../../../services/viatico-solicitud-export.service';
 import { IExpenseReport } from '../../../interfaces/expense-report.interface';
 
 const STATUS_LABELS: Record<string, string> = {
@@ -57,7 +57,7 @@ const STATUS_COLORS: Record<string, string> = {
 })
 export class ViaticoSolicitudDetailComponent implements OnInit {
   private categoriaService = inject(CategoriaService);
-  private exportService = inject(RendicionExportService);
+  private exportService = inject(ViaticoSolicitudExportService);
   private notifications = inject(NotificationService);
 
   /** Reporte de viático a mostrar. Si es null, el popup no se renderiza. */
@@ -156,71 +156,57 @@ export class ViaticoSolicitudDetailComponent implements OnInit {
 
   isDownloading = signal(false);
 
+  /** Prefijo de moneda para el documento; casi siempre soles. */
+  private get currencyPrefix(): string {
+    const m = this.moneda;
+    if (m === 'PEN') return 'S/';
+    if (m === 'USD') return 'US$';
+    return m;
+  }
+
   /**
-   * Mismo formato que el reporte de la rendición (RendicionExportService), con el
-   * contenido de la solicitud: cabecera con proyecto/fechas, datos del colaborador,
-   * la tabla de movimientos (aún sin gastos) y el presupuesto detallado por categoría.
+   * Arma el formato "SOLICITUD DE VIÁTICOS" con lo que trae el reporte. Los datos
+   * bancarios y el DNI salen del snapshot de la solicitud y, si no lo tiene, del
+   * usuario poblado (`userId`).
    */
-  private buildExportData(): RendicionExportData {
+  private exportData(): IViaticoSolicitudExportData {
     const r = this.report as any;
     const user = r?.userId && typeof r.userId === 'object' ? r.userId : null;
     const bank = user?.bankAccount;
 
-    const fmt = (d?: string) => (d ? new Date(d).toLocaleDateString('es-PE') : undefined);
+    const nroCuenta = r?.viaticoAccountNumber || bank?.accountNumber || '';
+    const cci = r?.viaticoCci || bank?.cci || '';
+    const cuenta = [nroCuenta, cci ? `CCI: ${cci}` : ''].filter(Boolean).join('  /  ') || '—';
+
+    const fmt = (d?: string) =>
+      d ? new Date(d).toLocaleDateString('es-PE', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '—';
 
     const project = r?.projectId;
     const projectFallback = project && typeof project === 'object'
       ? (project.code ? `${project.code} — ${project.name ?? ''}`.trim() : (project.name ?? '—'))
       : '—';
-    const proyecto = this.projectName || projectFallback;
-
-    // Lo ya depositado por Contabilidad figura como ingreso; en solicitud suele ser 0.
-    const anticipos = this.viaticoPaidAmount > 0.01
-      ? [{
-          descripcion: 'Depósito de Contabilidad',
-          monto: this.viaticoPaidAmount,
-          estado: 'Depositado',
-          fechaSolicitud: fmt(r?.viaticoPayments?.[0]?.transferDate || r?.createdAt) ?? '',
-        }]
-      : [];
-
-    const codigo = r?.codigo || undefined;
-    const safeName = String(proyecto || 'viaticos')
-      .replace(/[^\w\sáéíóúÁÉÍÓÚñÑ-]/g, '')
-      .replace(/\s+/g, '_')
-      .slice(0, 50);
 
     return {
-      fileBaseName: `solicitud_${codigo || String(r?._id ?? '').slice(-8)}_${safeName}`.replace(/_+/g, '_'),
-      titulo: proyecto,
-      projectName: proyecto,
-      estado: this.statusLabel,
-      codigo,
-      colaborador: this.userName || user?.name || '—',
-      presupuesto: this.viaticoAmount,
-      totalGastado: 0,
-      totalAnticipado: this.viaticoPaidAmount,
-      saldoLibre: this.viaticoAmount,
-      fechaGeneracion: new Date().toLocaleString('es-PE', { dateStyle: 'short', timeStyle: 'short' }),
-      comprobantes: [],
-      anticipos,
-      accountNumber: r?.viaticoCci || r?.viaticoAccountNumber || bank?.cci || bank?.accountNumber || '',
-      idDocument: r?.idDocument || user?.dni || '',
-      location: r?.viaticoPlace || '',
-      startDate: fmt(r?.viaticoStartDate),
-      endDate: fmt(r?.viaticoEndDate),
-      items: this.lines.map(ln => ({
-        descripcion: ln?.detalle
-          ? `${this.categoryName(ln)} — ${ln.detalle}`
-          : this.categoryName(ln),
+      id: String(r?._id ?? ''),
+      responsable: this.userName || user?.name || '—',
+      cuenta,
+      dni: r?.idDocument || user?.dni || '—',
+      lugar: r?.viaticoPlace || '—',
+      desde: fmt(r?.viaticoStartDate),
+      hasta: fmt(r?.viaticoEndDate),
+      proyecto: this.projectName || projectFallback,
+      lines: this.lines.map(ln => ({
+        categoria: this.categoryName(ln),
+        detalle: ln?.detalle ?? '',
         importe: Number(ln?.importe ?? 0),
-        personas: Number(ln?.peopleCount ?? 0),
-        combustible: Number(ln?.glpPerDay ?? 0),
-        dias: Number(ln?.days ?? 0),
-        total: Number(ln?.lineTotal ?? 0),
+        peopleCount: Number(ln?.peopleCount ?? 0),
+        glpPerDay: Number(ln?.glpPerDay ?? 0),
+        days: Number(ln?.days ?? 0),
+        lineTotal: Number(ln?.lineTotal ?? 0),
       })),
-      itemsTotal: this.viaticoAmount,
-      signature: user?.signature,
+      total: this.viaticoAmount,
+      saldoAnterior: Number(r?.pendingBalanceAmount ?? 0) || undefined,
+      currency: this.currencyPrefix,
     };
   }
 
@@ -228,7 +214,7 @@ export class ViaticoSolicitudDetailComponent implements OnInit {
     if (!this.report || this.isDownloading()) return;
     this.isDownloading.set(true);
     try {
-      await this.exportService.exportToPdf(this.buildExportData());
+      await this.exportService.downloadPdf(this.exportData());
     } catch {
       this.notifications.show('No se pudo generar el PDF de la solicitud', 'error');
     } finally {
@@ -240,7 +226,7 @@ export class ViaticoSolicitudDetailComponent implements OnInit {
     if (!this.report || this.isDownloading()) return;
     this.isDownloading.set(true);
     try {
-      await this.exportService.exportToExcel(this.buildExportData());
+      await this.exportService.downloadExcel(this.exportData());
     } catch {
       this.notifications.show('No se pudo generar el Excel de la solicitud', 'error');
     } finally {

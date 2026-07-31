@@ -75,8 +75,6 @@ export interface RendicionExportData {
   startDate?: string;
   endDate?: string;
   items?: RendicionExportBudgetItemRow[];
-  /** Total del presupuesto detallado; si viene, se añade una fila TOTAL bajo la tabla. */
-  itemsTotal?: number;
   signature?: string;
   approvedByName?: string;
   createdByName?: string;
@@ -618,24 +616,6 @@ export class RendicionExportService {
         }
         r++;
       });
-      if (data.itemsTotal != null) {
-        ws.mergeCells(r, 1, r, 5);
-        const cTotalLabel = ws.getCell(r, 1);
-        cTotalLabel.value = 'TOTAL';
-        cTotalLabel.font = { bold: true, color: { argb: 'FFFFFFFF' } };
-        cTotalLabel.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: RED_HEADER } };
-        cTotalLabel.alignment = { horizontal: 'right' };
-        const cTotalVal = ws.getCell(r, 6);
-        cTotalVal.value = data.itemsTotal;
-        cTotalVal.numFmt = '#,##0.00';
-        cTotalVal.font = { bold: true, color: { argb: 'FFFFFFFF' } };
-        cTotalVal.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: RED_HEADER } };
-        cTotalVal.alignment = { horizontal: 'right' };
-        for (let i = 1; i <= 6; i++) {
-          ws.getCell(r, i).border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
-        }
-        r++;
-      }
       r++;
     }
 
@@ -875,20 +855,14 @@ export class RendicionExportService {
       autoTable(doc, {
         startY: y,
         head: [['Viáticos', 'Importe', 'Personas', 'Combustible', 'Días', 'Total']],
-        body: [
-          ...data.items.map(i => [
-            i.descripcion,
-            i.importe.toFixed(2),
-            i.personas,
-            i.combustible.toFixed(2),
-            i.dias,
-            i.total.toFixed(2)
-          ] as any[]),
-          ...(data.itemsTotal != null ? [[
-            { content: 'TOTAL', colSpan: 5, styles: { halign: 'right' as const, fontStyle: 'bold' as const, fillColor: [145, 47, 44], textColor: 255 } },
-            { content: data.itemsTotal.toFixed(2), styles: { halign: 'right' as const, fontStyle: 'bold' as const, fillColor: [145, 47, 44], textColor: 255 } },
-          ]] : []),
-        ],
+        body: data.items.map(i => [
+          i.descripcion,
+          i.importe.toFixed(2),
+          i.personas,
+          i.combustible.toFixed(2),
+          i.dias,
+          i.total.toFixed(2)
+        ]),
         theme: 'grid',
         headStyles: { fillColor: [145, 47, 44], textColor: 255 },
         styles: { fontSize: 8 },
