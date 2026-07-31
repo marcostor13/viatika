@@ -93,6 +93,39 @@ describe('ViaticoSolicitudExportService', () => {
     expect(ws.getCell('G13').value).toBe(550);
   });
 
+  it('imprime el financiamiento por bolsa y lo que falta depositar', async () => {
+    await service.downloadExcel(makeData({
+      total: 550,
+      financiamiento: [
+        { label: 'Saldo de rendición · RD-0042', amount: 300 },
+        { label: 'Depósito de Contabilidad', amount: 150 },
+        { label: 'Cero, no se imprime', amount: 0 },
+      ],
+      pendienteDeposito: 100,
+    }));
+
+    const [blob] = platformFile.saveBlob.calls.mostRecent().args;
+    const ws = await readWorkbook(blob as Blob);
+    const filas: string[] = [];
+    ws.eachRow({ includeEmpty: false }, row => filas.push(String(row.values)));
+    const texto = filas.join(' | ');
+
+    expect(texto).toContain('Financiamiento');
+    expect(texto).toContain('Saldo de rendición · RD-0042');
+    expect(texto).toContain('Depósito de Contabilidad');
+    expect(texto).toContain('Pendiente de depósito de Contabilidad');
+    expect(texto).not.toContain('Cero, no se imprime');
+  });
+
+  it('sin financiamiento no imprime el bloque', async () => {
+    await service.downloadExcel(makeData({ pendienteDeposito: 550 }));
+    const [blob] = platformFile.saveBlob.calls.mostRecent().args;
+    const ws = await readWorkbook(blob as Blob);
+    const filas: string[] = [];
+    ws.eachRow({ includeEmpty: false }, row => filas.push(String(row.values)));
+    expect(filas.join(' | ')).not.toContain('Financiamiento');
+  });
+
   it('agrega la fila de saldo anterior cuando lo hay', async () => {
     await service.downloadExcel(makeData({ saldoAnterior: 250.5 }));
     const [blob] = platformFile.saveBlob.calls.mostRecent().args;

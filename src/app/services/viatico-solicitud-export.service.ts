@@ -7,6 +7,9 @@ import { PlatformFileService } from './platform-file.service';
 
 type JsPdfWithAutoTable = jsPDF & { lastAutoTable?: { finalY: number } };
 
+/** Etiqueta de la fila que Contabilidad aún debe depositar (se resalta en el documento). */
+const PENDIENTE_LABEL = 'Pendiente de depósito de Contabilidad';
+
 export interface IViaticoSolicitudExportLine {
   categoria: string;
   detalle?: string;
@@ -15,6 +18,12 @@ export interface IViaticoSolicitudExportLine {
   glpPerDay: number;
   days: number;
   lineTotal: number;
+}
+
+/** Fila del desglose de financiamiento (bolsa, saldo heredado, depósito…). */
+export interface IViaticoSolicitudExportFinancingRow {
+  label: string;
+  amount: number;
 }
 
 /** Datos del formato "SOLICITUD DE VIÁTICOS" ya normalizados por el llamador. */
@@ -34,6 +43,14 @@ export interface IViaticoSolicitudExportData {
   total: number;
   /** Saldo de una solicitud anterior aplicado a esta (si lo hay). */
   saldoAnterior?: number;
+  /**
+   * De dónde sale el dinero: saldos de la bolsa, saldo heredado de otra rendición y
+   * depósito de Contabilidad. Si viene, se imprime una tabla "FINANCIAMIENTO" bajo el
+   * detalle; sirve para saber cuánto queda por depositar.
+   */
+  financiamiento?: IViaticoSolicitudExportFinancingRow[];
+  /** Monto que Contabilidad aún debe depositar (fila final del financiamiento). */
+  pendienteDeposito?: number;
   /** Prefijo de moneda: 'S/', 'US$'… Por defecto 'S/'. */
   currency?: string;
 }
@@ -65,6 +82,18 @@ export class ViaticoSolicitudExportService {
 
   private peopleMax(data: IViaticoSolicitudExportData): number {
     return data.lines?.length ? Math.max(...data.lines.map((l) => Number(l.peopleCount ?? 0))) : 0;
+  }
+
+  /**
+   * Filas de financiamiento a imprimir: lo que ya está cubierto (bolsa, saldo heredado,
+   * depósito) más lo que Contabilidad tiene pendiente. Vacío si no hay nada que contar.
+   */
+  private financingRows(data: IViaticoSolicitudExportData): IViaticoSolicitudExportFinancingRow[] {
+    const rows = (data.financiamiento ?? []).filter(r => Number(r.amount) > 0.01);
+    const pendiente = Number(data.pendienteDeposito ?? 0);
+    if (rows.length === 0) return [];
+    if (pendiente > 0.01) rows.push({ label: PENDIENTE_LABEL, amount: pendiente });
+    return rows;
   }
 
   /**
@@ -228,6 +257,43 @@ export class ViaticoSolicitudExportService {
       },
     });
 
+    // ── Financiamiento (bolsa / saldo heredado / depósito) ──
+    const finRows = this.financingRows(data);
+    if (finRows.length > 0) {
+      autoTable(doc, {
+        startY: (doc.lastAutoTable?.finalY ?? tableY) + 6,
+        margin: { left: M, right: M },
+        head: [['Financiamiento', 'Monto']],
+        body: finRows.map(r => [r.label, this.money(data, r.amount)]),
+        headStyles: {
+          fillColor: DARK_RED, textColor: WHITE, fontStyle: 'bold',
+          halign: 'left', valign: 'middle', fontSize: 8,
+          cellPadding: { top: 3, bottom: 3, left: 2, right: 2 },
+          lineWidth: 0.3, lineColor: [160, 40, 40],
+        },
+        styles: {
+          fontSize: 8.5, textColor: BLACK,
+          cellPadding: { top: 2.5, bottom: 2.5, left: 2, right: 2 },
+          lineWidth: 0.2, lineColor: [200, 200, 200],
+          valign: 'middle', overflow: 'linebreak',
+        },
+        alternateRowStyles: { fillColor: LIGHT },
+        columnStyles: {
+          0: { cellWidth: 'auto' },
+          1: { halign: 'right' as const, cellWidth: 30 },
+        },
+        didParseCell: (hook) => {
+          if (hook.section === 'head' && hook.column.index === 1) hook.cell.styles.halign = 'right';
+          // "Pendiente de depósito" resaltado: es lo que Contabilidad aún debe pagar.
+          if (hook.section === 'body' && finRows[hook.row.index]?.label === PENDIENTE_LABEL) {
+            hook.cell.styles.fillColor = AMBER_BG;
+            hook.cell.styles.textColor = AMBER_FG;
+            hook.cell.styles.fontStyle = 'bold';
+          }
+        },
+      });
+    }
+
     await this.platformFile.saveBlob(doc.output('blob'), this.filename(data, 'pdf'));
   }
 
@@ -388,6 +454,40 @@ export class ViaticoSolicitudExportService {
       cell.border = allBorders('FF5C1515');
       if (col === 7) cell.numFmt = numFmt;
     });
+
+    // ── Financiamiento (bolsa / saldo heredado / depósito) ──
+    const finRows = this.financingRows(data);
+    if (finRows.length > 0) {
+      ws.addRow([]);
+      const fHead = ws.addRow(['Financiamiento', '', '', '', '', '', 'Monto']);
+      ws.mergeCells(fHead.number, 1, fHead.number, 6);
+      fHead.height = 20;
+      fHead.eachCell({ includeEmpty: true }, (cell, col) => {
+        cell.font = { bold: true, size: 9.5, color: { argb: WH } };
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: DR } };
+        cell.alignment = { horizontal: col === 7 ? 'right' : 'left', vertical: 'middle' };
+        cell.border = allBorders('FF5C1515');
+      });
+
+      finRows.forEach((row, i) => {
+        const isPendiente = row.label === PENDIENTE_LABEL;
+        const fRow = ws.addRow([row.label, '', '', '', '', '', row.amount]);
+        ws.mergeCells(fRow.number, 1, fRow.number, 6);
+        fRow.height = 18;
+        fRow.eachCell({ includeEmpty: true }, (cell, col) => {
+          if (isPendiente) {
+            cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFEF3C7' } };
+            cell.font = { bold: true, size: 9.5, color: { argb: 'FF92400E' } };
+          } else {
+            if (i % 2 === 1) cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: LT } };
+            cell.font = { size: 9.5 };
+          }
+          cell.border = allBorders();
+          cell.alignment = { horizontal: col === 7 ? 'right' : 'left', vertical: 'middle' };
+          if (col === 7) cell.numFmt = numFmt;
+        });
+      });
+    }
 
     // ── Guardar ──
     const buffer = await wb.xlsx.writeBuffer();
