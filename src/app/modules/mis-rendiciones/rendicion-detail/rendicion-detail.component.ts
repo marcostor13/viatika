@@ -1519,11 +1519,23 @@ export class RendicionDetailComponent implements OnInit {
     return '';
   }
 
+  /**
+   * Localidad de la rendición. En un viático el lugar se guarda en `viaticoPlace`
+   * (`location` solo lo llenan las rendiciones normales), así que sin este respaldo
+   * el reporte y las planillas salen con la localidad vacía.
+   */
+  get reportLocation(): string {
+    const r = this.report;
+    return r?.location || r?.viaticoPlace || '';
+  }
+
   get reportDateRange(): string {
     const r = this.report;
     if (!r) return '';
-    if (r.startDate && r.endDate) return `${this.formatShortDate(r.startDate)} al ${this.formatShortDate(r.endDate)}`;
-    if (r.startDate) return this.formatShortDate(r.startDate);
+    const start = r.startDate ?? r.viaticoStartDate;
+    const end = r.endDate ?? r.viaticoEndDate;
+    if (start && end) return `${this.formatShortDate(start)} al ${this.formatShortDate(end)}`;
+    if (start) return this.formatShortDate(start);
     return '';
   }
 
@@ -1738,7 +1750,7 @@ export class RendicionDetailComponent implements OnInit {
       accountNumber: this.report.accountNumber || this.getCollaboratorAccountNumber(),
       idDocument: this.collaboratorDniForPdf(),
       peopleNames: this.report.peopleNames,
-      location: this.report.location,
+      location: this.reportLocation,
       startDate: (this.report.startDate ?? this.report.viaticoStartDate) ? new Date((this.report.startDate ?? this.report.viaticoStartDate) as string).toLocaleDateString('es-PE') : undefined,
       endDate: (this.report.endDate ?? this.report.viaticoEndDate) ? new Date((this.report.endDate ?? this.report.viaticoEndDate) as string).toLocaleDateString('es-PE') : undefined,
       items: (this.report.items || []).map(i => ({
@@ -1815,7 +1827,7 @@ export class RendicionDetailComponent implements OnInit {
       collaborator: this.getCollaboratorDisplayName(),
       collaboratorDni: this.collaboratorDniForPdf(),
       internalCode: typeof expense['internalCode'] === 'string' ? expense['internalCode'] : undefined,
-      location: this.report?.location,
+      location: this.reportLocation,
       generatedAt: new Date().toLocaleString('es-PE', { dateStyle: 'short', timeStyle: 'short' }),
       periodo,
       proyecto: this.getExpenseProjectName(expense),
@@ -2020,7 +2032,7 @@ export class RendicionDetailComponent implements OnInit {
         collaborator: this.getCollaboratorDisplayName(),
         collaboratorDni: this.collaboratorDniForPdf(),
         internalCode: `${codeBase}-${String(i + 1).padStart(2, '0')}`,
-        location: this.report?.location,
+        location: this.reportLocation,
         generatedAt: new Date().toLocaleString('es-PE', { dateStyle: 'short', timeStyle: 'short' }),
         periodo: pageDate.toLocaleString('es-PE', { month: 'long' }).toUpperCase(),
         proyecto: this.getProjectName(),
@@ -3187,7 +3199,7 @@ export class RendicionDetailComponent implements OnInit {
       collaborator: this.getCollaboratorDisplayName(),
       collaboratorDni: this.collaboratorDniForPdf(),
       internalCode: typeof expense['internalCode'] === 'string' ? expense['internalCode'] : undefined,
-      location: this.report?.location,
+      location: this.reportLocation,
       generatedAt: new Date().toLocaleString('es-PE', { dateStyle: 'short', timeStyle: 'short' }),
       periodo,
       proyecto: this.getExpenseProjectName(expense),

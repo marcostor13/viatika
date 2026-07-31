@@ -9,6 +9,8 @@ import {
   SingleExpenseAffidavitData,
 } from './rendicion-export.service';
 import { CompanyConfigService } from './company-config.service';
+import { PlatformFileService } from './platform-file.service';
+import ExcelJS from 'exceljs';
 
 const mockCompanyConfigService = jasmine.createSpyObj('CompanyConfigService', ['getCompanyConfig']);
 
@@ -28,8 +30,12 @@ const makeRendicionData = (): RendicionExportData => ({
 
 describe('RendicionExportService', () => {
   let service: RendicionExportService;
+  let platformFile: jasmine.SpyObj<PlatformFileService>;
 
   beforeEach(() => {
+    platformFile = jasmine.createSpyObj('PlatformFileService', ['saveBlob', 'fetchBinary']);
+    platformFile.saveBlob.and.returnValue(Promise.resolve());
+    platformFile.fetchBinary.and.returnValue(Promise.resolve(null));
     mockCompanyConfigService.getCompanyConfig.and.returnValue({
       _id: 'c1',
       companyId: 'c1',
@@ -50,6 +56,7 @@ describe('RendicionExportService', () => {
       providers: [
         RendicionExportService,
         { provide: CompanyConfigService, useValue: mockCompanyConfigService },
+        { provide: PlatformFileService, useValue: platformFile },
       ],
     });
 
@@ -277,6 +284,88 @@ describe('RendicionExportService', () => {
         total: 55,
       };
       await expectAsync(service.exportMobilitySheetToExcel(data)).toBeResolved();
+    });
+  });
+
+  // ─── Solicitud de viáticos: mismo formato de la rendición, con TOTAL ────────
+
+  describe('solicitud de viáticos', () => {
+    const makeSolicitudData = (): RendicionExportData => ({
+      ...makeRendicionData(),
+      fileBaseName: 'solicitud_VT-0001_proyecto',
+      projectName: '63882 SERVICIO DE ELABORACIÓN DE INFORME',
+      codigo: 'VT-0001',
+      colaborador: 'COBEÑAS GARCIA, JULIO CESAR',
+      idDocument: '43215678',
+      accountNumber: '00219119093607601954',
+      location: 'Talara, Perú',
+      startDate: '31/07/2026',
+      endDate: '31/07/2026',
+      comprobantes: [],
+      anticipos: [],
+      items: [
+        { descripcion: 'ALIMENTACIÓN PROY — Desayuno y almuerzo', importe: 60, personas: 1, combustible: 0, dias: 1, total: 60 },
+        { descripcion: 'MATERIALES — Trípticos', importe: 40, personas: 1, combustible: 0, dias: 1, total: 40 },
+      ],
+      itemsTotal: 100,
+    });
+
+    const readWorkbook = async (blob: Blob): Promise<ExcelJS.Worksheet> => {
+      const wb = new ExcelJS.Workbook();
+      await wb.xlsx.load(await blob.arrayBuffer());
+      return wb.worksheets[0];
+    };
+
+    const cellText = (ws: ExcelJS.Worksheet, address: string): string => {
+      const v = ws.getCell(address).value as any;
+      if (v == null) return '';
+      if (typeof v === 'object' && 'richText' in v) return v.richText.map((t: any) => t.text).join('');
+      return String(v);
+    };
+
+    it('el Excel usa el mismo formato de la rendición y lista el presupuesto detallado', async () => {
+      await service.exportToExcel(makeSolicitudData());
+
+      const [blob, filename] = platformFile.saveBlob.calls.mostRecent().args;
+      expect(filename).toBe('solicitud_VT-0001_proyecto.xlsx');
+
+      const ws = await readWorkbook(blob as Blob);
+      expect(cellText(ws, 'A4')).toBe('RENDICIÓN DE VIÁTICOS');
+      expect(cellText(ws, 'A5')).toContain('63882 SERVICIO DE ELABORACIÓN DE INFORME');
+      expect(cellText(ws, 'A7')).toBe('DEL 31/07/2026 AL 31/07/2026');
+      expect(cellText(ws, 'B9')).toBe('COBEÑAS GARCIA, JULIO CESAR');
+      expect(cellText(ws, 'B10')).toBe('Talara, Perú');
+      expect(cellText(ws, 'F9')).toBe('43215678');
+      expect(cellText(ws, 'F10')).toBe('00219119093607601954');
+      expect(cellText(ws, 'A13')).toBe('Item');
+
+      const rows: string[] = [];
+      ws.eachRow({ includeEmpty: false }, row => rows.push(String(row.values)));
+      const flat = rows.join(' | ');
+      expect(flat).toContain('RESUMEN DE SOLICITUD (PRESUPUESTO DETALLADO)');
+      expect(flat).toContain('ALIMENTACIÓN PROY — Desayuno y almuerzo');
+      const totalRow = ws.getRows(1, ws.rowCount)!.find(r => cellText(ws, `A${r.number}`) === 'TOTAL');
+      expect(totalRow).toBeTruthy();
+      expect(ws.getCell(`F${totalRow!.number}`).value).toBe(100);
+    });
+
+    it('el PDF de la solicitud se genera sin gastos', async () => {
+      await service.exportToPdf(makeSolicitudData());
+      const [blob, filename] = platformFile.saveBlob.calls.mostRecent().args;
+      expect(filename).toBe('solicitud_VT-0001_proyecto.pdf');
+      expect((blob as Blob).size).toBeGreaterThan(0);
+    });
+
+    it('sin itemsTotal la rendición no agrega la fila TOTAL', async () => {
+      await service.exportToExcel({
+        ...makeRendicionData(),
+        items: [{ descripcion: 'Alimentación', importe: 50, personas: 1, combustible: 0, dias: 1, total: 50 }],
+      });
+      const [blob] = platformFile.saveBlob.calls.mostRecent().args;
+      const ws = await readWorkbook(blob as Blob);
+      expect(cellText(ws, 'A4')).toBe('RENDICIÓN DE VIÁTICOS');
+      const totalRow = ws.getRows(1, ws.rowCount)!.find(r => cellText(ws, `A${r.number}`) === 'TOTAL');
+      expect(totalRow).toBeUndefined();
     });
   });
 });

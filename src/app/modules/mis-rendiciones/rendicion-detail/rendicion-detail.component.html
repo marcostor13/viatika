@@ -60,12 +60,12 @@
             <p class="text-sm text-gray-800 font-medium mt-0.5">{{ report.gestion }}</p>
           </div>
           }
-          @if (report.location || report.startDate) {
+          @if (reportLocation || reportDateRange) {
           <dl class="mt-3 flex flex-col gap-2 text-sm">
-            @if (report.location) {
+            @if (reportLocation) {
             <div>
               <dt class="text-xs font-semibold text-gray-400 uppercase tracking-wide">Destino</dt>
-              <dd class="text-gray-800 font-medium mt-0.5">{{ report.location }}</dd>
+              <dd class="text-gray-800 font-medium mt-0.5">{{ reportLocation }}</dd>
             </div>
             }
             @if (reportDateRange) {
