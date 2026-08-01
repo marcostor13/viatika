@@ -53,6 +53,12 @@ export interface RendicionExportSettlement {
 /** Datos normalizados para exportar el detalle de una rendición. */
 export interface RendicionExportData {
   fileBaseName: string;
+  /**
+   * Prefijo de la moneda en la que está expresado TODO el documento ('S/',
+   * 'USD'…). Es la moneda de la rendición: los importes de comprobantes en otra
+   * moneda ya vienen convertidos a esta. Por defecto 'S/'.
+   */
+  moneda?: string;
   titulo: string;
   estado: string;
   codigo?: string;
@@ -342,6 +348,8 @@ export class RendicionExportService {
   }
 
   async exportToExcel(data: RendicionExportData): Promise<void> {
+    // Moneda del documento completo (los importes ya vienen convertidos a ella).
+    const prefijoMonedaXls = data.moneda || 'S/';
     data = { ...data, signature: await this.resolveSignature(data.signature) };
     const wb = new ExcelJS.Workbook();
     wb.creator = 'Viatika';
@@ -444,7 +452,7 @@ export class RendicionExportService {
 
     // Table Header
     let r = 13;
-    const headers = ['Item', 'Fecha\nEmisión', 'Tipo\nde\nDoc.', 'Nº del Documento', 'Proveedor', 'Concepto', ...(showProyecto ? ['Proyecto'] : []), 'Placa', 'Ingresos', 'Gastos'];
+    const headers = ['Item', 'Fecha\nEmisión', 'Tipo\nde\nDoc.', 'Nº del Documento', 'Proveedor', 'Concepto', ...(showProyecto ? ['Proyecto'] : []), 'Placa', `Ingresos (${prefijoMonedaXls})`, `Gastos (${prefijoMonedaXls})`];
     headers.forEach((h, i) => {
       const c = ws.getCell(r, i + 1);
       c.value = h;
@@ -593,7 +601,7 @@ export class RendicionExportService {
       ws.getCell(r, 1).value = 'RESUMEN DE SOLICITUD (PRESUPUESTO DETALLADO)';
       ws.getCell(r, 1).font = { bold: true };
       r++;
-      const budgetHeaders = ['Viáticos', 'Importe (S/)', 'Personas', 'Combustible GLP/dia', 'Días', 'Total (S/)'];
+      const budgetHeaders = ['Viáticos', `Importe (${prefijoMonedaXls})`, 'Personas', 'Combustible GLP/dia', 'Días', `Total (${prefijoMonedaXls})`];
       budgetHeaders.forEach((h, i) => {
         const c = ws.getCell(r, i + 1);
         c.value = h;
@@ -658,6 +666,8 @@ export class RendicionExportService {
   }
 
   async exportToPdf(data: RendicionExportData, inDoc?: jsPDF, returnBytes?: boolean): Promise<Uint8Array | void> {
+    // Moneda del documento completo (los importes ya vienen convertidos a ella).
+    const prefijoMoneda = data.moneda || 'S/';
     data = { ...data, signature: await this.resolveSignature(data.signature) };
     const doc = inDoc ?? new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
     let y = 15;
@@ -774,9 +784,11 @@ export class RendicionExportService {
       bodyData.push([itemIndex++, ...Array(showProyecto ? 9 : 8).fill('')]);
     }
 
+    const colIngresos = `Ingresos\n(${prefijoMoneda})`;
+    const colGastos = `Gastos\n(${prefijoMoneda})`;
     const head = showProyecto
-      ? ['Item', 'Fecha\nEmisión', 'Tipo\nde\nDoc.', 'Nº del Documento', 'Proveedor', 'Concepto', 'Proyecto', 'Placa', 'Ingresos', 'Gastos']
-      : ['Item', 'Fecha\nEmisión', 'Tipo\nde\nDoc.', 'Nº del Documento', 'Proveedor', 'Concepto', 'Placa', 'Ingresos', 'Gastos'];
+      ? ['Item', 'Fecha\nEmisión', 'Tipo\nde\nDoc.', 'Nº del Documento', 'Proveedor', 'Concepto', 'Proyecto', 'Placa', colIngresos, colGastos]
+      : ['Item', 'Fecha\nEmisión', 'Tipo\nde\nDoc.', 'Nº del Documento', 'Proveedor', 'Concepto', 'Placa', colIngresos, colGastos];
     const columnStyles: Record<number, any> = showProyecto
       ? {
           0: { halign: 'center', cellWidth: 8 },
@@ -836,10 +848,10 @@ export class RendicionExportService {
     doc.setFont("helvetica", "bold");
     doc.setFontSize(10);
     doc.text('POR REEMBOLSAR:', rightEdge - colW * 2 - 4, y + 4, { align: 'right' });
-    doc.text(`S/ ${montoReembolsarPdf.toFixed(2)}`, rightEdge - 2, y + 4, { align: 'right' });
+    doc.text(`${prefijoMoneda} ${montoReembolsarPdf.toFixed(2)}`, rightEdge - 2, y + 4, { align: 'right' });
     y += 6;
     doc.text('POR RENDIR:', rightEdge - colW * 2 - 4, y + 4, { align: 'right' });
-    doc.text(`S/ ${montoRendirPdf.toFixed(2)}`, rightEdge - 2, y + 4, { align: 'right' });
+    doc.text(`${prefijoMoneda} ${montoRendirPdf.toFixed(2)}`, rightEdge - 2, y + 4, { align: 'right' });
     doc.setFont("helvetica", "normal");
     y += 10;
 
