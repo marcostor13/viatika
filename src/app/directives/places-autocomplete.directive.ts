@@ -30,8 +30,21 @@ declare const google: any;
   standalone: true,
 })
 export class PlacesAutocompleteDirective implements AfterViewInit, OnDestroy {
+  /**
+   * Códigos de región (ISO 3166-1 alfa-2) a los que se limita la búsqueda,
+   * separados por coma. **Vacío = búsqueda mundial** — necesario para los
+   * viáticos al exterior, donde el destino no está en Perú.
+   */
   @Input() country = 'pe';
   @Output() placeSelected = new EventEmitter<PlaceResult>();
+
+  /** Regiones normalizadas; lista vacía cuando no hay restricción. */
+  private get regionCodes(): string[] {
+    return this.country
+      .split(',')
+      .map((c) => c.trim().toLowerCase())
+      .filter((c) => c.length > 0);
+  }
 
   private el = inject(ElementRef);
   private mapsLoader = inject(GoogleMapsLoaderService);
@@ -57,8 +70,10 @@ export class PlacesAutocompleteDirective implements AfterViewInit, OnDestroy {
   private initNew() {
     const input = this.el.nativeElement as HTMLInputElement;
 
+    const regions = this.regionCodes;
     const pac = new (google.maps.places as any).PlaceAutocompleteElement({
-      includedRegionCodes: [this.country],
+      // Sin `includedRegionCodes` la API busca en todo el mundo.
+      ...(regions.length > 0 && { includedRegionCodes: regions }),
       includedPrimaryTypes: ['geocode', 'establishment'],
     }) as HTMLElement;
 
@@ -207,9 +222,10 @@ export class PlacesAutocompleteDirective implements AfterViewInit, OnDestroy {
     const input = this.el.nativeElement as HTMLInputElement;
     let sessionToken = new google.maps.places.AutocompleteSessionToken();
 
+    const regions = this.regionCodes;
     const autocomplete = new google.maps.places.Autocomplete(input, {
       types: ['geocode', 'establishment'],
-      componentRestrictions: { country: this.country },
+      ...(regions.length > 0 && { componentRestrictions: { country: regions } }),
       fields: ['name', 'formatted_address', 'geometry', 'address_components', 'types'],
       sessionToken,
     });

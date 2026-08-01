@@ -116,7 +116,15 @@ export class RendicionDetailComponent implements OnInit {
   showReopenModal = signal(false);
   isReopening = signal(false);
 
+  /** Gastado en la MONEDA BASE del cliente (soles). Solo para el equivalente "≈ S/". */
   totalGastado = 0;
+  /**
+   * Gastado en la MONEDA DEL REPORTE (la del viático/depósito). Es el que se
+   * compara contra presupuesto/financiado: mezclar USD con S/ daba un saldo sin
+   * sentido (p. ej. USD 450 − S/ 668.45). En reportes en soles vale lo mismo que
+   * `totalGastado`.
+   */
+  totalGastadoReporte = 0;
 
   @HostListener('document:click')
   closeAmountEditedTooltip() {
@@ -139,6 +147,45 @@ export class RendicionDetailComponent implements OnInit {
     return (v !== undefined && v !== null) ? Number(v) : null;
   }
 
+  // ─── Moneda del reporte ───────────────────────────────────────────────────
+  // Presupuesto, financiamiento, gastado y saldo se muestran SIEMPRE en la
+  // moneda del reporte; el equivalente en soles va como línea secundaria.
+
+  /** Moneda operativa del reporte (ISO). 'PEN' en todo lo que no sea viático al exterior. */
+  get reportMoneda(): string {
+    return (this.report as any)?.moneda || 'PEN';
+  }
+
+  /** TC moneda del reporte → soles, congelado al registrar. 1 si el reporte ya está en soles. */
+  get reportTipoCambio(): number {
+    const tc = Number((this.report as any)?.tipoCambio);
+    return tc > 0 ? tc : 1;
+  }
+
+  get isReportForeignCurrency(): boolean {
+    const tc = Number((this.report as any)?.tipoCambio);
+    return this.reportMoneda !== 'PEN' && tc > 0;
+  }
+
+  /** Prefijo a anteponer a los montos del reporte: 'S/' o el código ISO ('USD'). */
+  get monedaPrefijo(): string {
+    return this.isReportForeignCurrency ? this.reportMoneda : 'S/';
+  }
+
+  /** Equivalente en soles de un monto expresado en la moneda del reporte. */
+  toBaseCurrency(amount: number): number {
+    return Math.round((Number(amount) || 0) * this.reportTipoCambio * 100) / 100;
+  }
+
+  /** Inverso: un monto en soles (p. ej. la liquidación del backend) a la moneda del reporte. */
+  fromBaseCurrency(amount: number): number {
+    return Math.round(((Number(amount) || 0) / this.reportTipoCambio) * 100) / 100;
+  }
+
+  get saldoLibreBase(): number {
+    return this.toBaseCurrency(this.saldoLibre);
+  }
+
   get saldoLibre(): number {
     // Viáticos unificados: el fondo disponible es siempre viaticoPaidAmount − gastado
     // (incluye el saldo de la bolsa prefinanciado + el depósito de contabilidad). Va
@@ -147,7 +194,7 @@ export class RendicionDetailComponent implements OnInit {
     if (this.report?.type === 'viatico') {
       // Incluye ampliaciones pagadas (advances vinculados), no solo el depósito/saldo del
       // propio reporte — si no, el saldo ignora la ampliación ya desembolsada.
-      return Math.round((this.viaticoFinanciadoTotal - this.totalGastado) * 100) / 100;
+      return Math.round((this.viaticoFinanciadoTotal - this.totalGastadoReporte) * 100) / 100;
     }
     // Rendición directa con depósito de Contabilidad: el saldo a devolver es el
     // depósito menos lo gastado (en vivo), no el monto del settlement almacenado.
@@ -156,16 +203,18 @@ export class RendicionDetailComponent implements OnInit {
     }
     // Rendición directa creada desde el saldo de otra: el presupuesto es el saldo heredado.
     if (this.hasPendingBalanceCredit) {
-      return this.pendingBalanceCreditAmount - this.totalGastado;
+      return this.pendingBalanceCreditAmount - this.totalGastadoReporte;
     }
     // Rendición directa financiada con la bolsa: el saldo libre es presupuesto (saldos) − gastado.
     if (this.hasFinancingSaldos) {
       return this.financingSaldoDisponible;
     }
     if (this.settlement?.difference !== undefined && this.settlement.difference !== null) {
-      return this.settlement.difference;
+      // La liquidación del backend viene en moneda base; el saldo se muestra en la
+      // moneda del reporte (en soles la conversión es la identidad).
+      return this.fromBaseCurrency(this.settlement.difference);
     }
-    return this.totalAnticipado - this.totalGastado;
+    return this.totalAnticipado - this.totalGastadoReporte;
   }
 
   /** Tipo de settlement efectivo para viáticos: calculado en vivo desde viaticoPaidAmount. */
@@ -174,10 +223,10 @@ export class RendicionDetailComponent implements OnInit {
       // Financiado total = depósito/saldo del reporte + ampliaciones pagadas, para que el
       // tipo de liquidación (equilibrado/devolución/reembolso) cuadre con el backend.
       const viaticoPaid = this.viaticoFinanciadoTotal;
-      if (viaticoPaid <= 0 && this.totalGastado <= 0) {
+      if (viaticoPaid <= 0 && this.totalGastadoReporte <= 0) {
         return (this.report as any)?.settlement?.type;
       }
-      const diff = viaticoPaid - this.totalGastado;
+      const diff = viaticoPaid - this.totalGastadoReporte;
       return Math.abs(diff) < 0.01 ? 'equilibrado' : diff > 0 ? 'devolucion' : 'reembolso';
     }
     return (this.report as any)?.settlement?.type;
@@ -193,7 +242,7 @@ export class RendicionDetailComponent implements OnInit {
   }
 
   get directaSaldo(): number {
-    return this.directaDeposited - this.totalGastado;
+    return this.directaDeposited - this.totalGastadoReporte;
   }
 
   /** Saldos de la bolsa (poblados) que financiaron esta rendición directa. */
@@ -214,7 +263,7 @@ export class RendicionDetailComponent implements OnInit {
 
   /** Saldo disponible de una directa financiada con la bolsa: presupuesto (saldos) − gastado. */
   get financingSaldoDisponible(): number {
-    return this.financingSaldosTotal - this.totalGastado;
+    return this.financingSaldosTotal - this.totalGastadoReporte;
   }
 
   /** Tipo legible del saldo financiador. */
@@ -408,6 +457,7 @@ export class RendicionDetailComponent implements OnInit {
     if (!this.report) return;
 
     this.totalGastado = 0;
+    this.totalGastadoReporte = 0;
 
     // Suma en moneda base: montoBase ya trae el TC congelado aplicado
     // (montoBase === total cuando el comprobante ya está en la moneda base).
@@ -416,7 +466,79 @@ export class RendicionDetailComponent implements OnInit {
         (sum, exp: any) => sum + (parseFloat(exp.montoBase ?? exp.total) || 0),
         0
       );
+      this.totalGastadoReporte = Math.round(
+        this.report.expenseIds.reduce(
+          (sum, exp: any) => sum + this.expenseAmountInReportCurrency(exp),
+          0
+        ) * 100
+      ) / 100;
     }
+  }
+
+  /**
+   * Monto de un comprobante expresado en la moneda del reporte:
+   *  1. `montoReporte`, congelado por el backend con el TC del DÍA del gasto
+   *     (es el valor bueno: un recibo en soles del 07/07 se descuenta en
+   *     dólares al TC del 07/07);
+   *  2. si el comprobante ya está en la moneda del reporte → su importe nativo;
+   *  3. respaldo para gastos anteriores a `montoReporte`: convertir desde la
+   *     moneda base con el TC congelado del propio viático.
+   */
+  /**
+   * True cuando el comprobante está en una moneda distinta a la de la rendición
+   * y, por tanto, su aporte al total se muestra convertido.
+   */
+  showsConversionToReportCurrency(exp: unknown): boolean {
+    return (
+      this.isReportForeignCurrency && this.getExpenseMoneda(exp) !== this.reportMoneda
+    );
+  }
+
+  /** Igual que el privado, expuesto para la tabla de comprobantes. */
+  expenseAmountInReportCurrencyPublic(exp: unknown): number {
+    return Math.round(this.expenseAmountInReportCurrency(exp) * 100) / 100;
+  }
+
+  /**
+   * Monto de un anticipo/ampliación en la moneda de la rendición. Un anticipo
+   * lleva su propia moneda y su TC congelado, así que se pasa por la base.
+   */
+  private advanceAmountInReportCurrency(advance: unknown, amount: number): number {
+    const monto = Number(amount) || 0;
+    if (!this.isReportForeignCurrency) return monto;
+    const a = (advance ?? {}) as Record<string, unknown>;
+    const moneda = typeof a['moneda'] === 'string' ? (a['moneda'] as string) : 'PEN';
+    if (moneda === this.reportMoneda) return monto;
+    const tcAnticipo = Number(a['tipoCambio']) || 1;
+    return Math.round(((monto * tcAnticipo) / this.reportTipoCambio) * 100) / 100;
+  }
+
+  /** TC del día con el que el gasto se convirtió a la moneda de la rendición. */
+  getExpenseTcReporte(exp: unknown): number | null {
+    if (exp == null || typeof exp !== 'object') return null;
+    const v = (exp as Record<string, unknown>)['tcReporte'];
+    return typeof v === 'number' && !Number.isNaN(v) ? v : null;
+  }
+
+  private expenseAmountInReportCurrency(exp: unknown): number {
+    if (!this.isReportForeignCurrency) return this.getExpenseMontoBase(exp);
+    const congelado = this.getExpenseMontoReporte(exp);
+    if (congelado !== null) return congelado;
+    if (this.getExpenseMoneda(exp) === this.reportMoneda) return this.getExpenseTotal(exp);
+    return this.getExpenseMontoBase(exp) / this.reportTipoCambio;
+  }
+
+  /**
+   * Importe congelado en la moneda del reporte. Solo se usa si la moneda con la
+   * que se congeló sigue siendo la del reporte (si el viático cambió de moneda,
+   * el congelado quedó obsoleto y se recalcula).
+   */
+  private getExpenseMontoReporte(exp: unknown): number | null {
+    if (exp == null || typeof exp !== 'object') return null;
+    const e = exp as Record<string, unknown>;
+    const monto = e['montoReporte'];
+    if (typeof monto !== 'number' || Number.isNaN(monto)) return null;
+    return e['monedaReporte'] === this.reportMoneda ? monto : null;
   }
 
   goBack() {
@@ -962,6 +1084,15 @@ export class RendicionDetailComponent implements OnInit {
     return formatFechaEmisionDdMmYyyy(raw);
   }
 
+  /** dd/MM/yyyy sin corrimiento de zona horaria, o `undefined` si no hay fecha. */
+  private formatEmissionDateOrUndefined(
+    raw: string | Date | null | undefined
+  ): string | undefined {
+    if (!raw) return undefined;
+    const formatted = this.formatEmissionDate(raw);
+    return formatted === '-' ? undefined : formatted;
+  }
+
   emissionDateText(exp: Record<string, unknown>): string {
     return formatFechaEmisionDdMmYyyy(resolveExpenseFechaEmision(exp));
   }
@@ -1008,7 +1139,10 @@ export class RendicionDetailComponent implements OnInit {
       return firstRow?.gestion || `${expense?.mobilityRows?.length || 0} filas`;
     }
     if (type === 'otros_gastos') {
-      return expense?.description || 'DJ firmada';
+      if (expense?.description) return expense.description;
+      // Sin descripcion solo es una DJ si el gasto esta marcado como tal; un
+      // BV/TK/RC sin concepto salia rotulado como declaracion jurada.
+      return expense?.declaracionJurada ? 'DJ firmada' : 'Otros gastos';
     }
     if (type === 'comprobante_caja') {
       try {
@@ -1069,7 +1203,10 @@ export class RendicionDetailComponent implements OnInit {
       return firstRow?.gestion || `${expense?.mobilityRows?.length || 0} filas`;
     }
     if (type === 'otros_gastos') {
-      return expense?.description || 'DJ firmada';
+      if (expense?.description) return expense.description;
+      // Sin descripcion solo es una DJ si el gasto esta marcado como tal; un
+      // BV/TK/RC sin concepto salia rotulado como declaracion jurada.
+      return expense?.declaracionJurada ? 'DJ firmada' : 'Otros gastos';
     }
     if (type === 'comprobante_caja') {
       try {
@@ -1292,6 +1429,11 @@ export class RendicionDetailComponent implements OnInit {
     if (exp == null || typeof exp !== 'object') return 'PEN';
     const m = (exp as Record<string, unknown>)['moneda'];
     return typeof m === 'string' && m ? m : 'PEN';
+  }
+
+  /** Prefijo de moneda de un comprobante: 'S/' o el código ISO ('USD') si es extranjera. */
+  getExpenseMonedaPrefijo(exp: unknown): string {
+    return this.isExpenseForeignCurrency(exp) ? this.getExpenseMoneda(exp) : 'S/';
   }
 
   getExpenseMontoBase(exp: unknown): number {
@@ -1561,15 +1703,19 @@ export class RendicionDetailComponent implements OnInit {
       type?: string;
     } | null;
     if (!s || typeof s !== 'object') return undefined;
-    let typeLabel = 'Diferencia (S/)';
-    if (s.type === 'devolucion') typeLabel = 'A devolver (S/)';
-    else if (s.type === 'reembolso') typeLabel = 'A reembolsar (S/)';
+    // El backend liquida siempre en moneda base (soles); el resto del documento va
+    // en la moneda del reporte, así que la liquidación se expresa en esa misma
+    // moneda para no mezclar unidades dentro del mismo PDF.
+    const unidad = this.isReportForeignCurrency ? this.reportMoneda : 'S/';
+    let typeLabel = `Diferencia (${unidad})`;
+    if (s.type === 'devolucion') typeLabel = `A devolver (${unidad})`;
+    else if (s.type === 'reembolso') typeLabel = `A reembolsar (${unidad})`;
     const diff = Number(s.difference) || 0;
     const displayAmount = s.type === 'reembolso' ? -diff : diff;
     return {
-      advanceTotal: Number(s.advanceTotal) || 0,
-      expenseTotal: Number(s.expenseTotal) || 0,
-      difference: displayAmount,
+      advanceTotal: this.fromBaseCurrency(Number(s.advanceTotal) || 0),
+      expenseTotal: this.fromBaseCurrency(Number(s.expenseTotal) || 0),
+      difference: this.fromBaseCurrency(displayAmount),
       typeLabel,
     };
   }
@@ -1606,6 +1752,15 @@ export class RendicionDetailComponent implements OnInit {
           : '';
       }
 
+      // Todo el documento va en la moneda de la rendición: un comprobante pagado
+      // en otra moneda entra convertido (con el TC de su día) y su importe
+      // original queda anotado en el concepto para poder rastrearlo.
+      const montoEnMonedaReporte = this.expenseAmountInReportCurrencyPublic(exp);
+      const notaMonedaOriginal = this.showsConversionToReportCurrency(exp)
+        ? ` [${this.getExpenseMonedaPrefijo(exp)} ${this.getExpenseTotal(exp).toFixed(2)}` +
+          (this.getExpenseTcReporte(exp) ? ` · TC ${this.getExpenseTcReporte(exp)}` : '') +
+          ']'
+        : '';
       const comentario = this.getExpenseComentario(exp);
       const placaVehiculo = this.getExpensePlaca(exp);
       const concepto = this.getExpenseConcepto(exp);
@@ -1614,11 +1769,11 @@ export class RendicionDetailComponent implements OnInit {
       return {
         tipo: this.getExpenseTypeCode(exp),
         fecha: this.getExpenseDate(exp),
-        descripcion: concepto,
+        descripcion: `${concepto}${notaMonedaOriginal}`,
         comentario: comentario || undefined,
         placaVehiculo: placaVehiculo || undefined,
         proyecto: proyecto || undefined,
-        monto: Number(exp['total']) || 0,
+        monto: montoEnMonedaReporte,
         estadoComprobante: this.mapExpenseStatusExport(
           typeof exp['status'] === 'string' ? exp['status'] : undefined,
         ),
@@ -1631,11 +1786,11 @@ export class RendicionDetailComponent implements OnInit {
       const estado = this.ADVANCE_STATUS_LABELS[a.status] ?? a.status;
       if (a.pendingBalanceAmount !== undefined && a.additionalAmount !== undefined) {
         return [
-          { descripcion: 'Saldo pendiente (rendición anterior)', monto: a.pendingBalanceAmount, estado, fechaSolicitud },
-          { descripcion: `${a.description} (adicional)`, monto: a.additionalAmount, estado, fechaSolicitud },
+          { descripcion: 'Saldo pendiente (rendición anterior)', monto: this.advanceAmountInReportCurrency(a, a.pendingBalanceAmount), estado, fechaSolicitud },
+          { descripcion: `${a.description} (adicional)`, monto: this.advanceAmountInReportCurrency(a, a.additionalAmount), estado, fechaSolicitud },
         ];
       }
-      return [{ descripcion: a.description, monto: a.amount, estado, fechaSolicitud }];
+      return [{ descripcion: a.description, monto: this.advanceAmountInReportCurrency(a, a.amount ?? 0), estado, fechaSolicitud }];
     });
     // Rendición directa con depósito de Contabilidad: el depósito funciona como
     // anticipo (igual que en la solicitud de viáticos), por lo que debe figurar
@@ -1734,8 +1889,12 @@ export class RendicionDetailComponent implements OnInit {
             }))
         : undefined,
       colaborador: this.getCollaboratorDisplayName(),
+      // El documento entero se expresa en la moneda de la rendición.
+      moneda: this.monedaPrefijo,
       presupuesto: this.report.budget ?? 0,
-      totalGastado: this.totalGastado,
+      // El resto del documento (presupuesto, anticipos, montos de cada comprobante)
+      // va en la moneda del reporte; el gastado debe ir en la misma unidad.
+      totalGastado: this.totalGastadoReporte,
       totalAnticipado: this.totalAnticipado,
       saldoLibre: this.hasFinancingSaldos ? this.financingSaldoDisponible : this.saldoLibre,
       fechaGeneracion: new Date().toLocaleString('es-PE', {
@@ -1751,8 +1910,11 @@ export class RendicionDetailComponent implements OnInit {
       idDocument: this.collaboratorDniForPdf(),
       peopleNames: this.report.peopleNames,
       location: this.reportLocation,
-      startDate: (this.report.startDate ?? this.report.viaticoStartDate) ? new Date((this.report.startDate ?? this.report.viaticoStartDate) as string).toLocaleDateString('es-PE') : undefined,
-      endDate: (this.report.endDate ?? this.report.viaticoEndDate) ? new Date((this.report.endDate ?? this.report.viaticoEndDate) as string).toLocaleDateString('es-PE') : undefined,
+      // `new Date(iso).toLocaleDateString` restaba un día en Lima (UTC-5) porque
+      // la fecha llega anclada a medianoche UTC: el encabezado decía "DEL 5/7 AL
+      // 8/7" para un viaje del 6 al 9. `formatEmissionDate` lee el calendario tal cual.
+      startDate: this.formatEmissionDateOrUndefined(this.report.startDate ?? this.report.viaticoStartDate),
+      endDate: this.formatEmissionDateOrUndefined(this.report.endDate ?? this.report.viaticoEndDate),
       items: (this.report.items || []).map(i => ({
         descripcion: i.description,
         importe: i.amount,
@@ -2403,19 +2565,15 @@ export class RendicionDetailComponent implements OnInit {
   }
 
   get viaticoMoneda(): string {
-    return (this.report as any)?.moneda || 'PEN';
+    return this.reportMoneda;
   }
 
   get isViaticoForeignCurrency(): boolean {
-    const r = this.report as any;
-    return !!r && !!r.moneda && r.moneda !== 'PEN' && !!r.tipoCambio && r.tipoCambio > 0;
+    return this.isReportForeignCurrency;
   }
 
   get viaticoPresupuestoBase(): number {
-    const r = this.report as any;
-    if (!this.isViaticoForeignCurrency) return this.viaticoPresupuesto;
-    const tc = Number(r?.tipoCambio ?? 1);
-    return Math.round(this.viaticoPresupuesto * tc * 100) / 100;
+    return this.toBaseCurrency(this.viaticoPresupuesto);
   }
 
   /** Parte del viático ya financiada (saldo heredado/bolsa + depósitos de Contabilidad). */
