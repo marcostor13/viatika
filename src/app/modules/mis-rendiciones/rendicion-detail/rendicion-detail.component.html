@@ -521,7 +521,7 @@
             </div>
             <p class="font-medium text-gray-500">Total Gastado</p>
           </div>
-          <p class="text-2xl sm:text-3xl font-bold text-gray-900 tabular-nums">S/ {{ totalGastado | number:'1.2-2' }}</p>
+          <p class="text-2xl sm:text-3xl font-bold text-gray-900 tabular-nums">{{ monedaPrefijo }} {{ totalGastadoReporte | number:'1.2-2' }}</p>
         </div>
         <!-- Saldo disponible -->
         <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4 sm:p-6">
@@ -564,7 +564,7 @@
             </div>
             <p class="font-medium text-gray-500">Total Gastado</p>
           </div>
-          <p class="text-2xl sm:text-3xl font-bold text-gray-900 tabular-nums">S/ {{ totalGastado | number:'1.2-2' }}</p>
+          <p class="text-2xl sm:text-3xl font-bold text-gray-900 tabular-nums">{{ monedaPrefijo }} {{ totalGastadoReporte | number:'1.2-2' }}</p>
         </div>
         <!-- Saldo disponible -->
         <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4 sm:p-6">
@@ -577,7 +577,7 @@
             <p class="font-medium text-gray-500">Saldo Disponible</p>
           </div>
           <p class="text-2xl sm:text-3xl font-bold tabular-nums" [ngClass]="{'text-green-600': saldoLibre >= 0, 'text-red-600': saldoLibre < 0}">
-            S/ {{ saldoLibre | number:'1.2-2' }}
+            {{ monedaPrefijo }} {{ saldoLibre | number:'1.2-2' }}
           </p>
         </div>
       </div>
@@ -593,7 +593,7 @@
             </div>
             <p class="font-medium text-gray-500">Total Gastado</p>
           </div>
-          <p class="text-2xl sm:text-3xl font-bold text-gray-900 tabular-nums">S/ {{ totalGastado | number:'1.2-2' }}</p>
+          <p class="text-2xl sm:text-3xl font-bold text-gray-900 tabular-nums">{{ monedaPrefijo }} {{ totalGastadoReporte | number:'1.2-2' }}</p>
         </div>
         <div class="rounded-xl shadow-sm border bg-amber-50 border-amber-200 p-4 sm:p-6">
           <div class="flex items-center gap-3 mb-2">
@@ -604,7 +604,7 @@
             </div>
             <p class="font-medium text-gray-500">Saldo Disponible</p>
           </div>
-          <p class="text-sm font-semibold text-amber-700">Saldo utilizado en otra solicitud (S/ {{ saldoLibre | number:'1.2-2' }}) trasladado a nueva solicitud</p>
+          <p class="text-sm font-semibold text-amber-700">Saldo utilizado en otra solicitud ({{ monedaPrefijo }} {{ saldoLibre | number:'1.2-2' }}) trasladado a nueva solicitud</p>
         </div>
       </div>
       } @else if (hasFinancingSaldos) {
@@ -641,7 +641,7 @@
             </div>
             <p class="font-medium text-gray-500">Total Gastado</p>
           </div>
-          <p class="text-2xl sm:text-3xl font-bold text-gray-900 tabular-nums">S/ {{ totalGastado | number:'1.2-2' }}</p>
+          <p class="text-2xl sm:text-3xl font-bold text-gray-900 tabular-nums">{{ monedaPrefijo }} {{ totalGastadoReporte | number:'1.2-2' }}</p>
         </div>
         <!-- Saldo disponible -->
         <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4 sm:p-6">
@@ -669,7 +669,7 @@
             </div>
             <p class="font-medium text-gray-500">Total Gastado</p>
           </div>
-          <p class="text-2xl sm:text-3xl font-bold text-gray-900 tabular-nums">S/ {{ totalGastado | number:'1.2-2' }}</p>
+          <p class="text-2xl sm:text-3xl font-bold text-gray-900 tabular-nums">{{ monedaPrefijo }} {{ totalGastadoReporte | number:'1.2-2' }}</p>
         </div>
       </div>
       }
@@ -719,7 +719,10 @@
             </div>
             <p class="font-medium text-gray-500">Total Gastado</p>
           </div>
-          <p class="text-2xl sm:text-3xl font-bold text-gray-900 tabular-nums">S/ {{ totalGastado | number:'1.2-2' }}</p>
+          <p class="text-2xl sm:text-3xl font-bold text-gray-900 tabular-nums">{{ monedaPrefijo }} {{ totalGastadoReporte | number:'1.2-2' }}</p>
+          @if (isViaticoForeignCurrency) {
+          <p class="text-xs text-gray-400 tabular-nums">≈ S/ {{ totalGastado | number:'1.2-2' }} · los comprobantes en otra moneda se convierten al TC del día de cada gasto</p>
+          }
         </div>
         <!-- Saldo disponible -->
         <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4 sm:p-6">
@@ -732,11 +735,14 @@
             <p class="font-medium text-gray-500">Saldo Disponible</p>
           </div>
           @if (isSaldoUsadoEnOtraRendicion) {
-          <p class="text-sm font-semibold text-amber-700">Saldo utilizado en otra solicitud (S/ {{ saldoLibre | number:'1.2-2' }}) trasladado a nueva solicitud</p>
+          <p class="text-sm font-semibold text-amber-700">Saldo utilizado en otra solicitud ({{ monedaPrefijo }} {{ saldoLibre | number:'1.2-2' }}) trasladado a nueva solicitud</p>
           } @else {
           <p class="text-2xl sm:text-3xl font-bold tabular-nums" [ngClass]="{'text-green-600': saldoLibre >= 0, 'text-red-600': saldoLibre < 0}">
-            S/ {{ saldoLibre | number:'1.2-2' }}
+            {{ monedaPrefijo }} {{ saldoLibre | number:'1.2-2' }}
           </p>
+          @if (isViaticoForeignCurrency) {
+          <p class="text-xs text-gray-400 tabular-nums">≈ S/ {{ saldoLibreBase | number:'1.2-2' }} (TC {{ report.tipoCambio }})</p>
+          }
           }
         </div>
       </div>
@@ -790,7 +796,7 @@
             </div>
             <p class="font-medium text-gray-500">Total Gastado</p>
           </div>
-          <p class="text-2xl sm:text-3xl font-bold text-gray-900 tabular-nums">S/ {{ totalGastado | number:'1.2-2' }}</p>
+          <p class="text-2xl sm:text-3xl font-bold text-gray-900 tabular-nums">{{ monedaPrefijo }} {{ totalGastadoReporte | number:'1.2-2' }}</p>
         </div>
 
         <!-- Remaining balance -->
@@ -811,10 +817,10 @@
             <p class="font-medium text-gray-500">Saldo Disponible</p>
           </div>
           @if (isSaldoUsadoEnOtraRendicion) {
-          <p class="text-sm font-semibold text-amber-700">Saldo utilizado en otra solicitud (S/ {{ saldoLibre | number:'1.2-2' }}) trasladado a nueva solicitud</p>
+          <p class="text-sm font-semibold text-amber-700">Saldo utilizado en otra solicitud ({{ monedaPrefijo }} {{ saldoLibre | number:'1.2-2' }}) trasladado a nueva solicitud</p>
           } @else {
           <p class="text-2xl sm:text-3xl font-bold tabular-nums" [ngClass]="{'text-green-600': saldoLibre >= 0, 'text-red-600': saldoLibre < 0}">
-            S/ {{ saldoLibre | number:'1.2-2' }}
+            {{ monedaPrefijo }} {{ saldoLibre | number:'1.2-2' }}
           </p>
           }
         </div>
@@ -1084,7 +1090,7 @@
         <h3 class="font-bold text-red-800 mb-1 text-sm">Devolución de saldo pendiente</h3>
         <p class="text-sm text-gray-700 mb-4">
           Tienes un saldo a devolver a la empresa de
-          <strong class="text-red-700">S/ {{ saldoLibre | number:'1.2-2' }}</strong>.
+          <strong class="text-red-700">{{ monedaPrefijo }} {{ saldoLibre | number:'1.2-2' }}</strong>.
           Realiza el depósito a la cuenta de la empresa y adjunta el comprobante, o usa ese saldo para iniciar una nueva solicitud.
         </p>
         <div class="flex flex-wrap gap-3">
@@ -1106,7 +1112,7 @@
         <h3 class="font-bold text-amber-800 mb-1 text-sm">Esperando comprobante de devolución</h3>
         <p class="text-sm text-gray-700">
           Esta rendición tiene un saldo a devolver de
-          <strong class="text-amber-700">S/ {{ saldoLibre | number:'1.2-2' }}</strong>.
+          <strong class="text-amber-700">{{ monedaPrefijo }} {{ saldoLibre | number:'1.2-2' }}</strong>.
           El colaborador debe adjuntar el comprobante de depósito antes de que sea posible cerrar la rendición definitivamente.
         </p>
       </div>
@@ -1118,7 +1124,7 @@
         <h3 class="font-bold text-emerald-800 mb-1 text-sm">Reembolso al colaborador pendiente</h3>
         <p class="text-sm text-gray-700 mb-4">
           La rendición tiene un saldo a favor del colaborador de
-          <strong class="text-emerald-700">S/ {{ (saldoLibre < 0 ? saldoLibre * -1 : saldoLibre) | number:'1.2-2' }}</strong>.
+          <strong class="text-emerald-700">{{ monedaPrefijo }} {{ (saldoLibre < 0 ? saldoLibre * -1 : saldoLibre) | number:'1.2-2' }}</strong>.
           Adjunta el comprobante de pago antes de cerrar la rendición definitivamente.
         </p>
         <button (click)="openAdminReembolsoModal()"
@@ -1258,7 +1264,16 @@
                   <span class="text-xs text-gray-500 truncate">{{ getExpenseDate(expense) }}</span>
                 </div>
                 <div class="flex items-center gap-1 shrink-0">
-                  <p class="text-sm font-semibold text-gray-900 tabular-nums">S/ {{ expense.total | number:'1.2-2' }}</p>
+                  <div class="text-right">
+                    @if (showsConversionToReportCurrency(expense)) {
+                    <p class="text-sm font-semibold text-gray-900 tabular-nums">{{ monedaPrefijo }} {{ expenseAmountInReportCurrencyPublic(expense) | number:'1.2-2' }}</p>
+                    <p class="text-[11px] text-gray-400 tabular-nums leading-tight">
+                      {{ getExpenseMonedaPrefijo(expense) }} {{ expense.total | number:'1.2-2' }}@if (getExpenseTcReporte(expense); as tc) { · TC {{ tc }}}
+                    </p>
+                    } @else {
+                    <p class="text-sm font-semibold text-gray-900 tabular-nums">{{ getExpenseMonedaPrefijo(expense) }} {{ expense.total | number:'1.2-2' }}</p>
+                    }
+                  </div>
                   @if (getExpenseAmountEdited(expense)) {
                   <div class="relative">
                     <button type="button"
@@ -1274,7 +1289,7 @@
                       (click)="$event.stopPropagation()">
                       <p class="font-semibold">Monto editado</p>
                       @if (getExpenseOriginalOcrTotal(expense) !== null) {
-                        <p class="text-gray-400 mt-0.5">OCR: S/ {{ getExpenseOriginalOcrTotal(expense)! | number:'1.2-2' }}</p>
+                        <p class="text-gray-400 mt-0.5">OCR: {{ getExpenseMonedaPrefijo(expense) }} {{ getExpenseOriginalOcrTotal(expense)! | number:'1.2-2' }}</p>
                       }
                     </div>
                     }
@@ -1548,7 +1563,11 @@
                   <!-- Monto -->
                   <td class="px-3 py-3 text-right whitespace-nowrap font-medium tabular-nums">
                     <div class="flex items-center justify-end gap-1">
-                      S/ {{ expense.total | number:'1.2-2' }}
+                      @if (showsConversionToReportCurrency(expense)) {
+                      {{ monedaPrefijo }} {{ expenseAmountInReportCurrencyPublic(expense) | number:'1.2-2' }}
+                      } @else {
+                      {{ getExpenseMonedaPrefijo(expense) }} {{ expense.total | number:'1.2-2' }}
+                      }
                       @if (getExpenseAmountEdited(expense)) {
                       <div class="relative">
                         <button type="button"
@@ -1564,13 +1583,18 @@
                           (click)="$event.stopPropagation()">
                           <p class="font-semibold">Monto editado</p>
                           @if (getExpenseOriginalOcrTotal(expense) !== null) {
-                            <p class="text-gray-400 mt-0.5">OCR: S/ {{ getExpenseOriginalOcrTotal(expense)! | number:'1.2-2' }}</p>
+                            <p class="text-gray-400 mt-0.5">OCR: {{ getExpenseMonedaPrefijo(expense) }} {{ getExpenseOriginalOcrTotal(expense)! | number:'1.2-2' }}</p>
                           }
                         </div>
                         }
                       </div>
                       }
                     </div>
+                    @if (showsConversionToReportCurrency(expense)) {
+                    <p class="text-[11px] font-normal text-gray-400 leading-tight">
+                      {{ getExpenseMonedaPrefijo(expense) }} {{ expense.total | number:'1.2-2' }}@if (getExpenseTcReporte(expense); as tc) { · TC {{ tc }}}
+                    </p>
+                    }
                   </td>
                   <!-- Estado Contabilidad -->
                   @if (!report.isCajaChica) {
@@ -2026,6 +2050,12 @@
           } @else {
           <p class="font-semibold text-gray-900 tabular-nums text-base">S/ {{ getExpenseTotal(exp) | number:'1.2-2' }}</p>
           }
+          @if (showsConversionToReportCurrency(exp)) {
+          <p class="text-xs text-gray-500 tabular-nums">
+            Descontado del viático como {{ monedaPrefijo }} {{ expenseAmountInReportCurrencyPublic(exp) | number:'1.2-2' }}
+            @if (getExpenseTcReporte(exp); as tc) { · TC {{ tc }} del día del gasto }
+          </p>
+          }
         </div>
         <div>
           <p class="text-xs text-gray-400">Estado del comprobante</p>
@@ -2338,15 +2368,15 @@
         }
         <div class="flex justify-between text-sm">
           <span class="text-gray-500">Total gastado</span>
-          <span class="font-semibold" [class.text-red-600]="!report.isDirecta && totalGastado > totalAnticipado" [class.text-gray-900]="report.isDirecta || totalGastado <= totalAnticipado">
-            S/ {{ totalGastado | number:'1.2-2' }}
+          <span class="font-semibold" [class.text-red-600]="!report.isDirecta && totalGastadoReporte > totalAnticipado" [class.text-gray-900]="report.isDirecta || totalGastadoReporte <= totalAnticipado">
+            {{ monedaPrefijo }} {{ totalGastadoReporte | number:'1.2-2' }}
           </span>
         </div>
         @if (!report.isDirecta) {
         <div class="flex justify-between text-sm border-t border-gray-200 pt-2 mt-2">
           <span class="text-gray-500">Saldo</span>
           <span class="font-bold" [class.text-green-600]="saldoLibre >= 0" [class.text-red-600]="saldoLibre < 0">
-            S/ {{ saldoLibre | number:'1.2-2' }}
+            {{ monedaPrefijo }} {{ saldoLibre | number:'1.2-2' }}
           </span>
         </div>
         } @else if (hasDirectaDeposit) {
@@ -2374,7 +2404,7 @@
             }" class="text-xs font-medium px-1.5 py-0.5 rounded shrink-0 mt-0.5">
               {{ getExpenseTypeLabel(expense) }}
             </span>
-            <span class="text-xs font-semibold text-gray-900 shrink-0">S/ {{ getExpenseTotal(expense) | number:'1.2-2' }}</span>
+            <span class="text-xs font-semibold text-gray-900 shrink-0">{{ getExpenseMonedaPrefijo(expense) }} {{ getExpenseTotal(expense) | number:'1.2-2' }}</span>
           </div>
           <p class="text-xs text-gray-500 mt-1 leading-relaxed">{{ getExpenseDescription(expense) }}</p>
         </div>
@@ -2436,7 +2466,7 @@
       </div>
       <div class="flex justify-between gap-4">
         <span class="text-gray-500">Total gastado</span>
-        <span class="font-semibold text-gray-900 tabular-nums">S/ {{ totalGastado | number:'1.2-2' }}</span>
+        <span class="font-semibold text-gray-900 tabular-nums">{{ monedaPrefijo }} {{ totalGastadoReporte | number:'1.2-2' }}</span>
       </div>
       <div class="flex justify-between gap-4">
         <span class="text-gray-500">Comprobantes</span>
@@ -3032,12 +3062,12 @@
       </div>
       <div>
         <h3 class="text-base font-semibold text-gray-900">Nueva rendición directa</h3>
-        <p class="text-xs text-gray-500">Saldo disponible: S/ {{ saldoLibre | number:'1.2-2' }}</p>
+        <p class="text-xs text-gray-500">Saldo disponible: {{ monedaPrefijo }} {{ saldoLibre | number:'1.2-2' }}</p>
       </div>
     </div>
     <div class="px-6 py-4">
       <p class="text-sm text-gray-600 mb-4">
-        Se creará una nueva rendición directa usando el saldo de <strong>S/ {{ saldoLibre | number:'1.2-2' }}</strong> disponible en esta rendición.
+        Se creará una nueva rendición directa usando el saldo de <strong>{{ monedaPrefijo }} {{ saldoLibre | number:'1.2-2' }}</strong> disponible en esta rendición.
       </p>
       <label class="block text-sm font-medium text-gray-700 mb-1">Gestión <span class="text-red-500">*</span></label>
       <input

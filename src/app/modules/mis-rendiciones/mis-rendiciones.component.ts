@@ -573,9 +573,47 @@ export class MisRendicionesComponent implements OnInit {
     return '';
   }
 
+  /** Moneda operativa de la rendición ('PEN' salvo viáticos al exterior). */
+  private monedaDe(report: IExpenseReport): string {
+    return (report as any)?.moneda || 'PEN';
+  }
+
+  /** TC de esa moneda a soles, congelado en la rendición. */
+  private tipoCambioDe(report: IExpenseReport): number {
+    const tc = Number((report as any)?.tipoCambio);
+    return tc > 0 ? tc : 1;
+  }
+
+  private esMonedaExtranjera(report: IExpenseReport): boolean {
+    return this.monedaDe(report) !== 'PEN' && Number((report as any)?.tipoCambio) > 0;
+  }
+
+  /** Prefijo para los importes de la rendición: 'S/' o el código ISO. */
+  monedaPrefijoDe(report: IExpenseReport): string {
+    return this.esMonedaExtranjera(report) ? this.monedaDe(report) : 'S/';
+  }
+
+  /**
+   * Gastado en la MONEDA DE LA RENDICIÓN. Antes sumaba `total` en crudo, así que
+   * en un viático en dólares mezclaba dólares con los soles de un comprobante
+   * pagado en Perú.
+   */
   getTotalGastado(report: IExpenseReport): number {
     if (!report.expenseIds?.length) return 0;
-    return report.expenseIds.reduce((sum: number, e: any) => sum + (parseFloat(e.total) || 0), 0);
+    const moneda = this.monedaDe(report);
+    const tc = this.tipoCambioDe(report);
+    const extranjera = this.esMonedaExtranjera(report);
+    const total = report.expenseIds.reduce((sum: number, e: any) => {
+      const nativo = parseFloat(e?.total) || 0;
+      if (!extranjera) return sum + (parseFloat(e?.montoBase ?? e?.total) || 0);
+      // Congelado por el backend con el TC del día del gasto.
+      if (typeof e?.montoReporte === 'number' && e?.monedaReporte === moneda) {
+        return sum + e.montoReporte;
+      }
+      if ((e?.moneda ?? 'PEN') === moneda) return sum + nativo;
+      return sum + (parseFloat(e?.montoBase ?? e?.total) || 0) / tc;
+    }, 0);
+    return Math.round(total * 100) / 100;
   }
 
   getSaldoLibre(report: IExpenseReport): number {

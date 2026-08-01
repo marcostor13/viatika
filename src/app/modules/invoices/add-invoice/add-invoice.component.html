@@ -49,7 +49,13 @@
           </div>
           <p class="font-medium text-gray-500">Total gastado</p>
         </div>
-        <p class="text-2xl sm:text-3xl font-bold text-gray-900 tabular-nums">S/ {{ rendicionSpent() | number:'1.2-2' }}</p>
+        <p class="text-2xl sm:text-3xl font-bold text-gray-900 tabular-nums">{{ rendicionMonedaPrefijo() }} {{ rendicionSpent() | number:'1.2-2' }}</p>
+        @if (rendicionMoneda() !== 'PEN') {
+        <p class="mt-1 text-xs text-tertiary">
+          Rendición en {{ rendicionMoneda() }}. Los comprobantes emitidos en otra moneda se
+          convierten automáticamente con el tipo de cambio de su fecha de emisión.
+        </p>
+        }
       </div>
     </div>
   }
@@ -499,7 +505,7 @@
     </div>
     <!-- Monto editable en edición -->
     <div class="flex flex-col gap-2">
-      <label class="text-sm font-medium text-secondary">Monto S/.</label>
+      <label class="text-sm font-medium text-secondary">Monto {{ currencySymbolFor(form.get('moneda')?.value) }}</label>
       <div class="flex items-center gap-2">
         @if (!editingInvoiceAmount()) {
         <div class="flex-1 h-[42px] px-4 flex items-center rounded-lg border text-sm font-semibold tabular-nums transition-colors"
@@ -509,7 +515,7 @@
           [class.border-amber-300]="invoiceAmountWasEdited"
           [class.bg-amber-50]="invoiceAmountWasEdited"
           [class.text-amber-900]="invoiceAmountWasEdited">
-          S/ {{ (invoiceAmountWasEdited ? editedInvoiceTotal()! : (originalInvoice?.total ?? 0)) | number:'1.2-2' }}
+          {{ currencySymbolFor(form.get('moneda')?.value) }} {{ (invoiceAmountWasEdited ? editedInvoiceTotal()! : (originalInvoice?.total ?? 0)) | number:'1.2-2' }}
           @if (invoiceAmountWasEdited) {
             <span class="ml-2 text-xs font-normal text-amber-600">(editado)</span>
           }
@@ -539,7 +545,7 @@
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4 shrink-0">
           <path fill-rule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495ZM10 5a.75.75 0 0 1 .75.75v3.5a.75.75 0 0 1-1.5 0v-3.5A.75.75 0 0 1 10 5Zm0 9a1 1 0 1 0 0-2 1 1 0 0 0 0 2Z" clip-rule="evenodd" />
         </svg>
-        Monto editado. Valor anterior: S/ {{ (originalInvoice?.total ?? 0) | number:'1.2-2' }}.
+        Monto editado. Valor anterior: {{ currencySymbolFor(form.get('moneda')?.value) }} {{ (originalInvoice?.total ?? 0) | number:'1.2-2' }}.
       </div>
       }
     </div>

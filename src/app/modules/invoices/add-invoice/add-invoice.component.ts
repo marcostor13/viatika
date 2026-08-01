@@ -117,6 +117,13 @@ export default class AddInvoiceComponent implements OnInit {
   );
   rendicionBudget = signal<number>(0);
   rendicionSpent = signal<number>(0);
+  /** Moneda operativa de la rendición a la que se carga el gasto ('PEN' salvo viáticos al exterior). */
+  rendicionMoneda = signal<string>('PEN');
+  rendicionTipoCambio = signal<number>(1);
+  /** Prefijo para los importes de la rendición: 'S/' o el código ISO ('USD'). */
+  rendicionMonedaPrefijo = computed(() =>
+    this.rendicionMoneda() === 'PEN' ? 'S/' : this.rendicionMoneda()
+  );
   rendicionSettlementDiff = signal<number | null>(null);
   rendicionAvailable = computed(() => {
     const diff = this.rendicionSettlementDiff();
@@ -547,12 +554,33 @@ export default class AddInvoiceComponent implements OnInit {
         // El flag directa puede llegar después de que el usuario ya agregó filas:
         // re-sincroniza validadores del proyecto (superior y por fila).
         this.syncMobilityRowValidators();
+        // La DJ se declara en la moneda de la rendición (un viático al exterior en
+        // dólares declara en dólares); antes quedaba fija en 'US$' aunque el
+        // viático fuera en soles.
+        const reportMoneda = (report as any)?.moneda;
+        if (reportMoneda) {
+          // 'US$' es el símbolo que usa el formato impreso de la DJ del exterior.
+          const simbolo =
+            reportMoneda === 'USD' ? 'US$' : this.currencySymbolFor(reportMoneda);
+          this.form.patchValue({ djMoneda: simbolo });
+        }
+        const moneda = (report as any)?.moneda || 'PEN';
+        const tcReporte = Number((report as any)?.tipoCambio) || 1;
+        const esExtranjera = moneda !== 'PEN' && tcReporte > 0;
+        this.rendicionMoneda.set(moneda);
+        this.rendicionTipoCambio.set(tcReporte);
         const expenses = Array.isArray(report?.expenseIds) ? report.expenseIds : [];
-        const spent = expenses.reduce(
-          (sum: number, exp: any) => sum + (parseFloat(exp?.total) || 0),
-          0,
-        );
-        this.rendicionSpent.set(spent);
+        // En la moneda de la rendición: sumar `total` en crudo mezclaba los
+        // dólares del viático con los soles de un comprobante pagado en Perú.
+        const spent = expenses.reduce((sum: number, exp: any) => {
+          if (!esExtranjera) return sum + (parseFloat(exp?.montoBase ?? exp?.total) || 0);
+          if (typeof exp?.montoReporte === 'number' && exp?.monedaReporte === moneda) {
+            return sum + exp.montoReporte;
+          }
+          if ((exp?.moneda ?? 'PEN') === moneda) return sum + (parseFloat(exp?.total) || 0);
+          return sum + (parseFloat(exp?.montoBase ?? exp?.total) || 0) / tcReporte;
+        }, 0);
+        this.rendicionSpent.set(Math.round(spent * 100) / 100);
         const settlement = (report as any)?.settlement;
         if (settlement && settlement.difference !== undefined && settlement.difference !== null) {
           this.rendicionSettlementDiff.set(Number(settlement.difference) || 0);
