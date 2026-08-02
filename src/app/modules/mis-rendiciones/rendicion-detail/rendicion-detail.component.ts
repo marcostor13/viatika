@@ -494,6 +494,24 @@ export class RendicionDetailComponent implements OnInit {
     );
   }
 
+  /** Declaración Jurada: se declara en la moneda de la rendición, no es un comprobante pagado en otra moneda. */
+  isDeclaracionJuradaExpense(exp: unknown): boolean {
+    if (exp == null || typeof exp !== 'object') return false;
+    const e = exp as Record<string, unknown>;
+    return e['declaracionJurada'] === true || this.getExpenseTypeCode(e) === 'DJ';
+  }
+
+  /**
+   * Nota con el importe original ("S/ 54.45 · TC 3.556") bajo el monto del
+   * comprobante. Solo para los que SÍ se pagaron en otra moneda; una DJ se
+   * declara en la moneda del viático, así que se muestra únicamente en ella
+   * (los registros antiguos quedaron guardados en soles y su equivalencia
+   * confundía: el viático es en dólares).
+   */
+  showsOriginalCurrencyNote(exp: unknown): boolean {
+    return this.showsConversionToReportCurrency(exp) && !this.isDeclaracionJuradaExpense(exp);
+  }
+
   /** Igual que el privado, expuesto para la tabla de comprobantes. */
   expenseAmountInReportCurrencyPublic(exp: unknown): number {
     return Math.round(this.expenseAmountInReportCurrency(exp) * 100) / 100;
@@ -1756,7 +1774,7 @@ export class RendicionDetailComponent implements OnInit {
       // en otra moneda entra convertido (con el TC de su día) y su importe
       // original queda anotado en el concepto para poder rastrearlo.
       const montoEnMonedaReporte = this.expenseAmountInReportCurrencyPublic(exp);
-      const notaMonedaOriginal = this.showsConversionToReportCurrency(exp)
+      const notaMonedaOriginal = this.showsOriginalCurrencyNote(exp)
         ? ` [${this.getExpenseMonedaPrefijo(exp)} ${this.getExpenseTotal(exp).toFixed(2)}` +
           (this.getExpenseTcReporte(exp) ? ` · TC ${this.getExpenseTcReporte(exp)}` : '') +
           ']'

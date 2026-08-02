@@ -687,10 +687,8 @@
             </div>
             <p class="font-medium text-gray-500">Presupuesto</p>
           </div>
+          <!-- Viático en moneda extranjera: el resumen va solo en esa moneda (sin equivalente en soles). -->
           <p class="text-2xl sm:text-3xl font-bold text-gray-900 tabular-nums">{{ viaticoMoneda }} {{ viaticoPresupuesto | number:'1.2-2' }}</p>
-          @if (isViaticoForeignCurrency) {
-          <p class="text-xs text-gray-400 tabular-nums">≈ S/ {{ viaticoPresupuestoBase | number:'1.2-2' }} (TC {{ report.tipoCambio }})</p>
-          }
           @if (viaticoFinancingRows.length > 0 || viaticoPendienteDeposito > 0) {
           <div class="mt-3 border-t border-gray-100 pt-2 space-y-1.5">
             <p class="text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Financiamiento</p>
@@ -720,9 +718,6 @@
             <p class="font-medium text-gray-500">Total Gastado</p>
           </div>
           <p class="text-2xl sm:text-3xl font-bold text-gray-900 tabular-nums">{{ monedaPrefijo }} {{ totalGastadoReporte | number:'1.2-2' }}</p>
-          @if (isViaticoForeignCurrency) {
-          <p class="text-xs text-gray-400 tabular-nums">≈ S/ {{ totalGastado | number:'1.2-2' }} · los comprobantes en otra moneda se convierten al TC del día de cada gasto</p>
-          }
         </div>
         <!-- Saldo disponible -->
         <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4 sm:p-6">
@@ -740,9 +735,6 @@
           <p class="text-2xl sm:text-3xl font-bold tabular-nums" [ngClass]="{'text-green-600': saldoLibre >= 0, 'text-red-600': saldoLibre < 0}">
             {{ monedaPrefijo }} {{ saldoLibre | number:'1.2-2' }}
           </p>
-          @if (isViaticoForeignCurrency) {
-          <p class="text-xs text-gray-400 tabular-nums">≈ S/ {{ saldoLibreBase | number:'1.2-2' }} (TC {{ report.tipoCambio }})</p>
-          }
           }
         </div>
       </div>
@@ -1267,9 +1259,11 @@
                   <div class="text-right">
                     @if (showsConversionToReportCurrency(expense)) {
                     <p class="text-sm font-semibold text-gray-900 tabular-nums">{{ monedaPrefijo }} {{ expenseAmountInReportCurrencyPublic(expense) | number:'1.2-2' }}</p>
+                    @if (showsOriginalCurrencyNote(expense)) {
                     <p class="text-[11px] text-gray-400 tabular-nums leading-tight">
                       {{ getExpenseMonedaPrefijo(expense) }} {{ expense.total | number:'1.2-2' }}@if (getExpenseTcReporte(expense); as tc) { · TC {{ tc }}}
                     </p>
+                    }
                     } @else {
                     <p class="text-sm font-semibold text-gray-900 tabular-nums">{{ getExpenseMonedaPrefijo(expense) }} {{ expense.total | number:'1.2-2' }}</p>
                     }
@@ -1590,7 +1584,7 @@
                       </div>
                       }
                     </div>
-                    @if (showsConversionToReportCurrency(expense)) {
+                    @if (showsOriginalCurrencyNote(expense)) {
                     <p class="text-[11px] font-normal text-gray-400 leading-tight">
                       {{ getExpenseMonedaPrefijo(expense) }} {{ expense.total | number:'1.2-2' }}@if (getExpenseTcReporte(expense); as tc) { · TC {{ tc }}}
                     </p>
@@ -2044,13 +2038,16 @@
       <section class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
         <div>
           <p class="text-xs text-gray-400">Monto</p>
-          @if (isExpenseForeignCurrency(exp)) {
+          @if (isDeclaracionJuradaExpense(exp) && showsConversionToReportCurrency(exp)) {
+          <!-- DJ: se declara en la moneda del viático (las antiguas quedaron guardadas en soles: se muestran ya convertidas). -->
+          <p class="font-semibold text-gray-900 tabular-nums text-base">{{ monedaPrefijo }} {{ expenseAmountInReportCurrencyPublic(exp) | number:'1.2-2' }}</p>
+          } @else if (isExpenseForeignCurrency(exp)) {
           <p class="font-semibold text-gray-900 tabular-nums text-base">{{ getExpenseMoneda(exp) }} {{ getExpenseTotal(exp) | number:'1.2-2' }}</p>
           <p class="text-xs text-gray-500 tabular-nums">S/ {{ getExpenseMontoBase(exp) | number:'1.2-2' }} (TC {{ getExpenseTipoCambio(exp) }})</p>
           } @else {
           <p class="font-semibold text-gray-900 tabular-nums text-base">S/ {{ getExpenseTotal(exp) | number:'1.2-2' }}</p>
           }
-          @if (showsConversionToReportCurrency(exp)) {
+          @if (showsOriginalCurrencyNote(exp)) {
           <p class="text-xs text-gray-500 tabular-nums">
             Descontado del viático como {{ monedaPrefijo }} {{ expenseAmountInReportCurrencyPublic(exp) | number:'1.2-2' }}
             @if (getExpenseTcReporte(exp); as tc) { · TC {{ tc }} del día del gasto }
