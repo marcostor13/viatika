@@ -443,10 +443,6 @@ export class MisRendicionesComponent implements OnInit {
     return report.status === 'open';
   }
 
-  isItemForeignCurrency(item: UnifiedViaticoItem): boolean {
-    return !!item.moneda && item.moneda !== 'PEN' && !!item.tipoCambio && item.tipoCambio > 0;
-  }
-
   canEditViatico(report: IExpenseReport): boolean {
     if (report.status === 'pending_l1') return true;
     // Un coordinador crea su viático directo en pending_l2 (sin pasar por pending_l1): ese

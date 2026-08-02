@@ -184,12 +184,9 @@
             <span class="block break-words font-medium text-secondary" [title]="item.title">{{ item.title }}</span>
           </td>
 
-          <!-- Presupuesto -->
+          <!-- Presupuesto: en moneda extranjera se muestra solo en su moneda (sin equivalente en soles). -->
           <td class="px-4 py-3.5 text-right">
             <span class="text-base font-bold text-secondary tabular-nums">{{ item.moneda }} {{ item.amount | number:'1.2-2' }}</span>
-            @if (isItemForeignCurrency(item)) {
-            <span class="block text-xs text-tertiary tabular-nums">S/ {{ item.montoBase | number:'1.2-2' }}</span>
-            }
           </td>
 
           <!-- Estado -->
@@ -322,9 +319,6 @@
           <span class="text-xs text-tertiary">{{ item.createdAt | date:'dd/MM/yyyy' }}</span>
           <span class="text-right">
             <span class="text-base font-bold text-secondary tabular-nums block">{{ item.moneda }} {{ item.amount | number:'1.2-2' }}</span>
-            @if (isItemForeignCurrency(item)) {
-            <span class="block text-xs text-tertiary tabular-nums">S/ {{ item.montoBase | number:'1.2-2' }}</span>
-            }
           </span>
         </div>
 
