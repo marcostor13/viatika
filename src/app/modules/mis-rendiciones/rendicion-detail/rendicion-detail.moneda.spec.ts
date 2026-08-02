@@ -97,6 +97,34 @@ describe('RendicionDetailComponent — moneda de la rendición', () => {
     expect(comp.getExpenseMonedaPrefijo(dj)).toBe('USD');
   });
 
+  it('el comprobante en soles conserva la nota con su importe original', () => {
+    const comp = crear(viaticoUsd());
+    expect(comp.showsOriginalCurrencyNote(comp.report.expenseIds[2])).toBeTrue();
+  });
+
+  it('una DJ antigua guardada en soles se muestra convertida, sin la nota en soles', () => {
+    const report = viaticoUsd();
+    // Registrada antes del fix de moneda: quedó como PEN dentro de un viático en USD.
+    report.expenseIds = [
+      {
+        total: 88,
+        moneda: 'PEN',
+        montoBase: 88,
+        monedaReporte: 'USD',
+        tcReporte: 3.556,
+        montoReporte: 24.75,
+        declaracionJurada: true,
+        subTipo: 'DJ',
+      },
+    ] as any;
+    const comp = crear(report);
+    const dj = comp.report.expenseIds[0];
+    expect(comp.isDeclaracionJuradaExpense(dj)).toBeTrue();
+    expect(comp.showsConversionToReportCurrency(dj)).toBeTrue();
+    expect(comp.showsOriginalCurrencyNote(dj)).toBeFalse();
+    expect(comp.expenseAmountInReportCurrencyPublic(dj)).toBe(24.75);
+  });
+
   it('respalda con el TC del viático los gastos anteriores a montoReporte', () => {
     const report = viaticoUsd();
     // Gasto legacy: solo tiene el congelado a moneda base.
