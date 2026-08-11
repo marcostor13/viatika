@@ -112,6 +112,8 @@ export interface AffidavitExportData {
   documentoColaborador?: string;
   fechaGeneracion: string;
   total: number;
+  /** Prefijo de los importes ('S/', 'USD'). Una DJ se declara en la moneda del viático. */
+  moneda?: string;
   rows: AffidavitExportRow[];
   signature?: string;
 }
@@ -178,6 +180,12 @@ export interface SingleExpenseAffidavitData {
   empresaNombre?: string;
   fechaGeneracion: string;
   total: number;
+  /**
+   * Prefijo de los importes ('S/', 'USD'). Es la moneda del propio comprobante:
+   * una DJ de un viático al exterior va en dólares, mientras que una planilla de
+   * movilidad o un comprobante de caja siempre se emiten en soles.
+   */
+  moneda?: string;
   mobilityRows?: MobilitySheetExportData['rows'];
   receiptFields?: Array<{ label: string; value: string }>;
   descripcion?: string;
@@ -929,9 +937,10 @@ export class RendicionExportService {
     doc.text(`Colaborador: ${data.colaborador}`, 14, 44);
     doc.text(`Documento: ${data.documentoColaborador || '-'}`, 14, 50);
 
+    const prefijoMoneda = data.moneda || 'S/';
     autoTable(doc, {
       startY: 58,
-      head: [['Fecha', 'Documento', 'Concepto', 'Categoria', 'Monto (S/)']],
+      head: [['Fecha', 'Documento', 'Concepto', 'Categoria', `Monto (${prefijoMoneda})`]],
       body: data.rows.map(r => [r.fecha, r.documento, r.concepto, r.categoria, r.monto.toFixed(2)]),
       theme: 'grid',
       headStyles: { fillColor: [145, 47, 44], textColor: 255 },
@@ -942,7 +951,7 @@ export class RendicionExportService {
 
     const y = afterTable(doc) + 8;
     doc.setFont('helvetica', 'bold');
-    doc.text(`Total declarado: S/ ${data.total.toFixed(2)}`, 196, y, { align: 'right' });
+    doc.text(`Total declarado: ${prefijoMoneda} ${data.total.toFixed(2)}`, 196, y, { align: 'right' });
     doc.setFont('helvetica', 'normal');
     doc.text(`Fecha de generacion: ${data.fechaGeneracion}`, 14, y + 8);
 
@@ -1614,11 +1623,12 @@ export class RendicionExportService {
     doc.text(`Fecha: ${data.fechaGeneracion}`, 14, y); y += 10;
 
     let tableRendered = false;
+    const prefijoMoneda = data.moneda || 'S/';
 
     if (data.mobilityRows && data.mobilityRows.length > 0) {
       autoTable(doc, {
         startY: y,
-        head: [['Fecha', 'Cliente / Proveedor', 'Origen', 'Destino', 'Gestión', 'Total (S/)']],
+        head: [['Fecha', 'Cliente / Proveedor', 'Origen', 'Destino', 'Gestión', `Total (${prefijoMoneda})`]],
         body: data.mobilityRows.map(r => [r.fecha, r.clienteProveedor || '—', r.origen || '—', r.destino || '—', r.gestion || '—', r.total.toFixed(2)]),
         theme: 'grid',
         headStyles: { fillColor: [145, 47, 44], textColor: 255 },
@@ -1648,7 +1658,7 @@ export class RendicionExportService {
     }
 
     doc.setFont('helvetica', 'bold');
-    doc.text(`Total declarado: S/ ${data.total.toFixed(2)}`, 196, y, { align: 'right' });
+    doc.text(`Total declarado: ${prefijoMoneda} ${data.total.toFixed(2)}`, 196, y, { align: 'right' });
     doc.setFont('helvetica', 'normal');
 
     y += 20;
