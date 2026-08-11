@@ -45,7 +45,7 @@
           <tr class="hover:bg-background/60 transition-colors">
             <td class="px-4 py-3 font-medium text-secondary">{{ collaboratorReportName(rep) }}</td>
             <td class="px-4 py-3 text-tertiary">{{ rep.title }}</td>
-            <td class="px-4 py-3 text-right font-bold text-green-700">S/ {{ reimbursementAmount(rep) }}</td>
+            <td class="px-4 py-3 text-right font-bold text-green-700">{{ reimbursementCurrency(rep) }} {{ reimbursementAmount(rep) }}</td>
             <td class="px-4 py-3 text-right">
               <div class="flex items-center justify-end gap-2">
                 <a [routerLink]="['/mis-rendiciones', rep._id, 'detalle']"
@@ -72,7 +72,7 @@
             <p class="text-sm font-semibold text-secondary">{{ collaboratorReportName(rep) }}</p>
             <p class="text-xs text-tertiary mt-0.5 truncate max-w-[180px]">{{ rep.title }}</p>
           </div>
-          <span class="text-base font-bold text-green-700 shrink-0">S/ {{ reimbursementAmount(rep) }}</span>
+          <span class="text-base font-bold text-green-700 shrink-0">{{ reimbursementCurrency(rep) }} {{ reimbursementAmount(rep) }}</span>
         </div>
         <div class="flex gap-2">
           <a [routerLink]="['/mis-rendiciones', rep._id, 'detalle']"
@@ -808,7 +808,7 @@
       </div>
       <p class="text-sm text-tertiary mb-5">
         <span class="font-semibold text-secondary">{{ collaboratorReportName(selectedReportReimbursement) }}</span>
-        &nbsp;·&nbsp;S/ {{ reimbursementAmount(selectedReportReimbursement) }}
+        &nbsp;·&nbsp;{{ reimbursementCurrency(selectedReportReimbursement) }} {{ reimbursementAmount(selectedReportReimbursement) }}
         <br><span class="text-xs">{{ selectedReportReimbursement.title }}</span>
       </p>
 

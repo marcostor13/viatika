@@ -2070,6 +2070,7 @@ export class RendicionDetailComponent implements OnInit {
       empresaNombre: client?.businessName,
       fechaGeneracion: new Date().toLocaleDateString('es-PE'),
       total: this.getExpenseTotal(expense),
+      moneda: this.getExpenseMonedaPrefijo(expense),
       mobilityRows,
       receiptFields,
       descripcion,
@@ -2419,7 +2420,9 @@ export class RendicionDetailComponent implements OnInit {
       documento: `${this.dataText(exp, 'serie')} - ${this.dataText(exp, 'correlativo')}`,
       concepto: this.getExpenseDescription(exp),
       categoria: this.getPopulatedName(exp['categoryId']),
-      monto: this.getExpenseTotal(exp),
+      // La DJ agrupa comprobantes que pueden venir en distinta moneda: todos se
+      // expresan en la de la rendición para que el total sea sumable.
+      monto: this.expenseAmountInReportCurrency(exp),
     }));
     const total = rows.reduce((sum, r) => sum + (r.monto || 0), 0);
     return {
@@ -2434,6 +2437,7 @@ export class RendicionDetailComponent implements OnInit {
         timeStyle: 'short',
       }),
       total,
+      moneda: this.monedaPrefijo,
       rows,
       signature: this.getCollaboratorSignature(),
     };
@@ -3408,6 +3412,7 @@ export class RendicionDetailComponent implements OnInit {
       empresaNombre: client?.businessName,
       fechaGeneracion: new Date().toLocaleDateString('es-PE'),
       total,
+      moneda: this.getExpenseMonedaPrefijo(expense),
       mobilityRows: rows,
       signature: this.getCollaboratorSignature(),
     };
@@ -3455,6 +3460,7 @@ export class RendicionDetailComponent implements OnInit {
       empresaNombre: client?.businessName,
       fechaGeneracion: new Date().toLocaleDateString('es-PE'),
       total: this.getExpenseTotal(expense),
+      moneda: this.getExpenseMonedaPrefijo(expense),
       receiptFields,
       signature: this.getCollaboratorSignature(),
     };
@@ -3479,6 +3485,7 @@ export class RendicionDetailComponent implements OnInit {
       empresaNombre: client?.businessName,
       fechaGeneracion: new Date().toLocaleDateString('es-PE'),
       total: this.getExpenseTotal(expense),
+      moneda: this.getExpenseMonedaPrefijo(expense),
       receiptFields,
       signature: this.getCollaboratorSignature(),
     };
@@ -3497,6 +3504,7 @@ export class RendicionDetailComponent implements OnInit {
       empresaNombre: client?.businessName,
       fechaGeneracion: new Date().toLocaleDateString('es-PE'),
       total: this.getExpenseTotal(expense),
+      moneda: this.getExpenseMonedaPrefijo(expense),
       descripcion: String(expense['description'] || '—'),
       signature: this.getCollaboratorSignature(),
     };

@@ -9,6 +9,7 @@ import {
   SingleExpenseAffidavitData,
 } from './rendicion-export.service';
 import { CompanyConfigService } from './company-config.service';
+import jsPDF from 'jspdf';
 
 const mockCompanyConfigService = jasmine.createSpyObj('CompanyConfigService', ['getCompanyConfig']);
 
@@ -25,6 +26,30 @@ const makeRendicionData = (): RendicionExportData => ({
   comprobantes: [],
   anticipos: [],
 });
+
+/**
+ * Devuelve el texto que el servicio escribió en el PDF. jsPDF define sus métodos
+ * sobre la instancia (no sobre el prototipo), así que en vez de espiar `text` se
+ * intercepta `savePdf` y se lee el flujo de contenido del documento.
+ */
+async function textoDelPdf(
+  service: RendicionExportService,
+  accion: () => Promise<unknown>
+): Promise<string> {
+  const interno = service as unknown as { savePdf: (doc: jsPDF, f: string) => void };
+  const original = interno.savePdf;
+  let capturado = '';
+  interno.savePdf = (doc: jsPDF) => {
+    const paginas = (doc.internal as unknown as { pages: string[][] }).pages;
+    capturado = paginas.flat().join(String.fromCharCode(10));
+  };
+  try {
+    await accion();
+  } finally {
+    interno.savePdf = original;
+  }
+  return capturado;
+}
 
 describe('RendicionExportService', () => {
   let service: RendicionExportService;
@@ -93,6 +118,48 @@ describe('RendicionExportService', () => {
         signature: undefined,
       };
       await expectAsync(service.exportAffidavitToPdf(data)).toBeResolved();
+    });
+
+    it('rotula el total con la moneda recibida y cae a soles sin ella', async () => {
+      // Una DJ se declara en la moneda del viático: en un viaje al exterior el
+      // PDF salía rotulado en soles con cifras en dólares.
+      const base: AffidavitExportData = {
+        fileBaseName: 'dj',
+        tipo: 'viajes_exterior',
+        empresaNombre: 'Co SA',
+        empresaRuc: '20000000001',
+        colaborador: 'María García',
+        fechaGeneracion: '15/05/2026',
+        total: 18,
+        rows: [],
+      };
+
+      expect(await textoDelPdf(service, () => service.exportAffidavitToPdf({ ...base, moneda: 'USD' })))
+        .toContain('Total declarado: USD 18.00');
+      expect(await textoDelPdf(service, () => service.exportAffidavitToPdf(base)))
+        .toContain('Total declarado: S/ 18.00');
+    });
+  });
+
+  describe('exportSingleExpenseAffidavitToPdf — moneda', () => {
+    it('usa la moneda del comprobante y cae a soles sin ella', async () => {
+      const conMoneda: SingleExpenseAffidavitData = {
+        fileBaseName: 'dj-otros',
+        titulo: 'OTROS GASTOS',
+        colaborador: 'María García',
+        fechaGeneracion: '15/05/2026',
+        total: 18,
+        moneda: 'USD',
+        descripcion: 'Desayunos',
+      };
+      expect(await textoDelPdf(service, () => service.exportSingleExpenseAffidavitToPdf(conMoneda)))
+        .toContain('Total declarado: USD 18.00');
+
+      // La planilla de movilidad o el comprobante de caja no mandan moneda:
+      // siempre se emiten en soles.
+      const { moneda: _omitida, ...sinMoneda } = conMoneda;
+      expect(await textoDelPdf(service, () => service.exportSingleExpenseAffidavitToPdf(sinMoneda)))
+        .toContain('Total declarado: S/ 18.00');
     });
   });
 
