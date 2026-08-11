@@ -829,10 +829,23 @@ export class TesoreriaComponent implements OnInit {
     return '—';
   }
 
+  /**
+   * Reembolso al colaborador en la MONEDA DE LA RENDICIÓN. `settlement.difference`
+   * se liquida siempre en moneda base, así que en un viático al exterior la
+   * pantalla mostraba los soles equivalentes con el prefijo `S/` mientras el
+   * correo a Tesorería pedía dólares: dos cifras distintas para el mismo pago.
+   */
   reimbursementAmount(report: IExpenseReport): string {
     const d = report.settlement?.difference;
     if (d == null) return '—';
-    return Math.abs(Number(d)).toFixed(2);
+    const tc = Number((report as any)?.tipoCambio) || 1;
+    return (Math.abs(Number(d)) / tc).toFixed(2);
+  }
+
+  /** Prefijo del importe a reembolsar: 'S/' o el código ISO de la rendición. */
+  reimbursementCurrency(report: IExpenseReport): string {
+    const moneda = (report as any)?.moneda || 'PEN';
+    return moneda === 'PEN' ? 'S/' : moneda;
   }
 
   confirmPayment() {
