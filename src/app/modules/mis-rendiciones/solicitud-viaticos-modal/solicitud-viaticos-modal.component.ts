@@ -60,6 +60,13 @@ export class SolicitudViaticosModalComponent implements OnChanges {
   /** Si viene desde una rendición, se envía al crear la solicitud (opcional). */
   @Input() expenseReportId: string | null = null;
   @Input() initialProjectId: string | null = null;
+  /**
+   * Moneda del viático que se amplía. La ampliación suma al presupuesto y al
+   * saldo de ese viático, así que va SIEMPRE en su misma moneda: aquí no se
+   * elige, solo se informa. Sin esto la ampliación de un viático en dólares
+   * nacía en soles.
+   */
+  @Input() reportMoneda: string | null = null;
   /** Si está definido, el envío usa PATCH resubmit en lugar de crear (Fase 3). */
   @Input() advanceToResubmit: IAdvance | null = null;
 
@@ -75,6 +82,15 @@ export class SolicitudViaticosModalComponent implements OnChanges {
 
   submitting = signal(false);
   projects = signal<IProject[]>([]);
+  /** Prefijo de los importes de la ampliación: 'S/' o el código ISO del viático. */
+  get monedaPrefijo(): string {
+    const m = (this.reportMoneda || 'PEN').trim();
+    return m === 'PEN' ? 'S/' : m;
+  }
+  /** True cuando el viático que se amplía no está en la moneda base. */
+  get isForeignCurrency(): boolean {
+    return this.monedaPrefijo !== 'S/';
+  }
   private selectedLat: number | undefined;
   private selectedLng: number | undefined;
   categories = signal<ICategory[]>([]);
@@ -409,6 +425,8 @@ export class SolicitudViaticosModalComponent implements OnChanges {
       projectId: this.form.value.projectId as string,
       lines: linesPayload,
       observations: (this.form.value.observations || '').trim() || undefined,
+      // La ampliación se expresa en la moneda del viático que amplía.
+      ...(this.reportMoneda ? { moneda: this.reportMoneda } : {}),
     };
     if (!this.advanceToResubmit && this.expenseReportId) {
       payload.expenseReportId = this.expenseReportId;

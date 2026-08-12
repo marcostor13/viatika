@@ -422,7 +422,9 @@ export class InicioComponent implements OnInit {
     return {
       _id: r._id,
       source: 'report',
-      title: r.title || (r as any).viaticoPlace || '—',
+      // Igual que en la tabla de rendiciones: el lugar es más corto que el
+      // `title` de un viático, que se armó para el asunto de los correos.
+      title: (r as any).viaticoPlace || r.title || '—',
       userName: this.resolveUserName(r.userId),
       project: this.resolveProject((r as any).projectId),
       amount: (r as any).viaticoAmount ?? r.budget ?? 0,

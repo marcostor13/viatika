@@ -259,7 +259,10 @@ export class RendicionesAdminComponent implements OnInit {
         userName: name,
         userInitials: this.initials(name),
         userId: uid ?? '',
-        title: r.title || r.viaticoPlace || '—',
+        // El lugar va primero: los viáticos ya tienen `title` largo ("Viático:
+        // lugar (fechas)"), pensado para el asunto de los correos, y en la tabla
+        // desbordaría la columna. El resto de rendiciones cae a `title` igual que antes.
+        title: r.viaticoPlace || r.title || '—',
         projectName: this.getProjectName(r),
         projectId: pid ?? '',
         amount: r.viaticoAmount ?? r.budget ?? 0,
