@@ -100,7 +100,7 @@
               <tr>
                 <th class="text-left px-3 py-2 font-medium">Categoría</th>
                 <th class="text-left px-3 py-2 font-medium">Detalle</th>
-                <th class="text-right px-3 py-2 font-medium">Importe (S/)</th>
+                <th class="text-right px-3 py-2 font-medium">Importe ({{ monedaPrefijo }})</th>
                 <th class="text-right px-3 py-2 font-medium">Personas</th>
                 <th class="text-right px-3 py-2 font-medium">GLP/día</th>
                 <th class="text-right px-3 py-2 font-medium">Días/Cantidad</th>
@@ -140,7 +140,7 @@
                     class="w-full min-w-[4rem] h-10 px-2 rounded-xl border border-tertiary/30 bg-background text-right text-sm text-secondary" />
                 </td>
                 <td class="px-3 py-2 align-middle text-right font-semibold text-secondary whitespace-nowrap">
-                  S/ {{ lineTotal($any(lineCtrl)) | number:'1.2-2' }}
+                  {{ monedaPrefijo }} {{ lineTotal($any(lineCtrl)) | number:'1.2-2' }}
                 </td>
                 <td class="px-2 py-2 align-middle">
                   @if (lines.length > 1) {
@@ -159,9 +159,14 @@
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 px-6 py-4 border-t border-tertiary/10">
       <div>
         <p class="text-sm text-tertiary">Total general</p>
-        <p class="text-xl font-bold text-secondary">S/ {{ totalGeneral() | number:'1.2-2' }}</p>
+        <p class="text-xl font-bold text-secondary">{{ monedaPrefijo }} {{ totalGeneral() | number:'1.2-2' }}</p>
+        @if (isForeignCurrency) {
+        <p class="text-xs text-tertiary mt-1">
+          La ampliación se registra en {{ monedaPrefijo }}, la misma moneda del viático que amplías.
+        </p>
+        }
         @if (totalGeneral() > 500) {
-        <p class="text-xs text-warning mt-1">Montos mayores a S/ 500 requieren segunda aprobación de tesorería.</p>
+        <p class="text-xs text-warning mt-1">Montos mayores a {{ monedaPrefijo }} 500 requieren segunda aprobación de tesorería.</p>
         }
       </div>
       <div class="flex gap-3 justify-end">

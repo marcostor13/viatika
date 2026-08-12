@@ -2302,6 +2302,7 @@
   [isOpen]="showAdvanceModal"
   [expenseReportId]="id"
   [initialProjectId]="reportProjectId"
+  [reportMoneda]="reportMoneda"
   (closed)="onSolicitudViaticosClosed($event)"
 />
 
@@ -2941,6 +2942,7 @@
     [isOpen]="showEditAdvanceModal()"
     [expenseReportId]="id"
     [advanceToResubmit]="editingAdvance()"
+    [reportMoneda]="reportMoneda"
     (closed)="onEditAdvanceClosed($event)"
   ></app-solicitud-viaticos-modal>
   }
