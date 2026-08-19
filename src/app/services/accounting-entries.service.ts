@@ -25,6 +25,15 @@ export interface ICuadreError {
   documento?: string;
 }
 
+/** Período tributario grabado en las columnas Ejercicio/Periodo del archivo. */
+export interface IAccountingEntryTaxPeriod {
+  id: string;
+  year: number;
+  month: number;
+  code: string;
+  label: string;
+}
+
 export interface IAccountingEntryStatus {
   tipo: AsientoTipo;
   status: AccountingEntriesStatus;
@@ -39,7 +48,9 @@ export interface IAccountingEntryStatus {
   /** El archivo listo ya no refleja el estado actual de la rendición. */
   stale?: boolean;
   completedAt?: string;
-  /** No se puede (re)generar ahora por el estado de la rendición (no cerrada). */
+  /** Período tributario con el que se generó el archivo disponible. */
+  taxPeriod?: IAccountingEntryTaxPeriod;
+  /** No se puede generar NI descargar ahora (hoy: período tributario cerrado). */
   blocked?: boolean;
   /** Motivo del bloqueo, para mostrar al usuario. */
   blockedReason?: string;
@@ -54,10 +65,12 @@ export class AccountingEntriesService {
   /** Estado actual de los asientos (no dispara generación). Usar para pintar la UI y para polling. */
   getStatus(
     reportId: string,
-    tipos?: AsientoTipo[]
+    tipos?: AsientoTipo[],
+    periodId?: string
   ): Observable<{ files: IAccountingEntryStatus[] }> {
     let params = new HttpParams();
     if (tipos?.length) params = params.set('tipos', tipos.join(','));
+    if (periodId) params = params.set('periodId', periodId);
     return this.http.get<{ files: IAccountingEntryStatus[] }>(
       `${this.url}/${reportId}`,
       { params }
@@ -68,11 +81,13 @@ export class AccountingEntriesService {
   triggerGenerate(
     reportId: string,
     tipos?: AsientoTipo[],
-    force = false
+    force = false,
+    periodId?: string
   ): Observable<{ files: IAccountingEntryStatus[] }> {
     let params = new HttpParams();
     if (tipos?.length) params = params.set('tipos', tipos.join(','));
     if (force) params = params.set('force', 'true');
+    if (periodId) params = params.set('periodId', periodId);
     return this.http.post<{ files: IAccountingEntryStatus[] }>(
       `${this.url}/${reportId}/generate`,
       null,
@@ -96,9 +111,13 @@ export class AccountingEntriesService {
    * una fresca en vez de reutilizar la que ya estaba en pantalla — si el
    * usuario dejó el modal abierto un rato, la URL cacheada podría haber vencido.
    */
-  download(reportId: string, file: IAccountingEntryStatus): void {
+  download(
+    reportId: string,
+    file: IAccountingEntryStatus,
+    periodId?: string
+  ): void {
     if (!file.url) return;
-    this.getStatus(reportId, [file.tipo]).subscribe({
+    this.getStatus(reportId, [file.tipo], periodId).subscribe({
       next: (res) => {
         const fresh = res?.files?.[0];
         if (fresh?.url) this.triggerDownload(fresh.url, fresh.filename);
