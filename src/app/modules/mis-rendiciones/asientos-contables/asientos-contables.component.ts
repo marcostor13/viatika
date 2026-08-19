@@ -8,6 +8,7 @@ import { NotificationService } from '../../../services/notification.service';
 import {
   AccountingEntriesService,
   AsientoTipo,
+  IAccountingDocument,
   IAccountingEntryStatus,
 } from '../../../services/accounting-entries.service';
 import { IExpenseReport } from '../../../interfaces/expense-report.interface';
@@ -45,8 +46,20 @@ export class AsientosContablesComponent implements OnInit, OnDestroy {
   files = signal<IAccountingEntryStatus[]>([]);
   loadingStatus = signal(false);
   globalError = signal<string | null>(null);
-  triggering = signal<Set<AsientoTipo>>(new Set());
   private pollTimer: ReturnType<typeof setInterval> | null = null;
+
+  /**
+   * Cuadro de seleccion previo a generar: la generacion ya no abarca siempre la
+   * rendicion completa, Contabilidad elige que documentos pendientes entran en
+   * el archivo. Los ya contabilizados quedan fuera hasta descontabilizarlos
+   * desde el detalle de la rendicion.
+   */
+  documents = signal<IAccountingDocument[]>([]);
+  loadingDocuments = signal(false);
+  documentsError = signal<string | null>(null);
+  showSelector = signal(false);
+  selectedIds = signal<Set<string>>(new Set());
+  generating = signal(false);
 
   private readonly tipoLabels: Record<AsientoTipo, string> = {
     solicitud: 'Solicitud',
@@ -80,6 +93,7 @@ export class AsientosContablesComponent implements OnInit, OnDestroy {
           this.selectedPeriodId.set(this.defaultPeriodId(this.taxPeriods()));
         }
         this.fetchStatus();
+        this.loadDocuments();
       },
       error: () => {
         this.loadingReport.set(false);
@@ -169,10 +183,6 @@ export class AsientosContablesComponent implements OnInit, OnDestroy {
     return tipos;
   }
 
-  isTriggering(tipo: AsientoTipo): boolean {
-    return this.triggering().has(tipo);
-  }
-
   private clearPoll(): void {
     if (this.pollTimer) {
       clearInterval(this.pollTimer);
@@ -206,7 +216,11 @@ export class AsientosContablesComponent implements OnInit, OnDestroy {
     if (hasProcessing && !this.pollTimer) {
       this.pollTimer = setInterval(() => this.fetchStatus(), 3000);
     } else if (!hasProcessing) {
+      const wasPolling = !!this.pollTimer;
       this.clearPoll();
+      // Al terminar la generacion los documentos quedaron contabilizados: hay
+      // que releerlos para que el resumen refleje el nuevo estado.
+      if (wasPolling) this.loadDocuments();
     }
   }
 
@@ -231,46 +245,115 @@ export class AsientosContablesComponent implements OnInit, OnDestroy {
     return !!file.url && !this.periodBlocked;
   }
 
-  /** Genera (o regenera, con `force`) un único tipo de asiento en 2do plano. */
-  generate(tipo: AsientoTipo, force = false): void {
-    if (this.isTriggering(tipo) || this.isBlocked(tipo)) return;
-    const triggering = new Set(this.triggering());
-    triggering.add(tipo);
-    this.triggering.set(triggering);
-    this.accountingEntriesService
-      .triggerGenerate(this.id, [tipo], force, this.selectedPeriodId())
-      .subscribe({
-        next: (res) => {
-          const t = new Set(this.triggering());
-          t.delete(tipo);
-          this.triggering.set(t);
-          this.mergeStatus(res?.files ?? []);
-          this.syncPolling();
-        },
-        error: (err) => {
-          const t = new Set(this.triggering());
-          t.delete(tipo);
-          this.triggering.set(t);
-          this.notificationService.show(
-            err?.error?.message || err?.message || 'Error al generar el asiento.',
-            'error'
-          );
-        },
-      });
+  // --- Cuadro de seleccion de documentos ---------------------------------
+
+  /** Documentos que aun no se han contabilizado: los candidatos a generar. */
+  get pendingDocuments(): IAccountingDocument[] {
+    return this.documents().filter((d) => !d.contabilizado);
   }
 
-  /** Genera todos los tipos aplicables que aún no estén listos y al día. */
-  generateAll(): void {
+  /** Documentos ya incluidos en una generacion anterior. */
+  get accountedDocuments(): IAccountingDocument[] {
+    return this.documents().filter((d) => d.contabilizado);
+  }
+
+  isSelected(expenseId: string): boolean {
+    return this.selectedIds().has(expenseId);
+  }
+
+  toggleDocument(expenseId: string): void {
+    const next = new Set(this.selectedIds());
+    if (next.has(expenseId)) next.delete(expenseId);
+    else next.add(expenseId);
+    this.selectedIds.set(next);
+  }
+
+  get allPendingSelected(): boolean {
+    const pending = this.pendingDocuments;
+    return pending.length > 0 && pending.every((d) => this.isSelected(d.expenseId));
+  }
+
+  toggleAllDocuments(): void {
+    this.selectedIds.set(
+      this.allPendingSelected
+        ? new Set()
+        : new Set(this.pendingDocuments.map((d) => d.expenseId))
+    );
+  }
+
+  /** Suma de los documentos marcados (referencia rapida antes de generar). */
+  get selectedTotal(): number {
+    return this.pendingDocuments
+      .filter((d) => this.isSelected(d.expenseId))
+      .reduce((acc, d) => acc + (Number(d.total) || 0), 0);
+  }
+
+  /**
+   * Con documentos pendientes hay que marcar al menos uno. Una rendicion sin
+   * comprobantes (solo anticipo) igual puede generar su asiento de Solicitud.
+   */
+  get canConfirmGenerate(): boolean {
+    if (this.generating() || this.periodBlocked) return false;
+    if (!this.documents().length) return true;
+    return this.selectedIds().size > 0;
+  }
+
+  /** Abre el cuadro y precarga los documentos con todos los pendientes marcados. */
+  openSelector(): void {
+    if (this.periodBlocked) return;
+    this.showSelector.set(true);
+    this.loadDocuments(true);
+  }
+
+  closeSelector(): void {
+    this.showSelector.set(false);
+  }
+
+  private loadDocuments(preselectPending = false): void {
+    this.loadingDocuments.set(true);
+    this.documentsError.set(null);
+    this.accountingEntriesService.getDocuments(this.id).subscribe({
+      next: (res) => {
+        const docs = res?.documents ?? [];
+        this.documents.set(docs);
+        this.loadingDocuments.set(false);
+        if (preselectPending) {
+          this.selectedIds.set(
+            new Set(docs.filter((d) => !d.contabilizado).map((d) => d.expenseId))
+          );
+        }
+      },
+      error: (err) => {
+        this.loadingDocuments.set(false);
+        this.documentsError.set(
+          err?.error?.message || err?.message || 'No se pudieron cargar los documentos.'
+        );
+      },
+    });
+  }
+
+  /**
+   * Genera los asientos de los documentos marcados. Al terminar, el backend los
+   * deja contabilizados: no vuelven a entrar hasta descontabilizarlos.
+   */
+  confirmGenerate(): void {
+    if (!this.canConfirmGenerate) return;
     const tipos = this.applicableTipos();
-    if (!tipos.length || this.periodBlocked) return;
+    if (!tipos.length) return;
+    this.generating.set(true);
     this.accountingEntriesService
-      .triggerGenerate(this.id, tipos, false, this.selectedPeriodId())
+      .triggerGenerate(this.id, tipos, true, this.selectedPeriodId(), [
+        ...this.selectedIds(),
+      ])
       .subscribe({
         next: (res) => {
+          this.generating.set(false);
+          this.showSelector.set(false);
           this.mergeStatus(res?.files ?? []);
           this.syncPolling();
         },
         error: (err) => {
+          this.generating.set(false);
           this.notificationService.show(
             err?.error?.message || err?.message || 'Error al generar los asientos.',
             'error'

@@ -81,6 +81,8 @@ export class RendicionDetailComponent implements OnInit {
   expFilterType = signal('all');
   expFilterStatus = signal('all');
   expFilterSearch = signal('');
+  /** Filtro de contabilización: 'all' | 'yes' | 'no'. Solo lo usa Contabilidad. */
+  expFilterContab = signal('all');
 
   readonly ADVANCE_STATUS_LABELS = ADVANCE_STATUS_LABELS;
   readonly ADVANCE_STATUS_COLORS = ADVANCE_STATUS_COLORS;
@@ -436,6 +438,7 @@ export class RendicionDetailComponent implements OnInit {
       type: this.expFilterType(),
       status: this.expFilterStatus(),
       search: this.expFilterSearch(),
+      contabilizado: this.expFilterContab(),
     }).subscribe({
       next: (result) => { this.expensesPage.set(result); this.isLoadingExpenses.set(false); },
       error: () => { this.isLoadingExpenses.set(false); },
@@ -450,7 +453,18 @@ export class RendicionDetailComponent implements OnInit {
     this.expFilterType.set('all');
     this.expFilterStatus.set('all');
     this.expFilterSearch.set('');
+    this.expFilterContab.set('all');
     this.loadExpensesPage(1);
+  }
+
+  /** ¿Hay algún filtro de comprobantes activo? */
+  get hasExpenseFilters(): boolean {
+    return (
+      this.expFilterType() !== 'all' ||
+      this.expFilterStatus() !== 'all' ||
+      this.expFilterContab() !== 'all' ||
+      !!this.expFilterSearch()
+    );
   }
 
   calculateTotals() {
@@ -666,6 +680,95 @@ export class RendicionDetailComponent implements OnInit {
       .subscribe({
         next: (res) => this.asientosFiles.set(res?.files ?? []),
         error: () => {},
+      });
+  }
+
+  // --- Contabilización por documento -------------------------------------
+  // Un comprobante ya incluido en un archivo de asientos queda "contabilizado"
+  // y no vuelve a entrar en las siguientes generaciones. Descontabilizarlo lo
+  // devuelve al pool de pendientes de la página de asientos contables.
+
+  uncountingExpenseId = signal<string | null>(null);
+
+  /** Solo Contabilidad genera asientos, así que solo ella puede descontabilizar. */
+  get canDescontabilizar(): boolean {
+    return this.userStateService.isContabilidad();
+  }
+
+  isExpenseContabilizado(expense: any): boolean {
+    return expense?.['contabilizado'] === true;
+  }
+
+  /** Texto del tooltip del indicador de contabilización. */
+  contabilizadoTooltip(expense: any): string {
+    const periodo = expense?.['contabilizadoPeriodo'];
+    const por = expense?.['contabilizadoByName'];
+    const partes = ['Contabilizado'];
+    if (periodo) partes.push(periodo);
+    if (por) partes.push(por);
+    return partes.join(' · ');
+  }
+
+  /** Comprobante cuyo desmarcado espera confirmación en el modal. */
+  descontabilizarTarget = signal<any>(null);
+
+  /** Etiqueta del comprobante en el modal ("FT F255-04331519"). */
+  get descontabilizarDocLabel(): string {
+    const expense = this.descontabilizarTarget();
+    if (!expense) return '';
+    return `${this.getExpenseTypeCode(expense)} ${this.getExpenseDocumentNumber(expense)}`.trim();
+  }
+
+  /** Período con el que se contabilizó, si quedó registrado. */
+  get descontabilizarPeriodo(): string {
+    return this.descontabilizarTarget()?.['contabilizadoPeriodo'] ?? '';
+  }
+
+  /**
+   * Pide confirmación antes de descontabilizar: cambiar la marca altera qué
+   * entra en el próximo archivo que Contabilidad importa a Contanet.
+   */
+  descontabilizarExpense(expense: any): void {
+    if (!this.report?._id || !expense?.['_id'] || this.uncountingExpenseId()) return;
+    this.descontabilizarTarget.set(expense);
+  }
+
+  closeDescontabilizarModal(): void {
+    if (this.uncountingExpenseId()) return;
+    this.descontabilizarTarget.set(null);
+  }
+
+  /** Devuelve el documento al pool de pendientes de asientos contables. */
+  confirmDescontabilizar(): void {
+    const expense = this.descontabilizarTarget();
+    const reportId = this.report?._id;
+    const expenseId = expense?.['_id'];
+    if (!reportId || !expenseId || this.uncountingExpenseId()) return;
+    this.uncountingExpenseId.set(expenseId);
+    this.accountingEntriesService
+      .uncountDocuments(reportId, [expenseId])
+      .subscribe({
+        next: () => {
+          this.uncountingExpenseId.set(null);
+          this.descontabilizarTarget.set(null);
+          expense['contabilizado'] = false;
+          delete expense['contabilizadoAt'];
+          delete expense['contabilizadoByName'];
+          delete expense['contabilizadoPeriodo'];
+          this.notificationService.show(
+            'Documento descontabilizado: volverá a incluirse en los asientos contables.',
+            'success'
+          );
+        },
+        error: (err) => {
+          this.uncountingExpenseId.set(null);
+          this.notificationService.show(
+            err?.error?.message ||
+              err?.message ||
+              'No se pudo descontabilizar el documento.',
+            'error'
+          );
+        },
       });
   }
 

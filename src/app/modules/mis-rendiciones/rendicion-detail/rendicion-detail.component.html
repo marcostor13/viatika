@@ -1175,6 +1175,17 @@
               <option value="approved">Aprobado</option>
               <option value="rejected">Rechazado</option>
             </select>
+            @if (canDescontabilizar) {
+            <select
+              [value]="expFilterContab()"
+              (change)="expFilterContab.set($any($event.target).value); applyExpenseFilters()"
+              class="h-8 rounded-lg border border-gray-200 bg-white px-2 text-xs text-gray-700 focus:outline-none focus:ring-2 focus:ring-primary/30"
+            >
+              <option value="all">Contabilización: todos</option>
+              <option value="yes">Contabilizados</option>
+              <option value="no">Sin contabilizar</option>
+            </select>
+            }
             <input
               type="text"
               [value]="expFilterSearch()"
@@ -1189,7 +1200,7 @@
               (click)="applyExpenseFilters()"
               class="h-8 px-3 rounded-lg bg-primary text-white text-xs font-medium hover:bg-primary/90 transition-colors"
             >Buscar</button>
-            @if (expFilterType() !== 'all' || expFilterStatus() !== 'all' || expFilterSearch()) {
+            @if (hasExpenseFilters) {
               <button
                 type="button"
                 (click)="clearExpenseFilters()"
@@ -1223,7 +1234,7 @@
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-12 h-12 text-gray-300">
               <path stroke-linecap="round" stroke-linejoin="round" d="m9 13.5 3 2.25 3-2.25m0-6v6h-6v-6h6Z" />
             </svg>
-            @if (expFilterType() !== 'all' || expFilterStatus() !== 'all' || expFilterSearch()) {
+            @if (hasExpenseFilters) {
               <p class="text-sm">No se encontraron comprobantes con los filtros aplicados.</p>
             } @else {
               <p class="text-sm">No has subido ningún comprobante para esta rendición aún.</p>
@@ -1389,6 +1400,32 @@
                     class="inline-flex items-center justify-center gap-1.5 min-h-[36px] px-3 rounded-lg text-xs font-semibold border border-indigo-200 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 transition-colors touch-manipulation">
                     PDF
                   </button>
+                }
+                <!-- Contabilizado: ya incluido en un archivo de asientos. Contabilidad
+                     puede descontabilizarlo para volver a incluirlo. -->
+                @if (isExpenseContabilizado(expense)) {
+                  @if (canDescontabilizar) {
+                  <button type="button" [disabled]="uncountingExpenseId() === expense._id"
+                    (click)="descontabilizarExpense(expense)"
+                    class="inline-flex items-center justify-center gap-1.5 min-h-[36px] px-3 rounded-lg text-xs font-semibold border border-emerald-200 bg-emerald-50 text-emerald-800 hover:bg-emerald-100 disabled:opacity-50 transition-colors touch-manipulation">
+                    @if (uncountingExpenseId() === expense._id) {
+                      <span class="w-3.5 h-3.5 border-2 border-emerald-300 border-t-emerald-700 rounded-full animate-spin"></span>
+                      Descontabilizando...
+                    } @else {
+                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+                      </svg>
+                      Descontabilizar
+                    }
+                  </button>
+                  } @else {
+                  <span class="inline-flex items-center gap-1.5 min-h-[36px] px-3 rounded-lg text-xs font-semibold border border-emerald-200 bg-emerald-50 text-emerald-800">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+                    </svg>
+                    Contabilizado
+                  </span>
+                  }
                 }
                 @if (canEditExpense(expense)) {
                   <button type="button" (click)="goEditExpense(expense._id)"
@@ -1789,6 +1826,41 @@
                           </svg>
                         </button>
                         <div class="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 px-2 py-1 bg-gray-800 text-white text-[11px] rounded whitespace-nowrap opacity-0 group-hover/pmob-xls:opacity-100 pointer-events-none transition-opacity z-10">Excel</div>
+                      </div>
+                      }
+                      <!-- Contabilizado: ya incluido en un archivo de asientos.
+                           El botón lo descontabiliza para volver a incluirlo. -->
+                      @if (isExpenseContabilizado(expense)) {
+                      <div class="relative group/cont ml-1">
+                        @if (canDescontabilizar) {
+                        <button type="button"
+                          [disabled]="uncountingExpenseId() === expense._id"
+                          (click)="descontabilizarExpense(expense)"
+                          class="inline-flex items-center gap-1 h-7 px-2 rounded-full border border-emerald-200 bg-emerald-50 text-emerald-800 text-[11px] font-semibold hover:bg-emerald-100 disabled:opacity-50 transition-colors whitespace-nowrap">
+                          @if (uncountingExpenseId() === expense._id) {
+                            <span class="inline-block w-3 h-3 border-2 border-emerald-300 border-t-emerald-700 rounded-full animate-spin"></span>
+                            Quitando…
+                          } @else {
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-3.5 h-3.5">
+                              <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+                            </svg>
+                            Contabilizado
+                          }
+                        </button>
+                        <div class="absolute bottom-full right-0 mb-1 px-2 py-1 bg-gray-800 text-white text-[11px] rounded whitespace-nowrap opacity-0 group-hover/cont:opacity-100 pointer-events-none transition-opacity z-10">
+                          {{ contabilizadoTooltip(expense) }} · clic para descontabilizar
+                        </div>
+                        } @else {
+                        <span class="inline-flex items-center gap-1 h-7 px-2 rounded-full border border-emerald-200 bg-emerald-50 text-emerald-800 text-[11px] font-semibold whitespace-nowrap">
+                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-3.5 h-3.5">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+                          </svg>
+                          Contabilizado
+                        </span>
+                        <div class="absolute bottom-full right-0 mb-1 px-2 py-1 bg-gray-800 text-white text-[11px] rounded whitespace-nowrap opacity-0 group-hover/cont:opacity-100 pointer-events-none transition-opacity z-10">
+                          {{ contabilizadoTooltip(expense) }}
+                        </div>
+                        }
                       </div>
                       }
                       <!-- PDF: comprobante de caja -->
@@ -3392,4 +3464,52 @@
 <!-- Los asientos contables ahora tienen su propia página dedicada:
      ver goToAsientosContables() y /mis-rendiciones/:id/asientos-contables -->
 
-
+<!-- Modal: descontabilizar comprobante (quitar del archivo de asientos) -->
+@if (descontabilizarTarget()) {
+<div class="fixed inset-0 z-[60] flex items-end sm:items-center justify-center p-4 bg-black/40"
+     (click)="closeDescontabilizarModal()">
+  <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm" (click)="$event.stopPropagation()">
+    <div class="px-6 pt-6 pb-2 flex items-center gap-3">
+      <div class="flex-shrink-0 w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 text-amber-600">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 3.75h.008v.008H12v-.008Z" />
+        </svg>
+      </div>
+      <div class="min-w-0">
+        <h3 class="text-base font-semibold text-gray-900">Descontabilizar comprobante</h3>
+        <p class="text-xs text-gray-500 truncate">{{ descontabilizarDocLabel }}</p>
+      </div>
+    </div>
+    <div class="px-6 py-4 space-y-3">
+      <p class="text-sm text-gray-600">
+        Se quitará la marca de contabilizado@if (descontabilizarPeriodo) { del período <span class="font-medium text-gray-800">{{ descontabilizarPeriodo }}</span>}
+        y el comprobante volverá a incluirse en la próxima generación de asientos contables.
+      </p>
+      <div class="rounded-xl bg-amber-50 border border-amber-100 px-3 py-2.5">
+        <p class="text-xs text-amber-800">
+          Si ya importaste ese archivo a Contanet, al regenerarlo el documento quedaría duplicado.
+        </p>
+      </div>
+    </div>
+    <div class="px-6 pb-6 flex gap-3">
+      <button type="button"
+        class="flex-1 py-2.5 border border-gray-200 text-gray-700 rounded-xl text-sm font-medium hover:bg-gray-50 disabled:opacity-50 transition-colors"
+        [disabled]="!!uncountingExpenseId()"
+        (click)="closeDescontabilizarModal()">
+        Volver
+      </button>
+      <button type="button"
+        class="flex-1 py-2.5 bg-amber-500 text-white rounded-xl text-sm font-medium hover:bg-amber-600 disabled:opacity-50 transition-colors"
+        [disabled]="!!uncountingExpenseId()"
+        (click)="confirmDescontabilizar()">
+        @if (uncountingExpenseId()) {
+          <span class="inline-block w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin mr-1"></span>
+          Quitando...
+        } @else {
+          Descontabilizar
+        }
+      </button>
+    </div>
+  </div>
+</div>
+}
