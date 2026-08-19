@@ -18,6 +18,12 @@ import {
   DEFAULT_ACCOUNTING_CONFIG,
 } from '../../interfaces/accounting-config.interface';
 import { ButtonComponent } from '../../design-system/button/button.component';
+import { TaxPeriodService } from '../../services/tax-period.service';
+import {
+  ITaxPeriod,
+  MONTH_OPTIONS,
+  TaxPeriodStatus,
+} from '../../interfaces/tax-period.interface';
 import { environment } from '../../../environments/environment';
 
 @Component({
@@ -34,6 +40,7 @@ export class ConfiguracionComponent implements OnInit {
   private userStateService = inject(UserStateService);
   private uploadService = inject(UploadService);
   private accountingConfigService = inject(AccountingConfigService);
+  private taxPeriodService = inject(TaxPeriodService);
   private http = inject(HttpClient);
 
   // Company config
@@ -78,6 +85,16 @@ export class ConfiguracionComponent implements OnInit {
   accountingForm: IAccountingConfig = { ...DEFAULT_ACCOUNTING_CONFIG };
   isSavingAccounting = false;
 
+  // Periodos tributarios (SUNAT)
+  taxPeriods: ITaxPeriod[] = [];
+  loadingTaxPeriods = false;
+  showTaxPeriodForm = false;
+  readonly monthOptions = MONTH_OPTIONS;
+  newPeriodYear: number = new Date().getFullYear();
+  newPeriodMonth: number = new Date().getMonth() + 1;
+  isSavingTaxPeriod = false;
+  updatingPeriodId: string | null = null;
+
   // Tesoreria emails
   showTesoreriaEmailsForm = false;
   tesoreriaEmails: string[] = [];
@@ -107,6 +124,7 @@ export class ConfiguracionComponent implements OnInit {
     }
     if (this.canConfigureContabilidad) {
       this.loadAccountingConfig();
+      this.loadTaxPeriods();
     }
   }
 
@@ -770,6 +788,114 @@ export class ConfiguracionComponent implements OnInit {
           );
         },
       });
+  }
+
+  // --- Períodos tributarios (SUNAT) ---
+
+  loadTaxPeriods() {
+    this.loadingTaxPeriods = true;
+    this.taxPeriodService.findAll().subscribe({
+      next: (periods) => {
+        this.taxPeriods = periods ?? [];
+        this.loadingTaxPeriods = false;
+      },
+      error: () => {
+        this.loadingTaxPeriods = false;
+        this.notificationService.show(
+          'Error al cargar los períodos tributarios',
+          'error'
+        );
+      },
+    });
+  }
+
+  openTaxPeriodForm() {
+    const now = new Date();
+    this.newPeriodYear = now.getFullYear();
+    this.newPeriodMonth = now.getMonth() + 1;
+    this.showTaxPeriodForm = true;
+  }
+
+  cancelTaxPeriodForm() {
+    this.showTaxPeriodForm = false;
+  }
+
+  createTaxPeriod() {
+    const year = Number(this.newPeriodYear);
+    const month = Number(this.newPeriodMonth);
+    if (!year || year < 2000 || year > 2100) {
+      this.notificationService.show('Ingresa un año válido', 'error');
+      return;
+    }
+    if (!month || month < 1 || month > 12) {
+      this.notificationService.show('Selecciona un mes válido', 'error');
+      return;
+    }
+    this.isSavingTaxPeriod = true;
+    this.taxPeriodService.create(year, month).subscribe({
+      next: (period) => {
+        this.isSavingTaxPeriod = false;
+        this.showTaxPeriodForm = false;
+        this.taxPeriods = [period, ...this.taxPeriods].sort(
+          (a, b) => b.year - a.year || b.month - a.month
+        );
+        this.notificationService.show(
+          `Período ${period.label} creado`,
+          'success'
+        );
+      },
+      error: (error: HttpErrorResponse) => {
+        this.isSavingTaxPeriod = false;
+        this.notificationService.show(
+          error?.error?.message || 'Error al crear el período tributario',
+          'error'
+        );
+      },
+    });
+  }
+
+  toggleTaxPeriod(period: ITaxPeriod) {
+    const status: TaxPeriodStatus =
+      period.status === 'open' ? 'closed' : 'open';
+    this.updatingPeriodId = period._id;
+    this.taxPeriodService.setStatus(period._id, status).subscribe({
+      next: (updated) => {
+        this.updatingPeriodId = null;
+        this.taxPeriods = this.taxPeriods.map((p) =>
+          p._id === updated._id ? updated : p
+        );
+        this.notificationService.show(
+          `Período ${updated.label} ${status === 'closed' ? 'cerrado' : 'abierto'}`,
+          'success'
+        );
+      },
+      error: (error: HttpErrorResponse) => {
+        this.updatingPeriodId = null;
+        this.notificationService.show(
+          error?.error?.message || 'Error al actualizar el período',
+          'error'
+        );
+      },
+    });
+  }
+
+  deleteTaxPeriod(period: ITaxPeriod) {
+    if (!confirm(`¿Eliminar el período ${period.label}?`)) return;
+    this.updatingPeriodId = period._id;
+    this.taxPeriodService.remove(period._id).subscribe({
+      next: () => {
+        this.updatingPeriodId = null;
+        this.taxPeriods = this.taxPeriods.filter((p) => p._id !== period._id);
+        this.notificationService.show('Período eliminado', 'success');
+      },
+      error: (error: HttpErrorResponse) => {
+        this.updatingPeriodId = null;
+        this.notificationService.show(
+          error?.error?.message || 'Error al eliminar el período',
+          'error'
+        );
+      },
+    });
   }
 
   testSunatConnection() {
