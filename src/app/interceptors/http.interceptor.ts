@@ -65,6 +65,8 @@ export const httpInterceptor: HttpInterceptorFn = (req, next) => {
     '/accounting-config',
     '/accounting-config/',
     '/accounting-entries',
+    '/tax-period',
+    '/tax-period/',
     '/upload',
     '/upload/',
   ];

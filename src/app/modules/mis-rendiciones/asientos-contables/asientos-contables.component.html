@@ -15,9 +15,9 @@
         <h1 class="text-base font-bold text-gray-900 truncate">Asientos contables</h1>
       </div>
       @if (!loadingReport() && hasGeneratableTipo) {
-      <button type="button" (click)="generateAll()"
+      <button type="button" (click)="openSelector()"
         class="px-3 py-1.5 bg-blue-600 text-white text-xs font-semibold rounded-lg hover:bg-blue-700 transition-colors shrink-0">
-        Generar todos
+        Generar asientos
       </button>
       }
     </div>
@@ -31,6 +31,66 @@
     <p class="text-sm text-gray-500 mb-5">
       Se generan en segundo plano y quedan guardados en la nube para descargar cuando quieras.
     </p>
+
+    <!-- Período tributario: define la columna Periodo del Excel y habilita la descarga -->
+    <div class="bg-white rounded-2xl border border-gray-100 shadow-sm px-5 py-4 mb-5">
+      <div class="flex items-center justify-between gap-4 flex-wrap">
+        <div class="min-w-0">
+          <h2 class="text-sm font-semibold text-gray-900">Período tributario</h2>
+          <p class="text-xs text-gray-500 mt-0.5">
+            Se escribe en la columna Periodo (y Ejercicio) de todas las líneas del Excel.
+          </p>
+        </div>
+        <div class="flex items-center gap-2 shrink-0">
+          @if (loadingPeriods()) {
+          <span class="text-xs text-gray-400">Cargando períodos…</span>
+          } @else if (!taxPeriods().length) {
+          <span class="text-xs text-amber-700">Crea los períodos en Configuración</span>
+          } @else {
+          <select [ngModel]="selectedPeriodId()" (ngModelChange)="onPeriodChange($event)"
+            class="px-3 py-1.5 rounded-lg border border-gray-200 text-sm text-gray-800 focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+            @for (p of taxPeriods(); track p._id) {
+            <option [ngValue]="p._id">{{ p.label }}{{ p.status === 'closed' ? ' (cerrado)' : '' }}</option>
+            }
+          </select>
+          }
+        </div>
+      </div>
+
+      @if (!loadingPeriods() && periodBlocked) {
+      <div class="mt-3 rounded-xl bg-amber-50 border border-amber-100 px-4 py-2.5 text-xs text-amber-800">
+        @if (!selectedPeriodId()) {
+        No hay un período tributario seleccionado. Créalo o ábrelo en Configuración para generar y descargar los asientos.
+        } @else {
+        El período {{ selectedPeriod?.label }} está cerrado: no se pueden generar ni descargar asientos contra él.
+        }
+      </div>
+      }
+    </div>
+
+    <!-- Documentos: qué falta contabilizar y qué ya entró en un archivo -->
+    <div class="bg-white rounded-2xl border border-gray-100 shadow-sm px-5 py-4 mb-5">
+      <div class="flex items-center justify-between gap-4 flex-wrap">
+        <div class="min-w-0">
+          <h2 class="text-sm font-semibold text-gray-900">Documentos</h2>
+          @if (loadingDocuments()) {
+          <p class="text-xs text-gray-400 mt-0.5">Cargando documentos…</p>
+          } @else if (documentsError()) {
+          <p class="text-xs text-red-600 mt-0.5">{{ documentsError() }}</p>
+          } @else {
+          <p class="text-xs text-gray-500 mt-0.5">
+            {{ pendingDocuments.length }} por contabilizar · {{ accountedDocuments.length }} ya contabilizado(s)
+          </p>
+          }
+        </div>
+      </div>
+      @if (!loadingDocuments() && !documentsError() && !pendingDocuments.length && documents().length) {
+      <div class="mt-3 rounded-xl bg-gray-50 border border-gray-100 px-4 py-2.5 text-xs text-gray-600">
+        Todos los documentos de esta rendición ya están contabilizados. Para volver a incluir alguno,
+        descontabilízalo desde la columna Opciones del detalle de la rendición.
+      </div>
+      }
+    </div>
 
     @if (globalError()) {
     <div class="rounded-xl bg-red-50 border border-red-100 px-4 py-3 text-sm text-red-700 mb-5">
@@ -58,10 +118,13 @@
               <h2 class="text-sm font-semibold text-gray-900">{{ tipoLabel(file.tipo) }}</h2>
               @switch (file.status) {
                 @case ('ready') {
-                <span class="px-2 py-0.5 rounded-full text-[11px] font-medium"
-                      [class]="file.stale ? 'bg-amber-100 text-amber-700' : 'bg-green-100 text-green-700'">
-                  {{ file.stale ? 'Desactualizado' : 'Listo' }}
+                <span class="px-2 py-0.5 rounded-full text-[11px] font-medium bg-green-100 text-green-700">Listo</span>
+                @if (file.stale) {
+                <span class="px-2 py-0.5 rounded-full text-[11px] font-medium bg-amber-100 text-amber-700"
+                      title="La rendición cambió después de generar este archivo. El archivo sigue siendo válido para los documentos que contiene.">
+                  Rendición modificada
                 </span>
+                }
                 }
                 @case ('processing') {
                 <span class="px-2 py-0.5 rounded-full text-[11px] font-medium bg-blue-100 text-blue-700 inline-flex items-center gap-1">
@@ -80,7 +143,11 @@
               }
             </div>
             @if (file.status === 'ready') {
-            <p class="text-xs text-gray-500 mt-0.5">{{ file.filename }} · {{ file.asientosCount }} asiento(s)</p>
+            <p class="text-xs text-gray-500 mt-0.5">
+              {{ file.filename }} · {{ file.asientosCount }} asiento(s)
+              @if (file.documentsCount) { · {{ file.documentsCount }} documento(s) }
+              @if (file.taxPeriod) { · Período {{ file.taxPeriod.label }} }
+            </p>
             } @else if (file.status === 'processing' && file.url) {
             <p class="text-xs text-gray-400 mt-0.5">Puedes descargar la versión anterior mientras termina.</p>
             } @else if (file.status === 'error') {
@@ -100,26 +167,14 @@
           </div>
 
           <div class="flex items-center gap-2 shrink-0">
-            @if (file.url) {
+            @if (canDownload(file)) {
             <button type="button" (click)="download(file)"
               class="px-3 py-1.5 rounded-lg bg-blue-600 text-white text-xs font-medium hover:bg-blue-700">
               Descargar
             </button>
             }
-            @if (!file.blocked) {
-              @if (file.status === 'processing') {
-              <span class="px-3 py-1.5 text-xs text-gray-400">Generando…</span>
-              } @else if (file.url) {
-              <button type="button" (click)="generate(file.tipo, true)" [disabled]="isTriggering(file.tipo)"
-                class="px-3 py-1.5 rounded-lg border border-gray-200 text-gray-600 text-xs font-medium hover:bg-gray-50 disabled:opacity-40">
-                {{ isTriggering(file.tipo) ? 'Regenerando…' : 'Regenerar' }}
-              </button>
-              } @else {
-              <button type="button" (click)="generate(file.tipo)" [disabled]="isTriggering(file.tipo)"
-                class="px-3 py-1.5 rounded-lg bg-gray-100 text-gray-700 text-xs font-medium hover:bg-gray-200 disabled:opacity-40">
-                {{ isTriggering(file.tipo) ? 'Generando…' : (file.status === 'error' ? 'Reintentar' : 'Generar') }}
-              </button>
-              }
+            @if (file.status === 'processing') {
+            <span class="px-3 py-1.5 text-xs text-gray-400">Generando…</span>
             }
           </div>
         </div>
@@ -182,3 +237,132 @@
     }
   </div>
 </div>
+
+<!-- Cuadro de selección: qué documentos entran en el archivo de asientos -->
+@if (showSelector()) {
+<div class="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 px-0 sm:px-4 py-0 sm:py-8">
+  <div class="bg-white w-full sm:max-w-3xl sm:rounded-2xl rounded-t-2xl shadow-xl max-h-[92vh] flex flex-col overflow-hidden">
+
+    <div class="px-5 py-4 border-b border-gray-100 flex items-start justify-between gap-3">
+      <div class="min-w-0">
+        <h2 class="text-sm font-bold text-gray-900">Documentos a contabilizar</h2>
+        <p class="text-xs text-gray-500 mt-0.5">
+          Solo los documentos marcados entran en los asientos que se generarán. Al terminar quedan
+          contabilizados y no vuelven a incluirse hasta descontabilizarlos.
+        </p>
+      </div>
+      <button type="button" (click)="closeSelector()"
+        class="shrink-0 w-8 h-8 rounded-lg text-gray-400 hover:bg-gray-100 hover:text-gray-700 inline-flex items-center justify-center">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" />
+        </svg>
+      </button>
+    </div>
+
+    <div class="flex-1 overflow-y-auto">
+      @if (loadingDocuments()) {
+      <div class="py-12 text-center text-sm text-gray-500">Cargando documentos…</div>
+      } @else if (documentsError()) {
+      <div class="m-5 rounded-xl bg-red-50 border border-red-100 px-4 py-3 text-sm text-red-700">
+        {{ documentsError() }}
+      </div>
+      } @else if (!pendingDocuments.length) {
+      <div class="py-12 px-6 text-center">
+        <p class="text-sm text-gray-600">
+          @if (documents().length) {
+          Todos los documentos ya están contabilizados.
+          } @else {
+          Esta rendición no tiene comprobantes; solo se generará el asiento de Solicitud.
+          }
+        </p>
+        @if (documents().length) {
+        <p class="text-xs text-gray-400 mt-1">
+          Descontabiliza alguno desde la columna Opciones del detalle de la rendición para volver a incluirlo.
+        </p>
+        }
+      </div>
+      } @else {
+      <table class="w-full text-xs">
+        <thead class="bg-gray-50 text-left text-gray-500 uppercase tracking-wider sticky top-0">
+          <tr>
+            <th class="px-4 py-2.5 w-10">
+              <input type="checkbox" [checked]="allPendingSelected" (change)="toggleAllDocuments()"
+                class="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500" />
+            </th>
+            <th class="px-2 py-2.5 font-medium">Tipo</th>
+            <th class="px-2 py-2.5 font-medium">N° Documento</th>
+            <th class="px-2 py-2.5 font-medium">Proveedor</th>
+            <th class="px-2 py-2.5 font-medium">Categoría</th>
+            <th class="px-2 py-2.5 font-medium">Fecha</th>
+            <th class="px-4 py-2.5 font-medium text-right">Monto</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-100">
+          @for (doc of pendingDocuments; track doc.expenseId) {
+          <tr class="hover:bg-gray-50 cursor-pointer" (click)="toggleDocument(doc.expenseId)">
+            <td class="px-4 py-2.5">
+              <input type="checkbox" [checked]="isSelected(doc.expenseId)" (click)="$event.stopPropagation()"
+                (change)="toggleDocument(doc.expenseId)"
+                class="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500" />
+            </td>
+            <td class="px-2 py-2.5 whitespace-nowrap">
+              <span class="inline-flex items-center px-2 py-0.5 rounded bg-blue-50 text-blue-700 font-bold">{{ doc.sigla }}</span>
+              <span class="text-gray-400 ml-1.5">{{ doc.tipoLabel }}</span>
+            </td>
+            <td class="px-2 py-2.5 font-mono text-gray-700 whitespace-nowrap">{{ doc.numero }}</td>
+            <td class="px-2 py-2.5 text-gray-700 max-w-[180px]">
+              <span class="block truncate" [title]="doc.proveedor">{{ doc.proveedor || '—' }}</span>
+            </td>
+            <td class="px-2 py-2.5 text-gray-500 max-w-[130px]">
+              <span class="block truncate" [title]="doc.categoria">{{ doc.categoria || '—' }}</span>
+            </td>
+            <td class="px-2 py-2.5 text-gray-500 whitespace-nowrap">{{ doc.fecha || '—' }}</td>
+            <td class="px-4 py-2.5 text-right tabular-nums font-medium text-gray-900 whitespace-nowrap">
+              {{ doc.moneda }} {{ doc.total | number:'1.2-2' }}
+            </td>
+          </tr>
+          }
+        </tbody>
+      </table>
+      }
+
+      @if (accountedDocuments.length) {
+      <div class="px-5 py-4 border-t border-gray-100 bg-gray-50">
+        <p class="text-xs font-medium text-gray-600 mb-2">
+          Ya contabilizados ({{ accountedDocuments.length }})
+        </p>
+        <ul class="space-y-1">
+          @for (doc of accountedDocuments; track doc.expenseId) {
+          <li class="text-xs text-gray-500 flex items-center gap-2">
+            <span class="inline-flex items-center px-1.5 py-0.5 rounded bg-gray-200 text-gray-600 font-bold">{{ doc.sigla }}</span>
+            <span class="font-mono">{{ doc.numero }}</span>
+            <span class="truncate">{{ doc.proveedor || doc.categoria || '—' }}</span>
+            @if (doc.contabilizadoPeriodo) {
+            <span class="text-gray-400 shrink-0">· {{ doc.contabilizadoPeriodo }}</span>
+            }
+          </li>
+          }
+        </ul>
+      </div>
+      }
+    </div>
+
+    <div class="px-5 py-4 border-t border-gray-100 flex items-center justify-between gap-3 flex-wrap">
+      <p class="text-xs text-gray-500">
+        {{ selectedIds().size }} seleccionado(s)
+        @if (selectedIds().size) { · Total {{ selectedTotal | number:'1.2-2' }} }
+      </p>
+      <div class="flex items-center gap-2">
+        <button type="button" (click)="closeSelector()"
+          class="px-4 py-2 rounded-lg border border-gray-200 text-gray-600 text-sm font-medium hover:bg-gray-50">
+          Cancelar
+        </button>
+        <button type="button" (click)="confirmGenerate()" [disabled]="!canConfirmGenerate"
+          class="px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 disabled:opacity-40">
+          {{ generating() ? 'Generando…' : 'Generar asientos' }}
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+}
