@@ -172,7 +172,15 @@ export class ExpenseReportsService {
 
   findExpensesPaginated(
     reportId: string,
-    params: { page?: number; limit?: number; type?: string; status?: string; search?: string }
+    params: {
+      page?: number;
+      limit?: number;
+      type?: string;
+      status?: string;
+      search?: string;
+      /** 'yes' = solo contabilizados, 'no' = solo pendientes de contabilizar. */
+      contabilizado?: string;
+    }
   ): Observable<{ data: any[]; total: number; page: number; limit: number; pages: number }> {
     const qp = new URLSearchParams();
     if (params.page) qp.set('page', String(params.page));
@@ -180,6 +188,9 @@ export class ExpenseReportsService {
     if (params.type && params.type !== 'all') qp.set('type', params.type);
     if (params.status && params.status !== 'all') qp.set('status', params.status);
     if (params.search?.trim()) qp.set('search', params.search.trim());
+    if (params.contabilizado && params.contabilizado !== 'all') {
+      qp.set('contabilizado', params.contabilizado);
+    }
     const qs = qp.toString();
     return this.http.get<{ data: any[]; total: number; page: number; limit: number; pages: number }>(
       `${this.apiUrl}/expense-report/${reportId}/expenses${qs ? '?' + qs : ''}`
