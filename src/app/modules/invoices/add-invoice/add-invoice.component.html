@@ -1344,7 +1344,7 @@
       [label]="getButtonLabel()"
       variant="primary"
       size="md"
-      [disabled]="!isFormValid() || isLoading() || isSunatValidating() || showPostOcrReview()"
+      [disabled]="!isFormValid() || isLoading() || isSunatValidating() || showPostOcrReview() || saveCompleted()"
       (clicked)="saveOrUpdate()"
     >
       @if (isLoading() || isSunatValidating()) {
