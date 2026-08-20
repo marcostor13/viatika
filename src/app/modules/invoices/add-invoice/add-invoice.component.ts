@@ -137,6 +137,12 @@ export default class AddInvoiceComponent implements OnInit {
   mobilityDailyLimit: number | null = null;
   readonly departamentos = PERU_LOCATIONS;
   isLoading = signal(false);
+  /**
+   * Se activa tras un guardado exitoso y ya no se vuelve a apagar: evita que un
+   * segundo clic (o Enter) duplique el gasto mientras el router navega, o en los
+   * flujos que se quedan en la pantalla (declaración jurada).
+   */
+  saveCompleted = signal(false);
   readonly todayIso = new Date().toISOString().split('T')[0];
   showPostOcrReview = signal(false);
   /** URL del archivo ya subido durante el análisis; se asocia al gasto al confirmar. */
@@ -200,6 +206,9 @@ export default class AddInvoiceComponent implements OnInit {
 
   /** Tras crear/actualizar gasto: vuelve según el contexto y rol. */
   private navigateAfterExpenseSave(): void {
+    // El gasto ya existe: el botón de guardar queda inhabilitado aunque la
+    // navegación tarde, para que un doble clic no cree un duplicado.
+    this.saveCompleted.set(true);
     // Si el gasto pertenece a una rendición, se vuelve a esa rendición sea cual
     // sea el rol. `fromContabilidad` se activa por el solo hecho de tener el rol
     // Contabilidad, así que antes cortaba aquí y mandaba siempre a Rendiciones
@@ -1998,6 +2007,9 @@ export default class AddInvoiceComponent implements OnInit {
       this.invoiceService.createDeclaracionJurada(payload).subscribe({
         next: (res) => {
           this.isLoading.set(false);
+          // La DJ no navega (se queda para descargar el PDF), así que hay que
+          // marcarla como guardada explícitamente.
+          this.saveCompleted.set(true);
           this.savedDeclaracionJurada.set(res);
           this.notificationService.show(
             'Declaración jurada guardada correctamente. Ya puedes descargar el PDF.',
@@ -2057,6 +2069,11 @@ export default class AddInvoiceComponent implements OnInit {
   }
 
   saveOrUpdate() {
+    // Guarda de reentrada: mientras haya un guardado en curso (o ya terminado)
+    // se ignoran los clics siguientes. El `disabled` del botón no basta: un
+    // doble clic rápido o el Enter del formulario llegan antes de que Angular
+    // repinte, y eso es lo que venía duplicando el gasto.
+    if (this.isLoading() || this.isSunatValidating() || this.saveCompleted()) return;
     if (this.id) {
       this.update();
       return;
